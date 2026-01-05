@@ -1,0 +1,76 @@
+# OSX
+.DS_Store
+
+# Xcode
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+ios/.xcode.env.local
+
+# Android/IntelliJ
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
+.kotlin/
+
+# node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# fastlane
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots
+**/fastlane/test_output
+
+# Bundle artifact
+*.jsbundle
+
+# Ruby / CocoaPods
+/ios/Pods/
+/vendor/bundle/
+
+# Metro
+.metro-health-check*
+
+# Build artifacts
+lib/
+/coverage
+/dist
+tsconfig.tsbuildinfo
+
+# Environment
+.env
+
+# Documentation (AI-generated)
+**/CLAUDE.md
+CLAUDE.md
+/docs
+
+# Misc
+.watchman-*
+*.json
+!package.json
+!tsconfig.json
+!tsconfig.build.json
+!nitro.json
+!react-native.config.js
