@@ -224,6 +224,14 @@ object VideoManager : LifecycleEventListener {
 
   // ------------ Lifecycle Handler ------------
   private fun onAppEnterForeground() {
+    currentPipVideoView?.get()?.let { pipView ->
+      if (pipView.isInPictureInPicture) {
+        pipView.eventsEmitter?.willExitPictureInPicture()
+        pipView.isInPictureInPicture = false
+        notifyPictureInPictureExited(pipView)
+      }
+    }
+
     players.keys.forEach { player ->
       if (player.wasAutoPaused) {
         player.play()
@@ -232,6 +240,17 @@ object VideoManager : LifecycleEventListener {
   }
 
   private fun onAppEnterBackground() {
+    val autoEnterPipView = getLastPlayedVideoView()
+      ?.takeIf { view ->
+        view.autoEnterPictureInPicture &&
+          view.hybridPlayer?.isPlaying == true &&
+          view.canEnterPictureInPicture()
+      }
+
+    if (autoEnterPipView != null && requestPictureInPicture(autoEnterPipView)) {
+      return
+    }
+
     players.keys.forEach { player ->
       if (!player.playInBackground && player.isPlaying) {
         player.wasAutoPaused = player.isPlaying

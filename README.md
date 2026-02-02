@@ -48,6 +48,18 @@ cd ios && pod install
 
 NanoHTTPD and ExoPlayer are bundled automatically.
 
+If you want Android Picture in Picture, the host activity must support PiP in the app manifest.
+
+## Testing
+
+The library is validated with three layers:
+
+- `npm run test:ts` for TS/public-contract tests
+- `gradle -p android test` and `gradle -p android connectedAndroidTest` for Android library tests
+- iOS `XCTest` through the podspec `UnitTests` test spec
+
+Note: this library repo does not check in an Android Gradle wrapper, so Android tests require a Gradle installation on `PATH` or execution from a host app that provides the wrapper.
+
 ---
 
 ## VideoView
@@ -74,8 +86,8 @@ The only component you need. Pass a source - it creates the player internally.
 | `resizeMode` | [`ResizeMode`](#resizemode) | `'none'` | How video fills the view |
 | `keepScreenAwake` | `boolean` | `true` | Prevent screen from sleeping |
 | `surfaceType` | `'surface' \| 'texture'` | `'surface'` | Android only. Use `'texture'` for rounded corners / animations |
-| `pictureInPicture` | `boolean` | `false` | Enable PiP button in controls |
-| `autoEnterPictureInPicture` | `boolean` | `false` | Auto-enter PiP when navigating away |
+| `pictureInPicture` | `boolean` | `false` | Enable PiP controls and manual PiP entry |
+| `autoEnterPictureInPicture` | `boolean` | `false` | Auto-enter PiP when app goes to background (Android/iOS when supported) |
 
 ### ResizeMode
 
@@ -106,7 +118,7 @@ ref.current?.player.seekTo(30);
 | `exitFullscreen()` | `void` | Exit fullscreen mode |
 | `enterPictureInPicture()` | `void` | Enter PiP mode |
 | `exitPictureInPicture()` | `void` | Exit PiP mode |
-| `canEnterPictureInPicture()` | `boolean` | Check PiP support |
+| `canEnterPictureInPicture()` | `boolean` | Check runtime PiP support for the current platform/activity |
 
 ### View Events
 
@@ -253,6 +265,9 @@ That's it. Now every `.m3u8` URL you pass to `VideoView` is automatically cached
 ```tsx
 // This URL goes through the proxy automatically
 <VideoView source={{ uri: 'https://cdn.example.com/stream.m3u8', headers: { Authorization: 'Bearer token' } }} />
+
+// Query strings / hash fragments are handled too
+<VideoView source={{ uri: 'https://cdn.example.com/stream.M3U8?token=abc#live' }} />
 
 // Non-HLS URLs (.mp4, .mov, etc.) are NOT proxied
 <VideoView source={{ uri: 'https://example.com/video.mp4' }} />

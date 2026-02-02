@@ -1,10 +1,17 @@
 package com.twg.video.view
 
+import android.app.Activity
+import android.app.Dialog
 import android.annotation.SuppressLint
+import android.app.PictureInPictureParams
 import android.content.Context
+import android.content.ContextWrapper
 import android.graphics.Color
+import android.os.Build
+import android.util.Rational
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import androidx.media3.common.util.UnstableApi
@@ -106,6 +113,7 @@ class VideoView @JvmOverloads constructor(
     }
 
   private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
+  private var fullscreenDialog: Dialog? = null
 
   var eventsEmitter: VideoViewEventsEmitter? = null
 
@@ -189,19 +197,73 @@ class VideoView @JvmOverloads constructor(
   @SuppressLint("PrivateResource")
   private fun setupFullscreenButton() {
     playerView.setFullscreenButtonClickListener { _ ->
-      enterFullscreen()
+      if (isInFullscreen) {
+        exitFullscreen()
+      } else {
+        enterFullscreen()
+      }
     }
-
-    playerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_fullscreen)
-      ?.setImageResource(androidx.media3.ui.R.drawable.exo_ic_fullscreen_enter)
+    updateFullscreenButtonIcon()
   }
 
   fun enterFullscreen() {
-    return
+    runOnMainThread {
+      if (isInFullscreen) return@runOnMainThread
+
+      val activity = resolveActivity() ?: return@runOnMainThread
+      val currentParent = playerView.parent as? ViewGroup ?: return@runOnMainThread
+
+      eventsEmitter?.willEnterFullscreen()
+
+      currentParent.removeView(playerView)
+
+      val dialog = Dialog(
+        activity,
+        android.R.style.Theme_Black_NoTitleBar_Fullscreen
+      )
+      val fullscreenContainer = FrameLayout(activity).apply {
+        layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
+        setBackgroundColor(Color.BLACK)
+      }
+
+      fullscreenContainer.addView(
+        playerView,
+        FrameLayout.LayoutParams(
+          LayoutParams.MATCH_PARENT,
+          LayoutParams.MATCH_PARENT
+        )
+      )
+
+      dialog.setContentView(fullscreenContainer)
+      dialog.setCancelable(true)
+      dialog.setOnDismissListener {
+        if (isInFullscreen) {
+          restoreFromFullscreen()
+        }
+      }
+
+      fullscreenDialog = dialog
+      dialog.show()
+
+      isInFullscreen = true
+      updateFullscreenButtonIcon()
+      SmallVideoPlayerOptimizer.applyOptimizations(
+        playerView,
+        context,
+        isFullscreen = true
+      )
+    }
   }
 
   fun exitFullscreen() {
-    return
+    runOnMainThread {
+      if (!isInFullscreen) return@runOnMainThread
+
+      eventsEmitter?.willExitFullscreen()
+      restoreFromFullscreen()
+      fullscreenDialog?.dismiss()
+      fullscreenDialog = null
+    }
   }
 
   private fun setupPipHelper() {
@@ -225,23 +287,70 @@ class VideoView @JvmOverloads constructor(
   }
 
   fun enterPictureInPicture() {
-    return
+    runOnMainThread {
+      if (!canEnterPictureInPicture()) {
+        return@runOnMainThread
+      }
+
+      VideoManager.requestPictureInPicture(this)
+    }
   }
 
   internal fun internalEnterPictureInPicture(): Boolean {
-    return false
+    if (!canEnterPictureInPicture()) {
+      return false
+    }
+
+    val activity = resolveActivity() ?: return false
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+      return false
+    }
+
+    eventsEmitter?.willEnterPictureInPicture()
+
+    val width = playerView.width.takeIf { it > 0 } ?: 16
+    val height = playerView.height.takeIf { it > 0 } ?: 9
+    val paramsBuilder = PictureInPictureParams.Builder()
+      .setAspectRatio(Rational(width, height))
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      paramsBuilder.setAutoEnterEnabled(autoEnterPictureInPicture)
+    }
+
+    val entered = activity.enterPictureInPictureMode(paramsBuilder.build())
+
+    if (entered) {
+      isInPictureInPicture = true
+    }
+
+    return entered
   }
 
   fun exitPictureInPicture() {
-    return
+    runOnMainThread {
+      if (!isInPictureInPicture) return@runOnMainThread
+
+      eventsEmitter?.willExitPictureInPicture()
+      isInPictureInPicture = false
+      VideoManager.notifyPictureInPictureExited(this)
+    }
   }
 
   internal fun forceExitPictureInPicture() {
-    return
+    exitPictureInPicture()
   }
 
   // -------- View Lifecycle Methods --------
   override fun onDetachedFromWindow() {
+    if (isInFullscreen) {
+      restoreFromFullscreen()
+      fullscreenDialog?.dismiss()
+      fullscreenDialog = null
+    }
+    if (isInPictureInPicture) {
+      isInPictureInPicture = false
+      VideoManager.notifyPictureInPictureExited(this)
+    }
     globalLayoutListener?.let { viewTreeObserver.removeOnGlobalLayoutListener(it) }
     globalLayoutListener = null
     removeCallbacks(layoutRunnable)
@@ -250,6 +359,9 @@ class VideoView @JvmOverloads constructor(
   }
 
   override fun onAttachedToWindow() {
+    if (nitroId != -1) {
+      VideoManager.registerView(this)
+    }
     hybridPlayer?.movePlayerToVideoView(this)
     super.onAttachedToWindow()
   }
@@ -268,5 +380,57 @@ class VideoView @JvmOverloads constructor(
 
   private fun applySmallPlayerLayoutFixes() {
     SmallVideoPlayerOptimizer.applyOptimizations(playerView, context, isFullscreen = false)
+  }
+
+  fun canEnterPictureInPicture(): Boolean {
+    if (!pictureInPictureEnabled || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+      return false
+    }
+
+    val activity = resolveActivity() ?: return false
+    val supportsFeature = activity.packageManager.hasSystemFeature(
+      android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE
+    )
+    val supportsActivity = try {
+      val activityInfo = activity.packageManager.getActivityInfo(activity.componentName, 0)
+      activityInfo.flags and android.content.pm.ActivityInfo.FLAG_SUPPORTS_PICTURE_IN_PICTURE != 0
+    } catch (_: Exception) {
+      false
+    }
+
+    return supportsFeature && supportsActivity
+  }
+
+  private fun resolveActivity(): Activity? {
+    var currentContext: Context? = context
+    while (currentContext is ContextWrapper) {
+      if (currentContext is Activity) {
+        return currentContext
+      }
+      currentContext = currentContext.baseContext
+    }
+    return null
+  }
+
+  private fun restoreFromFullscreen() {
+    val dialogContent = fullscreenDialog?.findViewById<FrameLayout>(android.R.id.content)
+    (playerView.parent as? ViewGroup)?.removeView(playerView)
+    dialogContent?.removeView(playerView)
+    addView(playerView)
+    isInFullscreen = false
+    updateFullscreenButtonIcon()
+    applySmallPlayerLayoutFixes()
+  }
+
+  @SuppressLint("PrivateResource")
+  private fun updateFullscreenButtonIcon() {
+    val iconRes = if (isInFullscreen) {
+      androidx.media3.ui.R.drawable.exo_ic_fullscreen_exit
+    } else {
+      androidx.media3.ui.R.drawable.exo_ic_fullscreen_enter
+    }
+
+    playerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_fullscreen)
+      ?.setImageResource(iconRes)
   }
 }

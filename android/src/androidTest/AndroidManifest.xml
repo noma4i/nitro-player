@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <activity
+      android:name="com.twg.video.VideoViewTestActivity"
+      android:exported="false"
+      android:supportsPictureInPicture="true" />
+  </application>
+</manifest>

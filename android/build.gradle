@@ -112,6 +112,7 @@ android {
   defaultConfig {
     minSdkVersion getExtOrIntegerDefault("minSdkVersion")
     targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
+    testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
     buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
     buildConfigField "boolean", "USE_EXOPLAYER_DASH", ExoplayerDependencies.useExoplayerDash.toString()
@@ -162,6 +163,10 @@ android {
     release {
       minifyEnabled false
     }
+  }
+
+  testOptions {
+    unitTests.returnDefaultValues = true
   }
 
   lintOptions {
@@ -223,6 +228,16 @@ dependencies {
   // HLS Cache Proxy
   implementation 'org.nanohttpd:nanohttpd:2.3.1'
 
+  testImplementation "junit:junit:4.13.2"
+  testImplementation "org.robolectric:robolectric:4.13"
+  testImplementation "androidx.test:core:$androidxCore_version"
+  testImplementation "androidx.test.ext:junit:1.2.1"
+
+  androidTestImplementation "androidx.test:core:$androidxCore_version"
+  androidTestImplementation "androidx.test:runner:1.6.2"
+  androidTestImplementation "androidx.test:rules:1.6.1"
+  androidTestImplementation "androidx.test.ext:junit:1.2.1"
+
   if (ExoplayerDependencies.useExoplayerDash) {
     implementation "androidx.media3:media3-exoplayer-dash:$media3_version"
   }
@@ -239,4 +254,3 @@ if (isNewArchitectureEnabled()) {
     codegenJavaPackageName = "com.twg.video"
   }
 }
-
