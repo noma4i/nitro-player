@@ -68,6 +68,7 @@ class VideoPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
   var playerItemStatusObserver: NSKeyValueObservation?
   var playerItemAccessLogObserver: NSObjectProtocol?
   
+  var observedPlayerItem: AVPlayerItem?
   var metadataOutput: AVPlayerItemMetadataOutput?
   var legibleOutput: AVPlayerItemLegibleOutput?
   
@@ -156,10 +157,13 @@ class VideoPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
     let metadataOutput = AVPlayerItemMetadataOutput()
     playerItem.add(metadataOutput)
     metadataOutput.setDelegate(self, queue: .global(qos: .userInteractive))
+    self.metadataOutput = metadataOutput
     
     let legibleOutput = AVPlayerItemLegibleOutput()
     playerItem.add(legibleOutput)
     legibleOutput.setDelegate(self, queue: .global(qos: .userInteractive))
+    self.legibleOutput = legibleOutput
+    observedPlayerItem = playerItem
   }
   
   func invalidatePlayerItemObservers() {
@@ -178,7 +182,7 @@ class VideoPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
     playerItemStatusObserver = nil
     // Remove outputs if needed
     // (Assumes outputs are not shared between items)
-    if let playerItem = player?.currentItem {
+    if let playerItem = observedPlayerItem {
       if let metadataOutput = metadataOutput {
         playerItem.remove(metadataOutput)
       }
@@ -186,6 +190,7 @@ class VideoPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
         playerItem.remove(legibleOutput)
       }
     }
+    observedPlayerItem = nil
     metadataOutput = nil
     legibleOutput = nil
   }

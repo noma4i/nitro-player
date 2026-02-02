@@ -36,7 +36,7 @@ class HybridVideoViewViewManager(nitroId: Int): HybridVideoViewViewManagerSpec()
     }
 
   override fun canEnterPictureInPicture(): Boolean {
-    return false
+    return videoView.get()?.canEnterPictureInPicture() == true
   }
 
   override fun enterFullscreen() {

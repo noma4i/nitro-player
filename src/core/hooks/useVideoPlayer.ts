@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { VideoPlayerSource } from '../../spec/nitro/VideoPlayerSource.nitro';
 import type { NoAutocomplete } from '../types/Utils';
 import type { VideoConfig, VideoSource } from '../types/VideoConfig';
@@ -31,43 +31,78 @@ export const useVideoPlayer = (
   source: VideoConfig | VideoSource | NoAutocomplete<VideoPlayerSource>,
   setup?: (player: VideoPlayer) => void
 ) => {
-  const setupCalled = useRef(false);
-
-  return useManagedInstance(
+  const player = useManagedInstance(
     {
       factory: () => {
-        const player = new VideoPlayer(source);
-
-        if (setup === undefined) {
-          return player;
-        }
-
-        if (player.source.config.initializeOnCreation !== false) {
-          // if source is small video, it can happen that onLoadStart is called before we set event from JS
-          // Thats why we adding event listener and calling setup once if player is loading or ready to play
-          // That way we ensure that setup is always called
-
-          const callSetupOnce = () => {
-            if (!setupCalled.current) {
-              setupCalled.current = true;
-              setup?.(player);
-            }
-          };
-
-          player.addEventListener('onLoadStart', callSetupOnce);
-          player.addEventListener('onStatusChange', callSetupOnce);
-        } else {
-          setup?.(player);
-        }
-
-        return player;
+        return new VideoPlayer(source);
       },
       cleanup: (player) => {
         player.__destroy();
-        setupCalled.current = false;
       },
       dependenciesEqualFn: sourceEqual,
     },
     [JSON.stringify(source)]
   );
+
+  const appliedSetupRef = useRef<{
+    player: VideoPlayer | null;
+    setup?: ((player: VideoPlayer) => void) | undefined;
+  }>({
+    player: null,
+    setup: undefined,
+  });
+
+  useEffect(() => {
+    if (setup === undefined) {
+      appliedSetupRef.current = { player, setup: undefined };
+      return;
+    }
+
+    const hasAppliedCurrentSetup =
+      appliedSetupRef.current.player === player &&
+      appliedSetupRef.current.setup === setup;
+
+    const applySetup = () => {
+      if (
+        appliedSetupRef.current.player === player &&
+        appliedSetupRef.current.setup === setup
+      ) {
+        return;
+      }
+
+      setup(player);
+      appliedSetupRef.current = { player, setup };
+    };
+
+    if (player.source.config.initializeOnCreation === false) {
+      applySetup();
+      return;
+    }
+
+    if (
+      hasAppliedCurrentSetup ||
+      player.status === 'loading' ||
+      player.status === 'readyToPlay' ||
+      player.status === 'error'
+    ) {
+      applySetup();
+      return;
+    }
+
+    const loadStartSubscription = player.addEventListener(
+      'onLoadStart',
+      applySetup
+    );
+    const statusChangeSubscription = player.addEventListener(
+      'onStatusChange',
+      applySetup
+    );
+
+    return () => {
+      loadStartSubscription.remove();
+      statusChangeSubscription.remove();
+    };
+  }, [player, setup]);
+
+  return player;
 };

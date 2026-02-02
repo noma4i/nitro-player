@@ -31,6 +31,12 @@ export const isVideoPlayerSource = (obj: any): obj is VideoPlayerSource => {
   );
 };
 
+const isHlsManifestUrl = (uri: string) => {
+  const [withoutHash] = uri.split('#', 1);
+  const [withoutQuery] = withoutHash.split('?', 1);
+  return withoutQuery.toLowerCase().endsWith('.m3u8');
+};
+
 /**
  * Creates a `VideoPlayerSource` instance from a URI (string).
  *
@@ -43,7 +49,9 @@ export const createSourceFromUri = (uri: string) => {
   }
 
   // Auto-proxy .m3u8 URLs through HLS cache proxy (if running)
-  const resolvedUri = uri.includes('.m3u8') ? hlsCacheProxy.getProxiedUrl(uri) : uri;
+  const resolvedUri = isHlsManifestUrl(uri)
+    ? hlsCacheProxy.getProxiedUrl(uri)
+    : uri;
 
   try {
     return VideoPlayerSourceFactory.fromUri(resolvedUri);
@@ -67,17 +75,27 @@ export const createSourceFromVideoConfig = (
     throw new VideoRuntimeError('source/invalid-uri', 'Invalid source URI');
   }
 
+  const normalizedConfig: VideoConfig & { uri: string } = { ...config };
+
   // Auto-proxy .m3u8 URLs through HLS cache proxy (if running)
-  if (config.useHlsProxy !== false && config.uri.includes('.m3u8')) {
-    config = { ...config, uri: hlsCacheProxy.getProxiedUrl(config.uri, config.headers) };
+  if (
+    normalizedConfig.useHlsProxy !== false &&
+    isHlsManifestUrl(normalizedConfig.uri)
+  ) {
+    normalizedConfig.uri = hlsCacheProxy.getProxiedUrl(
+      normalizedConfig.uri,
+      normalizedConfig.headers
+    );
   }
 
-  if (config.externalSubtitles) {
-    config.externalSubtitles = parseExternalSubtitles(config.externalSubtitles);
+  if (normalizedConfig.externalSubtitles) {
+    normalizedConfig.externalSubtitles = parseExternalSubtitles(
+      normalizedConfig.externalSubtitles
+    );
   }
 
   // Ensure platform-based default for DRM type if DRM is provided without a type
-  if (config.drm && config.drm.type === undefined) {
+  if (normalizedConfig.drm && normalizedConfig.drm.type === undefined) {
     const defaultDrmType = Platform.select({
       android: 'widevine',
       ios: 'fairplay',
@@ -85,21 +103,21 @@ export const createSourceFromVideoConfig = (
     });
 
     if (defaultDrmType) {
-      config.drm = {
-        ...config.drm,
+      normalizedConfig.drm = {
+        ...normalizedConfig.drm,
         type: defaultDrmType,
       };
     }
   }
 
   // Set default value for initializeOnCreation (true)
-  if (config.initializeOnCreation === undefined) {
-    config.initializeOnCreation = true;
+  if (normalizedConfig.initializeOnCreation === undefined) {
+    normalizedConfig.initializeOnCreation = true;
   }
 
   try {
     return VideoPlayerSourceFactory.fromVideoConfig(
-      config as NativeVideoConfig
+      normalizedConfig as NativeVideoConfig
     );
   } catch (error) {
     throw tryParseNativeVideoError(error);
