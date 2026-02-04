@@ -1,5 +1,6 @@
 import type { IgnoreSilentSwitchMode } from './IgnoreSilentSwitchMode';
 import type { MixAudioMode } from './MixAudioMode';
+import type { PlaybackState } from './PlaybackState';
 import type { TextTrack } from './TextTrack';
 import type { VideoPlayerSourceBase } from './VideoPlayerSourceBase';
 import type { VideoPlayerStatus } from './VideoPlayerStatus';
@@ -16,17 +17,17 @@ export interface VideoPlayerBase {
   readonly source: VideoPlayerSourceBase;
 
   /**
-   * The status of the player.
-   * @param idle - The player is idle (source is not loaded)
-   * @param loading - The player is loading.
-   * @param readyToPlay - The player is ready to play (source is loaded).
-   * @param error - The player has an error.
+   * Full playback snapshot. This is the single source of truth for JS playback UI.
+   */
+  readonly playbackState: PlaybackState;
+
+  /**
+   * Thin accessor over {@link playbackState.status}.
    */
   readonly status: VideoPlayerStatus;
 
   /**
-   * The current time of the video in seconds (1.0 = 1 sec).
-   * Returns NaN if the current time is not available.
+   * Thin accessor over {@link playbackState.duration}.
    */
   readonly duration: number;
 
@@ -37,10 +38,19 @@ export interface VideoPlayerBase {
   volume: number;
 
   /**
-   * The duration of the video in seconds (1.0 = 1 sec).
-   * Returns NaN if the duration is not available.
+   * Thin accessor over {@link playbackState.currentTime}.
    */
   currentTime: number;
+
+  /**
+   * Thin accessor over {@link playbackState.bufferDuration}.
+   */
+  readonly bufferDuration: number;
+
+  /**
+   * Thin accessor over {@link playbackState.bufferedPosition}.
+   */
+  readonly bufferedPosition: number;
 
   /**
    * Whether the player is muted.
@@ -102,11 +112,19 @@ export interface VideoPlayerBase {
   playWhenInactive: boolean;
 
   /**
-   * Whether the player is playing.
-   * @note This is a read-only property.
-   * @note To pause/resume the player, you need to use {@link play} and {@link pause} methods.
+   * Thin accessor over {@link playbackState.isPlaying}.
    */
   readonly isPlaying: boolean;
+
+  /**
+   * Thin accessor over {@link playbackState.isBuffering}.
+   */
+  readonly isBuffering: boolean;
+
+  /**
+   * Thin accessor over {@link playbackState.isReadyToDisplay}.
+   */
+  readonly isReadyToDisplay: boolean;
 
   /**
    * Manually initialize the player. You don't need to call this method manually, unless you set `initializeOnCreation` to false in {@link VideoConfig}

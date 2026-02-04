@@ -31,8 +31,11 @@ namespace margelo::nitro::video {
   enum class VideoPlayerStatus {
     IDLE      SWIFT_NAME(idle) = 0,
     LOADING      SWIFT_NAME(loading) = 1,
-    READYTOPLAY      SWIFT_NAME(readytoplay) = 2,
-    ERROR      SWIFT_NAME(error) = 3,
+    BUFFERING      SWIFT_NAME(buffering) = 2,
+    PLAYING      SWIFT_NAME(playing) = 3,
+    PAUSED      SWIFT_NAME(paused) = 4,
+    ENDED      SWIFT_NAME(ended) = 5,
+    ERROR      SWIFT_NAME(error) = 6,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::video
@@ -47,7 +50,10 @@ namespace margelo::nitro {
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("idle"): return margelo::nitro::video::VideoPlayerStatus::IDLE;
         case hashString("loading"): return margelo::nitro::video::VideoPlayerStatus::LOADING;
-        case hashString("readyToPlay"): return margelo::nitro::video::VideoPlayerStatus::READYTOPLAY;
+        case hashString("buffering"): return margelo::nitro::video::VideoPlayerStatus::BUFFERING;
+        case hashString("playing"): return margelo::nitro::video::VideoPlayerStatus::PLAYING;
+        case hashString("paused"): return margelo::nitro::video::VideoPlayerStatus::PAUSED;
+        case hashString("ended"): return margelo::nitro::video::VideoPlayerStatus::ENDED;
         case hashString("error"): return margelo::nitro::video::VideoPlayerStatus::ERROR;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum VideoPlayerStatus - invalid value!");
@@ -57,7 +63,10 @@ namespace margelo::nitro {
       switch (arg) {
         case margelo::nitro::video::VideoPlayerStatus::IDLE: return JSIConverter<std::string>::toJSI(runtime, "idle");
         case margelo::nitro::video::VideoPlayerStatus::LOADING: return JSIConverter<std::string>::toJSI(runtime, "loading");
-        case margelo::nitro::video::VideoPlayerStatus::READYTOPLAY: return JSIConverter<std::string>::toJSI(runtime, "readyToPlay");
+        case margelo::nitro::video::VideoPlayerStatus::BUFFERING: return JSIConverter<std::string>::toJSI(runtime, "buffering");
+        case margelo::nitro::video::VideoPlayerStatus::PLAYING: return JSIConverter<std::string>::toJSI(runtime, "playing");
+        case margelo::nitro::video::VideoPlayerStatus::PAUSED: return JSIConverter<std::string>::toJSI(runtime, "paused");
+        case margelo::nitro::video::VideoPlayerStatus::ENDED: return JSIConverter<std::string>::toJSI(runtime, "ended");
         case margelo::nitro::video::VideoPlayerStatus::ERROR: return JSIConverter<std::string>::toJSI(runtime, "error");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert VideoPlayerStatus to JS - invalid value: "
@@ -72,7 +81,10 @@ namespace margelo::nitro {
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("idle"):
         case hashString("loading"):
-        case hashString("readyToPlay"):
+        case hashString("buffering"):
+        case hashString("playing"):
+        case hashString("paused"):
+        case hashString("ended"):
         case hashString("error"):
           return true;
         default:

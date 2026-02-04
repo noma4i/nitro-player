@@ -55,16 +55,8 @@ class HybridVideoPlayerEventEmitter: HybridVideoPlayerEventEmitterSpec {
     addListener(eventName: "onBandwidthUpdate", listener: listener)
   }
 
-  func addOnBufferListener(listener: @escaping (Bool) -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onBuffer", listener: listener)
-  }
-
   func addOnControlsVisibleChangeListener(listener: @escaping (Bool) -> Void) throws -> ListenerSubscription {
     addListener(eventName: "onControlsVisibleChange", listener: listener)
-  }
-
-  func addOnEndListener(listener: @escaping () -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onEnd", listener: listener)
   }
 
   func addOnExternalPlaybackChangeListener(listener: @escaping (Bool) -> Void) throws -> ListenerSubscription {
@@ -79,28 +71,8 @@ class HybridVideoPlayerEventEmitter: HybridVideoPlayerEventEmitterSpec {
     addListener(eventName: "onLoadStart", listener: listener)
   }
 
-  func addOnPlaybackStateChangeListener(listener: @escaping (onPlaybackStateChangeData) -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onPlaybackStateChange", listener: listener)
-  }
-
-  func addOnPlaybackRateChangeListener(listener: @escaping (Double) -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onPlaybackRateChange", listener: listener)
-  }
-
-  func addOnProgressListener(listener: @escaping (onProgressData) -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onProgress", listener: listener)
-  }
-
-  func addOnReadyToDisplayListener(listener: @escaping () -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onReadyToDisplay", listener: listener)
-  }
-
-  func addOnSeekListener(listener: @escaping (Double) -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onSeek", listener: listener)
-  }
-
-  func addOnStatusChangeListener(listener: @escaping (VideoPlayerStatus) -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onStatusChange", listener: listener)
+  func addOnPlaybackStateListener(listener: @escaping (PlaybackState) -> Void) throws -> ListenerSubscription {
+    addListener(eventName: "onPlaybackState", listener: listener)
   }
 
   func addOnTimedMetadataListener(listener: @escaping (TimedMetadata) -> Void) throws -> ListenerSubscription {
@@ -137,16 +109,8 @@ class HybridVideoPlayerEventEmitter: HybridVideoPlayerEventEmitterSpec {
     emitEvent(eventName: "onBandwidthUpdate") { (callback: (BandwidthData) throws -> Void) in try callback(data) }
   }
 
-  func onBuffer(_ isBuffering: Bool) {
-    emitEvent(eventName: "onBuffer") { (callback: (Bool) throws -> Void) in try callback(isBuffering) }
-  }
-
   func onControlsVisibleChange(_ isVisible: Bool) {
     emitEvent(eventName: "onControlsVisibleChange") { (callback: (Bool) throws -> Void) in try callback(isVisible) }
-  }
-
-  func onEnd() {
-    emitEvent(eventName: "onEnd") { (callback: () throws -> Void) in try callback() }
   }
 
   func onExternalPlaybackChange(_ isExternalPlaybackActive: Bool) {
@@ -161,28 +125,8 @@ class HybridVideoPlayerEventEmitter: HybridVideoPlayerEventEmitterSpec {
     emitEvent(eventName: "onLoadStart") { (callback: (onLoadStartData) throws -> Void) in try callback(data) }
   }
 
-  func onPlaybackStateChange(_ data: onPlaybackStateChangeData) {
-    emitEvent(eventName: "onPlaybackStateChange") { (callback: (onPlaybackStateChangeData) throws -> Void) in try callback(data) }
-  }
-
-  func onPlaybackRateChange(_ rate: Double) {
-    emitEvent(eventName: "onPlaybackRateChange") { (callback: (Double) throws -> Void) in try callback(rate) }
-  }
-
-  func onProgress(_ data: onProgressData) {
-    emitEvent(eventName: "onProgress") { (callback: (onProgressData) throws -> Void) in try callback(data) }
-  }
-
-  func onReadyToDisplay() {
-    emitEvent(eventName: "onReadyToDisplay") { (callback: () throws -> Void) in try callback() }
-  }
-
-  func onSeek(_ position: Double) {
-    emitEvent(eventName: "onSeek") { (callback: (Double) throws -> Void) in try callback(position) }
-  }
-
-  func onStatusChange(_ status: VideoPlayerStatus) {
-    emitEvent(eventName: "onStatusChange") { (callback: (VideoPlayerStatus) throws -> Void) in try callback(status) }
+  func onPlaybackState(_ state: PlaybackState) {
+    emitEvent(eventName: "onPlaybackState") { (callback: (PlaybackState) throws -> Void) in try callback(state) }
   }
 
   func onTimedMetadata(_ metadata: TimedMetadata) {

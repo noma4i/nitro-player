@@ -3,13 +3,11 @@ import type {
   BandwidthData,
   onLoadData,
   onLoadStartData,
-  onPlaybackStateChangeData,
-  onProgressData,
   onVolumeChangeData,
   TimedMetadata,
 } from '../../core/types/Events';
+import type { PlaybackState } from '../../core/types/PlaybackState';
 import type { TextTrack } from '../../core/types/TextTrack';
-import type { VideoPlayerStatus } from '../../core/types/VideoPlayerStatus';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { VideoPlayerEvents } from '../../core/types/Events';
@@ -49,16 +47,6 @@ export interface VideoPlayerEventEmitter
   ): ListenerSubscription;
 
   /**
-   * Adds a listener for the `onBuffer` event.
-   * @see {@link VideoPlayerEvents.onBuffer}
-   * @param listener - The listener to add.
-   * @returns A subscription object that can be used to remove the listener.
-   */
-  addOnBufferListener(
-    listener: (buffering: boolean) => void
-  ): ListenerSubscription;
-
-  /**
    * Adds a listener for the `onControlsVisibleChange` event.
    * @see {@link VideoPlayerEvents.onControlsVisibleChange}
    * @param listener - The listener to add.
@@ -67,14 +55,6 @@ export interface VideoPlayerEventEmitter
   addOnControlsVisibleChangeListener(
     listener: (visible: boolean) => void
   ): ListenerSubscription;
-
-  /**
-   * Adds a listener for the `onEnd` event.
-   * @see {@link VideoPlayerEvents.onEnd}
-   * @param listener - The listener to add.
-   * @returns A subscription object that can be used to remove the listener.
-   */
-  addOnEndListener(listener: () => void): ListenerSubscription;
 
   /**
    * Adds a listener for the `onExternalPlaybackChange` event.
@@ -105,59 +85,13 @@ export interface VideoPlayerEventEmitter
   ): ListenerSubscription;
 
   /**
-   * Adds a listener for the `onPlaybackStateChange` event.
-   * @see {@link VideoPlayerEvents.onPlaybackStateChange}
+   * Adds a listener for the `onPlaybackState` event.
+   * @see {@link VideoPlayerEvents.onPlaybackState}
    * @param listener - The listener to add.
    * @returns A subscription object that can be used to remove the listener.
    */
-  addOnPlaybackStateChangeListener(
-    listener: (data: onPlaybackStateChangeData) => void
-  ): ListenerSubscription;
-
-  /**
-   * Adds a listener for the `onPlaybackRateChange` event.
-   * @see {@link VideoPlayerEvents.onPlaybackRateChange}
-   * @param listener - The listener to add.
-   * @returns A subscription object that can be used to remove the listener.
-   */
-  addOnPlaybackRateChangeListener(
-    listener: (rate: number) => void
-  ): ListenerSubscription;
-
-  /**
-   * Adds a listener for the `onProgress` event.
-   * @see {@link VideoPlayerEvents.onProgress}
-   * @param listener - The listener to add.
-   * @returns A subscription object that can be used to remove the listener.
-   */
-  addOnProgressListener(
-    listener: (data: onProgressData) => void
-  ): ListenerSubscription;
-
-  /**
-   * Adds a listener for the `onReadyToDisplay` event.
-   * @see {@link VideoPlayerEvents.onReadyToDisplay}
-   * @param listener - The listener to add.
-   * @returns A subscription object that can be used to remove the listener.
-   */
-  addOnReadyToDisplayListener(listener: () => void): ListenerSubscription;
-
-  /**
-   * Adds a listener for the `onSeek` event.
-   * @see {@link VideoPlayerEvents.onSeek}
-   * @param listener - The listener to add.
-   * @returns A subscription object that can be used to remove the listener.
-   */
-  addOnSeekListener(listener: (position: number) => void): ListenerSubscription;
-
-  /**
-   * Adds a listener for the `onStatusChange` event.
-   * @see {@link VideoPlayerEvents.onStatusChange}
-   * @param listener - The listener to add.
-   * @returns A subscription object that can be used to remove the listener.
-   */
-  addOnStatusChangeListener(
-    listener: (status: VideoPlayerStatus) => void
+  addOnPlaybackStateListener(
+    listener: (state: PlaybackState) => void
   ): ListenerSubscription;
 
   /**

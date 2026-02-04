@@ -30,9 +30,12 @@ jest.mock('../hls/hlsCacheProxy', () => ({
 describe('sourceFactory', () => {
   beforeEach(() => {
     jest.resetModules();
-    fromUri.mockClear();
-    fromVideoConfig.mockClear();
-    getProxiedUrl.mockClear();
+    fromUri.mockReset();
+    fromUri.mockImplementation((uri: string) => ({ uri }));
+    fromVideoConfig.mockReset();
+    fromVideoConfig.mockImplementation((config: unknown) => ({ config }));
+    getProxiedUrl.mockReset();
+    getProxiedUrl.mockImplementation((uri: string) => `proxied:${uri}`);
   });
 
   it('proxies HLS manifest URLs with query/hash and case-insensitive extension', () => {

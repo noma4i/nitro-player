@@ -21,12 +21,8 @@ namespace margelo::nitro::video { struct BandwidthData; }
 namespace margelo::nitro::video { struct onLoadData; }
 // Forward declaration of `onLoadStartData` to properly resolve imports.
 namespace margelo::nitro::video { struct onLoadStartData; }
-// Forward declaration of `onPlaybackStateChangeData` to properly resolve imports.
-namespace margelo::nitro::video { struct onPlaybackStateChangeData; }
-// Forward declaration of `onProgressData` to properly resolve imports.
-namespace margelo::nitro::video { struct onProgressData; }
-// Forward declaration of `VideoPlayerStatus` to properly resolve imports.
-namespace margelo::nitro::video { enum class VideoPlayerStatus; }
+// Forward declaration of `PlaybackState` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `TimedMetadata` to properly resolve imports.
 namespace margelo::nitro::video { struct TimedMetadata; }
 // Forward declaration of `TextTrack` to properly resolve imports.
@@ -39,9 +35,7 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "BandwidthData.hpp"
 #include "onLoadData.hpp"
 #include "onLoadStartData.hpp"
-#include "onPlaybackStateChangeData.hpp"
-#include "onProgressData.hpp"
-#include "VideoPlayerStatus.hpp"
+#include "PlaybackState.hpp"
 #include "TimedMetadata.hpp"
 #include <string>
 #include <vector>
@@ -85,18 +79,11 @@ namespace margelo::nitro::video {
       virtual ListenerSubscription addOnAudioBecomingNoisyListener(const std::function<void()>& listener) = 0;
       virtual ListenerSubscription addOnAudioFocusChangeListener(const std::function<void(bool /* hasAudioFocus */)>& listener) = 0;
       virtual ListenerSubscription addOnBandwidthUpdateListener(const std::function<void(const BandwidthData& /* data */)>& listener) = 0;
-      virtual ListenerSubscription addOnBufferListener(const std::function<void(bool /* buffering */)>& listener) = 0;
       virtual ListenerSubscription addOnControlsVisibleChangeListener(const std::function<void(bool /* visible */)>& listener) = 0;
-      virtual ListenerSubscription addOnEndListener(const std::function<void()>& listener) = 0;
       virtual ListenerSubscription addOnExternalPlaybackChangeListener(const std::function<void(bool /* externalPlaybackActive */)>& listener) = 0;
       virtual ListenerSubscription addOnLoadListener(const std::function<void(const onLoadData& /* data */)>& listener) = 0;
       virtual ListenerSubscription addOnLoadStartListener(const std::function<void(const onLoadStartData& /* data */)>& listener) = 0;
-      virtual ListenerSubscription addOnPlaybackStateChangeListener(const std::function<void(const onPlaybackStateChangeData& /* data */)>& listener) = 0;
-      virtual ListenerSubscription addOnPlaybackRateChangeListener(const std::function<void(double /* rate */)>& listener) = 0;
-      virtual ListenerSubscription addOnProgressListener(const std::function<void(const onProgressData& /* data */)>& listener) = 0;
-      virtual ListenerSubscription addOnReadyToDisplayListener(const std::function<void()>& listener) = 0;
-      virtual ListenerSubscription addOnSeekListener(const std::function<void(double /* position */)>& listener) = 0;
-      virtual ListenerSubscription addOnStatusChangeListener(const std::function<void(VideoPlayerStatus /* status */)>& listener) = 0;
+      virtual ListenerSubscription addOnPlaybackStateListener(const std::function<void(const PlaybackState& /* state */)>& listener) = 0;
       virtual ListenerSubscription addOnTimedMetadataListener(const std::function<void(const TimedMetadata& /* data */)>& listener) = 0;
       virtual ListenerSubscription addOnTextTrackDataChangedListener(const std::function<void(const std::vector<std::string>& /* data */)>& listener) = 0;
       virtual ListenerSubscription addOnTrackChangeListener(const std::function<void(const std::optional<std::variant<nitro::NullType, TextTrack>>& /* track */)>& listener) = 0;

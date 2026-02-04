@@ -132,35 +132,11 @@ namespace margelo::nitro::video::bridge::swift {
     };
   }
   
-  // pragma MARK: std::function<void(const onPlaybackStateChangeData& /* data */)>
-  Func_void_onPlaybackStateChangeData create_Func_void_onPlaybackStateChangeData(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = ReactNativeVideo::Func_void_onPlaybackStateChangeData::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const onPlaybackStateChangeData& data) mutable -> void {
-      swiftClosure.call(data);
-    };
-  }
-  
-  // pragma MARK: std::function<void(double /* rate */)>
-  Func_void_double create_Func_void_double(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = ReactNativeVideo::Func_void_double::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](double rate) mutable -> void {
-      swiftClosure.call(rate);
-    };
-  }
-  
-  // pragma MARK: std::function<void(const onProgressData& /* data */)>
-  Func_void_onProgressData create_Func_void_onProgressData(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = ReactNativeVideo::Func_void_onProgressData::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const onProgressData& data) mutable -> void {
-      swiftClosure.call(data);
-    };
-  }
-  
-  // pragma MARK: std::function<void(VideoPlayerStatus /* status */)>
-  Func_void_VideoPlayerStatus create_Func_void_VideoPlayerStatus(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = ReactNativeVideo::Func_void_VideoPlayerStatus::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](VideoPlayerStatus status) mutable -> void {
-      swiftClosure.call(static_cast<int>(status));
+  // pragma MARK: std::function<void(const PlaybackState& /* state */)>
+  Func_void_PlaybackState create_Func_void_PlaybackState(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = ReactNativeVideo::Func_void_PlaybackState::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const PlaybackState& state) mutable -> void {
+      swiftClosure.call(state);
     };
   }
   

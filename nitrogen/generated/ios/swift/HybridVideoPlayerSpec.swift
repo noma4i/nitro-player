@@ -12,11 +12,14 @@ public protocol HybridVideoPlayerSpec_protocol: HybridObject {
   // Properties
   var source: (any HybridVideoPlayerSourceSpec) { get }
   var eventEmitter: (any HybridVideoPlayerEventEmitterSpec) { get }
+  var playbackState: PlaybackState { get }
   var showNotificationControls: Bool { get set }
   var status: VideoPlayerStatus { get }
   var duration: Double { get }
   var volume: Double { get set }
   var currentTime: Double { get set }
+  var bufferDuration: Double { get }
+  var bufferedPosition: Double { get }
   var muted: Bool { get set }
   var loop: Bool { get set }
   var rate: Double { get set }
@@ -25,6 +28,8 @@ public protocol HybridVideoPlayerSpec_protocol: HybridObject {
   var playInBackground: Bool { get set }
   var playWhenInactive: Bool { get set }
   var isPlaying: Bool { get }
+  var isBuffering: Bool { get }
+  var isReadyToDisplay: Bool { get }
   var selectedTrack: TextTrack? { get }
 
   // Methods

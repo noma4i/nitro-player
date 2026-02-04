@@ -37,6 +37,10 @@ abstract class HybridVideoPlayerSpec: HybridObject() {
   
   @get:DoNotStrip
   @get:Keep
+  abstract val playbackState: PlaybackState
+  
+  @get:DoNotStrip
+  @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var showNotificationControls: Boolean
@@ -60,6 +64,14 @@ abstract class HybridVideoPlayerSpec: HybridObject() {
   @set:DoNotStrip
   @set:Keep
   abstract var currentTime: Double
+  
+  @get:DoNotStrip
+  @get:Keep
+  abstract val bufferDuration: Double
+  
+  @get:DoNotStrip
+  @get:Keep
+  abstract val bufferedPosition: Double
   
   @get:DoNotStrip
   @get:Keep
@@ -106,6 +118,14 @@ abstract class HybridVideoPlayerSpec: HybridObject() {
   @get:DoNotStrip
   @get:Keep
   abstract val isPlaying: Boolean
+  
+  @get:DoNotStrip
+  @get:Keep
+  abstract val isBuffering: Boolean
+  
+  @get:DoNotStrip
+  @get:Keep
+  abstract val isReadyToDisplay: Boolean
   
   @get:DoNotStrip
   @get:Keep

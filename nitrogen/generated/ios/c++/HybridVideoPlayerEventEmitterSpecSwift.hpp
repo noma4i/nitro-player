@@ -26,10 +26,8 @@ namespace margelo::nitro::video { struct onLoadStartData; }
 namespace margelo::nitro::video { enum class SourceType; }
 // Forward declaration of `HybridVideoPlayerSourceSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridVideoPlayerSourceSpec; }
-// Forward declaration of `onPlaybackStateChangeData` to properly resolve imports.
-namespace margelo::nitro::video { struct onPlaybackStateChangeData; }
-// Forward declaration of `onProgressData` to properly resolve imports.
-namespace margelo::nitro::video { struct onProgressData; }
+// Forward declaration of `PlaybackState` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `VideoPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class VideoPlayerStatus; }
 // Forward declaration of `TimedMetadata` to properly resolve imports.
@@ -51,8 +49,7 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "SourceType.hpp"
 #include <memory>
 #include "HybridVideoPlayerSourceSpec.hpp"
-#include "onPlaybackStateChangeData.hpp"
-#include "onProgressData.hpp"
+#include "PlaybackState.hpp"
 #include "VideoPlayerStatus.hpp"
 #include "TimedMetadata.hpp"
 #include "TimedMetadataObject.hpp"
@@ -137,24 +134,8 @@ namespace margelo::nitro::video {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline ListenerSubscription addOnBufferListener(const std::function<void(bool /* buffering */)>& listener) override {
-      auto __result = _swiftPart.addOnBufferListener(listener);
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-      auto __value = std::move(__result.value());
-      return __value;
-    }
     inline ListenerSubscription addOnControlsVisibleChangeListener(const std::function<void(bool /* visible */)>& listener) override {
       auto __result = _swiftPart.addOnControlsVisibleChangeListener(listener);
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-      auto __value = std::move(__result.value());
-      return __value;
-    }
-    inline ListenerSubscription addOnEndListener(const std::function<void()>& listener) override {
-      auto __result = _swiftPart.addOnEndListener(listener);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
@@ -185,48 +166,8 @@ namespace margelo::nitro::video {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline ListenerSubscription addOnPlaybackStateChangeListener(const std::function<void(const onPlaybackStateChangeData& /* data */)>& listener) override {
-      auto __result = _swiftPart.addOnPlaybackStateChangeListener(listener);
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-      auto __value = std::move(__result.value());
-      return __value;
-    }
-    inline ListenerSubscription addOnPlaybackRateChangeListener(const std::function<void(double /* rate */)>& listener) override {
-      auto __result = _swiftPart.addOnPlaybackRateChangeListener(listener);
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-      auto __value = std::move(__result.value());
-      return __value;
-    }
-    inline ListenerSubscription addOnProgressListener(const std::function<void(const onProgressData& /* data */)>& listener) override {
-      auto __result = _swiftPart.addOnProgressListener(listener);
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-      auto __value = std::move(__result.value());
-      return __value;
-    }
-    inline ListenerSubscription addOnReadyToDisplayListener(const std::function<void()>& listener) override {
-      auto __result = _swiftPart.addOnReadyToDisplayListener(listener);
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-      auto __value = std::move(__result.value());
-      return __value;
-    }
-    inline ListenerSubscription addOnSeekListener(const std::function<void(double /* position */)>& listener) override {
-      auto __result = _swiftPart.addOnSeekListener(listener);
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-      auto __value = std::move(__result.value());
-      return __value;
-    }
-    inline ListenerSubscription addOnStatusChangeListener(const std::function<void(VideoPlayerStatus /* status */)>& listener) override {
-      auto __result = _swiftPart.addOnStatusChangeListener(listener);
+    inline ListenerSubscription addOnPlaybackStateListener(const std::function<void(const PlaybackState& /* state */)>& listener) override {
+      auto __result = _swiftPart.addOnPlaybackStateListener(listener);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

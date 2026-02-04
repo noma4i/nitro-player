@@ -16,6 +16,7 @@ namespace margelo::nitro::video {
     registerHybrids(this, [](Prototype& prototype) {
       prototype.registerHybridGetter("source", &HybridVideoPlayerSpec::getSource);
       prototype.registerHybridGetter("eventEmitter", &HybridVideoPlayerSpec::getEventEmitter);
+      prototype.registerHybridGetter("playbackState", &HybridVideoPlayerSpec::getPlaybackState);
       prototype.registerHybridGetter("showNotificationControls", &HybridVideoPlayerSpec::getShowNotificationControls);
       prototype.registerHybridSetter("showNotificationControls", &HybridVideoPlayerSpec::setShowNotificationControls);
       prototype.registerHybridGetter("status", &HybridVideoPlayerSpec::getStatus);
@@ -24,6 +25,8 @@ namespace margelo::nitro::video {
       prototype.registerHybridSetter("volume", &HybridVideoPlayerSpec::setVolume);
       prototype.registerHybridGetter("currentTime", &HybridVideoPlayerSpec::getCurrentTime);
       prototype.registerHybridSetter("currentTime", &HybridVideoPlayerSpec::setCurrentTime);
+      prototype.registerHybridGetter("bufferDuration", &HybridVideoPlayerSpec::getBufferDuration);
+      prototype.registerHybridGetter("bufferedPosition", &HybridVideoPlayerSpec::getBufferedPosition);
       prototype.registerHybridGetter("muted", &HybridVideoPlayerSpec::getMuted);
       prototype.registerHybridSetter("muted", &HybridVideoPlayerSpec::setMuted);
       prototype.registerHybridGetter("loop", &HybridVideoPlayerSpec::getLoop);
@@ -39,6 +42,8 @@ namespace margelo::nitro::video {
       prototype.registerHybridGetter("playWhenInactive", &HybridVideoPlayerSpec::getPlayWhenInactive);
       prototype.registerHybridSetter("playWhenInactive", &HybridVideoPlayerSpec::setPlayWhenInactive);
       prototype.registerHybridGetter("isPlaying", &HybridVideoPlayerSpec::getIsPlaying);
+      prototype.registerHybridGetter("isBuffering", &HybridVideoPlayerSpec::getIsBuffering);
+      prototype.registerHybridGetter("isReadyToDisplay", &HybridVideoPlayerSpec::getIsReadyToDisplay);
       prototype.registerHybridGetter("selectedTrack", &HybridVideoPlayerSpec::getSelectedTrack);
       prototype.registerHybridMethod("replaceSourceAsync", &HybridVideoPlayerSpec::replaceSourceAsync);
       prototype.registerHybridMethod("getAvailableTextTracks", &HybridVideoPlayerSpec::getAvailableTextTracks);

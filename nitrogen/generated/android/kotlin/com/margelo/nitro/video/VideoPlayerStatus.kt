@@ -18,8 +18,11 @@ import com.facebook.proguard.annotations.DoNotStrip
 enum class VideoPlayerStatus(@DoNotStrip @Keep val value: Int) {
   IDLE(0),
   LOADING(1),
-  READYTOPLAY(2),
-  ERROR(3);
+  BUFFERING(2),
+  PLAYING(3),
+  PAUSED(4),
+  ENDED(5),
+  ERROR(6);
 
   companion object
 }

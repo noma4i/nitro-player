@@ -141,6 +141,13 @@ open class HybridVideoPlayerSpec_cxx {
     }
   }
   
+  public final var playbackState: PlaybackState {
+    @inline(__always)
+    get {
+      return self.__implementation.playbackState
+    }
+  }
+  
   public final var showNotificationControls: Bool {
     @inline(__always)
     get {
@@ -185,6 +192,20 @@ open class HybridVideoPlayerSpec_cxx {
     @inline(__always)
     set {
       self.__implementation.currentTime = newValue
+    }
+  }
+  
+  public final var bufferDuration: Double {
+    @inline(__always)
+    get {
+      return self.__implementation.bufferDuration
+    }
+  }
+  
+  public final var bufferedPosition: Double {
+    @inline(__always)
+    get {
+      return self.__implementation.bufferedPosition
     }
   }
   
@@ -269,6 +290,20 @@ open class HybridVideoPlayerSpec_cxx {
     @inline(__always)
     get {
       return self.__implementation.isPlaying
+    }
+  }
+  
+  public final var isBuffering: Bool {
+    @inline(__always)
+    get {
+      return self.__implementation.isBuffering
+    }
+  }
+  
+  public final var isReadyToDisplay: Bool {
+    @inline(__always)
+    get {
+      return self.__implementation.isReadyToDisplay
     }
   }
   

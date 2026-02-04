@@ -21,10 +21,8 @@ namespace margelo::nitro::video { struct onLoadStartData; }
 namespace margelo::nitro::video { enum class SourceType; }
 // Forward declaration of `HybridVideoPlayerSourceSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridVideoPlayerSourceSpec; }
-// Forward declaration of `onPlaybackStateChangeData` to properly resolve imports.
-namespace margelo::nitro::video { struct onPlaybackStateChangeData; }
-// Forward declaration of `onProgressData` to properly resolve imports.
-namespace margelo::nitro::video { struct onProgressData; }
+// Forward declaration of `PlaybackState` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `VideoPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class VideoPlayerStatus; }
 // Forward declaration of `TimedMetadata` to properly resolve imports.
@@ -59,15 +57,10 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include <memory>
 #include "HybridVideoPlayerSourceSpec.hpp"
 #include "JHybridVideoPlayerSourceSpec.hpp"
-#include "onPlaybackStateChangeData.hpp"
-#include "JFunc_void_onPlaybackStateChangeData.hpp"
-#include "JonPlaybackStateChangeData.hpp"
-#include "JFunc_void_double.hpp"
-#include "onProgressData.hpp"
-#include "JFunc_void_onProgressData.hpp"
-#include "JonProgressData.hpp"
+#include "PlaybackState.hpp"
+#include "JFunc_void_PlaybackState.hpp"
+#include "JPlaybackState.hpp"
 #include "VideoPlayerStatus.hpp"
-#include "JFunc_void_VideoPlayerStatus.hpp"
 #include "JVideoPlayerStatus.hpp"
 #include "TimedMetadata.hpp"
 #include "JFunc_void_TimedMetadata.hpp"
@@ -136,19 +129,9 @@ namespace margelo::nitro::video {
     auto __result = method(_javaPart, JFunc_void_BandwidthData_cxx::fromCpp(listener));
     return __result->toCpp();
   }
-  ListenerSubscription JHybridVideoPlayerEventEmitterSpec::addOnBufferListener(const std::function<void(bool /* buffering */)>& listener) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_bool::javaobject> /* listener */)>("addOnBufferListener_cxx");
-    auto __result = method(_javaPart, JFunc_void_bool_cxx::fromCpp(listener));
-    return __result->toCpp();
-  }
   ListenerSubscription JHybridVideoPlayerEventEmitterSpec::addOnControlsVisibleChangeListener(const std::function<void(bool /* visible */)>& listener) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_bool::javaobject> /* listener */)>("addOnControlsVisibleChangeListener_cxx");
     auto __result = method(_javaPart, JFunc_void_bool_cxx::fromCpp(listener));
-    return __result->toCpp();
-  }
-  ListenerSubscription JHybridVideoPlayerEventEmitterSpec::addOnEndListener(const std::function<void()>& listener) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void::javaobject> /* listener */)>("addOnEndListener_cxx");
-    auto __result = method(_javaPart, JFunc_void_cxx::fromCpp(listener));
     return __result->toCpp();
   }
   ListenerSubscription JHybridVideoPlayerEventEmitterSpec::addOnExternalPlaybackChangeListener(const std::function<void(bool /* externalPlaybackActive */)>& listener) {
@@ -166,34 +149,9 @@ namespace margelo::nitro::video {
     auto __result = method(_javaPart, JFunc_void_onLoadStartData_cxx::fromCpp(listener));
     return __result->toCpp();
   }
-  ListenerSubscription JHybridVideoPlayerEventEmitterSpec::addOnPlaybackStateChangeListener(const std::function<void(const onPlaybackStateChangeData& /* data */)>& listener) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_onPlaybackStateChangeData::javaobject> /* listener */)>("addOnPlaybackStateChangeListener_cxx");
-    auto __result = method(_javaPart, JFunc_void_onPlaybackStateChangeData_cxx::fromCpp(listener));
-    return __result->toCpp();
-  }
-  ListenerSubscription JHybridVideoPlayerEventEmitterSpec::addOnPlaybackRateChangeListener(const std::function<void(double /* rate */)>& listener) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_double::javaobject> /* listener */)>("addOnPlaybackRateChangeListener_cxx");
-    auto __result = method(_javaPart, JFunc_void_double_cxx::fromCpp(listener));
-    return __result->toCpp();
-  }
-  ListenerSubscription JHybridVideoPlayerEventEmitterSpec::addOnProgressListener(const std::function<void(const onProgressData& /* data */)>& listener) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_onProgressData::javaobject> /* listener */)>("addOnProgressListener_cxx");
-    auto __result = method(_javaPart, JFunc_void_onProgressData_cxx::fromCpp(listener));
-    return __result->toCpp();
-  }
-  ListenerSubscription JHybridVideoPlayerEventEmitterSpec::addOnReadyToDisplayListener(const std::function<void()>& listener) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void::javaobject> /* listener */)>("addOnReadyToDisplayListener_cxx");
-    auto __result = method(_javaPart, JFunc_void_cxx::fromCpp(listener));
-    return __result->toCpp();
-  }
-  ListenerSubscription JHybridVideoPlayerEventEmitterSpec::addOnSeekListener(const std::function<void(double /* position */)>& listener) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_double::javaobject> /* listener */)>("addOnSeekListener_cxx");
-    auto __result = method(_javaPart, JFunc_void_double_cxx::fromCpp(listener));
-    return __result->toCpp();
-  }
-  ListenerSubscription JHybridVideoPlayerEventEmitterSpec::addOnStatusChangeListener(const std::function<void(VideoPlayerStatus /* status */)>& listener) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_VideoPlayerStatus::javaobject> /* listener */)>("addOnStatusChangeListener_cxx");
-    auto __result = method(_javaPart, JFunc_void_VideoPlayerStatus_cxx::fromCpp(listener));
+  ListenerSubscription JHybridVideoPlayerEventEmitterSpec::addOnPlaybackStateListener(const std::function<void(const PlaybackState& /* state */)>& listener) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_PlaybackState::javaobject> /* listener */)>("addOnPlaybackStateListener_cxx");
+    auto __result = method(_javaPart, JFunc_void_PlaybackState_cxx::fromCpp(listener));
     return __result->toCpp();
   }
   ListenerSubscription JHybridVideoPlayerEventEmitterSpec::addOnTimedMetadataListener(const std::function<void(const TimedMetadata& /* data */)>& listener) {

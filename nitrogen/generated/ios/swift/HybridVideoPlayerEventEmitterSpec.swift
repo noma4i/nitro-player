@@ -16,18 +16,11 @@ public protocol HybridVideoPlayerEventEmitterSpec_protocol: HybridObject {
   func addOnAudioBecomingNoisyListener(listener: @escaping () -> Void) throws -> ListenerSubscription
   func addOnAudioFocusChangeListener(listener: @escaping (_ hasAudioFocus: Bool) -> Void) throws -> ListenerSubscription
   func addOnBandwidthUpdateListener(listener: @escaping (_ data: BandwidthData) -> Void) throws -> ListenerSubscription
-  func addOnBufferListener(listener: @escaping (_ buffering: Bool) -> Void) throws -> ListenerSubscription
   func addOnControlsVisibleChangeListener(listener: @escaping (_ visible: Bool) -> Void) throws -> ListenerSubscription
-  func addOnEndListener(listener: @escaping () -> Void) throws -> ListenerSubscription
   func addOnExternalPlaybackChangeListener(listener: @escaping (_ externalPlaybackActive: Bool) -> Void) throws -> ListenerSubscription
   func addOnLoadListener(listener: @escaping (_ data: onLoadData) -> Void) throws -> ListenerSubscription
   func addOnLoadStartListener(listener: @escaping (_ data: onLoadStartData) -> Void) throws -> ListenerSubscription
-  func addOnPlaybackStateChangeListener(listener: @escaping (_ data: onPlaybackStateChangeData) -> Void) throws -> ListenerSubscription
-  func addOnPlaybackRateChangeListener(listener: @escaping (_ rate: Double) -> Void) throws -> ListenerSubscription
-  func addOnProgressListener(listener: @escaping (_ data: onProgressData) -> Void) throws -> ListenerSubscription
-  func addOnReadyToDisplayListener(listener: @escaping () -> Void) throws -> ListenerSubscription
-  func addOnSeekListener(listener: @escaping (_ position: Double) -> Void) throws -> ListenerSubscription
-  func addOnStatusChangeListener(listener: @escaping (_ status: VideoPlayerStatus) -> Void) throws -> ListenerSubscription
+  func addOnPlaybackStateListener(listener: @escaping (_ state: PlaybackState) -> Void) throws -> ListenerSubscription
   func addOnTimedMetadataListener(listener: @escaping (_ data: TimedMetadata) -> Void) throws -> ListenerSubscription
   func addOnTextTrackDataChangedListener(listener: @escaping (_ data: [String]) -> Void) throws -> ListenerSubscription
   func addOnTrackChangeListener(listener: @escaping (_ track: Variant_NullType_TextTrack?) -> Void) throws -> ListenerSubscription

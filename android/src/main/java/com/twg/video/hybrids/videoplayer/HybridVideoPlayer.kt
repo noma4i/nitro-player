@@ -62,6 +62,7 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
 
   var loadedWithSource = false
   private var currentPlayerView: WeakReference<PlayerView>? = null
+  private var readyToDisplay = false
 
   var wasAutoPaused = false
 
@@ -90,11 +91,10 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
   }
 
   override var status: VideoPlayerStatus = VideoPlayerStatus.IDLE
-    set(value) {
-      if (field != value) {
-        eventEmitter.onStatusChange(value)
-      }
-      field = value
+
+  override val playbackState: PlaybackState
+    get() = runOnMainThreadSync {
+      buildPlaybackState()
     }
 
   override var showNotificationControls: Boolean = false
@@ -181,6 +181,22 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
     get = { player.isPlaying == true }
   )
 
+  override val bufferDuration: Double by mainThreadProperty(
+    get = { calculateBufferDurationSeconds() }
+  )
+
+  override val bufferedPosition: Double by mainThreadProperty(
+    get = { calculateBufferedPositionSeconds() }
+  )
+
+  override val isBuffering: Boolean by mainThreadProperty(
+    get = { status == VideoPlayerStatus.BUFFERING }
+  )
+
+  override val isReadyToDisplay: Boolean by mainThreadProperty(
+    get = { readyToDisplay }
+  )
+
   private fun initializePlayer() {
     if (NitroModules.applicationContext == null) {
       throw LibraryError.ApplicationContextNotFound
@@ -230,6 +246,8 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
     val sourceType = if (hybridSource.uri.startsWith("http")) SourceType.NETWORK else SourceType.LOCAL
     eventEmitter.onLoadStart(onLoadStartData(sourceType = sourceType, source = hybridSource))
     status = VideoPlayerStatus.LOADING
+    readyToDisplay = false
+    emitPlaybackState()
     startProgressUpdates()
   }
 
@@ -292,10 +310,13 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
       runOnMainThreadSync {
         // Update source
         this.source = source
+        status = VideoPlayerStatus.LOADING
+        readyToDisplay = false
         player.setMediaSource(hybridSource.mediaSource)
 
         // Prepare player
         player.prepare()
+        emitPlaybackState()
       }
     }
   }
@@ -336,6 +357,7 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
 
       // Update status
       status = VideoPlayerStatus.IDLE
+      readyToDisplay = false
     }
   }
 
@@ -360,22 +382,48 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
     // 1 MiB by default
     get() = allocator?.totalBytesAllocated?.toLong() ?: (1024L * 1024L)
 
+  private fun calculateCurrentTimeSeconds(): Double {
+    return player.currentPosition / 1000.0
+  }
+
+  private fun calculateDurationSeconds(): Double {
+    val duration = player.duration
+    return if (duration == C.TIME_UNSET) Double.NaN else duration.toDouble() / 1000.0
+  }
+
+  private fun calculateBufferedPositionSeconds(): Double {
+    return player.bufferedPosition / 1000.0
+  }
+
+  private fun calculateBufferDurationSeconds(): Double {
+    return max(0.0, calculateBufferedPositionSeconds() - calculateCurrentTimeSeconds())
+  }
+
+  private fun buildPlaybackState(): PlaybackState {
+    return PlaybackState(
+      status = status,
+      currentTime = calculateCurrentTimeSeconds(),
+      duration = calculateDurationSeconds(),
+      bufferDuration = calculateBufferDurationSeconds(),
+      bufferedPosition = calculateBufferedPositionSeconds(),
+      rate = player.playbackParameters.speed.toDouble(),
+      isPlaying = player.isPlaying,
+      isBuffering = status == VideoPlayerStatus.BUFFERING,
+      isReadyToDisplay = readyToDisplay,
+      nativeTimestampMs = System.currentTimeMillis().toDouble()
+    )
+  }
+
+  private fun emitPlaybackState() {
+    eventEmitter.onPlaybackState(buildPlaybackState())
+  }
+
   private fun startProgressUpdates() {
     stopProgressUpdates() // Ensure no multiple runnables
     progressRunnable = object : Runnable {
       override fun run() {
         if (player.playbackState != Player.STATE_IDLE && player.playbackState != Player.STATE_ENDED) {
-          val currentTimeSeconds = player.currentPosition / 1000.0
-          val bufferedDurationSeconds = player.bufferedPosition / 1000.0
-          // bufferDuration is the time from current time that is buffered.
-          val playableDurationFromNow = max(0.0, bufferedDurationSeconds - currentTimeSeconds)
-
-          eventEmitter.onProgress(
-            onProgressData(
-              currentTime = currentTimeSeconds,
-              bufferDuration = playableDurationFromNow
-            )
-          )
+          emitPlaybackState()
           progressHandler.postDelayed(this, PROGRESS_UPDATE_INTERVAL_MS)
         }
       }
@@ -408,28 +456,21 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
 
   private val playerListener = object : Player.Listener {
     override fun onPlaybackStateChanged(playbackState: Int) {
-      val isPlayingUpdate = player.isPlaying
-      val isBufferingUpdate = playbackState == Player.STATE_BUFFERING
-
-      eventEmitter.onPlaybackStateChange(
-        onPlaybackStateChangeData(
-          isPlaying = isPlayingUpdate,
-          isBuffering = isBufferingUpdate
-        )
-      )
-
       when (playbackState) {
         Player.STATE_IDLE -> {
           status = VideoPlayerStatus.IDLE
-          eventEmitter.onBuffer(false)
+          readyToDisplay = false
         }
         Player.STATE_BUFFERING -> {
-          status = VideoPlayerStatus.LOADING
-          eventEmitter.onBuffer(true)
+          status = VideoPlayerStatus.BUFFERING
         }
         Player.STATE_READY -> {
-          status = VideoPlayerStatus.READYTOPLAY
-          eventEmitter.onBuffer(false)
+          status = if (player.isPlaying) {
+            VideoPlayerStatus.PLAYING
+          } else {
+            VideoPlayerStatus.PAUSED
+          }
+          readyToDisplay = true
 
           val generalVideoFormat = player.videoFormat
           val currentTracks = player.currentTracks
@@ -458,26 +499,25 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
           if (player.playWhenReady) {
             startProgressUpdates()
           }
-
-          eventEmitter.onReadyToDisplay()
         }
         Player.STATE_ENDED -> {
-          status = VideoPlayerStatus.IDLE // Or a specific 'COMPLETED' status if you add one
-          eventEmitter.onEnd()
-          eventEmitter.onBuffer(false)
+          status = VideoPlayerStatus.ENDED
           stopProgressUpdates()
         }
       }
+
+      emitPlaybackState()
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
       super.onIsPlayingChanged(isPlaying)
-      eventEmitter.onPlaybackStateChange(
-        onPlaybackStateChangeData(
-          isPlaying = isPlaying,
-          isBuffering = player.playbackState == Player.STATE_BUFFERING
-        )
-      )
+      if (player.playbackState == Player.STATE_READY) {
+        status = if (isPlaying) {
+          VideoPlayerStatus.PLAYING
+        } else {
+          VideoPlayerStatus.PAUSED
+        }
+      }
       if (isPlaying) {
         VideoManager.setLastPlayedPlayer(this@HybridVideoPlayer)
         startProgressUpdates()
@@ -486,11 +526,14 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
           stopProgressUpdates()
         }
       }
+      emitPlaybackState()
     }
 
     override fun onPlayerError(error: PlaybackException) {
       status = VideoPlayerStatus.ERROR
+      readyToDisplay = false
       stopProgressUpdates()
+      emitPlaybackState()
     }
 
     override fun onPositionDiscontinuity(
@@ -498,22 +541,17 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
       newPosition: Player.PositionInfo,
       reason: Int
     ) {
-      if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) {
-        eventEmitter.onSeek(newPosition.positionMs / 1000.0)
+      if (
+        (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) &&
+        status == VideoPlayerStatus.ENDED
+      ) {
+        status = VideoPlayerStatus.PAUSED
       }
-      // Update progress immediately after a discontinuity if needed by your logic
-       val currentTimeSeconds = newPosition.positionMs / 1000.0
-       val bufferedDurationSeconds = player.bufferedPosition / 1000.0
-       eventEmitter.onProgress(
-         onProgressData(
-           currentTime = currentTimeSeconds,
-           bufferDuration = max(0.0, bufferedDurationSeconds - currentTimeSeconds)
-         )
-       )
+      emitPlaybackState()
     }
 
     override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
-      eventEmitter.onPlaybackRateChange(playbackParameters.speed.toDouble())
+      emitPlaybackState()
     }
 
     override fun onVolumeChanged(volume: Float) {
