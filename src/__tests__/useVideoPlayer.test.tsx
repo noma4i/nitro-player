@@ -1,5 +1,25 @@
-import React from 'react';
-import TestRenderer, { act } from 'react-test-renderer';
+import * as React from 'react';
+import * as TestRenderer from 'react-test-renderer';
+
+const { act } = TestRenderer;
+
+jest.mock('react-native', () => ({
+  Image: {
+    resolveAssetSource: jest.fn(),
+  },
+  Platform: {
+    select: jest.fn((config: Record<string, string>) => config.ios),
+  },
+}));
+
+jest.mock('react-native-nitro-modules', () => ({
+  NitroModules: {
+    createHybridObject: jest.fn(() => ({
+      fromUri: jest.fn(),
+      fromVideoConfig: jest.fn(),
+    })),
+  },
+}));
 
 const addEventListener = jest.fn(
   (_event: string, callback: () => void) => ({
@@ -15,7 +35,9 @@ const playerInstance = {
       initializeOnCreation: false,
     },
   },
-  status: 'idle',
+  playbackState: {
+    status: 'idle',
+  },
   addEventListener,
   __destroy: destroy,
 };

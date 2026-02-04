@@ -53,7 +53,7 @@ final class VideoViewDelegate: NSObject, VideoComponentViewDelegate {
   
   func onReadyToDisplay() {
     if let player = viewManager?.player as? HybridVideoPlayer {
-      player._eventEmitter?.onReadyToDisplay()
+      player.markReadyToDisplay()
     }
   }
 }

@@ -38,6 +38,8 @@ namespace margelo::nitro::video { struct NativeDrmParams; }
 namespace margelo::nitro::video { struct NativeExternalSubtitle; }
 // Forward declaration of `OnGetLicensePayload` to properly resolve imports.
 namespace margelo::nitro::video { struct OnGetLicensePayload; }
+// Forward declaration of `PlaybackState` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `Resolution` to properly resolve imports.
 namespace margelo::nitro::video { struct Resolution; }
 // Forward declaration of `SourceType` to properly resolve imports.
@@ -60,10 +62,6 @@ namespace margelo::nitro::video { enum class VideoPlayerStatus; }
 namespace margelo::nitro::video { struct onLoadData; }
 // Forward declaration of `onLoadStartData` to properly resolve imports.
 namespace margelo::nitro::video { struct onLoadStartData; }
-// Forward declaration of `onPlaybackStateChangeData` to properly resolve imports.
-namespace margelo::nitro::video { struct onPlaybackStateChangeData; }
-// Forward declaration of `onProgressData` to properly resolve imports.
-namespace margelo::nitro::video { struct onProgressData; }
 // Forward declaration of `onVolumeChangeData` to properly resolve imports.
 namespace margelo::nitro::video { struct onVolumeChangeData; }
 
@@ -99,6 +97,7 @@ namespace ReactNativeVideo { class HybridVideoViewViewManagerSpec_cxx; }
 #include "NativeDrmParams.hpp"
 #include "NativeExternalSubtitle.hpp"
 #include "OnGetLicensePayload.hpp"
+#include "PlaybackState.hpp"
 #include "Resolution.hpp"
 #include "SourceType.hpp"
 #include "SubtitleType.hpp"
@@ -110,8 +109,6 @@ namespace ReactNativeVideo { class HybridVideoViewViewManagerSpec_cxx; }
 #include "VideoPlayerStatus.hpp"
 #include "onLoadData.hpp"
 #include "onLoadStartData.hpp"
-#include "onPlaybackStateChangeData.hpp"
-#include "onProgressData.hpp"
 #include "onVolumeChangeData.hpp"
 #include <NitroModules/Null.hpp>
 #include <NitroModules/Promise.hpp>
@@ -504,92 +501,26 @@ namespace margelo::nitro::video::bridge::swift {
     return Func_void_onLoadStartData_Wrapper(std::move(value));
   }
   
-  // pragma MARK: std::function<void(const onPlaybackStateChangeData& /* data */)>
+  // pragma MARK: std::function<void(const PlaybackState& /* state */)>
   /**
-   * Specialized version of `std::function<void(const onPlaybackStateChangeData&)>`.
+   * Specialized version of `std::function<void(const PlaybackState&)>`.
    */
-  using Func_void_onPlaybackStateChangeData = std::function<void(const onPlaybackStateChangeData& /* data */)>;
+  using Func_void_PlaybackState = std::function<void(const PlaybackState& /* state */)>;
   /**
-   * Wrapper class for a `std::function<void(const onPlaybackStateChangeData& / * data * /)>`, this can be used from Swift.
+   * Wrapper class for a `std::function<void(const PlaybackState& / * state * /)>`, this can be used from Swift.
    */
-  class Func_void_onPlaybackStateChangeData_Wrapper final {
+  class Func_void_PlaybackState_Wrapper final {
   public:
-    explicit Func_void_onPlaybackStateChangeData_Wrapper(std::function<void(const onPlaybackStateChangeData& /* data */)>&& func): _function(std::make_unique<std::function<void(const onPlaybackStateChangeData& /* data */)>>(std::move(func))) {}
-    inline void call(onPlaybackStateChangeData data) const noexcept {
-      _function->operator()(data);
+    explicit Func_void_PlaybackState_Wrapper(std::function<void(const PlaybackState& /* state */)>&& func): _function(std::make_unique<std::function<void(const PlaybackState& /* state */)>>(std::move(func))) {}
+    inline void call(PlaybackState state) const noexcept {
+      _function->operator()(state);
     }
   private:
-    std::unique_ptr<std::function<void(const onPlaybackStateChangeData& /* data */)>> _function;
+    std::unique_ptr<std::function<void(const PlaybackState& /* state */)>> _function;
   } SWIFT_NONCOPYABLE;
-  Func_void_onPlaybackStateChangeData create_Func_void_onPlaybackStateChangeData(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_onPlaybackStateChangeData_Wrapper wrap_Func_void_onPlaybackStateChangeData(Func_void_onPlaybackStateChangeData value) noexcept {
-    return Func_void_onPlaybackStateChangeData_Wrapper(std::move(value));
-  }
-  
-  // pragma MARK: std::function<void(double /* rate */)>
-  /**
-   * Specialized version of `std::function<void(double)>`.
-   */
-  using Func_void_double = std::function<void(double /* rate */)>;
-  /**
-   * Wrapper class for a `std::function<void(double / * rate * /)>`, this can be used from Swift.
-   */
-  class Func_void_double_Wrapper final {
-  public:
-    explicit Func_void_double_Wrapper(std::function<void(double /* rate */)>&& func): _function(std::make_unique<std::function<void(double /* rate */)>>(std::move(func))) {}
-    inline void call(double rate) const noexcept {
-      _function->operator()(rate);
-    }
-  private:
-    std::unique_ptr<std::function<void(double /* rate */)>> _function;
-  } SWIFT_NONCOPYABLE;
-  Func_void_double create_Func_void_double(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_double_Wrapper wrap_Func_void_double(Func_void_double value) noexcept {
-    return Func_void_double_Wrapper(std::move(value));
-  }
-  
-  // pragma MARK: std::function<void(const onProgressData& /* data */)>
-  /**
-   * Specialized version of `std::function<void(const onProgressData&)>`.
-   */
-  using Func_void_onProgressData = std::function<void(const onProgressData& /* data */)>;
-  /**
-   * Wrapper class for a `std::function<void(const onProgressData& / * data * /)>`, this can be used from Swift.
-   */
-  class Func_void_onProgressData_Wrapper final {
-  public:
-    explicit Func_void_onProgressData_Wrapper(std::function<void(const onProgressData& /* data */)>&& func): _function(std::make_unique<std::function<void(const onProgressData& /* data */)>>(std::move(func))) {}
-    inline void call(onProgressData data) const noexcept {
-      _function->operator()(data);
-    }
-  private:
-    std::unique_ptr<std::function<void(const onProgressData& /* data */)>> _function;
-  } SWIFT_NONCOPYABLE;
-  Func_void_onProgressData create_Func_void_onProgressData(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_onProgressData_Wrapper wrap_Func_void_onProgressData(Func_void_onProgressData value) noexcept {
-    return Func_void_onProgressData_Wrapper(std::move(value));
-  }
-  
-  // pragma MARK: std::function<void(VideoPlayerStatus /* status */)>
-  /**
-   * Specialized version of `std::function<void(VideoPlayerStatus)>`.
-   */
-  using Func_void_VideoPlayerStatus = std::function<void(VideoPlayerStatus /* status */)>;
-  /**
-   * Wrapper class for a `std::function<void(VideoPlayerStatus / * status * /)>`, this can be used from Swift.
-   */
-  class Func_void_VideoPlayerStatus_Wrapper final {
-  public:
-    explicit Func_void_VideoPlayerStatus_Wrapper(std::function<void(VideoPlayerStatus /* status */)>&& func): _function(std::make_unique<std::function<void(VideoPlayerStatus /* status */)>>(std::move(func))) {}
-    inline void call(int status) const noexcept {
-      _function->operator()(static_cast<VideoPlayerStatus>(status));
-    }
-  private:
-    std::unique_ptr<std::function<void(VideoPlayerStatus /* status */)>> _function;
-  } SWIFT_NONCOPYABLE;
-  Func_void_VideoPlayerStatus create_Func_void_VideoPlayerStatus(void* NON_NULL swiftClosureWrapper) noexcept;
-  inline Func_void_VideoPlayerStatus_Wrapper wrap_Func_void_VideoPlayerStatus(Func_void_VideoPlayerStatus value) noexcept {
-    return Func_void_VideoPlayerStatus_Wrapper(std::move(value));
+  Func_void_PlaybackState create_Func_void_PlaybackState(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_PlaybackState_Wrapper wrap_Func_void_PlaybackState(Func_void_PlaybackState value) noexcept {
+    return Func_void_PlaybackState_Wrapper(std::move(value));
   }
   
   // pragma MARK: std::vector<TimedMetadataObject>

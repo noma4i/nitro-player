@@ -48,9 +48,18 @@ namespace margelo::nitro::video {
         case VideoPlayerStatus::LOADING:
           static const auto fieldLOADING = clazz->getStaticField<JVideoPlayerStatus>("LOADING");
           return clazz->getStaticFieldValue(fieldLOADING);
-        case VideoPlayerStatus::READYTOPLAY:
-          static const auto fieldREADYTOPLAY = clazz->getStaticField<JVideoPlayerStatus>("READYTOPLAY");
-          return clazz->getStaticFieldValue(fieldREADYTOPLAY);
+        case VideoPlayerStatus::BUFFERING:
+          static const auto fieldBUFFERING = clazz->getStaticField<JVideoPlayerStatus>("BUFFERING");
+          return clazz->getStaticFieldValue(fieldBUFFERING);
+        case VideoPlayerStatus::PLAYING:
+          static const auto fieldPLAYING = clazz->getStaticField<JVideoPlayerStatus>("PLAYING");
+          return clazz->getStaticFieldValue(fieldPLAYING);
+        case VideoPlayerStatus::PAUSED:
+          static const auto fieldPAUSED = clazz->getStaticField<JVideoPlayerStatus>("PAUSED");
+          return clazz->getStaticFieldValue(fieldPAUSED);
+        case VideoPlayerStatus::ENDED:
+          static const auto fieldENDED = clazz->getStaticField<JVideoPlayerStatus>("ENDED");
+          return clazz->getStaticFieldValue(fieldENDED);
         case VideoPlayerStatus::ERROR:
           static const auto fieldERROR = clazz->getStaticField<JVideoPlayerStatus>("ERROR");
           return clazz->getStaticFieldValue(fieldERROR);

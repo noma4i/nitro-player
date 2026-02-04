@@ -34,6 +34,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
   private let sourceLoader = SourceLoader()
   private var artworkTask: Task<Void, Never>?
   private var isReleased = false
+  private var readyToDisplay = false
 
   private func replaceCurrentItem(_ item: AVPlayerItem?) {
     let apply = { [weak self] in
@@ -64,6 +65,9 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
       guard let self else { return }
       if source.config.initializeOnCreation == true {
         do {
+          self.status = .loading
+          self.readyToDisplay = false
+          self.emitPlaybackState()
           self.playerItem = try await self.sourceLoader.load {
             try await self.initializePlayerItem()
           }
@@ -85,13 +89,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
 
   var source: any HybridVideoPlayerSourceSpec
 
-  var status: VideoPlayerStatus = .idle {
-    didSet {
-      if status != oldValue {
-        _eventEmitter?.onStatusChange(status)
-      }
-    }
-  }
+  var status: VideoPlayerStatus = .idle
 
   var eventEmitter: HybridVideoPlayerEventEmitterSpec
   var _eventEmitter: HybridVideoPlayerEventEmitter? {
@@ -124,11 +122,12 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
 
   var currentTime: Double {
     set {
-      _eventEmitter?.onSeek(newValue)
       player.seek(
         to: CMTime(seconds: newValue, preferredTimescale: 1000),
         toleranceBefore: .zero,
         toleranceAfter: .zero
+      ) { [weak self] _ in
+        self?.emitPlaybackState()
       )
     }
     get {
@@ -138,6 +137,14 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
 
   var duration: Double {
     Double(player.currentItem?.duration.seconds ?? Double.nan)
+  }
+
+  var bufferDuration: Double {
+    player.currentItem?.getbufferDuration() ?? 0
+  }
+
+  var bufferedPosition: Double {
+    currentTime + bufferDuration
   }
 
   var rate: Double {
@@ -186,7 +193,39 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
     return player.rate != 0
   }
 
+  var isBuffering: Bool {
+    status == .buffering
+  }
+
+  var isReadyToDisplay: Bool {
+    readyToDisplay
+  }
+
+  var playbackState: PlaybackState {
+    PlaybackState(
+      status: status,
+      currentTime: currentTime,
+      duration: duration,
+      bufferDuration: bufferDuration,
+      bufferedPosition: bufferedPosition,
+      rate: rate,
+      isPlaying: isPlaying,
+      isBuffering: isBuffering,
+      isReadyToDisplay: readyToDisplay,
+      nativeTimestampMs: Date().timeIntervalSince1970 * 1000
+    )
+  }
+
   var showNotificationControls: Bool = false
+
+  func emitPlaybackState() {
+    _eventEmitter?.onPlaybackState(playbackState)
+  }
+
+  func markReadyToDisplay() {
+    readyToDisplay = true
+    emitPlaybackState()
+  }
 
   func initialize() throws -> Promise<Void> {
     return Promise.async { [weak self] in
@@ -199,6 +238,9 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
       }
 
       do {
+        self.status = .loading
+        self.readyToDisplay = false
+        self.emitPlaybackState()
         self.playerItem = try await self.sourceLoader.load {
           try await self.initializePlayerItem()
         }
@@ -223,6 +265,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
     try? _eventEmitter?.clearAllListeners()
 
     self.playerItem = nil
+    self.readyToDisplay = false
 
     if let source = self.source as? HybridVideoPlayerSource {
       source.releaseAsset()
@@ -256,10 +299,13 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
         return
       }
 
-      do {
-        let playerItem = try await self.sourceLoader.load {
-          try await self.initializePlayerItem()
-        }
+        do {
+          self.status = .loading
+          self.readyToDisplay = false
+          self.emitPlaybackState()
+          let playerItem = try await self.sourceLoader.load {
+            try await self.initializePlayerItem()
+          }
         self.playerItem = playerItem
 
         self.replaceCurrentItem(playerItem)
@@ -351,6 +397,9 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
         self.source = newSource
 
         do {
+          self.status = .loading
+          self.readyToDisplay = false
+          self.emitPlaybackState()
           self.playerItem = try await self.sourceLoader.load {
             try await self.initializePlayerItem()
           }

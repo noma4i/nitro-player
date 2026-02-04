@@ -4,6 +4,7 @@ import { type VideoPlayer as VideoPlayerImpl } from '../spec/nitro/VideoPlayer.n
 import type { VideoPlayerSource } from '../spec/nitro/VideoPlayerSource.nitro';
 import type { IgnoreSilentSwitchMode } from './types/IgnoreSilentSwitchMode';
 import type { MixAudioMode } from './types/MixAudioMode';
+import type { PlaybackState } from './types/PlaybackState';
 import type { TextTrack } from './types/TextTrack';
 import type { NoAutocomplete } from './types/Utils';
 import type { VideoConfig, VideoSource } from './types/VideoConfig';
@@ -123,12 +124,16 @@ class VideoPlayer extends VideoPlayerEvents implements VideoPlayerBase {
 
   // Status
   get status(): VideoPlayerStatus {
-    return this.player.status;
+    return this.playbackState.status;
+  }
+
+  get playbackState(): PlaybackState {
+    return this.player.playbackState;
   }
 
   // Duration
   get duration(): number {
-    return this.player.duration;
+    return this.playbackState.duration;
   }
 
   // Volume
@@ -142,11 +147,19 @@ class VideoPlayer extends VideoPlayerEvents implements VideoPlayerBase {
 
   // Current Time
   get currentTime(): number {
-    return this.player.currentTime;
+    return this.playbackState.currentTime;
   }
 
   set currentTime(value: number) {
     this.player.currentTime = value;
+  }
+
+  get bufferDuration(): number {
+    return this.playbackState.bufferDuration;
+  }
+
+  get bufferedPosition(): number {
+    return this.playbackState.bufferedPosition;
   }
 
   // Muted
@@ -169,7 +182,7 @@ class VideoPlayer extends VideoPlayerEvents implements VideoPlayerBase {
 
   // Rate
   get rate(): number {
-    return this.player.rate;
+    return this.playbackState.rate;
   }
 
   set rate(value: number) {
@@ -220,7 +233,15 @@ class VideoPlayer extends VideoPlayerEvents implements VideoPlayerBase {
 
   // Is Playing
   get isPlaying(): boolean {
-    return this.player.isPlaying;
+    return this.playbackState.isPlaying;
+  }
+
+  get isBuffering(): boolean {
+    return this.playbackState.isBuffering;
+  }
+
+  get isReadyToDisplay(): boolean {
+    return this.playbackState.isReadyToDisplay;
   }
 
   get showNotificationControls(): boolean {

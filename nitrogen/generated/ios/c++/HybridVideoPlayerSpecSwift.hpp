@@ -16,6 +16,8 @@ namespace ReactNativeVideo { class HybridVideoPlayerSpec_cxx; }
 namespace margelo::nitro::video { class HybridVideoPlayerSourceSpec; }
 // Forward declaration of `HybridVideoPlayerEventEmitterSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridVideoPlayerEventEmitterSpec; }
+// Forward declaration of `PlaybackState` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `VideoPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class VideoPlayerStatus; }
 // Forward declaration of `MixAudioMode` to properly resolve imports.
@@ -28,6 +30,7 @@ namespace margelo::nitro::video { struct TextTrack; }
 #include <memory>
 #include "HybridVideoPlayerSourceSpec.hpp"
 #include "HybridVideoPlayerEventEmitterSpec.hpp"
+#include "PlaybackState.hpp"
 #include "VideoPlayerStatus.hpp"
 #include "MixAudioMode.hpp"
 #include "IgnoreSilentSwitchMode.hpp"
@@ -93,6 +96,9 @@ namespace margelo::nitro::video {
       auto __result = _swiftPart.getEventEmitter();
       return __result;
     }
+    inline PlaybackState getPlaybackState() noexcept override {
+      return _swiftPart.getPlaybackState();
+    }
     inline bool getShowNotificationControls() noexcept override {
       return _swiftPart.getShowNotificationControls();
     }
@@ -117,6 +123,12 @@ namespace margelo::nitro::video {
     }
     inline void setCurrentTime(double currentTime) noexcept override {
       _swiftPart.setCurrentTime(std::forward<decltype(currentTime)>(currentTime));
+    }
+    inline double getBufferDuration() noexcept override {
+      return _swiftPart.getBufferDuration();
+    }
+    inline double getBufferedPosition() noexcept override {
+      return _swiftPart.getBufferedPosition();
     }
     inline bool getMuted() noexcept override {
       return _swiftPart.getMuted();
@@ -164,6 +176,12 @@ namespace margelo::nitro::video {
     }
     inline bool getIsPlaying() noexcept override {
       return _swiftPart.isPlaying();
+    }
+    inline bool getIsBuffering() noexcept override {
+      return _swiftPart.isBuffering();
+    }
+    inline bool getIsReadyToDisplay() noexcept override {
+      return _swiftPart.isReadyToDisplay();
     }
     inline std::optional<TextTrack> getSelectedTrack() noexcept override {
       auto __result = _swiftPart.getSelectedTrack();

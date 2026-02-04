@@ -60,6 +60,28 @@ The library is validated with three layers:
 
 Note: this library repo does not check in an Android Gradle wrapper, so Android tests require a Gradle installation on `PATH` or execution from a host app that provides the wrapper.
 
+## Library Development
+
+Nitro is the primary bridge layer for the player. The intended architecture is native-first: player state, timing, buffering, track logic and event emission should live in Swift/Kotlin, while JS stays as a thin UI/orchestration layer.
+
+### Nitro toolchain
+
+This repo treats Nitro codegen as part of the build, not as an optional manual step.
+
+```bash
+npm install
+npm run codegen
+npm run build
+```
+
+Canonical commands:
+
+- `npm run nitrogen` or `npm run codegen:nitro` regenerates `nitrogen/generated/*` from `src/spec/nitro/*.nitro.ts`
+- `npm run build` runs Nitro codegen first, then `react-native-builder-bob`
+- `npx nitrogen .` is the underlying generator command
+
+If you change `src/spec/nitro/*`, `nitro.json`, or the TS structs used by Nitro specs, regenerate `nitrogen/generated/*` before shipping native changes.
+
 ---
 
 ## VideoView
@@ -161,14 +183,19 @@ The player instance. Access via `ref.current.player`.
 
 | Property | Type | Get | Set | Description |
 |----------|------|-----|-----|-------------|
+| `playbackState` | [`PlaybackState`](#playbackstate) | yes | - | Full native-first playback snapshot |
 | `status` | [`VideoPlayerStatus`](#videoplayerstatus) | yes | - | Current state |
 | `duration` | `number` | yes | - | Duration in seconds (`NaN` if unknown) |
 | `currentTime` | `number` | yes | yes | Position in seconds |
+| `bufferDuration` | `number` | yes | - | Buffered seconds ahead of current position |
+| `bufferedPosition` | `number` | yes | - | Absolute buffered position in seconds |
 | `volume` | `number` | yes | yes | Volume 0.0 - 1.0 |
 | `muted` | `boolean` | yes | yes | Mute state |
 | `loop` | `boolean` | yes | yes | Loop playback |
 | `rate` | `number` | yes | yes | Playback speed (1.0 = normal) |
 | `isPlaying` | `boolean` | yes | - | Currently playing? |
+| `isBuffering` | `boolean` | yes | - | Currently buffering? |
+| `isReadyToDisplay` | `boolean` | yes | - | First-frame / render-ready state |
 | `mixAudioMode` | [`MixAudioMode`](#mixaudiomode) | yes | yes | Audio mixing behavior |
 | `ignoreSilentSwitchMode` | [`IgnoreSilentSwitchMode`](#ignoresilentswitchmode-ios-only) | yes | yes | iOS silent switch behavior |
 | `playInBackground` | `boolean` | yes | yes | Continue in background |
@@ -176,13 +203,33 @@ The player instance. Access via `ref.current.player`.
 | `showNotificationControls` | `boolean` | yes | yes | Show media notification |
 | `selectedTrack` | `TextTrack \| undefined` | yes | - | Current subtitle track |
 
+### PlaybackState
+
+```ts
+type PlaybackState = {
+  status: VideoPlayerStatus;
+  currentTime: number;
+  duration: number;
+  bufferDuration: number;
+  bufferedPosition: number;
+  rate: number;
+  isPlaying: boolean;
+  isBuffering: boolean;
+  isReadyToDisplay: boolean;
+  nativeTimestampMs: number;
+};
+```
+
 ### VideoPlayerStatus
 
 | Value | Meaning |
 |-------|---------|
-| `'idle'` | Not loaded / ended |
+| `'idle'` | No active source |
 | `'loading'` | Loading source |
-| `'readyToPlay'` | Ready and can play |
+| `'buffering'` | Waiting for more data |
+| `'playing'` | Playback is advancing |
+| `'paused'` | Loaded but not advancing |
+| `'ended'` | Playback reached the end |
 | `'error'` | Error occurred |
 
 ### MixAudioMode
@@ -224,16 +271,9 @@ Subscribe via `player.addEventListener(event, callback)`:
 | Event | Payload | When |
 |-------|---------|------|
 | `onLoadStart` | `{ sourceType, source }` | Started loading |
-| `onLoad` | `{ currentTime, duration, width, height, orientation }` | Loaded & ready |
-| `onProgress` | `{ currentTime, bufferDuration }` | Progress update (250ms) |
-| `onEnd` | - | Playback ended |
-| `onBuffer` | `(buffering: boolean)` | Buffering state changed |
-| `onStatusChange` | `(status:` [`VideoPlayerStatus`](#videoplayerstatus)`)` | Status changed |
-| `onPlaybackStateChange` | `{ isPlaying, isBuffering }` | Play/buffer state |
-| `onPlaybackRateChange` | `(rate: number)` | Rate changed |
+| `onLoad` | `{ currentTime, duration, width, height, orientation }` | Source metadata available |
+| `onPlaybackState` | [`PlaybackState`](#playbackstate) | Unified playback snapshot |
 | `onVolumeChange` | `{ volume, muted }` | Volume changed |
-| `onSeek` | `(seekTime: number)` | Seek completed |
-| `onReadyToDisplay` | - | First frame ready |
 | `onError` | `(error: VideoRuntimeError)` | Error occurred |
 | `onBandwidthUpdate` | `{ bitrate, width?, height? }` | Bandwidth estimate |
 | `onTimedMetadata` | `{ metadata: [...] }` | Timed metadata received |
@@ -241,6 +281,10 @@ Subscribe via `player.addEventListener(event, callback)`:
 | `onTrackChange` | `(track: TextTrack \| null)` | Selected track changed |
 | `onAudioBecomingNoisy` | - | Headphones unplugged (Android) |
 | `onAudioFocusChange` | `(hasAudioFocus: boolean)` | Audio focus changed (Android) |
+
+### Playback UI
+
+Use `usePlaybackState(player)` for progress bars and transport UI. It starts from synchronous native state and only interpolates `currentTime` locally while playback is actively advancing.
 
 ---
 

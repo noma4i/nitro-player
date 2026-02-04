@@ -23,10 +23,7 @@
 #include "JFunc_void_BandwidthData.hpp"
 #include "JFunc_void_onLoadData.hpp"
 #include "JFunc_void_onLoadStartData.hpp"
-#include "JFunc_void_onPlaybackStateChangeData.hpp"
-#include "JFunc_void_double.hpp"
-#include "JFunc_void_onProgressData.hpp"
-#include "JFunc_void_VideoPlayerStatus.hpp"
+#include "JFunc_void_PlaybackState.hpp"
 #include "JFunc_void_TimedMetadata.hpp"
 #include "JFunc_void_std__vector_std__string_.hpp"
 #include "JFunc_void_std__optional_std__variant_nitro__NullType__TextTrack__.hpp"
@@ -84,10 +81,7 @@ void registerAllNatives() {
   margelo::nitro::video::JFunc_void_BandwidthData_cxx::registerNatives();
   margelo::nitro::video::JFunc_void_onLoadData_cxx::registerNatives();
   margelo::nitro::video::JFunc_void_onLoadStartData_cxx::registerNatives();
-  margelo::nitro::video::JFunc_void_onPlaybackStateChangeData_cxx::registerNatives();
-  margelo::nitro::video::JFunc_void_double_cxx::registerNatives();
-  margelo::nitro::video::JFunc_void_onProgressData_cxx::registerNatives();
-  margelo::nitro::video::JFunc_void_VideoPlayerStatus_cxx::registerNatives();
+  margelo::nitro::video::JFunc_void_PlaybackState_cxx::registerNatives();
   margelo::nitro::video::JFunc_void_TimedMetadata_cxx::registerNatives();
   margelo::nitro::video::JFunc_void_std__vector_std__string__cxx::registerNatives();
   margelo::nitro::video::JFunc_void_std__optional_std__variant_nitro__NullType__TextTrack___cxx::registerNatives();

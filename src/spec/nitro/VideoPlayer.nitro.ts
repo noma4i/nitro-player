@@ -1,4 +1,5 @@
 import type { HybridObject } from 'react-native-nitro-modules';
+import type { PlaybackState } from '../../core/types/PlaybackState';
 import type { TextTrack } from '../../core/types/TextTrack';
 import type { VideoPlayerBase } from '../../core/types/VideoPlayerBase';
 import type { VideoPlayerEventEmitter } from './VideoPlayerEventEmitter.nitro';
@@ -12,6 +13,11 @@ export interface VideoPlayer
 
   // Holder of the video player events.
   readonly eventEmitter: VideoPlayerEventEmitter;
+
+  /**
+   * Full playback snapshot exposed synchronously to JS.
+   */
+  readonly playbackState: PlaybackState;
 
   /**
    * Show playback controls in the notifications area

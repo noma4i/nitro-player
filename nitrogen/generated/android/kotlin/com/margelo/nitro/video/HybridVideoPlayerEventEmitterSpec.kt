@@ -56,30 +56,12 @@ abstract class HybridVideoPlayerEventEmitterSpec: HybridObject() {
     return __result
   }
   
-  abstract fun addOnBufferListener(listener: (buffering: Boolean) -> Unit): ListenerSubscription
-  
-  @DoNotStrip
-  @Keep
-  private fun addOnBufferListener_cxx(listener: Func_void_bool): ListenerSubscription {
-    val __result = addOnBufferListener(listener)
-    return __result
-  }
-  
   abstract fun addOnControlsVisibleChangeListener(listener: (visible: Boolean) -> Unit): ListenerSubscription
   
   @DoNotStrip
   @Keep
   private fun addOnControlsVisibleChangeListener_cxx(listener: Func_void_bool): ListenerSubscription {
     val __result = addOnControlsVisibleChangeListener(listener)
-    return __result
-  }
-  
-  abstract fun addOnEndListener(listener: () -> Unit): ListenerSubscription
-  
-  @DoNotStrip
-  @Keep
-  private fun addOnEndListener_cxx(listener: Func_void): ListenerSubscription {
-    val __result = addOnEndListener(listener)
     return __result
   }
   
@@ -110,57 +92,12 @@ abstract class HybridVideoPlayerEventEmitterSpec: HybridObject() {
     return __result
   }
   
-  abstract fun addOnPlaybackStateChangeListener(listener: (data: onPlaybackStateChangeData) -> Unit): ListenerSubscription
+  abstract fun addOnPlaybackStateListener(listener: (state: PlaybackState) -> Unit): ListenerSubscription
   
   @DoNotStrip
   @Keep
-  private fun addOnPlaybackStateChangeListener_cxx(listener: Func_void_onPlaybackStateChangeData): ListenerSubscription {
-    val __result = addOnPlaybackStateChangeListener(listener)
-    return __result
-  }
-  
-  abstract fun addOnPlaybackRateChangeListener(listener: (rate: Double) -> Unit): ListenerSubscription
-  
-  @DoNotStrip
-  @Keep
-  private fun addOnPlaybackRateChangeListener_cxx(listener: Func_void_double): ListenerSubscription {
-    val __result = addOnPlaybackRateChangeListener(listener)
-    return __result
-  }
-  
-  abstract fun addOnProgressListener(listener: (data: onProgressData) -> Unit): ListenerSubscription
-  
-  @DoNotStrip
-  @Keep
-  private fun addOnProgressListener_cxx(listener: Func_void_onProgressData): ListenerSubscription {
-    val __result = addOnProgressListener(listener)
-    return __result
-  }
-  
-  abstract fun addOnReadyToDisplayListener(listener: () -> Unit): ListenerSubscription
-  
-  @DoNotStrip
-  @Keep
-  private fun addOnReadyToDisplayListener_cxx(listener: Func_void): ListenerSubscription {
-    val __result = addOnReadyToDisplayListener(listener)
-    return __result
-  }
-  
-  abstract fun addOnSeekListener(listener: (position: Double) -> Unit): ListenerSubscription
-  
-  @DoNotStrip
-  @Keep
-  private fun addOnSeekListener_cxx(listener: Func_void_double): ListenerSubscription {
-    val __result = addOnSeekListener(listener)
-    return __result
-  }
-  
-  abstract fun addOnStatusChangeListener(listener: (status: VideoPlayerStatus) -> Unit): ListenerSubscription
-  
-  @DoNotStrip
-  @Keep
-  private fun addOnStatusChangeListener_cxx(listener: Func_void_VideoPlayerStatus): ListenerSubscription {
-    val __result = addOnStatusChangeListener(listener)
+  private fun addOnPlaybackStateListener_cxx(listener: Func_void_PlaybackState): ListenerSubscription {
+    val __result = addOnPlaybackStateListener(listener)
     return __result
   }
   

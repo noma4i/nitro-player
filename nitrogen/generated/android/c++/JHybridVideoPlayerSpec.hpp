@@ -52,6 +52,7 @@ namespace margelo::nitro::video {
     // Properties
     std::shared_ptr<HybridVideoPlayerSourceSpec> getSource() override;
     std::shared_ptr<HybridVideoPlayerEventEmitterSpec> getEventEmitter() override;
+    PlaybackState getPlaybackState() override;
     bool getShowNotificationControls() override;
     void setShowNotificationControls(bool showNotificationControls) override;
     VideoPlayerStatus getStatus() override;
@@ -60,6 +61,8 @@ namespace margelo::nitro::video {
     void setVolume(double volume) override;
     double getCurrentTime() override;
     void setCurrentTime(double currentTime) override;
+    double getBufferDuration() override;
+    double getBufferedPosition() override;
     bool getMuted() override;
     void setMuted(bool muted) override;
     bool getLoop() override;
@@ -75,6 +78,8 @@ namespace margelo::nitro::video {
     bool getPlayWhenInactive() override;
     void setPlayWhenInactive(bool playWhenInactive) override;
     bool getIsPlaying() override;
+    bool getIsBuffering() override;
+    bool getIsReadyToDisplay() override;
     std::optional<TextTrack> getSelectedTrack() override;
 
   public:

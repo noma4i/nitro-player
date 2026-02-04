@@ -11,6 +11,8 @@
 namespace margelo::nitro::video { class HybridVideoPlayerSourceSpec; }
 // Forward declaration of `HybridVideoPlayerEventEmitterSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridVideoPlayerEventEmitterSpec; }
+// Forward declaration of `PlaybackState` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `VideoPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class VideoPlayerStatus; }
 // Forward declaration of `MixAudioMode` to properly resolve imports.
@@ -25,6 +27,8 @@ namespace margelo::nitro::video { struct TextTrack; }
 #include "JHybridVideoPlayerSourceSpec.hpp"
 #include "HybridVideoPlayerEventEmitterSpec.hpp"
 #include "JHybridVideoPlayerEventEmitterSpec.hpp"
+#include "PlaybackState.hpp"
+#include "JPlaybackState.hpp"
 #include "VideoPlayerStatus.hpp"
 #include "JVideoPlayerStatus.hpp"
 #include "MixAudioMode.hpp"
@@ -85,6 +89,11 @@ namespace margelo::nitro::video {
     auto __result = method(_javaPart);
     return __result->getJHybridVideoPlayerEventEmitterSpec();
   }
+  PlaybackState JHybridVideoPlayerSpec::getPlaybackState() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPlaybackState>()>("getPlaybackState");
+    auto __result = method(_javaPart);
+    return __result->toCpp();
+  }
   bool JHybridVideoPlayerSpec::getShowNotificationControls() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("getShowNotificationControls");
     auto __result = method(_javaPart);
@@ -121,6 +130,16 @@ namespace margelo::nitro::video {
   void JHybridVideoPlayerSpec::setCurrentTime(double currentTime) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(double /* currentTime */)>("setCurrentTime");
     method(_javaPart, currentTime);
+  }
+  double JHybridVideoPlayerSpec::getBufferDuration() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<double()>("getBufferDuration");
+    auto __result = method(_javaPart);
+    return __result;
+  }
+  double JHybridVideoPlayerSpec::getBufferedPosition() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<double()>("getBufferedPosition");
+    auto __result = method(_javaPart);
+    return __result;
   }
   bool JHybridVideoPlayerSpec::getMuted() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("getMuted");
@@ -187,6 +206,16 @@ namespace margelo::nitro::video {
   }
   bool JHybridVideoPlayerSpec::getIsPlaying() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("isPlaying");
+    auto __result = method(_javaPart);
+    return static_cast<bool>(__result);
+  }
+  bool JHybridVideoPlayerSpec::getIsBuffering() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("isBuffering");
+    auto __result = method(_javaPart);
+    return static_cast<bool>(__result);
+  }
+  bool JHybridVideoPlayerSpec::getIsReadyToDisplay() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("isReadyToDisplay");
     auto __result = method(_javaPart);
     return static_cast<bool>(__result);
   }

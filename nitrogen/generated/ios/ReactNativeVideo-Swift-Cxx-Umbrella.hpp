@@ -44,6 +44,8 @@ namespace margelo::nitro::video { struct NativeExternalSubtitle; }
 namespace margelo::nitro::video { struct NativeVideoConfig; }
 // Forward declaration of `OnGetLicensePayload` to properly resolve imports.
 namespace margelo::nitro::video { struct OnGetLicensePayload; }
+// Forward declaration of `PlaybackState` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `ResizeMode` to properly resolve imports.
 namespace margelo::nitro::video { enum class ResizeMode; }
 // Forward declaration of `Resolution` to properly resolve imports.
@@ -70,10 +72,6 @@ namespace margelo::nitro::video { enum class VideoPlayerStatus; }
 namespace margelo::nitro::video { struct onLoadData; }
 // Forward declaration of `onLoadStartData` to properly resolve imports.
 namespace margelo::nitro::video { struct onLoadStartData; }
-// Forward declaration of `onPlaybackStateChangeData` to properly resolve imports.
-namespace margelo::nitro::video { struct onPlaybackStateChangeData; }
-// Forward declaration of `onProgressData` to properly resolve imports.
-namespace margelo::nitro::video { struct onProgressData; }
 // Forward declaration of `onVolumeChangeData` to properly resolve imports.
 namespace margelo::nitro::video { struct onVolumeChangeData; }
 
@@ -96,6 +94,7 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "NativeExternalSubtitle.hpp"
 #include "NativeVideoConfig.hpp"
 #include "OnGetLicensePayload.hpp"
+#include "PlaybackState.hpp"
 #include "ResizeMode.hpp"
 #include "Resolution.hpp"
 #include "SourceType.hpp"
@@ -109,8 +108,6 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "VideoPlayerStatus.hpp"
 #include "onLoadData.hpp"
 #include "onLoadStartData.hpp"
-#include "onPlaybackStateChangeData.hpp"
-#include "onProgressData.hpp"
 #include "onVolumeChangeData.hpp"
 #include <NitroModules/Null.hpp>
 #include <NitroModules/Promise.hpp>

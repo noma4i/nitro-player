@@ -21,8 +21,14 @@ public extension VideoPlayerStatus {
         self = .idle
       case "loading":
         self = .loading
-      case "readyToPlay":
-        self = .readytoplay
+      case "buffering":
+        self = .buffering
+      case "playing":
+        self = .playing
+      case "paused":
+        self = .paused
+      case "ended":
+        self = .ended
       case "error":
         self = .error
       default:
@@ -39,8 +45,14 @@ public extension VideoPlayerStatus {
         return "idle"
       case .loading:
         return "loading"
-      case .readytoplay:
-        return "readyToPlay"
+      case .buffering:
+        return "buffering"
+      case .playing:
+        return "playing"
+      case .paused:
+        return "paused"
+      case .ended:
+        return "ended"
       case .error:
         return "error"
     }

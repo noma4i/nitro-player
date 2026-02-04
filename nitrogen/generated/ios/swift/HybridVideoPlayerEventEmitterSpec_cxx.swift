@@ -176,46 +176,12 @@ open class HybridVideoPlayerEventEmitterSpec_cxx {
   }
   
   @inline(__always)
-  public final func addOnBufferListener(listener: bridge.Func_void_bool) -> bridge.Result_ListenerSubscription_ {
-    do {
-      let __result = try self.__implementation.addOnBufferListener(listener: { () -> (Bool) -> Void in
-        let __wrappedFunction = bridge.wrap_Func_void_bool(listener)
-        return { (__buffering: Bool) -> Void in
-          __wrappedFunction.call(__buffering)
-        }
-      }())
-      let __resultCpp = __result
-      return bridge.create_Result_ListenerSubscription_(__resultCpp)
-    } catch (let __error) {
-      let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
-    }
-  }
-  
-  @inline(__always)
   public final func addOnControlsVisibleChangeListener(listener: bridge.Func_void_bool) -> bridge.Result_ListenerSubscription_ {
     do {
       let __result = try self.__implementation.addOnControlsVisibleChangeListener(listener: { () -> (Bool) -> Void in
         let __wrappedFunction = bridge.wrap_Func_void_bool(listener)
         return { (__visible: Bool) -> Void in
           __wrappedFunction.call(__visible)
-        }
-      }())
-      let __resultCpp = __result
-      return bridge.create_Result_ListenerSubscription_(__resultCpp)
-    } catch (let __error) {
-      let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
-    }
-  }
-  
-  @inline(__always)
-  public final func addOnEndListener(listener: bridge.Func_void) -> bridge.Result_ListenerSubscription_ {
-    do {
-      let __result = try self.__implementation.addOnEndListener(listener: { () -> () -> Void in
-        let __wrappedFunction = bridge.wrap_Func_void(listener)
-        return { () -> Void in
-          __wrappedFunction.call()
         }
       }())
       let __resultCpp = __result
@@ -278,97 +244,12 @@ open class HybridVideoPlayerEventEmitterSpec_cxx {
   }
   
   @inline(__always)
-  public final func addOnPlaybackStateChangeListener(listener: bridge.Func_void_onPlaybackStateChangeData) -> bridge.Result_ListenerSubscription_ {
+  public final func addOnPlaybackStateListener(listener: bridge.Func_void_PlaybackState) -> bridge.Result_ListenerSubscription_ {
     do {
-      let __result = try self.__implementation.addOnPlaybackStateChangeListener(listener: { () -> (onPlaybackStateChangeData) -> Void in
-        let __wrappedFunction = bridge.wrap_Func_void_onPlaybackStateChangeData(listener)
-        return { (__data: onPlaybackStateChangeData) -> Void in
-          __wrappedFunction.call(__data)
-        }
-      }())
-      let __resultCpp = __result
-      return bridge.create_Result_ListenerSubscription_(__resultCpp)
-    } catch (let __error) {
-      let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
-    }
-  }
-  
-  @inline(__always)
-  public final func addOnPlaybackRateChangeListener(listener: bridge.Func_void_double) -> bridge.Result_ListenerSubscription_ {
-    do {
-      let __result = try self.__implementation.addOnPlaybackRateChangeListener(listener: { () -> (Double) -> Void in
-        let __wrappedFunction = bridge.wrap_Func_void_double(listener)
-        return { (__rate: Double) -> Void in
-          __wrappedFunction.call(__rate)
-        }
-      }())
-      let __resultCpp = __result
-      return bridge.create_Result_ListenerSubscription_(__resultCpp)
-    } catch (let __error) {
-      let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
-    }
-  }
-  
-  @inline(__always)
-  public final func addOnProgressListener(listener: bridge.Func_void_onProgressData) -> bridge.Result_ListenerSubscription_ {
-    do {
-      let __result = try self.__implementation.addOnProgressListener(listener: { () -> (onProgressData) -> Void in
-        let __wrappedFunction = bridge.wrap_Func_void_onProgressData(listener)
-        return { (__data: onProgressData) -> Void in
-          __wrappedFunction.call(__data)
-        }
-      }())
-      let __resultCpp = __result
-      return bridge.create_Result_ListenerSubscription_(__resultCpp)
-    } catch (let __error) {
-      let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
-    }
-  }
-  
-  @inline(__always)
-  public final func addOnReadyToDisplayListener(listener: bridge.Func_void) -> bridge.Result_ListenerSubscription_ {
-    do {
-      let __result = try self.__implementation.addOnReadyToDisplayListener(listener: { () -> () -> Void in
-        let __wrappedFunction = bridge.wrap_Func_void(listener)
-        return { () -> Void in
-          __wrappedFunction.call()
-        }
-      }())
-      let __resultCpp = __result
-      return bridge.create_Result_ListenerSubscription_(__resultCpp)
-    } catch (let __error) {
-      let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
-    }
-  }
-  
-  @inline(__always)
-  public final func addOnSeekListener(listener: bridge.Func_void_double) -> bridge.Result_ListenerSubscription_ {
-    do {
-      let __result = try self.__implementation.addOnSeekListener(listener: { () -> (Double) -> Void in
-        let __wrappedFunction = bridge.wrap_Func_void_double(listener)
-        return { (__position: Double) -> Void in
-          __wrappedFunction.call(__position)
-        }
-      }())
-      let __resultCpp = __result
-      return bridge.create_Result_ListenerSubscription_(__resultCpp)
-    } catch (let __error) {
-      let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
-    }
-  }
-  
-  @inline(__always)
-  public final func addOnStatusChangeListener(listener: bridge.Func_void_VideoPlayerStatus) -> bridge.Result_ListenerSubscription_ {
-    do {
-      let __result = try self.__implementation.addOnStatusChangeListener(listener: { () -> (VideoPlayerStatus) -> Void in
-        let __wrappedFunction = bridge.wrap_Func_void_VideoPlayerStatus(listener)
-        return { (__status: VideoPlayerStatus) -> Void in
-          __wrappedFunction.call(__status.rawValue)
+      let __result = try self.__implementation.addOnPlaybackStateListener(listener: { () -> (PlaybackState) -> Void in
+        let __wrappedFunction = bridge.wrap_Func_void_PlaybackState(listener)
+        return { (__state: PlaybackState) -> Void in
+          __wrappedFunction.call(__state)
         }
       }())
       let __resultCpp = __result

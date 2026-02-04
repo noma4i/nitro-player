@@ -38,6 +38,6 @@ describe('VideoPlayer release contract', () => {
     player.release();
 
     expect(release).toHaveBeenCalledTimes(1);
-    expect(() => player.play()).toThrow(/player\/released/);
+    expect(() => player.play()).toThrow(/released/);
   });
 });

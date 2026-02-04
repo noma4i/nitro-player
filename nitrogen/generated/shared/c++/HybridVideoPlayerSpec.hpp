@@ -17,6 +17,8 @@
 namespace margelo::nitro::video { class HybridVideoPlayerSourceSpec; }
 // Forward declaration of `HybridVideoPlayerEventEmitterSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridVideoPlayerEventEmitterSpec; }
+// Forward declaration of `PlaybackState` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `VideoPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class VideoPlayerStatus; }
 // Forward declaration of `MixAudioMode` to properly resolve imports.
@@ -29,6 +31,7 @@ namespace margelo::nitro::video { struct TextTrack; }
 #include <memory>
 #include "HybridVideoPlayerSourceSpec.hpp"
 #include "HybridVideoPlayerEventEmitterSpec.hpp"
+#include "PlaybackState.hpp"
 #include "VideoPlayerStatus.hpp"
 #include "MixAudioMode.hpp"
 #include "IgnoreSilentSwitchMode.hpp"
@@ -68,6 +71,7 @@ namespace margelo::nitro::video {
       // Properties
       virtual std::shared_ptr<HybridVideoPlayerSourceSpec> getSource() = 0;
       virtual std::shared_ptr<HybridVideoPlayerEventEmitterSpec> getEventEmitter() = 0;
+      virtual PlaybackState getPlaybackState() = 0;
       virtual bool getShowNotificationControls() = 0;
       virtual void setShowNotificationControls(bool showNotificationControls) = 0;
       virtual VideoPlayerStatus getStatus() = 0;
@@ -76,6 +80,8 @@ namespace margelo::nitro::video {
       virtual void setVolume(double volume) = 0;
       virtual double getCurrentTime() = 0;
       virtual void setCurrentTime(double currentTime) = 0;
+      virtual double getBufferDuration() = 0;
+      virtual double getBufferedPosition() = 0;
       virtual bool getMuted() = 0;
       virtual void setMuted(bool muted) = 0;
       virtual bool getLoop() = 0;
@@ -91,6 +97,8 @@ namespace margelo::nitro::video {
       virtual bool getPlayWhenInactive() = 0;
       virtual void setPlayWhenInactive(bool playWhenInactive) = 0;
       virtual bool getIsPlaying() = 0;
+      virtual bool getIsBuffering() = 0;
+      virtual bool getIsReadyToDisplay() = 0;
       virtual std::optional<TextTrack> getSelectedTrack() = 0;
 
     public:

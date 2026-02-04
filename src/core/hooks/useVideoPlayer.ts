@@ -81,8 +81,11 @@ export const useVideoPlayer = (
 
     if (
       hasAppliedCurrentSetup ||
-      player.status === 'loading' ||
-      player.status === 'readyToPlay' ||
+      player.playbackState.status === 'loading' ||
+      player.playbackState.status === 'buffering' ||
+      player.playbackState.status === 'playing' ||
+      player.playbackState.status === 'paused' ||
+      player.playbackState.status === 'ended' ||
       player.status === 'error'
     ) {
       applySetup();
@@ -93,14 +96,14 @@ export const useVideoPlayer = (
       'onLoadStart',
       applySetup
     );
-    const statusChangeSubscription = player.addEventListener(
-      'onStatusChange',
+    const playbackStateSubscription = player.addEventListener(
+      'onPlaybackState',
       applySetup
     );
 
     return () => {
       loadStartSubscription.remove();
-      statusChangeSubscription.remove();
+      playbackStateSubscription.remove();
     };
   }, [player, setup]);
 

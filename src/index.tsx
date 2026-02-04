@@ -1,5 +1,7 @@
 export { useEvent } from './core/hooks/useEvent';
+export { usePlaybackState } from './core/hooks/usePlaybackState';
 export * from './core/types/Events';
+export type { PlaybackState } from './core/types/PlaybackState';
 export type { IgnoreSilentSwitchMode } from './core/types/IgnoreSilentSwitchMode';
 export type { MixAudioMode } from './core/types/MixAudioMode';
 export type { ResizeMode } from './core/types/ResizeMode';

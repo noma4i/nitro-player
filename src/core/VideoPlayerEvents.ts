@@ -67,17 +67,9 @@ export class VideoPlayerEvents {
         return this.eventEmitter.addOnBandwidthUpdateListener(
           callback as PlayerEvents['onBandwidthUpdate']
         );
-      case 'onBuffer':
-        return this.eventEmitter.addOnBufferListener(
-          callback as PlayerEvents['onBuffer']
-        );
       case 'onControlsVisibleChange':
         return this.eventEmitter.addOnControlsVisibleChangeListener(
           callback as PlayerEvents['onControlsVisibleChange']
-        );
-      case 'onEnd':
-        return this.eventEmitter.addOnEndListener(
-          callback as PlayerEvents['onEnd']
         );
       case 'onExternalPlaybackChange':
         return this.eventEmitter.addOnExternalPlaybackChangeListener(
@@ -91,25 +83,9 @@ export class VideoPlayerEvents {
         return this.eventEmitter.addOnLoadStartListener(
           callback as PlayerEvents['onLoadStart']
         );
-      case 'onPlaybackStateChange':
-        return this.eventEmitter.addOnPlaybackStateChangeListener(
-          callback as PlayerEvents['onPlaybackStateChange']
-        );
-      case 'onPlaybackRateChange':
-        return this.eventEmitter.addOnPlaybackRateChangeListener(
-          callback as PlayerEvents['onPlaybackRateChange']
-        );
-      case 'onProgress':
-        return this.eventEmitter.addOnProgressListener(
-          callback as PlayerEvents['onProgress']
-        );
-      case 'onReadyToDisplay':
-        return this.eventEmitter.addOnReadyToDisplayListener(
-          callback as PlayerEvents['onReadyToDisplay']
-        );
-      case 'onSeek':
-        return this.eventEmitter.addOnSeekListener(
-          callback as PlayerEvents['onSeek']
+      case 'onPlaybackState':
+        return this.eventEmitter.addOnPlaybackStateListener(
+          callback as PlayerEvents['onPlaybackState']
         );
       case 'onTimedMetadata':
         return this.eventEmitter.addOnTimedMetadataListener(
@@ -126,10 +102,6 @@ export class VideoPlayerEvents {
       case 'onVolumeChange':
         return this.eventEmitter.addOnVolumeChangeListener(
           callback as PlayerEvents['onVolumeChange']
-        );
-      case 'onStatusChange':
-        return this.eventEmitter.addOnStatusChangeListener(
-          callback as PlayerEvents['onStatusChange']
         );
       default:
         throw new Error(`[React Native Video] Unsupported event: ${event}`);
