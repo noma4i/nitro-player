@@ -1,6 +1,6 @@
 //
 //  VideoFileHelper.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 24/01/2025.
 //
@@ -165,5 +165,4 @@ extension VideoError {
     return RuntimeError.error(withMessage: getMessage())
   }
 }
-
 

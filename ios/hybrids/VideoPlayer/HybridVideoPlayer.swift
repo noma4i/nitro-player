@@ -1,6 +1,6 @@
 //
 //  HybridVideoPlayer.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 09/10/2024.
 //
@@ -35,6 +35,9 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
   private var artworkTask: Task<Void, Never>?
   private var isReleased = false
   private var readyToDisplay = false
+  private var resumePositionSeconds: Double = 0
+  private var isAttachedToVideoView = false
+  private var pendingTrimWorkItem: DispatchWorkItem?
 
   private func replaceCurrentItem(_ item: AVPlayerItem?) {
     let apply = { [weak self] in
@@ -64,16 +67,21 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
     Task { [weak self] in
       guard let self else { return }
       if source.config.initializeOnCreation == true {
-        do {
-          self.status = .loading
-          self.readyToDisplay = false
-          self.emitPlaybackState()
-          self.playerItem = try await self.sourceLoader.load {
-            try await self.initializePlayerItem()
+        switch self.resolvedPreloadLevel() {
+        case .buffered:
+          do {
+            try await self.prepareBufferedState()
+          } catch {
+            // Ignore cancellation errors during initialization
           }
-          self.replaceCurrentItem(self.playerItem)
-        } catch {
-          // Ignore cancellation errors during initialization
+        case .metadata:
+          do {
+            try await (self.source as? HybridVideoPlayerSource)?.warmMetadata()
+          } catch {
+            // Ignore cancellation errors during initialization
+          }
+        case .none:
+          break
         }
       }
     }
@@ -122,16 +130,27 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
 
   var currentTime: Double {
     set {
+      resumePositionSeconds = max(0, newValue)
+
+      guard player.currentItem != nil else {
+        emitPlaybackState()
+        return
+      }
+
       player.seek(
-        to: CMTime(seconds: newValue, preferredTimescale: 1000),
+        to: CMTime(seconds: resumePositionSeconds, preferredTimescale: 1000),
         toleranceBefore: .zero,
         toleranceAfter: .zero
       ) { [weak self] _ in
         self?.emitPlaybackState()
-      )
+      }
     }
     get {
-      player.currentTime().seconds
+      if player.currentItem == nil {
+        return resumePositionSeconds
+      }
+
+      return player.currentTime().seconds
     }
   }
 
@@ -218,6 +237,21 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
 
   var showNotificationControls: Bool = false
 
+  var memorySnapshot: MemorySnapshot {
+    let playerBytes = player.currentItem == nil ? 0 : max(bufferDuration * 256_000, 64_000)
+    let sourceBytes = Double((source as? HybridVideoPlayerSource)?.memorySize ?? 0)
+
+    return MemorySnapshot(
+      playerBytes: playerBytes,
+      sourceBytes: sourceBytes,
+      totalBytes: playerBytes + sourceBytes,
+      preloadLevel: resolvedPreloadLevel(),
+      retentionState: currentRetentionState(),
+      isAttachedToView: isAttachedToVideoView,
+      isPlaying: isPlaying
+    )
+  }
+
   func emitPlaybackState() {
     _eventEmitter?.onPlaybackState(playbackState)
   }
@@ -233,18 +267,14 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
         throw LibraryError.deallocated(objectName: "HybridVideoPlayer").error()
       }
 
+      self.cancelPendingTrim()
+
       if self.playerItem != nil {
         return
       }
 
       do {
-        self.status = .loading
-        self.readyToDisplay = false
-        self.emitPlaybackState()
-        self.playerItem = try await self.sourceLoader.load {
-          try await self.initializePlayerItem()
-        }
-        self.replaceCurrentItem(self.playerItem)
+        try await self.prepareBufferedState()
       } catch {
         if error is CancellationError {
           throw PlayerError.cancelled.error()
@@ -258,6 +288,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
     if isReleased { return }
     isReleased = true
 
+    cancelPendingTrim()
     sourceLoader.cancelSync()
     artworkTask?.cancel()
     artworkTask = nil
@@ -268,7 +299,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
     self.readyToDisplay = false
 
     if let source = self.source as? HybridVideoPlayerSource {
-      source.releaseAsset()
+      source.trimToCold()
     }
 
     // Clear player observer
@@ -284,37 +315,46 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
 
   func preload() throws -> NitroModules.Promise<Void> {
     let promise = Promise<Void>()
+    cancelPendingTrim()
 
-    if status != .idle {
+    switch resolvedPreloadLevel() {
+    case .none:
       promise.resolve(withResult: ())
-      return promise
-    }
-
-    Task.detached(priority: .userInitiated) { [weak self] in
-      guard let self else {
-        promise.reject(
-          withError: LibraryError.deallocated(objectName: "HybridVideoPlayer")
-            .error()
-        )
-        return
-      }
+    case .metadata:
+      Task.detached(priority: .utility) { [weak self] in
+        guard let self else {
+          promise.reject(
+            withError: LibraryError.deallocated(objectName: "HybridVideoPlayer").error()
+          )
+          return
+        }
 
         do {
-          self.status = .loading
-          self.readyToDisplay = false
-          self.emitPlaybackState()
-          let playerItem = try await self.sourceLoader.load {
-            try await self.initializePlayerItem()
-          }
-        self.playerItem = playerItem
-
-        self.replaceCurrentItem(playerItem)
-        promise.resolve(withResult: ())
-      } catch {
-        if error is CancellationError {
-          promise.reject(withError: PlayerError.cancelled.error())
-        } else {
+          try await (self.source as? HybridVideoPlayerSource)?.warmMetadata()
+          promise.resolve(withResult: ())
+        } catch {
           promise.reject(withError: error)
+        }
+      }
+    case .buffered:
+      Task.detached(priority: .userInitiated) { [weak self] in
+        guard let self else {
+          promise.reject(
+            withError: LibraryError.deallocated(objectName: "HybridVideoPlayer")
+              .error()
+          )
+          return
+        }
+
+        do {
+          try await self.prepareBufferedState()
+          promise.resolve(withResult: ())
+        } catch {
+          if error is CancellationError {
+            promise.reject(withError: PlayerError.cancelled.error())
+          } else {
+            promise.reject(withError: error)
+          }
         }
       }
     }
@@ -323,11 +363,40 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
   }
 
   func play() throws {
-    player.play()
+    cancelPendingTrim()
+
+    if player.currentItem != nil {
+      player.play()
+      return
+    }
+
+    status = .loading
+    readyToDisplay = false
+    emitPlaybackState()
+
+    Task.detached(priority: .userInitiated) { [weak self] in
+      guard let self else { return }
+
+      do {
+        try await self.prepareBufferedState()
+        DispatchQueue.main.async { [weak self] in
+          self?.player.play()
+        }
+      } catch {
+        DispatchQueue.main.async { [weak self] in
+          self?.status = .error
+          self?.emitPlaybackState()
+        }
+      }
+    }
   }
 
   func pause() throws {
     player.pause()
+
+    if !isAttachedToVideoView {
+      scheduleOffscreenTrim()
+    }
   }
 
   func seekBy(time: Double) throws {
@@ -391,19 +460,14 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
         await self.sourceLoader.cancel()
 
         if let oldSource = self.source as? HybridVideoPlayerSource {
-          oldSource.releaseAsset()
+          oldSource.trimToCold()
         }
 
         self.source = newSource
+        self.resumePositionSeconds = 0
 
         do {
-          self.status = .loading
-          self.readyToDisplay = false
-          self.emitPlaybackState()
-          self.playerItem = try await self.sourceLoader.load {
-            try await self.initializePlayerItem()
-          }
-          self.replaceCurrentItem(self.playerItem)
+          try await self.prepareBufferedState()
           promise.resolve(withResult: ())
         } catch {
           if error is CancellationError {
@@ -437,6 +501,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
     let asset = try await _source.getAsset()
 
     let playerItem = AVPlayerItem(asset: asset)
+    _source.retentionState = .hot
 
     if let metadata = source.config.metadata {
       let title = metadata.title
@@ -476,6 +541,115 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
     }
 
     return playerItem
+  }
+
+  func notifyViewAttached() {
+    isAttachedToVideoView = true
+    cancelPendingTrim()
+  }
+
+  func notifyViewDetached() {
+    isAttachedToVideoView = false
+
+    if isPlaying {
+      return
+    }
+
+    scheduleOffscreenTrim()
+  }
+
+  private func resolvedPreloadLevel() -> PreloadLevel {
+    source.config.memoryConfig?.preloadLevel ?? .buffered
+  }
+
+  private func resolvedOffscreenRetention() -> OffscreenRetention {
+    source.config.memoryConfig?.offscreenRetention ?? .hot
+  }
+
+  private func resolvedPauseTrimDelayMs() -> Double? {
+    let delayMs = source.config.memoryConfig?.pauseTrimDelayMs ?? 10000
+    if delayMs.isInfinite {
+      return nil
+    }
+    return max(0, delayMs)
+  }
+
+  private func currentRetentionState() -> MemoryRetentionState {
+    (source as? HybridVideoPlayerSource)?.retentionState ?? .cold
+  }
+
+  private func prepareBufferedState() async throws {
+    status = .loading
+    readyToDisplay = false
+    emitPlaybackState()
+    let playerItem = try await self.sourceLoader.load {
+      try await self.initializePlayerItem()
+    }
+    self.playerItem = playerItem
+    self.replaceCurrentItem(playerItem)
+
+    if resumePositionSeconds > 0 {
+      let time = CMTime(seconds: resumePositionSeconds, preferredTimescale: 1000)
+      DispatchQueue.main.async { [weak self] in
+        self?.player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+      }
+    }
+  }
+
+  private func cancelPendingTrim() {
+    pendingTrimWorkItem?.cancel()
+    pendingTrimWorkItem = nil
+  }
+
+  private func scheduleOffscreenTrim() {
+    cancelPendingTrim()
+
+    if resolvedOffscreenRetention() == .hot {
+      return
+    }
+
+    guard let delayMs = resolvedPauseTrimDelayMs() else {
+      return
+    }
+
+    let workItem = DispatchWorkItem { [weak self] in
+      self?.trimToConfiguredRetentionIfNeeded()
+    }
+    pendingTrimWorkItem = workItem
+    DispatchQueue.main.asyncAfter(deadline: .now() + (delayMs / 1000), execute: workItem)
+  }
+
+  private func trimToConfiguredRetentionIfNeeded() {
+    pendingTrimWorkItem = nil
+
+    if isReleased || isAttachedToVideoView || isPlaying {
+      return
+    }
+
+    switch resolvedOffscreenRetention() {
+    case .hot:
+      return
+    case .metadata:
+      trimToMetadataRetention()
+    case .cold:
+      trimToColdRetention()
+    }
+  }
+
+  private func trimToMetadataRetention() {
+    resumePositionSeconds = currentTime.isNaN ? 0 : currentTime
+    player.pause()
+    playerItem = nil
+    readyToDisplay = false
+    replaceCurrentItem(nil)
+    status = .idle
+    (source as? HybridVideoPlayerSource)?.trimToMetadata()
+    emitPlaybackState()
+  }
+
+  private func trimToColdRetention() {
+    trimToMetadataRetention()
+    (source as? HybridVideoPlayerSource)?.trimToCold()
   }
 
   // MARK: - Text Track Management

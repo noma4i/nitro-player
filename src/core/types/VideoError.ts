@@ -50,7 +50,7 @@ export class VideoError<TCode extends VideoErrorCode> extends Error {
    */
   constructor(code: TCode, message: string, stack?: string) {
     super(`[${code}]: ${message}`);
-    super.name = `[ReactNativeVideo] ${code}`;
+    super.name = `[JustPlayer] ${code}`;
     super.message = message;
     this._code = code;
     this._message = message;

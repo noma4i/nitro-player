@@ -41,6 +41,10 @@ abstract class HybridVideoPlayerSpec: HybridObject() {
   
   @get:DoNotStrip
   @get:Keep
+  abstract val memorySnapshot: MemorySnapshot
+  
+  @get:DoNotStrip
+  @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var showNotificationControls: Boolean

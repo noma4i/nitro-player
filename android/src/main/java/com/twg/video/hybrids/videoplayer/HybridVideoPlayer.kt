@@ -63,6 +63,11 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
   var loadedWithSource = false
   private var currentPlayerView: WeakReference<PlayerView>? = null
   private var readyToDisplay = false
+  private var desiredCurrentTimeMs = 0L
+  private var cachedLoop = false
+  private var cachedMuted = false
+  private var cachedRate = 1.0
+  private var pendingTrimRunnable: Runnable? = null
 
   var wasAutoPaused = false
 
@@ -97,6 +102,11 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
       buildPlaybackState()
     }
 
+  override val memorySnapshot: MemorySnapshot
+    get() = runOnMainThreadSync {
+      buildMemorySnapshot()
+    }
+
   override var showNotificationControls: Boolean = false
     set(value) {
       field = value
@@ -104,8 +114,22 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
 
   // Player Properties
   override var currentTime: Double by mainThreadProperty(
-    get = { player.currentPosition.toDouble() / 1000.0 },
-    set = { value -> runOnMainThread { player.seekTo((value * 1000).toLong()) } }
+    get = {
+      if (!loadedWithSource) {
+        return@mainThreadProperty desiredCurrentTimeMs.toDouble() / 1000.0
+      }
+
+      player.currentPosition.toDouble() / 1000.0
+    },
+    set = { value ->
+      val nextPositionMs = (value * 1000).toLong().coerceAtLeast(0L)
+      desiredCurrentTimeMs = nextPositionMs
+      runOnMainThread {
+        if (loadedWithSource) {
+          player.seekTo(nextPositionMs)
+        }
+      }
+    }
   )
 
   // volume defined by user
@@ -128,19 +152,29 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
 
   override var loop: Boolean by mainThreadProperty(
     get = {
+      if (!loadedWithSource) {
+        return@mainThreadProperty cachedLoop
+      }
+
       player.repeatMode == Player.REPEAT_MODE_ONE
     },
     set = { value ->
+      cachedLoop = value
       player.repeatMode = if (value) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
     }
   )
 
   override var muted: Boolean by mainThreadProperty(
     get = {
+      if (!loadedWithSource) {
+        return@mainThreadProperty cachedMuted
+      }
+
       val playerVolume = player.volume.toDouble()
       return@mainThreadProperty playerVolume == 0.0
     },
     set = { value ->
+      cachedMuted = value
       if (value) {
         userVolume = volume
         player.volume = 0f
@@ -155,8 +189,15 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
   )
 
   override var rate: Double by mainThreadProperty(
-    get = { player.playbackParameters.speed.toDouble() },
+    get = {
+      if (!loadedWithSource) {
+        return@mainThreadProperty cachedRate
+      }
+
+      player.playbackParameters.speed.toDouble()
+    },
     set = { value ->
+      cachedRate = value
       player.playbackParameters = player.playbackParameters.withSpeed(value.toFloat())
     }
   )
@@ -198,6 +239,8 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
   )
 
   private fun initializePlayer() {
+    cancelPendingTrim()
+
     if (NitroModules.applicationContext == null) {
       throw LibraryError.ApplicationContextNotFound
     }
@@ -229,18 +272,29 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
       .forceEnableMediaCodecAsynchronousQueueing()
       .setEnableDecoderFallback(true)
 
+    val mediaSource = hybridSource.createOrGetMediaSource()
+
     // Build the player with the LoadControl
+    player.release()
     player = ExoPlayer.Builder(context)
       .setLoadControl(loadControl)
       .setLooper(Looper.getMainLooper())
       .setRenderersFactory(renderersFactory)
       .build()
 
+    player.repeatMode = if (cachedLoop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+    player.playbackParameters = PlaybackParameters(cachedRate.toFloat())
+    player.volume = if (cachedMuted) 0f else userVolume.toFloat()
+
     loadedWithSource = true
 
     player.addListener(playerListener)
     player.addAnalyticsListener(analyticsListener)
-    player.setMediaSource(hybridSource.mediaSource)
+    player.setMediaSource(mediaSource)
+
+    if (desiredCurrentTimeMs > 0L) {
+      player.seekTo(desiredCurrentTimeMs)
+    }
 
     // Emit onLoadStart
     val sourceType = if (hybridSource.uri.startsWith("http")) SourceType.NETWORK else SourceType.LOCAL
@@ -262,11 +316,24 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
 
   constructor(source: HybridVideoPlayerSource) : this() {
     this.source = source
+    this.cachedLoop = false
+    this.cachedMuted = false
+    this.cachedRate = 1.0
 
     runOnMainThread {
       if (source.config.initializeOnCreation == true) {
-        initializePlayer()
-        player.prepare()
+        when (resolvedPreloadLevel()) {
+          PreloadLevel.BUFFERED -> {
+            initializePlayer()
+            player.prepare()
+          }
+          PreloadLevel.METADATA -> {
+            Promise.async {
+              source.warmMetadata()
+            }
+          }
+          PreloadLevel.NONE -> Unit
+        }
       }
     }
 
@@ -275,6 +342,13 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
 
   override fun play() {
     runOnMainThread {
+      cancelPendingTrim()
+
+      if (!loadedWithSource) {
+        initializePlayer()
+        player.prepare()
+      }
+
       player.play()
     }
   }
@@ -282,6 +356,10 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
   override fun pause() {
     runOnMainThread {
       player.pause()
+
+      if (!isAttachedToView()) {
+        scheduleOffscreenTrim()
+      }
     }
   }
 
@@ -310,9 +388,15 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
       runOnMainThreadSync {
         // Update source
         this.source = source
+        desiredCurrentTimeMs = 0L
         status = VideoPlayerStatus.LOADING
         readyToDisplay = false
-        player.setMediaSource(hybridSource.mediaSource)
+
+        if (!loadedWithSource) {
+          initializePlayer()
+        } else {
+          player.setMediaSource(hybridSource.createOrGetMediaSource())
+        }
 
         // Prepare player
         player.prepare()
@@ -324,15 +408,28 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
   override fun preload(): Promise<Unit> {
     return Promise.async {
       runOnMainThreadSync {
-        if (!loadedWithSource) {
-          initializePlayer()
-        }
+        cancelPendingTrim()
 
-        if (player.playbackState != Player.STATE_IDLE) {
-          return@runOnMainThreadSync
-        }
+        when (resolvedPreloadLevel()) {
+          PreloadLevel.NONE -> return@runOnMainThreadSync
+          PreloadLevel.METADATA -> {
+            Promise.async {
+              (source as? HybridVideoPlayerSource)?.warmMetadata()
+            }
+            return@runOnMainThreadSync
+          }
+          PreloadLevel.BUFFERED -> {
+            if (!loadedWithSource) {
+              initializePlayer()
+            }
 
-        player.prepare()
+            if (player.playbackState != Player.STATE_IDLE) {
+              return@runOnMainThreadSync
+            }
+
+            player.prepare()
+          }
+        }
       }
     }
   }
@@ -344,6 +441,7 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
 
       VideoManager.unregisterPlayer(this)
       stopProgressUpdates()
+      cancelPendingTrim()
       loadedWithSource = false
 
       eventEmitter.clearAllListeners()
@@ -358,6 +456,8 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
       // Update status
       status = VideoPlayerStatus.IDLE
       readyToDisplay = false
+      allocator = null
+      (source as? HybridVideoPlayerSource)?.trimToCold()
     }
   }
 
@@ -379,10 +479,13 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
   }
 
   override val memorySize: Long
-    // 1 MiB by default
-    get() = allocator?.totalBytesAllocated?.toLong() ?: (1024L * 1024L)
+    get() = allocator?.totalBytesAllocated?.toLong() ?: 0L
 
   private fun calculateCurrentTimeSeconds(): Double {
+    if (!loadedWithSource) {
+      return desiredCurrentTimeMs / 1000.0
+    }
+
     return player.currentPosition / 1000.0
   }
 
@@ -392,6 +495,10 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
   }
 
   private fun calculateBufferedPositionSeconds(): Double {
+    if (!loadedWithSource) {
+      return desiredCurrentTimeMs / 1000.0
+    }
+
     return player.bufferedPosition / 1000.0
   }
 
@@ -414,8 +521,123 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
     )
   }
 
+  private fun buildMemorySnapshot(): MemorySnapshot {
+    val playerBytes = memorySize.toDouble()
+    val sourceBytes = source.memorySize.toDouble()
+
+    return MemorySnapshot(
+      playerBytes = playerBytes,
+      sourceBytes = sourceBytes,
+      totalBytes = playerBytes + sourceBytes,
+      preloadLevel = resolvedPreloadLevel(),
+      retentionState = currentRetentionState(),
+      isAttachedToView = isAttachedToView(),
+      isPlaying = loadedWithSource && player.isPlaying
+    )
+  }
+
   private fun emitPlaybackState() {
     eventEmitter.onPlaybackState(buildPlaybackState())
+  }
+
+  private fun resolvedPreloadLevel(): PreloadLevel {
+    return source.config.memoryConfig?.preloadLevel ?: PreloadLevel.BUFFERED
+  }
+
+  private fun resolvedOffscreenRetention(): OffscreenRetention {
+    return source.config.memoryConfig?.offscreenRetention ?: OffscreenRetention.HOT
+  }
+
+  private fun resolvedPauseTrimDelayMs(): Long? {
+    val delay = source.config.memoryConfig?.pauseTrimDelayMs ?: return 10000L
+    if (delay.isInfinite()) {
+      return null
+    }
+
+    return delay.toLong().coerceAtLeast(0L)
+  }
+
+  private fun currentRetentionState(): MemoryRetentionState {
+    return (source as? HybridVideoPlayerSource)?.retentionState
+      ?: MemoryRetentionState.COLD
+  }
+
+  private fun isAttachedToView(): Boolean {
+    return currentPlayerView?.get()?.isAttachedToWindow == true
+  }
+
+  fun notifyViewAttached() {
+    cancelPendingTrim()
+  }
+
+  fun notifyViewDetached() {
+    if (isPlaying) {
+      return
+    }
+
+    scheduleOffscreenTrim()
+  }
+
+  private fun scheduleOffscreenTrim() {
+    cancelPendingTrim()
+
+    if (resolvedOffscreenRetention() == OffscreenRetention.HOT) {
+      return
+    }
+
+    val delayMs = resolvedPauseTrimDelayMs() ?: return
+    val runnable = Runnable {
+      trimToConfiguredRetention()
+    }
+    pendingTrimRunnable = runnable
+    progressHandler.postDelayed(runnable, delayMs)
+  }
+
+  private fun cancelPendingTrim() {
+    pendingTrimRunnable?.let { progressHandler.removeCallbacks(it) }
+    pendingTrimRunnable = null
+  }
+
+  private fun trimToConfiguredRetention() {
+    pendingTrimRunnable = null
+
+    if (isReleased || isPlaying || isAttachedToView()) {
+      return
+    }
+
+    when (resolvedOffscreenRetention()) {
+      OffscreenRetention.HOT -> Unit
+      OffscreenRetention.METADATA -> trimToMetadataRetention()
+      OffscreenRetention.COLD -> trimToColdRetention()
+    }
+  }
+
+  private fun trimToMetadataRetention() {
+    val hybridSource = source as? HybridVideoPlayerSource ?: return
+
+    if (loadedWithSource) {
+      desiredCurrentTimeMs = player.currentPosition
+      stopProgressUpdates()
+      player.removeListener(playerListener)
+      player.removeAnalyticsListener(analyticsListener)
+      player.release()
+      player = ExoPlayer.Builder(context).build()
+      player.repeatMode = if (cachedLoop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+      player.playbackParameters = PlaybackParameters(cachedRate.toFloat())
+      player.volume = if (cachedMuted) 0f else userVolume.toFloat()
+      allocator = null
+      loadedWithSource = false
+    }
+
+    hybridSource.trimToMetadata()
+    status = VideoPlayerStatus.IDLE
+    readyToDisplay = false
+    emitPlaybackState()
+  }
+
+  private fun trimToColdRetention() {
+    trimToMetadataRetention()
+    (source as? HybridVideoPlayerSource)?.trimToCold()
   }
 
   private fun startProgressUpdates() {

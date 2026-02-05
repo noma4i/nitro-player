@@ -20,7 +20,7 @@ class VideoPackage : ReactPackage {
 
   companion object {
     init {
-      System.loadLibrary("ReactNativeVideo")
+      System.loadLibrary("JustPlayer")
     }
   }
 }

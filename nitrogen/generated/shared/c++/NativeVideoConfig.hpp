@@ -32,6 +32,8 @@
 namespace margelo::nitro::video { struct NativeExternalSubtitle; }
 // Forward declaration of `NativeDrmParams` to properly resolve imports.
 namespace margelo::nitro::video { struct NativeDrmParams; }
+// Forward declaration of `MemoryConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct MemoryConfig; }
 // Forward declaration of `BufferConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct BufferConfig; }
 // Forward declaration of `CustomVideoMetadata` to properly resolve imports.
@@ -42,6 +44,7 @@ namespace margelo::nitro::video { struct CustomVideoMetadata; }
 #include <vector>
 #include <optional>
 #include "NativeDrmParams.hpp"
+#include "MemoryConfig.hpp"
 #include <unordered_map>
 #include "BufferConfig.hpp"
 #include "CustomVideoMetadata.hpp"
@@ -56,6 +59,7 @@ namespace margelo::nitro::video {
     std::string uri     SWIFT_PRIVATE;
     std::optional<std::vector<NativeExternalSubtitle>> externalSubtitles     SWIFT_PRIVATE;
     std::optional<NativeDrmParams> drm     SWIFT_PRIVATE;
+    std::optional<MemoryConfig> memoryConfig     SWIFT_PRIVATE;
     std::optional<std::unordered_map<std::string, std::string>> headers     SWIFT_PRIVATE;
     std::optional<BufferConfig> bufferConfig     SWIFT_PRIVATE;
     std::optional<CustomVideoMetadata> metadata     SWIFT_PRIVATE;
@@ -64,7 +68,7 @@ namespace margelo::nitro::video {
 
   public:
     NativeVideoConfig() = default;
-    explicit NativeVideoConfig(std::string uri, std::optional<std::vector<NativeExternalSubtitle>> externalSubtitles, std::optional<NativeDrmParams> drm, std::optional<std::unordered_map<std::string, std::string>> headers, std::optional<BufferConfig> bufferConfig, std::optional<CustomVideoMetadata> metadata, std::optional<bool> initializeOnCreation, std::optional<bool> useHlsProxy): uri(uri), externalSubtitles(externalSubtitles), drm(drm), headers(headers), bufferConfig(bufferConfig), metadata(metadata), initializeOnCreation(initializeOnCreation), useHlsProxy(useHlsProxy) {}
+    explicit NativeVideoConfig(std::string uri, std::optional<std::vector<NativeExternalSubtitle>> externalSubtitles, std::optional<NativeDrmParams> drm, std::optional<MemoryConfig> memoryConfig, std::optional<std::unordered_map<std::string, std::string>> headers, std::optional<BufferConfig> bufferConfig, std::optional<CustomVideoMetadata> metadata, std::optional<bool> initializeOnCreation, std::optional<bool> useHlsProxy): uri(uri), externalSubtitles(externalSubtitles), drm(drm), memoryConfig(memoryConfig), headers(headers), bufferConfig(bufferConfig), metadata(metadata), initializeOnCreation(initializeOnCreation), useHlsProxy(useHlsProxy) {}
 
   public:
     // NativeVideoConfig is not equatable because these properties are not equatable: drm
@@ -83,6 +87,7 @@ namespace margelo::nitro {
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "uri"))),
         JSIConverter<std::optional<std::vector<margelo::nitro::video::NativeExternalSubtitle>>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "externalSubtitles"))),
         JSIConverter<std::optional<margelo::nitro::video::NativeDrmParams>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "drm"))),
+        JSIConverter<std::optional<margelo::nitro::video::MemoryConfig>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "memoryConfig"))),
         JSIConverter<std::optional<std::unordered_map<std::string, std::string>>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "headers"))),
         JSIConverter<std::optional<margelo::nitro::video::BufferConfig>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bufferConfig"))),
         JSIConverter<std::optional<margelo::nitro::video::CustomVideoMetadata>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "metadata"))),
@@ -95,6 +100,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "uri"), JSIConverter<std::string>::toJSI(runtime, arg.uri));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "externalSubtitles"), JSIConverter<std::optional<std::vector<margelo::nitro::video::NativeExternalSubtitle>>>::toJSI(runtime, arg.externalSubtitles));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "drm"), JSIConverter<std::optional<margelo::nitro::video::NativeDrmParams>>::toJSI(runtime, arg.drm));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "memoryConfig"), JSIConverter<std::optional<margelo::nitro::video::MemoryConfig>>::toJSI(runtime, arg.memoryConfig));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "headers"), JSIConverter<std::optional<std::unordered_map<std::string, std::string>>>::toJSI(runtime, arg.headers));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "bufferConfig"), JSIConverter<std::optional<margelo::nitro::video::BufferConfig>>::toJSI(runtime, arg.bufferConfig));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "metadata"), JSIConverter<std::optional<margelo::nitro::video::CustomVideoMetadata>>::toJSI(runtime, arg.metadata));
@@ -113,6 +119,7 @@ namespace margelo::nitro {
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "uri")))) return false;
       if (!JSIConverter<std::optional<std::vector<margelo::nitro::video::NativeExternalSubtitle>>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "externalSubtitles")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::video::NativeDrmParams>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "drm")))) return false;
+      if (!JSIConverter<std::optional<margelo::nitro::video::MemoryConfig>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "memoryConfig")))) return false;
       if (!JSIConverter<std::optional<std::unordered_map<std::string, std::string>>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "headers")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::video::BufferConfig>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bufferConfig")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::video::CustomVideoMetadata>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "metadata")))) return false;

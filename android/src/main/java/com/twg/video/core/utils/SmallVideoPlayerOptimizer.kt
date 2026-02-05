@@ -65,7 +65,7 @@ object SmallVideoPlayerOptimizer {
           optimizeControlElementsForSmallPlayer(controller, context)
         }
       } catch (e: Exception) {
-        Log.w("ReactNativeVideo", "Error applying small video player optimizations: ${e.message}")
+        Log.w("JustPlayer", "Error applying small video player optimizations: ${e.message}")
       }
     }
   }

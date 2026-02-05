@@ -42,6 +42,7 @@ class HybridVideoPlayerSourceFactory: HybridVideoPlayerSourceFactorySpec() {
       drm = null,
       headers = null,
       bufferConfig = null,
+      memoryConfig = null,
       metadata = null,
       initializeOnCreation = true
     )

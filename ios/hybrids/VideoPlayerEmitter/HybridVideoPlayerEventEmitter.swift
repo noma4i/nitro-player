@@ -1,6 +1,6 @@
 //
 //  HybridVideoPlayerEventEmitter.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 02/05/2025.
 //
@@ -33,10 +33,10 @@ class HybridVideoPlayerEventEmitter: HybridVideoPlayerEventEmitterSpec {
         do {
           try invoke(callback)
         } catch {
-          print("[ReactNativeVideo] Error calling \(eventName) listener: \(error)")
+          print("[JustPlayer] Error calling \(eventName) listener: \(error)")
         }
       } else {
-        print("[ReactNativeVideo] Invalid callback type for \(eventName)")
+        print("[JustPlayer] Invalid callback type for \(eventName)")
       }
     }
   }

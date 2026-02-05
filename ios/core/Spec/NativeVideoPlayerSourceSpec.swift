@@ -1,6 +1,6 @@
 //
 //  NativeVideoPlayerSourceSpec.swift
-//  react-native-video
+//  just-player
 //
 // Created by Krzysztof Moch on 23/07/2025.
 //

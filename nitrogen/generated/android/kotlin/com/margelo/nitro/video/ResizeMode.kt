@@ -16,10 +16,10 @@ import com.facebook.proguard.annotations.DoNotStrip
 @DoNotStrip
 @Keep
 enum class ResizeMode(@DoNotStrip @Keep val value: Int) {
-  CONTAIN(0),
-  COVER(1),
-  STRETCH(2),
-  NONE(3);
+  NONE(0),
+  CONTAIN(1),
+  COVER(2),
+  STRETCH(3);
 
   companion object
 }

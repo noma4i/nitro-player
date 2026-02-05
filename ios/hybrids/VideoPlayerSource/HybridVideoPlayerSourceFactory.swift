@@ -1,6 +1,6 @@
 //
 //  HybridVideoPlayerSourceFactory.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 23/09/2024.
 //
@@ -21,6 +21,7 @@ class HybridVideoPlayerSourceFactory: HybridVideoPlayerSourceFactorySpec {
       drm: nil,
       headers: nil,
       bufferConfig: nil,
+      memoryConfig: nil,
       metadata: nil,
       initializeOnCreation: true
     )

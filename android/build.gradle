@@ -55,7 +55,7 @@ def isNewArchitectureEnabled() {
 
 apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
-apply from: '../nitrogen/generated/android/ReactNativeVideo+autolinking.gradle'
+apply from: '../nitrogen/generated/android/JustPlayer+autolinking.gradle'
 apply from: './fix-prefab.gradle'
 
 if (isNewArchitectureEnabled()) {
@@ -89,7 +89,7 @@ def ExoplayerDependencies = ExoplayerDependenciesList.collectEntries { property 
 }
 
 // Print Configuration
-println "[ReactNativeVideo] Exoplayer Dependencies Configuration:"
+println "[JustPlayer] Exoplayer Dependencies Configuration:"
 ExoplayerDependenciesList.each { propertyName ->
   def propertyValue = ExoplayerDependencies[propertyName]
   println "$propertyName: $propertyValue"

@@ -1,6 +1,6 @@
 //
 //  HybridVideoPlayer+Events.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 02/05/2025.
 //

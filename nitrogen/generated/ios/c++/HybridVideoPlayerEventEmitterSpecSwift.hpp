@@ -10,7 +10,7 @@
 #include "HybridVideoPlayerEventEmitterSpec.hpp"
 
 // Forward declaration of `HybridVideoPlayerEventEmitterSpec_cxx` to properly resolve imports.
-namespace ReactNativeVideo { class HybridVideoPlayerEventEmitterSpec_cxx; }
+namespace JustPlayer { class HybridVideoPlayerEventEmitterSpec_cxx; }
 
 // Forward declaration of `ListenerSubscription` to properly resolve imports.
 namespace margelo::nitro::video { struct ListenerSubscription; }
@@ -60,7 +60,7 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include <variant>
 #include "onVolumeChangeData.hpp"
 
-#include "ReactNativeVideo-Swift-Cxx-Umbrella.hpp"
+#include "JustPlayer-Swift-Cxx-Umbrella.hpp"
 
 namespace margelo::nitro::video {
 
@@ -77,13 +77,13 @@ namespace margelo::nitro::video {
   class HybridVideoPlayerEventEmitterSpecSwift: public virtual HybridVideoPlayerEventEmitterSpec {
   public:
     // Constructor from a Swift instance
-    explicit HybridVideoPlayerEventEmitterSpecSwift(const ReactNativeVideo::HybridVideoPlayerEventEmitterSpec_cxx& swiftPart):
+    explicit HybridVideoPlayerEventEmitterSpecSwift(const JustPlayer::HybridVideoPlayerEventEmitterSpec_cxx& swiftPart):
       HybridObject(HybridVideoPlayerEventEmitterSpec::TAG),
       _swiftPart(swiftPart) { }
 
   public:
     // Get the Swift part
-    inline ReactNativeVideo::HybridVideoPlayerEventEmitterSpec_cxx& getSwiftPart() noexcept {
+    inline JustPlayer::HybridVideoPlayerEventEmitterSpec_cxx& getSwiftPart() noexcept {
       return _swiftPart;
     }
 
@@ -214,7 +214,7 @@ namespace margelo::nitro::video {
     }
 
   private:
-    ReactNativeVideo::HybridVideoPlayerEventEmitterSpec_cxx _swiftPart;
+    JustPlayer::HybridVideoPlayerEventEmitterSpec_cxx _swiftPart;
   };
 
 } // namespace margelo::nitro::video

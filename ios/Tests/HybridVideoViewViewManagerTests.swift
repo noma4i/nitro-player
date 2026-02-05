@@ -1,6 +1,6 @@
 import AVKit
 import XCTest
-@testable import ReactNativeVideo
+@testable import JustPlayer
 
 final class HybridVideoViewViewManagerTests: XCTestCase {
   func testCanEnterPictureInPictureMatchesSystemCapability() throws {

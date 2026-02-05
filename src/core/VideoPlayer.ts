@@ -3,6 +3,7 @@ import { NitroModules } from 'react-native-nitro-modules';
 import { type VideoPlayer as VideoPlayerImpl } from '../spec/nitro/VideoPlayer.nitro';
 import type { VideoPlayerSource } from '../spec/nitro/VideoPlayerSource.nitro';
 import type { IgnoreSilentSwitchMode } from './types/IgnoreSilentSwitchMode';
+import type { MemorySnapshot } from './types/MemorySnapshot';
 import type { MixAudioMode } from './types/MixAudioMode';
 import type { PlaybackState } from './types/PlaybackState';
 import type { TextTrack } from './types/TextTrack';
@@ -32,8 +33,16 @@ class VideoPlayer extends VideoPlayerEvents implements VideoPlayerBase {
     return this._player;
   }
 
-  constructor(source: VideoSource | VideoConfig | VideoPlayerSource) {
-    const hybridSource = createSource(source);
+  constructor(
+    source: VideoSource | VideoConfig | VideoPlayerSource,
+    options: {
+      defaultMemoryProfile?: import('./types/MemoryConfig').MemoryProfile;
+    } = {}
+  ) {
+    const hybridSource = createSource(
+      source,
+      options.defaultMemoryProfile ?? 'balanced'
+    );
     const player = createPlayer(hybridSource);
 
     // Initialize events
@@ -129,6 +138,10 @@ class VideoPlayer extends VideoPlayerEvents implements VideoPlayerBase {
 
   get playbackState(): PlaybackState {
     return this.player.playbackState;
+  }
+
+  get memorySnapshot(): MemorySnapshot {
+    return this.player.memorySnapshot;
   }
 
   // Duration

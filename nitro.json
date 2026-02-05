@@ -1,6 +1,6 @@
 {
   "android": {
-    "androidCxxLibName": "ReactNativeVideo",
+    "androidCxxLibName": "JustPlayer",
     "androidNamespace": [
       "video"
     ]
@@ -9,7 +9,7 @@
     "video"
   ],
   "ios": {
-    "iosModuleName": "ReactNativeVideo"
+    "iosModuleName": "JustPlayer"
   },
   "autolinking": {
     "VideoPlayerFactory": {

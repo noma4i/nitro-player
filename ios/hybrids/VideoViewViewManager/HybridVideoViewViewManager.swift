@@ -1,6 +1,6 @@
 //
 //  HybridVideoViewViewManager.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 23/09/2024.
 //
@@ -19,7 +19,7 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
   weak var view: VideoComponentView?
   var listeners: [ViewListenerPair] = []
   
-  let DEALOCATED_WARNING = "ReactNativeVideo: VideoComponentView is no longer available. It is likely that the view was deallocated."
+  let DEALOCATED_WARNING = "JustPlayer: VideoComponentView is no longer available. It is likely that the view was deallocated."
   
   init(nitroId: Double) throws {
     guard let view = VideoComponentView.globalViewsMap.object(forKey: NSNumber(value: nitroId)) else {
@@ -47,10 +47,10 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
         do {
           try invoke(callback)
         } catch {
-          print("[ReactNativeVideo] Error calling \(eventName) listener: \(error)")
+          print("[JustPlayer] Error calling \(eventName) listener: \(error)")
         }
       } else {
-        print("[ReactNativeVideo] Invalid callback type for \(eventName)")
+        print("[JustPlayer] Invalid callback type for \(eventName)")
       }
     }
   }

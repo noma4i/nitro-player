@@ -17,14 +17,14 @@ public extension ResizeMode {
    */
   init?(fromString string: String) {
     switch string {
+      case "none":
+        self = .none
       case "contain":
         self = .contain
       case "cover":
         self = .cover
       case "stretch":
         self = .stretch
-      case "none":
-        self = .none
       default:
         return nil
     }
@@ -35,14 +35,14 @@ public extension ResizeMode {
    */
   var stringValue: String {
     switch self {
+      case .none:
+        return "none"
       case .contain:
         return "contain"
       case .cover:
         return "cover"
       case .stretch:
         return "stretch"
-      case .none:
-        return "none"
     }
   }
 }

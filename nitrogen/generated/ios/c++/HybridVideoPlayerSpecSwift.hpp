@@ -10,7 +10,7 @@
 #include "HybridVideoPlayerSpec.hpp"
 
 // Forward declaration of `HybridVideoPlayerSpec_cxx` to properly resolve imports.
-namespace ReactNativeVideo { class HybridVideoPlayerSpec_cxx; }
+namespace JustPlayer { class HybridVideoPlayerSpec_cxx; }
 
 // Forward declaration of `HybridVideoPlayerSourceSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridVideoPlayerSourceSpec; }
@@ -20,6 +20,12 @@ namespace margelo::nitro::video { class HybridVideoPlayerEventEmitterSpec; }
 namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `VideoPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class VideoPlayerStatus; }
+// Forward declaration of `MemorySnapshot` to properly resolve imports.
+namespace margelo::nitro::video { struct MemorySnapshot; }
+// Forward declaration of `PreloadLevel` to properly resolve imports.
+namespace margelo::nitro::video { enum class PreloadLevel; }
+// Forward declaration of `MemoryRetentionState` to properly resolve imports.
+namespace margelo::nitro::video { enum class MemoryRetentionState; }
 // Forward declaration of `MixAudioMode` to properly resolve imports.
 namespace margelo::nitro::video { enum class MixAudioMode; }
 // Forward declaration of `IgnoreSilentSwitchMode` to properly resolve imports.
@@ -32,6 +38,9 @@ namespace margelo::nitro::video { struct TextTrack; }
 #include "HybridVideoPlayerEventEmitterSpec.hpp"
 #include "PlaybackState.hpp"
 #include "VideoPlayerStatus.hpp"
+#include "MemorySnapshot.hpp"
+#include "PreloadLevel.hpp"
+#include "MemoryRetentionState.hpp"
 #include "MixAudioMode.hpp"
 #include "IgnoreSilentSwitchMode.hpp"
 #include "TextTrack.hpp"
@@ -42,7 +51,7 @@ namespace margelo::nitro::video { struct TextTrack; }
 #include <variant>
 #include <vector>
 
-#include "ReactNativeVideo-Swift-Cxx-Umbrella.hpp"
+#include "JustPlayer-Swift-Cxx-Umbrella.hpp"
 
 namespace margelo::nitro::video {
 
@@ -59,13 +68,13 @@ namespace margelo::nitro::video {
   class HybridVideoPlayerSpecSwift: public virtual HybridVideoPlayerSpec {
   public:
     // Constructor from a Swift instance
-    explicit HybridVideoPlayerSpecSwift(const ReactNativeVideo::HybridVideoPlayerSpec_cxx& swiftPart):
+    explicit HybridVideoPlayerSpecSwift(const JustPlayer::HybridVideoPlayerSpec_cxx& swiftPart):
       HybridObject(HybridVideoPlayerSpec::TAG),
       _swiftPart(swiftPart) { }
 
   public:
     // Get the Swift part
-    inline ReactNativeVideo::HybridVideoPlayerSpec_cxx& getSwiftPart() noexcept {
+    inline JustPlayer::HybridVideoPlayerSpec_cxx& getSwiftPart() noexcept {
       return _swiftPart;
     }
 
@@ -98,6 +107,9 @@ namespace margelo::nitro::video {
     }
     inline PlaybackState getPlaybackState() noexcept override {
       return _swiftPart.getPlaybackState();
+    }
+    inline MemorySnapshot getMemorySnapshot() noexcept override {
+      return _swiftPart.getMemorySnapshot();
     }
     inline bool getShowNotificationControls() noexcept override {
       return _swiftPart.getShowNotificationControls();
@@ -260,7 +272,7 @@ namespace margelo::nitro::video {
     }
 
   private:
-    ReactNativeVideo::HybridVideoPlayerSpec_cxx _swiftPart;
+    JustPlayer::HybridVideoPlayerSpec_cxx _swiftPart;
   };
 
 } // namespace margelo::nitro::video

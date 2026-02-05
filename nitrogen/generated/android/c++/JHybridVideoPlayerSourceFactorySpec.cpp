@@ -19,6 +19,14 @@ namespace margelo::nitro::video { enum class SubtitleType; }
 namespace margelo::nitro::video { struct NativeDrmParams; }
 // Forward declaration of `OnGetLicensePayload` to properly resolve imports.
 namespace margelo::nitro::video { struct OnGetLicensePayload; }
+// Forward declaration of `MemoryConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct MemoryConfig; }
+// Forward declaration of `MemoryProfile` to properly resolve imports.
+namespace margelo::nitro::video { enum class MemoryProfile; }
+// Forward declaration of `PreloadLevel` to properly resolve imports.
+namespace margelo::nitro::video { enum class PreloadLevel; }
+// Forward declaration of `OffscreenRetention` to properly resolve imports.
+namespace margelo::nitro::video { enum class OffscreenRetention; }
 // Forward declaration of `BufferConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct BufferConfig; }
 // Forward declaration of `LivePlaybackParams` to properly resolve imports.
@@ -50,6 +58,14 @@ namespace margelo::nitro::video { struct CustomVideoMetadata; }
 #include <NitroModules/JNICallable.hpp>
 #include <NitroModules/JPromise.hpp>
 #include "JOnGetLicensePayload.hpp"
+#include "MemoryConfig.hpp"
+#include "JMemoryConfig.hpp"
+#include "MemoryProfile.hpp"
+#include "JMemoryProfile.hpp"
+#include "PreloadLevel.hpp"
+#include "JPreloadLevel.hpp"
+#include "OffscreenRetention.hpp"
+#include "JOffscreenRetention.hpp"
 #include "BufferConfig.hpp"
 #include "JBufferConfig.hpp"
 #include "LivePlaybackParams.hpp"

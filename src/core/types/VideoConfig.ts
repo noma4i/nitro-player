@@ -1,5 +1,6 @@
 import type { BufferConfig } from './BufferConfig';
 import type { DrmParams } from './DrmParams';
+import type { MemoryConfig } from './MemoryConfig';
 
 export type VideoSource = number | string;
 
@@ -26,6 +27,10 @@ export type VideoConfig = {
    * The player buffer configuration.
    */
   bufferConfig?: BufferConfig;
+  /**
+   * Memory lifecycle policy for the native player/source.
+   */
+  memoryConfig?: MemoryConfig;
   /**
    * The custom metadata to be associated with the video.
    * This metadata can be used by the native player to show information about the video.
@@ -76,6 +81,7 @@ export interface NativeVideoConfig extends VideoConfig {
   uri: string;
   externalSubtitles?: NativeExternalSubtitle[];
   drm?: NativeDrmParams;
+  memoryConfig?: MemoryConfig;
 }
 
 /**

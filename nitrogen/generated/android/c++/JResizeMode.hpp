@@ -42,6 +42,9 @@ namespace margelo::nitro::video {
     static jni::alias_ref<JResizeMode> fromCpp(ResizeMode value) {
       static const auto clazz = javaClassStatic();
       switch (value) {
+        case ResizeMode::NONE:
+          static const auto fieldNONE = clazz->getStaticField<JResizeMode>("NONE");
+          return clazz->getStaticFieldValue(fieldNONE);
         case ResizeMode::CONTAIN:
           static const auto fieldCONTAIN = clazz->getStaticField<JResizeMode>("CONTAIN");
           return clazz->getStaticFieldValue(fieldCONTAIN);
@@ -51,9 +54,6 @@ namespace margelo::nitro::video {
         case ResizeMode::STRETCH:
           static const auto fieldSTRETCH = clazz->getStaticField<JResizeMode>("STRETCH");
           return clazz->getStaticFieldValue(fieldSTRETCH);
-        case ResizeMode::NONE:
-          static const auto fieldNONE = clazz->getStaticField<JResizeMode>("NONE");
-          return clazz->getStaticFieldValue(fieldNONE);
         default:
           std::string stringValue = std::to_string(static_cast<int>(value));
           throw std::invalid_argument("Invalid enum value (" + stringValue + "!");

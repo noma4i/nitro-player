@@ -2,6 +2,13 @@
   "name": "@noma4i/just-player",
   "version": "0.1.0",
   "description": "Lightweight video player for React Native",
+  "author": "noma4i",
+  "license": "MIT",
+  "homepage": "https://github.com/noma4i/just_player",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/noma4i/just_player.git"
+  },
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
   "module": "./lib/module/index.js",

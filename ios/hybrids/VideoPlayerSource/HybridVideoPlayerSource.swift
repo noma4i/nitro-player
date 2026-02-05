@@ -1,6 +1,6 @@
 //
 //  HybridVideoPlayerSource.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 23/09/2024.
 //
@@ -13,6 +13,7 @@ class HybridVideoPlayerSource: HybridVideoPlayerSourceSpec, NativeVideoPlayerSou
   var asset: AVURLAsset?
   var uri: String
   var config: NativeVideoConfig
+  var retentionState: MemoryRetentionState = .cold
 
   let url: URL
   private let sourceLoader = SourceLoader()
@@ -74,6 +75,9 @@ class HybridVideoPlayerSource: HybridVideoPlayerSourceSpec, NativeVideoPlayerSou
 
   func initializeAsset() async throws {
     guard asset == nil else {
+      if retentionState == .cold {
+        retentionState = .metadata
+      }
       return
     }
 
@@ -96,8 +100,10 @@ class HybridVideoPlayerSource: HybridVideoPlayerSourceSpec, NativeVideoPlayerSou
       _ = try? await asset.load(.duration, .preferredTransform, .isPlayable) as Any
 
       try Task.checkCancellation()
+      retentionState = .metadata
     } catch {
       self.asset = nil
+      self.retentionState = .cold
       if error is CancellationError {
         throw SourceError.cancelled.error()
       }
@@ -107,6 +113,9 @@ class HybridVideoPlayerSource: HybridVideoPlayerSourceSpec, NativeVideoPlayerSou
 
   func getAsset() async throws -> AVURLAsset {
     if let asset {
+      if retentionState == .cold {
+        retentionState = .metadata
+      }
       return asset
     }
 
@@ -119,19 +128,35 @@ class HybridVideoPlayerSource: HybridVideoPlayerSourceSpec, NativeVideoPlayerSou
         throw SourceError.failedToInitializeAsset.error()
       }
 
+      retentionState = .metadata
       return asset
     } catch {
       if error is CancellationError {
         self.asset = nil
+        self.retentionState = .cold
         throw SourceError.cancelled.error()
       }
       throw error
     }
   }
 
+  func warmMetadata() async throws {
+    _ = try await getAsset()
+    retentionState = .metadata
+  }
+
+  func trimToMetadata() {
+    retentionState = asset == nil ? .cold : .metadata
+  }
+
+  func trimToCold() {
+    releaseAsset()
+  }
+
   func releaseAsset() {
     sourceLoader.cancelSync()
     asset = nil
+    retentionState = .cold
   }
 
   var memorySize: Int {
