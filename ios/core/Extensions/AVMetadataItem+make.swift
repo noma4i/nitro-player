@@ -1,6 +1,6 @@
 //
 //  AVMetadataItem+make.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Kamil Moskała on 06/02/2026.
 //

@@ -13,6 +13,7 @@ public protocol HybridVideoPlayerSpec_protocol: HybridObject {
   var source: (any HybridVideoPlayerSourceSpec) { get }
   var eventEmitter: (any HybridVideoPlayerEventEmitterSpec) { get }
   var playbackState: PlaybackState { get }
+  var memorySnapshot: MemorySnapshot { get }
   var showNotificationControls: Bool { get set }
   var status: VideoPlayerStatus { get }
   var duration: Double { get }

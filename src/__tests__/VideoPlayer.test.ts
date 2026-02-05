@@ -22,6 +22,15 @@ jest.mock('../core/utils/playerFactory', () => ({
       clearAllListeners: jest.fn(),
     },
     source: { id: 'source' },
+    memorySnapshot: {
+      playerBytes: 0,
+      sourceBytes: 0,
+      totalBytes: 0,
+      preloadLevel: 'buffered',
+      retentionState: 'hot',
+      isAttachedToView: false,
+      isPlaying: false,
+    },
     release,
   })),
 }));

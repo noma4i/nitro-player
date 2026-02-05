@@ -29,10 +29,10 @@ namespace margelo::nitro::video {
    * An enum which can be represented as a JavaScript union (ResizeMode).
    */
   enum class ResizeMode {
-    CONTAIN      SWIFT_NAME(contain) = 0,
-    COVER      SWIFT_NAME(cover) = 1,
-    STRETCH      SWIFT_NAME(stretch) = 2,
-    NONE      SWIFT_NAME(none) = 3,
+    NONE      SWIFT_NAME(none) = 0,
+    CONTAIN      SWIFT_NAME(contain) = 1,
+    COVER      SWIFT_NAME(cover) = 2,
+    STRETCH      SWIFT_NAME(stretch) = 3,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::video
@@ -45,20 +45,20 @@ namespace margelo::nitro {
     static inline margelo::nitro::video::ResizeMode fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, arg);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
+        case hashString("none"): return margelo::nitro::video::ResizeMode::NONE;
         case hashString("contain"): return margelo::nitro::video::ResizeMode::CONTAIN;
         case hashString("cover"): return margelo::nitro::video::ResizeMode::COVER;
         case hashString("stretch"): return margelo::nitro::video::ResizeMode::STRETCH;
-        case hashString("none"): return margelo::nitro::video::ResizeMode::NONE;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum ResizeMode - invalid value!");
       }
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, margelo::nitro::video::ResizeMode arg) {
       switch (arg) {
+        case margelo::nitro::video::ResizeMode::NONE: return JSIConverter<std::string>::toJSI(runtime, "none");
         case margelo::nitro::video::ResizeMode::CONTAIN: return JSIConverter<std::string>::toJSI(runtime, "contain");
         case margelo::nitro::video::ResizeMode::COVER: return JSIConverter<std::string>::toJSI(runtime, "cover");
         case margelo::nitro::video::ResizeMode::STRETCH: return JSIConverter<std::string>::toJSI(runtime, "stretch");
-        case margelo::nitro::video::ResizeMode::NONE: return JSIConverter<std::string>::toJSI(runtime, "none");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert ResizeMode to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
@@ -70,10 +70,10 @@ namespace margelo::nitro {
       }
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, value);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
+        case hashString("none"):
         case hashString("contain"):
         case hashString("cover"):
         case hashString("stretch"):
-        case hashString("none"):
           return true;
         default:
           return false;

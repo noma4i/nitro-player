@@ -28,6 +28,9 @@ data class NativeVideoConfig(
   val drm: NativeDrmParams?,
   @DoNotStrip
   @Keep
+  val memoryConfig: MemoryConfig?,
+  @DoNotStrip
+  @Keep
   val headers: Map<String, String>?,
   @DoNotStrip
   @Keep
@@ -52,8 +55,8 @@ data class NativeVideoConfig(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(uri: String, externalSubtitles: Array<NativeExternalSubtitle>?, drm: NativeDrmParams?, headers: Map<String, String>?, bufferConfig: BufferConfig?, metadata: CustomVideoMetadata?, initializeOnCreation: Boolean?, useHlsProxy: Boolean?): NativeVideoConfig {
-      return NativeVideoConfig(uri, externalSubtitles, drm, headers, bufferConfig, metadata, initializeOnCreation, useHlsProxy)
+    private fun fromCpp(uri: String, externalSubtitles: Array<NativeExternalSubtitle>?, drm: NativeDrmParams?, memoryConfig: MemoryConfig?, headers: Map<String, String>?, bufferConfig: BufferConfig?, metadata: CustomVideoMetadata?, initializeOnCreation: Boolean?, useHlsProxy: Boolean?): NativeVideoConfig {
+      return NativeVideoConfig(uri, externalSubtitles, drm, memoryConfig, headers, bufferConfig, metadata, initializeOnCreation, useHlsProxy)
     }
   }
 }

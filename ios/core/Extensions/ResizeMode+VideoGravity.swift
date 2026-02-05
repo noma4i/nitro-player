@@ -1,6 +1,6 @@
 //
 //  ResizeMode.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created for resizeMode feature
 //

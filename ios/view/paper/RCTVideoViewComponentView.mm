@@ -1,11 +1,11 @@
 #import "RCTVideoViewComponentView.h"
 
-#import "ReactNativeVideo-Swift-Cxx-Umbrella.hpp"
+#import "JustPlayer-Swift-Cxx-Umbrella.hpp"
 
-#if __has_include("ReactNativeVideo/ReactNativeVideo-Swift.h")
-#import "ReactNativeVideo/ReactNativeVideo-Swift.h"
+#if __has_include("JustPlayer/JustPlayer-Swift.h")
+#import "JustPlayer/JustPlayer-Swift.h"
 #else
-#import "ReactNativeVideo-Swift.h"
+#import "JustPlayer-Swift.h"
 #endif
 
 @implementation RCTVideoViewComponentView {

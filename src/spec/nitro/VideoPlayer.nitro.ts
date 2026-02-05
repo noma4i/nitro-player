@@ -1,4 +1,5 @@
 import type { HybridObject } from 'react-native-nitro-modules';
+import type { MemorySnapshot } from '../../core/types/MemorySnapshot';
 import type { PlaybackState } from '../../core/types/PlaybackState';
 import type { TextTrack } from '../../core/types/TextTrack';
 import type { VideoPlayerBase } from '../../core/types/VideoPlayerBase';
@@ -18,6 +19,11 @@ export interface VideoPlayer
    * Full playback snapshot exposed synchronously to JS.
    */
   readonly playbackState: PlaybackState;
+
+  /**
+   * Native memory footprint snapshot for player + source.
+   */
+  readonly memorySnapshot: MemorySnapshot;
 
   /**
    * Show playback controls in the notifications area

@@ -1,6 +1,6 @@
 //
 //  Weak.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 31/07/2025.
 //

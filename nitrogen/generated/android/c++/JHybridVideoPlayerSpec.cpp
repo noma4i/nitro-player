@@ -15,6 +15,12 @@ namespace margelo::nitro::video { class HybridVideoPlayerEventEmitterSpec; }
 namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `VideoPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class VideoPlayerStatus; }
+// Forward declaration of `MemorySnapshot` to properly resolve imports.
+namespace margelo::nitro::video { struct MemorySnapshot; }
+// Forward declaration of `PreloadLevel` to properly resolve imports.
+namespace margelo::nitro::video { enum class PreloadLevel; }
+// Forward declaration of `MemoryRetentionState` to properly resolve imports.
+namespace margelo::nitro::video { enum class MemoryRetentionState; }
 // Forward declaration of `MixAudioMode` to properly resolve imports.
 namespace margelo::nitro::video { enum class MixAudioMode; }
 // Forward declaration of `IgnoreSilentSwitchMode` to properly resolve imports.
@@ -31,6 +37,12 @@ namespace margelo::nitro::video { struct TextTrack; }
 #include "JPlaybackState.hpp"
 #include "VideoPlayerStatus.hpp"
 #include "JVideoPlayerStatus.hpp"
+#include "MemorySnapshot.hpp"
+#include "JMemorySnapshot.hpp"
+#include "PreloadLevel.hpp"
+#include "JPreloadLevel.hpp"
+#include "MemoryRetentionState.hpp"
+#include "JMemoryRetentionState.hpp"
 #include "MixAudioMode.hpp"
 #include "JMixAudioMode.hpp"
 #include "IgnoreSilentSwitchMode.hpp"
@@ -91,6 +103,11 @@ namespace margelo::nitro::video {
   }
   PlaybackState JHybridVideoPlayerSpec::getPlaybackState() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPlaybackState>()>("getPlaybackState");
+    auto __result = method(_javaPart);
+    return __result->toCpp();
+  }
+  MemorySnapshot JHybridVideoPlayerSpec::getMemorySnapshot() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JMemorySnapshot>()>("getMemorySnapshot");
     auto __result = method(_javaPart);
     return __result->toCpp();
   }

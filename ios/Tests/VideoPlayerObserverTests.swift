@@ -1,6 +1,6 @@
 import AVFoundation
 import XCTest
-@testable import ReactNativeVideo
+@testable import JustPlayer
 
 final class VideoPlayerObserverTests: XCTestCase {
   func testInvalidatePlayerItemObserversRemovesOutputsFromObservedItem() throws {

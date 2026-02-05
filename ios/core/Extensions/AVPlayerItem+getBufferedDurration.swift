@@ -1,6 +1,6 @@
 //
 //  AVPlayerItem+getBufferedPosition.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 06/05/2025.
 //

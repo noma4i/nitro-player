@@ -1,6 +1,6 @@
 //
 //  AVAssetTrack+orientation.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 23/01/2025.
 //

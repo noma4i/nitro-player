@@ -44,11 +44,19 @@ describe('sourceFactory', () => {
     createSourceFromUri('https://cdn.example.com/live.M3U8?token=abc#main');
 
     expect(getProxiedUrl).toHaveBeenCalledWith(
-      'https://cdn.example.com/live.M3U8?token=abc#main'
+      'https://cdn.example.com/live.M3U8?token=abc#main',
+      undefined
     );
-    expect(fromUri).toHaveBeenCalledWith(
-      'proxied:https://cdn.example.com/live.M3U8?token=abc#main'
-    );
+    expect(fromVideoConfig).toHaveBeenCalledWith({
+      uri: 'proxied:https://cdn.example.com/live.M3U8?token=abc#main',
+      initializeOnCreation: true,
+      memoryConfig: {
+        profile: 'balanced',
+        preloadLevel: 'buffered',
+        offscreenRetention: 'hot',
+        pauseTrimDelayMs: 10000,
+      },
+    });
   });
 
   it('does not proxy non-HLS URLs', () => {
@@ -57,9 +65,16 @@ describe('sourceFactory', () => {
     createSourceFromUri('https://cdn.example.com/video.mp4?token=abc');
 
     expect(getProxiedUrl).not.toHaveBeenCalled();
-    expect(fromUri).toHaveBeenCalledWith(
-      'https://cdn.example.com/video.mp4?token=abc'
-    );
+    expect(fromVideoConfig).toHaveBeenCalledWith({
+      uri: 'https://cdn.example.com/video.mp4?token=abc',
+      initializeOnCreation: true,
+      memoryConfig: {
+        profile: 'balanced',
+        preloadLevel: 'buffered',
+        offscreenRetention: 'hot',
+        pauseTrimDelayMs: 10000,
+      },
+    });
   });
 
   it('does not mutate the caller provided config object', () => {
@@ -99,6 +114,12 @@ describe('sourceFactory', () => {
           language: 'und',
         },
       ],
+      memoryConfig: {
+        profile: 'balanced',
+        preloadLevel: 'buffered',
+        offscreenRetention: 'hot',
+        pauseTrimDelayMs: 10000,
+      },
       initializeOnCreation: true,
     });
   });

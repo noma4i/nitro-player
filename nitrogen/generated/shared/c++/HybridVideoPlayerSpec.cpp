@@ -17,6 +17,7 @@ namespace margelo::nitro::video {
       prototype.registerHybridGetter("source", &HybridVideoPlayerSpec::getSource);
       prototype.registerHybridGetter("eventEmitter", &HybridVideoPlayerSpec::getEventEmitter);
       prototype.registerHybridGetter("playbackState", &HybridVideoPlayerSpec::getPlaybackState);
+      prototype.registerHybridGetter("memorySnapshot", &HybridVideoPlayerSpec::getMemorySnapshot);
       prototype.registerHybridGetter("showNotificationControls", &HybridVideoPlayerSpec::getShowNotificationControls);
       prototype.registerHybridSetter("showNotificationControls", &HybridVideoPlayerSpec::setShowNotificationControls);
       prototype.registerHybridGetter("status", &HybridVideoPlayerSpec::getStatus);

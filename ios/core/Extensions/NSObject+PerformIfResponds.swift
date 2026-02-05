@@ -1,6 +1,6 @@
 //
 //  NSObject+PerformIfResponds.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 27/04/2025.
 //

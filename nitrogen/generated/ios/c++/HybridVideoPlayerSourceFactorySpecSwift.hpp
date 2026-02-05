@@ -10,7 +10,7 @@
 #include "HybridVideoPlayerSourceFactorySpec.hpp"
 
 // Forward declaration of `HybridVideoPlayerSourceFactorySpec_cxx` to properly resolve imports.
-namespace ReactNativeVideo { class HybridVideoPlayerSourceFactorySpec_cxx; }
+namespace JustPlayer { class HybridVideoPlayerSourceFactorySpec_cxx; }
 
 // Forward declaration of `HybridVideoPlayerSourceSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridVideoPlayerSourceSpec; }
@@ -24,6 +24,14 @@ namespace margelo::nitro::video { enum class SubtitleType; }
 namespace margelo::nitro::video { struct NativeDrmParams; }
 // Forward declaration of `OnGetLicensePayload` to properly resolve imports.
 namespace margelo::nitro::video { struct OnGetLicensePayload; }
+// Forward declaration of `MemoryConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct MemoryConfig; }
+// Forward declaration of `MemoryProfile` to properly resolve imports.
+namespace margelo::nitro::video { enum class MemoryProfile; }
+// Forward declaration of `PreloadLevel` to properly resolve imports.
+namespace margelo::nitro::video { enum class PreloadLevel; }
+// Forward declaration of `OffscreenRetention` to properly resolve imports.
+namespace margelo::nitro::video { enum class OffscreenRetention; }
 // Forward declaration of `BufferConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct BufferConfig; }
 // Forward declaration of `LivePlaybackParams` to properly resolve imports.
@@ -46,12 +54,16 @@ namespace margelo::nitro::video { struct CustomVideoMetadata; }
 #include <NitroModules/Promise.hpp>
 #include "OnGetLicensePayload.hpp"
 #include <functional>
+#include "MemoryConfig.hpp"
+#include "MemoryProfile.hpp"
+#include "PreloadLevel.hpp"
+#include "OffscreenRetention.hpp"
 #include "BufferConfig.hpp"
 #include "LivePlaybackParams.hpp"
 #include "Resolution.hpp"
 #include "CustomVideoMetadata.hpp"
 
-#include "ReactNativeVideo-Swift-Cxx-Umbrella.hpp"
+#include "JustPlayer-Swift-Cxx-Umbrella.hpp"
 
 namespace margelo::nitro::video {
 
@@ -68,13 +80,13 @@ namespace margelo::nitro::video {
   class HybridVideoPlayerSourceFactorySpecSwift: public virtual HybridVideoPlayerSourceFactorySpec {
   public:
     // Constructor from a Swift instance
-    explicit HybridVideoPlayerSourceFactorySpecSwift(const ReactNativeVideo::HybridVideoPlayerSourceFactorySpec_cxx& swiftPart):
+    explicit HybridVideoPlayerSourceFactorySpecSwift(const JustPlayer::HybridVideoPlayerSourceFactorySpec_cxx& swiftPart):
       HybridObject(HybridVideoPlayerSourceFactorySpec::TAG),
       _swiftPart(swiftPart) { }
 
   public:
     // Get the Swift part
-    inline ReactNativeVideo::HybridVideoPlayerSourceFactorySpec_cxx& getSwiftPart() noexcept {
+    inline JustPlayer::HybridVideoPlayerSourceFactorySpec_cxx& getSwiftPart() noexcept {
       return _swiftPart;
     }
 
@@ -119,7 +131,7 @@ namespace margelo::nitro::video {
     }
 
   private:
-    ReactNativeVideo::HybridVideoPlayerSourceFactorySpec_cxx _swiftPart;
+    JustPlayer::HybridVideoPlayerSourceFactorySpec_cxx _swiftPart;
   };
 
 } // namespace margelo::nitro::video

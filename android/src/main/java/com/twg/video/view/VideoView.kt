@@ -354,6 +354,7 @@ class VideoView @JvmOverloads constructor(
     globalLayoutListener?.let { viewTreeObserver.removeOnGlobalLayoutListener(it) }
     globalLayoutListener = null
     removeCallbacks(layoutRunnable)
+    hybridPlayer?.notifyViewDetached()
     VideoManager.unregisterView(this)
     super.onDetachedFromWindow()
   }
@@ -362,6 +363,7 @@ class VideoView @JvmOverloads constructor(
     if (nitroId != -1) {
       VideoManager.registerView(this)
     }
+    hybridPlayer?.notifyViewAttached()
     hybridPlayer?.movePlayerToVideoView(this)
     super.onAttachedToWindow()
   }

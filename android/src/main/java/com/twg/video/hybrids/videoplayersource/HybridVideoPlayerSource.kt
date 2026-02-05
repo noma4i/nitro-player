@@ -17,8 +17,10 @@ class HybridVideoPlayerSource(): HybridVideoPlayerSourceSpec() {
   override lateinit var uri: String
   override lateinit var config: NativeVideoConfig
 
-  private lateinit var mediaItem: MediaItem
-  lateinit var mediaSource: MediaSource
+  private var mediaItem: MediaItem? = null
+  private var mediaSource: MediaSource? = null
+  var retentionState: MemoryRetentionState = MemoryRetentionState.COLD
+    private set
 
   var drmManager: DRMManagerSpec? = null
 
@@ -30,28 +32,109 @@ class HybridVideoPlayerSource(): HybridVideoPlayerSourceSpec() {
   constructor(config: NativeVideoConfig) : this() {
     this.uri = config.uri
     this.config = config
+  }
 
-    this.mediaItem = createMediaItemFromVideoConfig(this)
+  private fun createOrGetMediaItem(): MediaItem {
+    val currentMediaItem = mediaItem
+    if (currentMediaItem != null) {
+      return currentMediaItem
+    }
 
-    NitroModules.applicationContext?.let {
-      this.mediaSource = buildMediaSource(
+    return createMediaItemFromVideoConfig(this).also {
+      mediaItem = it
+      if (retentionState == MemoryRetentionState.COLD) {
+        retentionState = MemoryRetentionState.METADATA
+      }
+    }
+  }
+
+  fun createOrGetMediaSource(): MediaSource {
+    val currentMediaSource = mediaSource
+    if (currentMediaSource != null) {
+      return currentMediaSource
+    }
+
+    val nextMediaItem = createOrGetMediaItem()
+
+    val nextMediaSource = NitroModules.applicationContext?.let {
+      buildMediaSource(
         context = it,
         source = this,
-        mediaItem
+        nextMediaItem
       )
     } ?: run {
       throw LibraryError.ApplicationContextNotFound
     }
+
+    mediaSource = nextMediaSource
+    retentionState = MemoryRetentionState.HOT
+    return nextMediaSource
+  }
+
+  suspend fun warmMetadata() {
+    sourceLoader.load {
+      createOrGetMediaItem()
+    }
+  }
+
+  fun trimToMetadata() {
+    createOrGetMediaItem()
+    mediaSource = null
+    retentionState = MemoryRetentionState.METADATA
+  }
+
+  fun trimToCold() {
+    mediaSource = null
+    mediaItem = null
+    retentionState = MemoryRetentionState.COLD
+  }
+
+  private fun estimateConfigMemoryBytes(): Long {
+    var bytes = uri.toByteArray().size.toLong()
+
+    config.headers?.forEach { (key, value) ->
+      bytes += key.toByteArray().size.toLong()
+      bytes += value.toByteArray().size.toLong()
+    }
+
+    config.externalSubtitles?.forEach { subtitle ->
+      bytes += subtitle.uri.toByteArray().size.toLong()
+      bytes += subtitle.label.toByteArray().size.toLong()
+      bytes += subtitle.language.toByteArray().size.toLong()
+    }
+
+    config.metadata?.let { metadata ->
+      bytes += metadata.title?.toByteArray()?.size?.toLong() ?: 0L
+      bytes += metadata.subtitle?.toByteArray()?.size?.toLong() ?: 0L
+      bytes += metadata.description?.toByteArray()?.size?.toLong() ?: 0L
+      bytes += metadata.artist?.toByteArray()?.size?.toLong() ?: 0L
+      bytes += metadata.imageUri?.toByteArray()?.size?.toLong() ?: 0L
+    }
+
+    return bytes
   }
 
   override fun getAssetInformationAsync(): Promise<VideoInformation> {
     return Promise.async {
       return@async sourceLoader.load {
+        createOrGetMediaItem()
         VideoInformationUtils.fromUri(uri, config.headers ?: emptyMap())
       }
     }
   }
 
   override val memorySize: Long
-    get() = 0
+    get() {
+      var size = estimateConfigMemoryBytes()
+
+      if (mediaItem != null) {
+        size += 4L * 1024L
+      }
+
+      if (mediaSource != null) {
+        size += 32L * 1024L
+      }
+
+      return size
+    }
 }

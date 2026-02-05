@@ -1,6 +1,6 @@
 //
 //  VideoManager.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 27/04/2025.
 //
@@ -212,7 +212,7 @@ class VideoManager {
     do {
       try audioSession.setCategory(category, mode: .moviePlayback, options: audioSessionCategoryOptions)
     } catch {
-      print("ReactNativeVideo: Failed to set audio session category: \(error.localizedDescription)")
+      print("JustPlayer: Failed to set audio session category: \(error.localizedDescription)")
     }
   }
   

@@ -167,6 +167,7 @@ ref.current?.player.seekTo(30);
   uri: 'https://example.com/video.mp4',
   metadata: { title: 'My Video', artist: 'Author' },
   bufferConfig: { minBufferMs: 5000, maxBufferMs: 10000, bufferForPlaybackMs: 1000 },
+  memoryConfig: { profile: 'feed', preloadLevel: 'metadata', offscreenRetention: 'metadata' },
 }} />
 
 // With setup
@@ -184,6 +185,7 @@ The player instance. Access via `ref.current.player`.
 | Property | Type | Get | Set | Description |
 |----------|------|-----|-----|-------------|
 | `playbackState` | [`PlaybackState`](#playbackstate) | yes | - | Full native-first playback snapshot |
+| `memorySnapshot` | [`MemorySnapshot`](#memorysnapshot) | yes | - | Native RAM snapshot for player + source |
 | `status` | [`VideoPlayerStatus`](#videoplayerstatus) | yes | - | Current state |
 | `duration` | `number` | yes | - | Duration in seconds (`NaN` if unknown) |
 | `currentTime` | `number` | yes | yes | Position in seconds |
@@ -217,6 +219,37 @@ type PlaybackState = {
   isBuffering: boolean;
   isReadyToDisplay: boolean;
   nativeTimestampMs: number;
+};
+```
+
+### MemoryConfig
+
+```ts
+type MemoryConfig = {
+  profile?: 'feed' | 'balanced' | 'immersive';
+  preloadLevel?: 'none' | 'metadata' | 'buffered';
+  offscreenRetention?: 'cold' | 'metadata' | 'hot';
+  pauseTrimDelayMs?: number;
+};
+```
+
+Defaults:
+
+- `<VideoView />` uses `profile: 'feed'` unless `source.memoryConfig` overrides it
+- direct `new VideoPlayer(...)` uses `profile: 'balanced'`
+- `feed` defaults to metadata preload and metadata retention for offscreen paused players
+
+### MemorySnapshot
+
+```ts
+type MemorySnapshot = {
+  playerBytes: number;
+  sourceBytes: number;
+  totalBytes: number;
+  preloadLevel: 'none' | 'metadata' | 'buffered';
+  retentionState: 'cold' | 'metadata' | 'hot';
+  isAttachedToView: boolean;
+  isPlaying: boolean;
 };
 ```
 

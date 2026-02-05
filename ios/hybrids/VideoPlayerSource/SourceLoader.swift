@@ -1,6 +1,6 @@
 //
 //  SourceLoader.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 27/01/2025.
 //

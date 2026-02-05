@@ -19,7 +19,7 @@ import NitroModules
 open class HybridVideoPlayerSpec_cxx {
   /**
    * The Swift <> C++ bridge's namespace (`margelo::nitro::video::bridge::swift`)
-   * from `ReactNativeVideo-Swift-Cxx-Bridge.hpp`.
+   * from `JustPlayer-Swift-Cxx-Bridge.hpp`.
    * This contains specialized C++ templates, and C++ helper functions that can be accessed from Swift.
    */
   public typealias bridge = margelo.nitro.video.bridge.swift
@@ -145,6 +145,13 @@ open class HybridVideoPlayerSpec_cxx {
     @inline(__always)
     get {
       return self.__implementation.playbackState
+    }
+  }
+  
+  public final var memorySnapshot: MemorySnapshot {
+    @inline(__always)
+    get {
+      return self.__implementation.memorySnapshot
     }
   }
   

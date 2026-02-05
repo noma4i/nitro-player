@@ -1,5 +1,5 @@
 import XCTest
-@testable import ReactNativeVideo
+@testable import JustPlayer
 
 final class HlsProxyServerControllerTests: XCTestCase {
   func testCacheStatsContainExpectedKeys() {

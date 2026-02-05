@@ -11,6 +11,12 @@ import type {
   VideoConfig,
   VideoSource,
 } from '../types/VideoConfig';
+import type {
+  MemoryConfig,
+  MemoryProfile,
+  OffscreenRetention,
+  PreloadLevel,
+} from '../types/MemoryConfig';
 import {
   tryParseNativeVideoError,
   VideoRuntimeError,
@@ -37,27 +43,109 @@ const isHlsManifestUrl = (uri: string) => {
   return withoutQuery.toLowerCase().endsWith('.m3u8');
 };
 
+type ResolvedMemoryConfig = Required<
+  Pick<MemoryConfig, 'profile' | 'preloadLevel' | 'offscreenRetention'>
+> & {
+  pauseTrimDelayMs: number;
+};
+
+const MEMORY_PROFILE_DEFAULTS: Record<MemoryProfile, ResolvedMemoryConfig> = {
+  feed: {
+    profile: 'feed',
+    preloadLevel: 'metadata',
+    offscreenRetention: 'metadata',
+    pauseTrimDelayMs: 1500,
+  },
+  balanced: {
+    profile: 'balanced',
+    preloadLevel: 'buffered',
+    offscreenRetention: 'hot',
+    pauseTrimDelayMs: 10000,
+  },
+  immersive: {
+    profile: 'immersive',
+    preloadLevel: 'buffered',
+    offscreenRetention: 'hot',
+    pauseTrimDelayMs: Number.POSITIVE_INFINITY,
+  },
+};
+
+const normalizePreloadLevel = (
+  preloadLevel: MemoryConfig['preloadLevel']
+): PreloadLevel | undefined => {
+  if (
+    preloadLevel === 'none' ||
+    preloadLevel === 'metadata' ||
+    preloadLevel === 'buffered'
+  ) {
+    return preloadLevel;
+  }
+
+  return undefined;
+};
+
+const normalizeOffscreenRetention = (
+  offscreenRetention: MemoryConfig['offscreenRetention']
+): OffscreenRetention | undefined => {
+  if (
+    offscreenRetention === 'cold' ||
+    offscreenRetention === 'metadata' ||
+    offscreenRetention === 'hot'
+  ) {
+    return offscreenRetention;
+  }
+
+  return undefined;
+};
+
+const resolveMemoryConfig = (
+  memoryConfig: MemoryConfig | undefined,
+  defaultProfile: MemoryProfile
+): ResolvedMemoryConfig => {
+  const profile = memoryConfig?.profile ?? defaultProfile;
+  const defaults = MEMORY_PROFILE_DEFAULTS[profile];
+  const pauseTrimDelayMs =
+    memoryConfig?.pauseTrimDelayMs ?? defaults.pauseTrimDelayMs;
+
+  return {
+    profile,
+    preloadLevel:
+      normalizePreloadLevel(memoryConfig?.preloadLevel) ??
+      defaults.preloadLevel,
+    offscreenRetention:
+      normalizeOffscreenRetention(memoryConfig?.offscreenRetention) ??
+      defaults.offscreenRetention,
+    pauseTrimDelayMs:
+      Number.isFinite(pauseTrimDelayMs) || pauseTrimDelayMs === Number.POSITIVE_INFINITY
+        ? pauseTrimDelayMs
+        : defaults.pauseTrimDelayMs,
+  };
+};
+
 /**
  * Creates a `VideoPlayerSource` instance from a URI (string).
  *
  * @param uri - The URI of the video to play
  * @returns The `VideoPlayerSource` instance
  */
-export const createSourceFromUri = (uri: string) => {
+export const createSourceFromUri = (
+  uri: string,
+  defaultMemoryProfile: MemoryProfile = 'balanced'
+) => {
   if (!uri || typeof uri !== 'string') {
     throw new Error('RNV: Invalid source. The URI must be a non-empty string.');
   }
 
-  // Auto-proxy .m3u8 URLs through HLS cache proxy (if running)
-  const resolvedUri = isHlsManifestUrl(uri)
-    ? hlsCacheProxy.getProxiedUrl(uri)
-    : uri;
-
-  try {
-    return VideoPlayerSourceFactory.fromUri(resolvedUri);
-  } catch (error) {
-    throw tryParseNativeVideoError(error);
-  }
+  return createSourceFromVideoConfig(
+    {
+      uri,
+      initializeOnCreation: true,
+      memoryConfig: {
+        profile: defaultMemoryProfile,
+      },
+    },
+    defaultMemoryProfile
+  );
 };
 
 /**
@@ -69,7 +157,8 @@ export const createSourceFromUri = (uri: string) => {
  * @returns The `VideoPlayerSource` instance
  */
 export const createSourceFromVideoConfig = (
-  config: VideoConfig & { uri: string }
+  config: VideoConfig & { uri: string },
+  defaultMemoryProfile: MemoryProfile = 'balanced'
 ) => {
   if (!config.uri || typeof config.uri !== 'string') {
     throw new VideoRuntimeError('source/invalid-uri', 'Invalid source URI');
@@ -115,6 +204,11 @@ export const createSourceFromVideoConfig = (
     normalizedConfig.initializeOnCreation = true;
   }
 
+  normalizedConfig.memoryConfig = resolveMemoryConfig(
+    normalizedConfig.memoryConfig,
+    defaultMemoryProfile
+  );
+
   try {
     return VideoPlayerSourceFactory.fromVideoConfig(
       normalizedConfig as NativeVideoConfig
@@ -148,7 +242,8 @@ const parseExternalSubtitles = (
  * @returns The `VideoPlayerSource` instance
  */
 export const createSource = (
-  source: VideoSource | VideoConfig | VideoPlayerSource
+  source: VideoSource | VideoConfig | VideoPlayerSource,
+  defaultMemoryProfile: MemoryProfile = 'balanced'
 ): VideoPlayerSource => {
   // If source is a VideoPlayerSource, we can directly return it
   if (isVideoPlayerSource(source)) {
@@ -157,7 +252,7 @@ export const createSource = (
 
   // If source is a string, we can directly create the player
   if (typeof source === 'string') {
-    return createSourceFromUri(source);
+    return createSourceFromUri(source, defaultMemoryProfile);
   }
 
   // If source is a number (asset), we need to resolve the asset source and create the player
@@ -166,14 +261,15 @@ export const createSource = (
     if (!resolvedSource?.uri || typeof resolvedSource.uri !== 'string') {
       throw new VideoRuntimeError('source/invalid-uri', 'Invalid source URI');
     }
-    return createSourceFromUri(resolvedSource.uri);
+    return createSourceFromUri(resolvedSource.uri, defaultMemoryProfile);
   }
 
   // If source is an object (VideoConfig)
   if (typeof source === 'object' && source !== null && 'uri' in source) {
     if (typeof source.uri === 'string') {
       return createSourceFromVideoConfig(
-        source as VideoConfig & { uri: string }
+        source as VideoConfig & { uri: string },
+        defaultMemoryProfile
       );
     }
 
@@ -188,7 +284,7 @@ export const createSource = (
         uri: resolvedSource.uri,
       };
 
-      return createSourceFromVideoConfig(config);
+      return createSourceFromVideoConfig(config, defaultMemoryProfile);
     }
 
     throw new VideoRuntimeError('source/invalid-uri', 'Invalid source URI');

@@ -142,7 +142,9 @@ const VideoView = React.forwardRef<VideoViewRef, VideoViewProps>(
     },
     ref
   ) => {
-    const player = useVideoPlayer(source, setup);
+    const player = useVideoPlayer(source, setup, {
+      defaultMemoryProfile: 'feed',
+    });
     const nitroId = React.useMemo(() => nitroIdCounter++, []);
     const nitroViewManager = React.useRef<VideoViewViewManager | null>(null);
     const [isManagerReady, setIsManagerReady] = React.useState(false);
@@ -172,7 +174,7 @@ const VideoView = React.forwardRef<VideoViewRef, VideoViewProps>(
           ) {
             if (id === nitroId) {
               console.warn(
-                '[ReactNativeVideo] VideoView was unmounted before native manager was able to find it.'
+                '[JustPlayer] VideoView was unmounted before native manager was able to find it.'
               );
               return;
             }

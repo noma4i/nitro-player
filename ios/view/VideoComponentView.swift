@@ -1,6 +1,6 @@
 //
 //  VideoComponent.swift
-//  ReactNativeVideo
+//  JustPlayer
 //
 //  Created by Krzysztof Moch on 30/09/2024.
 //
@@ -15,6 +15,9 @@ import UIKit
     didSet {
       guard let player = player as? HybridVideoPlayer else { return }
       configureAVPlayerViewController(with: player.player)
+      if superview != nil, window != nil {
+        player.notifyViewAttached()
+      }
     }
   }
 
@@ -243,6 +246,7 @@ import UIKit
     super.willMove(toSuperview: newSuperview)
 
     if newSuperview == nil {
+      (player as? HybridVideoPlayer)?.notifyViewDetached()
       invalidatePendingConfiguration()
       pendingPlayer = nil
       detachPlayerViewController()
@@ -261,12 +265,18 @@ import UIKit
   public override func didMoveToSuperview() {
     super.didMoveToSuperview()
 
+    if superview != nil {
+      (player as? HybridVideoPlayer)?.notifyViewAttached()
+    }
     flushPendingPlayerConfigurationIfNeeded()
   }
 
   public override func didMoveToWindow() {
     super.didMoveToWindow()
 
+    if window != nil {
+      (player as? HybridVideoPlayer)?.notifyViewAttached()
+    }
     flushPendingPlayerConfigurationIfNeeded()
   }
 

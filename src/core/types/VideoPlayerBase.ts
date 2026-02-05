@@ -1,4 +1,5 @@
 import type { IgnoreSilentSwitchMode } from './IgnoreSilentSwitchMode';
+import type { MemorySnapshot } from './MemorySnapshot';
 import type { MixAudioMode } from './MixAudioMode';
 import type { PlaybackState } from './PlaybackState';
 import type { TextTrack } from './TextTrack';
@@ -20,6 +21,11 @@ export interface VideoPlayerBase {
    * Full playback snapshot. This is the single source of truth for JS playback UI.
    */
   readonly playbackState: PlaybackState;
+
+  /**
+   * Current native memory footprint snapshot for the player + source pair.
+   */
+  readonly memorySnapshot: MemorySnapshot;
 
   /**
    * Thin accessor over {@link playbackState.status}.

@@ -111,7 +111,7 @@ class HybridVideoViewViewManager(nitroId: Int): HybridVideoViewViewManagerSpec()
       try {
         invoke(pair.callback as T)
       } catch (e: Exception) {
-        println("[ReactNativeVideo] Error calling $eventName listener: $e")
+        println("[JustPlayer] Error calling $eventName listener: $e")
       }
     }
   }
