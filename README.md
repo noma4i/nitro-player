@@ -97,6 +97,115 @@ The only component you need. Pass a source - it creates the player internally.
 />
 ```
 
+### Common Examples
+
+```tsx
+import React, { useRef } from 'react';
+import { Button, View } from 'react-native';
+import {
+  VideoView,
+  type VideoViewRef,
+} from '@noma4i/just-player';
+
+export function BasicInlineVideo() {
+  return (
+    <VideoView
+      source={{ uri: 'https://cdn.example.com/video.mp4' }}
+      style={{ width: '100%', aspectRatio: 16 / 9 }}
+    />
+  );
+}
+
+export function ControlledVideo() {
+  const ref = useRef<VideoViewRef>(null);
+
+  return (
+    <View>
+      <VideoView
+        ref={ref}
+        source={{
+          uri: 'https://cdn.example.com/stream.m3u8',
+          headers: {
+            Authorization: 'Bearer token',
+            'X-Client': 'mobile',
+          },
+          metadata: {
+            title: 'Episode 01',
+            subtitle: 'Season opener',
+            artist: 'Just Player Demo',
+            imageUri: 'https://cdn.example.com/artwork.jpg',
+          },
+          externalSubtitles: [
+            {
+              uri: 'https://cdn.example.com/subtitles/en.vtt',
+              label: 'English',
+              language: 'en',
+            },
+            {
+              uri: 'https://cdn.example.com/subtitles/es.vtt',
+              label: 'Español',
+              language: 'es',
+              type: 'vtt',
+            },
+          ],
+          bufferConfig: {
+            minBufferMs: 5000,
+            maxBufferMs: 15000,
+            bufferForPlaybackMs: 1000,
+            bufferForPlaybackAfterRebufferMs: 2000,
+          },
+          memoryConfig: {
+            profile: 'feed',
+            preloadLevel: 'metadata',
+            offscreenRetention: 'metadata',
+            pauseTrimDelayMs: 1500,
+          },
+        }}
+        controls
+        resizeMode="cover"
+        pictureInPicture
+        autoEnterPictureInPicture
+        keepScreenAwake
+        surfaceType="surface"
+        style={{ width: '100%', aspectRatio: 16 / 9 }}
+        setup={(player) => {
+          player.loop = false;
+          player.volume = 1;
+          player.rate = 1;
+          player.mixAudioMode = 'mixWithOthers';
+          player.playInBackground = false;
+          player.showNotificationControls = true;
+        }}
+        onFullscreenChange={(fullscreen) => {
+          console.log('fullscreen:', fullscreen);
+        }}
+        onPictureInPictureChange={(pip) => {
+          console.log('pip:', pip);
+        }}
+      />
+
+      <Button title="Play" onPress={() => ref.current?.player.play()} />
+      <Button title="Pause" onPress={() => ref.current?.player.pause()} />
+      <Button title="Seek +10s" onPress={() => ref.current?.player.seekBy(10)} />
+      <Button
+        title="Fullscreen"
+        onPress={() => ref.current?.enterFullscreen()}
+      />
+
+      <View>
+        <Button
+          title="Log snapshots"
+          onPress={() => {
+            console.log(ref.current?.player.playbackState);
+            console.log(ref.current?.player.memorySnapshot);
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+```
+
 ### Props
 
 | Prop | Type | Default | Description |
@@ -156,11 +265,32 @@ ref.current?.player.seekTo(30);
 ### Source Formats
 
 ```tsx
-// Simple - just a URL
+// String URL
+<VideoView source="https://example.com/video.mp4" />
+
+// Simple config - just a URL
 <VideoView source={{ uri: 'https://example.com/video.mp4' }} />
+
+// Local bundled asset
+<VideoView source={require('./assets/intro.mp4')} />
 
 // With headers
 <VideoView source={{ uri: 'https://example.com/video.mp4', headers: { Authorization: 'Bearer token' } }} />
+
+// Disable HLS proxy for a specific stream
+<VideoView source={{ uri: 'https://example.com/live.m3u8', useHlsProxy: false }} />
+
+// Lazy init - player exists immediately, native pipeline is created later
+<VideoView source={{ uri: 'https://example.com/video.mp4', initializeOnCreation: false }} />
+
+// Subtitles
+<VideoView source={{
+  uri: 'https://example.com/video.mp4',
+  externalSubtitles: [
+    { uri: 'https://example.com/subs/en.vtt', label: 'English', language: 'en' },
+    { uri: 'https://example.com/subs/fr.vtt', label: 'Français', language: 'fr', type: 'vtt' },
+  ],
+}} />
 
 // With full config
 <VideoView source={{
@@ -172,6 +302,38 @@ ref.current?.player.seekTo(30);
 
 // With setup
 <VideoView source={{ uri }} setup={(p) => { p.loop = true; p.volume = 0.5; }} />
+```
+
+### Memory Profiles
+
+```tsx
+// Feed / list / many instances
+<VideoView source={{
+  uri: feedItem.url,
+  memoryConfig: {
+    profile: 'feed',
+    preloadLevel: 'metadata',
+    offscreenRetention: 'metadata',
+  },
+}} />
+
+// Default general-purpose behavior
+<VideoView source={{
+  uri: movie.url,
+  memoryConfig: {
+    profile: 'balanced',
+  },
+}} />
+
+// Keep native pipeline hot as long as possible
+<VideoView source={{
+  uri: immersiveUrl,
+  memoryConfig: {
+    profile: 'immersive',
+    offscreenRetention: 'hot',
+    pauseTrimDelayMs: Infinity,
+  },
+}} />
 ```
 
 ---
@@ -297,6 +459,61 @@ type MemorySnapshot = {
 | `getAvailableTextTracks()` | `TextTrack[]` | List subtitle tracks |
 | `selectTextTrack(track)` | `void` | Select subtitle track (pass `null` to disable) |
 
+### Direct Player Example
+
+```tsx
+import React, { useEffect, useMemo } from 'react';
+import {
+  VideoPlayer,
+  usePlaybackState,
+} from '@noma4i/just-player';
+
+export function DirectPlayerExample() {
+  const player = useMemo(
+    () =>
+      new VideoPlayer({
+        uri: 'https://cdn.example.com/video.mp4',
+        initializeOnCreation: false,
+        memoryConfig: {
+          profile: 'balanced',
+          preloadLevel: 'buffered',
+          offscreenRetention: 'hot',
+        },
+      }),
+    []
+  );
+
+  const playback = usePlaybackState(player);
+
+  useEffect(() => {
+    player.volume = 0.8;
+    player.loop = true;
+    player.initialize();
+
+    const playbackSub = player.addEventListener('onPlaybackState', (state) => {
+      console.log('playback:', state);
+    });
+    const errorSub = player.addEventListener('onError', (error) => {
+      console.error(error);
+    });
+
+    return () => {
+      playbackSub.remove();
+      errorSub.remove();
+      player.release();
+    };
+  }, [player]);
+
+  useEffect(() => {
+    if (playback.status === 'ready' || playback.status === 'paused') {
+      player.play();
+    }
+  }, [playback.status, player]);
+
+  return null;
+}
+```
+
 ### Player Events
 
 Subscribe via `player.addEventListener(event, callback)`:
@@ -318,6 +535,24 @@ Subscribe via `player.addEventListener(event, callback)`:
 ### Playback UI
 
 Use `usePlaybackState(player)` for progress bars and transport UI. It starts from synchronous native state and only interpolates `currentTime` locally while playback is actively advancing.
+
+```tsx
+const playback = usePlaybackState(player);
+
+const progress =
+  Number.isFinite(playback.duration) && playback.duration > 0
+    ? playback.currentTime / playback.duration
+    : 0;
+
+const memory = player.memorySnapshot;
+
+console.log({
+  status: playback.status,
+  progress,
+  retentionState: memory.retentionState,
+  totalBytes: memory.totalBytes,
+});
+```
 
 ---
 
