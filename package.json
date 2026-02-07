@@ -10,19 +10,19 @@
     "url": "https://github.com/noma4i/just_player.git"
   },
   "source": "./src/index.tsx",
-  "main": "./lib/commonjs/index.js",
-  "module": "./lib/module/index.js",
-  "types": "./lib/typescript/module/index.d.ts",
-  "react-native": "src/index",
+  "main": "./src/index.tsx",
+  "module": "./src/index.tsx",
+  "types": "./src/index.tsx",
+  "react-native": "./src/index.tsx",
   "exports": {
     ".": {
       "import": {
-        "types": "./lib/typescript/module/index.d.ts",
-        "default": "./lib/module/index.js"
+        "types": "./src/index.tsx",
+        "default": "./src/index.tsx"
       },
       "require": {
-        "types": "./lib/typescript/commonjs/index.d.ts",
-        "default": "./lib/commonjs/index.js"
+        "types": "./src/index.tsx",
+        "default": "./src/index.tsx"
       }
     },
     "./package.json": "./package.json"
