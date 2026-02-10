@@ -38,6 +38,7 @@ class HybridVideoPlayerSourceFactory: HybridVideoPlayerSourceFactorySpec() {
   override fun fromUri(uri: String): HybridVideoPlayerSourceSpec {
     val config = NativeVideoConfig(
       uri = normalizeUri(uri),
+      useHlsProxy = false,
       externalSubtitles = null,
       drm = null,
       headers = null,

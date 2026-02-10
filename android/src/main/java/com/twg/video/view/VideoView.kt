@@ -390,17 +390,9 @@ class VideoView @JvmOverloads constructor(
     }
 
     val activity = resolveActivity() ?: return false
-    val supportsFeature = activity.packageManager.hasSystemFeature(
+    return activity.packageManager.hasSystemFeature(
       android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE
     )
-    val supportsActivity = try {
-      val activityInfo = activity.packageManager.getActivityInfo(activity.componentName, 0)
-      activityInfo.flags and android.content.pm.ActivityInfo.FLAG_SUPPORTS_PICTURE_IN_PICTURE != 0
-    } catch (_: Exception) {
-      false
-    }
-
-    return supportsFeature && supportsActivity
   }
 
   private fun resolveActivity(): Activity? {
