@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- fixed iOS pod compilation by importing `GCDWebServer` in the HLS proxy controller used by `JustPlayer`
+
 ## 0.1.2
 
 - fixed Android git-consumption build by passing `useHlsProxy` through `HybridVideoPlayerSourceFactory`
