@@ -1,4 +1,5 @@
 import Foundation
+import GCDWebServer
 import UIKit
 
 final class HlsProxyServerController: NSObject {
