@@ -2,43 +2,48 @@ import AVFoundation
 
 extension AVURLAsset {
   func getAssetInformation() async throws -> VideoInformation {
-    // Initialize with default values
-    var videoInformation = VideoInformation(
-      bitrate: Double.nan,
-      width: Double.nan,
-      height: Double.nan,
-      duration: -1,
-      fileSize: -1,
-      isHDR: false,
-      isLive: false,
-      orientation: .unknown
-    )
-
-    videoInformation.fileSize = try await VideoFileHelper.getFileSize(for: url)
+    let fileSize = try await VideoFileHelper.getFileSize(for: url)
+    let durationValue: Int64
+    let isLive: Bool
 
     // Check if asset is live stream
     if duration.flags.contains(.indefinite) {
-      videoInformation.duration = -1
-      videoInformation.isLive = true
+      durationValue = -1
+      isLive = true
     } else {
-      videoInformation.duration = Int64(CMTimeGetSeconds(duration))
-      videoInformation.isLive = false
+      durationValue = Int64(CMTimeGetSeconds(duration))
+      isLive = false
     }
+
+    var width = Double.nan
+    var height = Double.nan
+    var bitrate = Double.nan
+    var orientation: VideoOrientation = .unknown
+    var isHDR = false
 
     if let videoTrack = tracks(withMediaType: .video).first {
       let size = videoTrack.naturalSize.applying(videoTrack.preferredTransform)
-      videoInformation.width = size.width
-      videoInformation.height = size.height
+      width = size.width
+      height = size.height
 
-      videoInformation.bitrate = Double(videoTrack.estimatedDataRate)
+      bitrate = Double(videoTrack.estimatedDataRate)
 
-      videoInformation.orientation = videoTrack.orientation
+      orientation = videoTrack.orientation
 
       if #available(iOS 14.0, tvOS 14.0, visionOS 1.0, *) {
-        videoInformation.isHDR = videoTrack.hasMediaCharacteristic(.containsHDRVideo)
+        isHDR = videoTrack.hasMediaCharacteristic(.containsHDRVideo)
       }
     }
 
-    return videoInformation
+    return VideoInformation(
+      bitrate: bitrate,
+      width: width,
+      height: height,
+      duration: durationValue,
+      fileSize: fileSize,
+      isHDR: isHDR,
+      isLive: isLive,
+      orientation: orientation
+    )
   }
 }

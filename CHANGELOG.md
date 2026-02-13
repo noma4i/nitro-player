@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4
+
+- fixed iOS consumer builds by constructing immutable Nitro `VideoInformation` values without mutating generated read-only properties
+
 ## 0.1.3
 
 - fixed iOS pod compilation by importing `GCDWebServer` in the HLS proxy controller used by `JustPlayer`
