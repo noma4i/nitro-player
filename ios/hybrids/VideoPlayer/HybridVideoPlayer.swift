@@ -34,7 +34,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
   private let sourceLoader = SourceLoader()
   private var artworkTask: Task<Void, Never>?
   private var isReleased = false
-  private var readyToDisplay = false
+  var readyToDisplay = false
   private var resumePositionSeconds: Double = 0
   private var isAttachedToVideoView = false
   private var pendingTrimWorkItem: DispatchWorkItem?

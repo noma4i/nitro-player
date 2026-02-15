@@ -19,11 +19,12 @@ class HybridVideoPlayerSourceFactory: HybridVideoPlayerSourceFactorySpec {
       uri: uri,
       externalSubtitles: nil,
       drm: nil,
+      memoryConfig: nil,
       headers: nil,
       bufferConfig: nil,
-      memoryConfig: nil,
       metadata: nil,
-      initializeOnCreation: true
+      initializeOnCreation: true,
+      useHlsProxy: nil
     )
     return try HybridVideoPlayerSource(config: config)
   }
