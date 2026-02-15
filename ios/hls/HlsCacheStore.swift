@@ -1,3 +1,4 @@
+import CommonCrypto
 import Foundation
 
 final class HlsCacheStore {

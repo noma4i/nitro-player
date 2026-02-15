@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5
+
+- added an in-repo `example/` React Native consumer app for local library verification
+- fixed iOS consumer builds by importing `CommonCrypto` in `HlsCacheStore`
+- fixed iOS player compilation by exposing `readyToDisplay` to extension files and aligning `HybridVideoPlayerSourceFactory` with the generated `useHlsProxy` config signature
+- fixed Android autolinking to register `VideoPackage` as the single package entrypoint for both video and HLS modules
+
 ## 0.1.4
 
 - fixed iOS consumer builds by constructing immutable Nitro `VideoInformation` values without mutating generated read-only properties

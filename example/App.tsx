@@ -1,107 +1,204 @@
-/**
- * @noma4i/just-player - Full Example
- *
- * Just <VideoView source={{ uri }} /> - that's it.
- * HLS caching is built-in and automatic.
- */
+import React, { useEffect, useRef } from 'react';
+import { Pressable, SafeAreaView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { VideoView, hlsCacheProxy, usePlaybackState, type VideoViewRef } from '@noma4i/just-player';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Button, StyleSheet, Text, View } from 'react-native';
-import {
-  VideoView,
-  hlsCacheProxy,
-  type VideoViewRef,
-  type HlsCacheStats,
-} from '@noma4i/just-player';
+const SOURCE_URI = 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.mpd/.m3u8';
 
-// ─── App ───────────────────────────────────────────────────────
-export default function App() {
+function App() {
+  const videoRef = useRef<VideoViewRef>(null);
+  const playbackState = usePlaybackState(videoRef.current?.player ?? null);
+
   useEffect(() => {
     hlsCacheProxy.start();
-    return () => hlsCacheProxy.stop();
+    return () => {
+      hlsCacheProxy.stop();
+    };
   }, []);
 
   return (
-    <View style={styles.container}>
-      <SimpleExample />
-      <WithControlsExample />
-      <CacheInfo />
-    </View>
-  );
-}
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" />
+      <View style={styles.container}>
+        <Text style={styles.eyebrow}>JustPlayer Example</Text>
 
-// ─── Simple ────────────────────────────────────────────────────
-// One line. HLS segments are cached automatically.
-function SimpleExample() {
-  return (
-    <View style={styles.section}>
-      <Text style={styles.title}>Simple</Text>
-      <VideoView
-        source={{ uri: 'https://cdn.example.com/video.m3u8' }}
-        style={styles.video}
-        resizeMode="cover"
-      />
-    </View>
-  );
-}
+        <VideoView
+          ref={videoRef}
+          source={{
+            uri: SOURCE_URI,
+            useHlsProxy: true,
+            initializeOnCreation: true,
+            memoryConfig: { profile: 'feed' }
+          }}
+          resizeMode="contain"
+          controls={false}
+          keepScreenAwake
+          style={styles.video}
+        />
 
-// ─── With Controls ─────────────────────────────────────────────
-// Access player via ref for play/pause/seek.
-function WithControlsExample() {
-  const ref = useRef<VideoViewRef>(null);
+        <View style={styles.row}>
+          <ActionButton
+            label="Play"
+            onPress={() => {
+              videoRef.current?.player.play();
+            }}
+          />
+          <ActionButton
+            label="Pause"
+            onPress={() => {
+              videoRef.current?.player.pause();
+            }}
+          />
+        </View>
 
-  return (
-    <View style={styles.section}>
-      <Text style={styles.title}>With Controls</Text>
-      <VideoView
-        ref={ref}
-        source={{
-          uri: 'https://cdn.example.com/video.m3u8',
-          headers: { Authorization: 'Bearer token' },
-        }}
-        setup={(p) => {
-          p.loop = true;
-          p.volume = 0.5;
-        }}
-        style={styles.video}
-        resizeMode="contain"
-      />
-      <View style={styles.controls}>
-        <Button title="Play" onPress={() => ref.current?.player.play()} />
-        <Button title="Pause" onPress={() => ref.current?.player.pause()} />
-        <Button title="Seek 30s" onPress={() => ref.current?.player.seekTo(30)} />
+        <View style={styles.row}>
+          <ActionButton
+            label="Seek 10s"
+            onPress={() => {
+              videoRef.current?.player.seekTo(10);
+            }}
+          />
+          <ActionButton
+            label="Replay"
+            onPress={() => {
+              const player = videoRef.current?.player;
+              if (!player) {
+                return;
+              }
+              player.seekTo(0);
+              player.play();
+            }}
+          />
+        </View>
+
+        <View style={styles.panel}>
+          <StateRow
+            label="status"
+            value={playbackState?.status ?? 'idle'}
+          />
+          <StateRow
+            label="time"
+            value={formatSeconds(playbackState?.currentTime ?? 0)}
+          />
+          <StateRow
+            label="duration"
+            value={formatSeconds(playbackState?.duration ?? 0)}
+          />
+          <StateRow
+            label="buffered"
+            value={formatSeconds(playbackState?.bufferedPosition ?? 0)}
+          />
+        </View>
       </View>
+    </SafeAreaView>
+  );
+}
+
+function ActionButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={styles.button}>
+      <Text style={styles.buttonLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function StateRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.stateRow}>
+      <Text style={styles.stateLabel}>{label}</Text>
+      <Text style={styles.stateValue}>{value}</Text>
     </View>
   );
 }
 
-// ─── Cache Info ────────────────────────────────────────────────
-function CacheInfo() {
-  const [stats, setStats] = useState<HlsCacheStats | null>(null);
+function formatSeconds(value: number) {
+  if (!Number.isFinite(value) || value < 0) {
+    return '--:--';
+  }
 
-  const loadStats = async () => setStats(await hlsCacheProxy.getCacheStats());
+  const seconds = Math.floor(value % 60)
+    .toString()
+    .padStart(2, '0');
+  const minutes = Math.floor(value / 60)
+    .toString()
+    .padStart(2, '0');
 
-  useEffect(() => { loadStats(); }, []);
-
-  const usedMB = stats ? (stats.totalSize / 1024 / 1024).toFixed(1) : '-';
-  const maxMB = stats ? (stats.maxSize / 1024 / 1024).toFixed(0) : '-';
-
-  return (
-    <View style={styles.section}>
-      <Text style={styles.title}>HLS Cache</Text>
-      <Text>{usedMB} MB / {maxMB} MB ({stats?.fileCount ?? 0} files)</Text>
-      <View style={styles.controls}>
-        <Button title="Refresh" onPress={loadStats} />
-        <Button title="Clear" onPress={async () => { await hlsCacheProxy.clearCache(); loadStats(); }} />
-      </View>
-    </View>
-  );
+  return `${minutes}:${seconds}`;
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, gap: 24 },
-  section: { gap: 8 },
-  title: { fontSize: 16, fontWeight: '600' },
-  video: { width: '100%', height: 200, borderRadius: 8, backgroundColor: '#000' },
-  controls: { flexDirection: 'row', gap: 8 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#06131f'
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    backgroundColor: '#06131f'
+  },
+  eyebrow: {
+    color: '#75d7ff',
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2
+  },
+  title: {
+    marginTop: 8,
+    marginBottom: 20,
+    color: '#f3f7fb',
+    fontSize: 28,
+    fontWeight: '700'
+  },
+  video: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: 20,
+    backgroundColor: '#000',
+    overflow: 'hidden'
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16
+  },
+  button: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+    borderRadius: 14,
+    backgroundColor: '#0f8bd7'
+  },
+  buttonLabel: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700'
+  },
+  panel: {
+    marginTop: 24,
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: '#0d2234',
+    gap: 10
+  },
+  stateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12
+  },
+  stateLabel: {
+    color: '#7ba6c4',
+    fontSize: 14,
+    textTransform: 'uppercase'
+  },
+  stateValue: {
+    color: '#f3f7fb',
+    fontSize: 14,
+    fontWeight: '600'
+  }
 });
+
+export default App;
