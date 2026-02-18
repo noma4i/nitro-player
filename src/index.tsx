@@ -38,4 +38,8 @@ export { VideoPlayer } from './core/VideoPlayer';
 
 // HLS Cache Proxy
 export { hlsCacheProxy } from './hls/hlsCacheProxy';
-export type { HlsCacheStats, Headers as HlsHeaders } from './hls/types';
+export type {
+  HlsCacheStats,
+  HlsStreamCacheStats,
+  Headers as HlsHeaders,
+} from './hls/types';

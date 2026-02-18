@@ -42,7 +42,13 @@ object HlsManifest {
         return Pair(initSeg, firstSeg)
     }
 
-    fun rewriteMaster(manifest: String, baseUrl: String, headers: Map<String, String>?, port: Int): String {
+    fun rewriteMaster(
+        manifest: String,
+        baseUrl: String,
+        headers: Map<String, String>?,
+        port: Int,
+        streamKey: String
+    ): String {
         val lines = manifest.split("\n")
         val output = mutableListOf<String>()
         var i = 0
@@ -53,7 +59,7 @@ object HlsManifest {
                 val next = lines[i + 1].trim()
                 if (!next.startsWith("#") && next.isNotEmpty()) {
                     val resolved = resolveUrl(baseUrl, next)
-                    output.add(proxyManifestUrl(resolved, headers, port))
+                    output.add(proxyManifestUrl(resolved, headers, port, streamKey))
                     i += 1
                 }
             }
@@ -62,7 +68,13 @@ object HlsManifest {
         return output.joinToString("\n")
     }
 
-    fun rewriteMedia(manifest: String, baseUrl: String, headers: Map<String, String>?, port: Int): String {
+    fun rewriteMedia(
+        manifest: String,
+        baseUrl: String,
+        headers: Map<String, String>?,
+        port: Int,
+        streamKey: String
+    ): String {
         val lines = manifest.split("\n")
         val output = mutableListOf<String>()
 
@@ -72,7 +84,7 @@ object HlsManifest {
                 val uri = extractUri(line)
                 if (uri != null) {
                     val resolved = resolveUrl(baseUrl, uri)
-                    val proxy = proxySegmentUrl(resolved, headers, port, null)
+                    val proxy = proxySegmentUrl(resolved, headers, port, streamKey, null)
                     output.add(raw.replace(uri, proxy))
                     continue
                 }
@@ -81,7 +93,7 @@ object HlsManifest {
                 val uri = extractUri(line)
                 if (uri != null) {
                     val resolved = resolveUrl(baseUrl, uri)
-                    val proxy = proxySegmentUrl(resolved, headers, port, null)
+                    val proxy = proxySegmentUrl(resolved, headers, port, streamKey, null)
                     output.add(raw.replace(uri, proxy))
                     continue
                 }
@@ -91,7 +103,7 @@ object HlsManifest {
                 continue
             }
             val resolved = resolveUrl(baseUrl, line)
-            val proxy = proxySegmentUrl(resolved, headers, port, null)
+            val proxy = proxySegmentUrl(resolved, headers, port, streamKey, null)
             output.add(proxy)
         }
         return output.joinToString("\n")
@@ -120,17 +132,25 @@ object HlsManifest {
         return regex.find(line)?.groups?.get(1)?.value
     }
 
-    private fun proxyManifestUrl(url: String, headers: Map<String, String>?, port: Int): String {
+    private fun proxyManifestUrl(url: String, headers: Map<String, String>?, port: Int, streamKey: String): String {
         val query = StringBuilder("url=").append(java.net.URLEncoder.encode(url, "UTF-8"))
         val encoded = HlsHeaderCodec.encode(headers)
         if (encoded != null) query.append("&headers=").append(java.net.URLEncoder.encode(encoded, "UTF-8"))
+        query.append("&streamKey=").append(java.net.URLEncoder.encode(streamKey, "UTF-8"))
         return "http://127.0.0.1:$port/hls/manifest.m3u8?$query"
     }
 
-    private fun proxySegmentUrl(url: String, headers: Map<String, String>?, port: Int, flags: Map<String, String>?): String {
+    private fun proxySegmentUrl(
+        url: String,
+        headers: Map<String, String>?,
+        port: Int,
+        streamKey: String,
+        flags: Map<String, String>?
+    ): String {
         val query = StringBuilder("url=").append(java.net.URLEncoder.encode(url, "UTF-8"))
         val encoded = HlsHeaderCodec.encode(headers)
         if (encoded != null) query.append("&headers=").append(java.net.URLEncoder.encode(encoded, "UTF-8"))
+        query.append("&streamKey=").append(java.net.URLEncoder.encode(streamKey, "UTF-8"))
         flags?.forEach { (k, v) -> query.append("&").append(k).append("=").append(v) }
         return "http://127.0.0.1:$port/hls/segment?$query"
     }

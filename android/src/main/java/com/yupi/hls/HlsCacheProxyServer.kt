@@ -27,7 +27,14 @@ class HlsCacheProxyServer(
         }
     }
 
-    fun prefetch(url: String, headers: Map<String, String>?, onComplete: () -> Unit, onError: (Throwable) -> Unit, visitedUrls: MutableSet<String> = mutableSetOf()) {
+    fun prefetch(
+        url: String,
+        headers: Map<String, String>?,
+        onComplete: () -> Unit,
+        onError: (Throwable) -> Unit,
+        visitedUrls: MutableSet<String> = mutableSetOf(),
+        streamKey: String = url
+    ) {
         executor.execute {
             try {
                 if (url in visitedUrls) { onComplete(); return@execute }
@@ -38,7 +45,7 @@ class HlsCacheProxyServer(
                     val variants = HlsManifest.extractVariants(manifest)
                     if (variants.isNotEmpty()) {
                         val resolved = HlsManifest.resolveUrl(url, variants[0])
-                        prefetch(resolved, headers, onComplete, onError, visitedUrls)
+                        prefetch(resolved, headers, onComplete, onError, visitedUrls, streamKey)
                         return@execute
                     }
                 }
@@ -47,14 +54,14 @@ class HlsCacheProxyServer(
                     val resolved = HlsManifest.resolveUrl(url, initSeg)
                     if (!cacheStore.has(resolved)) {
                         val data = fetchData(resolved, headers)
-                        cacheStore.put(resolved, data)
+                        cacheStore.put(resolved, data, streamKey)
                     }
                 }
                 if (firstSeg != null) {
                     val resolved = HlsManifest.resolveUrl(url, firstSeg)
                     if (!cacheStore.has(resolved)) {
                         val data = fetchData(resolved, headers)
-                        cacheStore.put(resolved, data)
+                        cacheStore.put(resolved, data, streamKey)
                     }
                 }
                 onComplete()
@@ -68,11 +75,12 @@ class HlsCacheProxyServer(
         val url = HlsHeaderCodec.decodeUrl(session.parameters["url"]?.firstOrNull())
             ?: return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "Missing url")
         val headers = HlsHeaderCodec.decode(session.parameters["headers"]?.firstOrNull())
+        val streamKey = HlsHeaderCodec.decodeUrl(session.parameters["streamKey"]?.firstOrNull()) ?: url
         val manifest = fetchText(url, headers)
         val rewritten = if (HlsManifest.isMaster(manifest)) {
-            HlsManifest.rewriteMaster(manifest, url, headers, port)
+            HlsManifest.rewriteMaster(manifest, url, headers, port, streamKey)
         } else {
-            HlsManifest.rewriteMedia(manifest, url, headers, port)
+            HlsManifest.rewriteMedia(manifest, url, headers, port, streamKey)
         }
         val data = rewritten.toByteArray(Charsets.UTF_8)
         return newFixedLengthResponse(Response.Status.OK, "application/vnd.apple.mpegurl", ByteArrayInputStream(data), data.size.toLong())
@@ -82,6 +90,7 @@ class HlsCacheProxyServer(
         val url = HlsHeaderCodec.decodeUrl(session.parameters["url"]?.firstOrNull())
             ?: return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "Missing url")
         val headers = HlsHeaderCodec.decode(session.parameters["headers"]?.firstOrNull())
+        val streamKey = HlsHeaderCodec.decodeUrl(session.parameters["streamKey"]?.firstOrNull())
         val contentType = HlsManifest.guessContentType(url)
 
         cacheStore.getFilePath(url)?.let { file ->
@@ -89,7 +98,7 @@ class HlsCacheProxyServer(
         }
 
         val data = fetchData(url, headers)
-        cacheStore.put(url, data)
+        cacheStore.put(url, data, streamKey)
         return fixedBinaryResponse(data, contentType)
     }
 

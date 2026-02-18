@@ -45,7 +45,7 @@ final class HlsCacheStore {
     return data
   }
 
-  func put(url: String, data: Data) {
+  func put(url: String, data: Data, streamKey: String?) {
     queue.async {
       self.ensureDir()
       let name = self.sha256(url) + ".seg"
@@ -56,6 +56,7 @@ final class HlsCacheStore {
           url: url,
           fileName: name,
           size: data.count,
+          streamKey: streamKey,
           createdAt: Date().timeIntervalSince1970,
           lastAccess: Date().timeIntervalSince1970
         )
@@ -108,6 +109,21 @@ final class HlsCacheStore {
         "totalSize": totalSize,
         "fileCount": index.count,
         "maxSize": maxBytes
+      ]
+    }
+  }
+
+  func getCacheStats(streamKey: String) -> [String: Any] {
+    queue.sync {
+      evictExpired()
+      let totalSize = index.values.reduce(0) { $0 + $1.size }
+      let streamEntries = index.values.filter { $0.streamKey == streamKey }
+      return [
+        "totalSize": totalSize,
+        "fileCount": index.count,
+        "maxSize": maxBytes,
+        "streamSize": streamEntries.reduce(0) { $0 + $1.size },
+        "streamFileCount": streamEntries.count
       ]
     }
   }
@@ -198,6 +214,7 @@ struct HlsCacheEntry: Codable {
   let url: String
   let fileName: String
   let size: Int
+  let streamKey: String?
   let createdAt: TimeInterval
   var lastAccess: TimeInterval
 }
