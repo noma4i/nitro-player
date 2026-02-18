@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { VideoPlayer } from '../VideoPlayer';
 import type { PlaybackState } from '../types/PlaybackState';
+import { VideoRuntimeError } from '../types/VideoError';
 
 type UsePlaybackStateOptions = {
   interpolate?: boolean;
@@ -34,12 +35,33 @@ const interpolatePlaybackState = (
   };
 };
 
+const getPlaybackStateSafe = (player: VideoPlayer | null | undefined) => {
+  if (!player) {
+    return null;
+  }
+
+  try {
+    return player.playbackState;
+  } catch (error) {
+    if (
+      error instanceof VideoRuntimeError &&
+      error.code === 'player/released'
+    ) {
+      return null;
+    }
+
+    throw error;
+  }
+};
+
 export const usePlaybackState = (
-  player: VideoPlayer,
+  player: VideoPlayer | null | undefined,
   options: UsePlaybackStateOptions = {}
 ) => {
   const { interpolate = true, fps = 30 } = options;
-  const [state, setState] = useState<PlaybackState>(() => player.playbackState);
+  const [state, setState] = useState<PlaybackState | null>(() =>
+    getPlaybackStateSafe(player)
+  );
   const latestStateRef = useRef(state);
 
   useEffect(() => {
@@ -47,7 +69,19 @@ export const usePlaybackState = (
   }, [state]);
 
   useEffect(() => {
-    setState(player.playbackState);
+    if (!player) {
+      latestStateRef.current = null;
+      setState(null);
+      return;
+    }
+
+    const initialState = getPlaybackStateSafe(player);
+    latestStateRef.current = initialState;
+    setState(initialState);
+
+    if (initialState === null) {
+      return;
+    }
 
     const subscription = player.addEventListener('onPlaybackState', (next) => {
       latestStateRef.current = next;
@@ -60,7 +94,7 @@ export const usePlaybackState = (
   }, [player]);
 
   useEffect(() => {
-    if (!interpolate) {
+    if (!interpolate || !player) {
       return;
     }
 
@@ -70,10 +104,10 @@ export const usePlaybackState = (
 
     const tick = () => {
       const latest = latestStateRef.current;
-      if (shouldInterpolate(latest)) {
+      if (latest && shouldInterpolate(latest)) {
         setState(interpolatePlaybackState(latest, nowMs()));
       } else {
-        setState(latest);
+        setState(latest ?? null);
       }
 
       timeoutId = setTimeout(() => {

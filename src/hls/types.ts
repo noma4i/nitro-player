@@ -4,6 +4,11 @@ export interface HlsCacheStats {
   maxSize: number;
 }
 
+export interface HlsStreamCacheStats extends HlsCacheStats {
+  streamSize: number;
+  streamFileCount: number;
+}
+
 export type Headers = Record<string, string>;
 
 export interface HlsCacheProxyNative {
@@ -12,5 +17,6 @@ export interface HlsCacheProxyNative {
   getProxiedUrl: (url: string, headers?: Headers) => string;
   prefetchFirstSegment: (url: string, headers?: Headers) => Promise<void>;
   getCacheStats: () => Promise<HlsCacheStats>;
+  getStreamCacheStats: (url: string) => Promise<HlsStreamCacheStats>;
   clearCache: () => Promise<boolean>;
 }

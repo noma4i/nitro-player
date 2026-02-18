@@ -42,15 +42,19 @@ final class HlsProxyServerController: NSObject {
       return nil
     }
 
-    return manifestRewriter.manifestProxyUrl(url: url, headers: headers, port: port)
+    return manifestRewriter.manifestProxyUrl(url: url, headers: headers, port: port, streamKey: url)
   }
 
   func prefetchFirstSegment(url: String, headers: [String: String]?) async throws {
+    try await prefetchFirstSegment(url: url, headers: headers, streamKey: url)
+  }
+
+  private func prefetchFirstSegment(url: String, headers: [String: String]?, streamKey: String) async throws {
     let manifest = try await networkClient.fetchText(url: url, headers: headers)
     if manifestRewriter.isMasterPlaylist(manifest) {
       if let firstVariant = manifestRewriter.extractVariantUrls(manifest).first {
         let resolved = manifestRewriter.resolveUrl(base: url, relative: firstVariant)
-        try await prefetchFirstSegment(url: resolved, headers: headers)
+        try await prefetchFirstSegment(url: resolved, headers: headers, streamKey: streamKey)
       }
       return
     }
@@ -60,7 +64,7 @@ final class HlsProxyServerController: NSObject {
       let resolved = manifestRewriter.resolveUrl(base: url, relative: initSegment)
       if !cache.has(url: resolved) {
         let data = try await networkClient.fetchData(url: resolved, headers: headers)
-        cache.put(url: resolved, data: data)
+        cache.put(url: resolved, data: data, streamKey: streamKey)
       }
     }
 
@@ -68,13 +72,17 @@ final class HlsProxyServerController: NSObject {
       let resolved = manifestRewriter.resolveUrl(base: url, relative: firstSegment)
       if !cache.has(url: resolved) {
         let data = try await networkClient.fetchData(url: resolved, headers: headers)
-        cache.put(url: resolved, data: data)
+        cache.put(url: resolved, data: data, streamKey: streamKey)
       }
     }
   }
 
   func getCacheStats() -> [String: Any] {
     cache.getCacheStats()
+  }
+
+  func getCacheStats(streamKey: String) -> [String: Any] {
+    cache.getCacheStats(streamKey: streamKey)
   }
 
   func clearCache() {
@@ -217,6 +225,7 @@ final class HlsProxyServerController: NSObject {
       return
     }
 
+    let streamKey = request.query?["streamKey"] ?? url
     let headers = manifestRewriter.decodeHeaders(request.query?["headers"])
 
     Task.detached { [weak self] in
@@ -231,7 +240,8 @@ final class HlsProxyServerController: NSObject {
           manifest: manifest,
           baseUrl: url,
           headers: headers,
-          port: self.port
+          port: self.port,
+          streamKey: streamKey
         )
         let response = GCDWebServerDataResponse(
           data: rewritten.data(using: .utf8) ?? Data(),
@@ -250,6 +260,7 @@ final class HlsProxyServerController: NSObject {
       return
     }
 
+    let streamKey = request.query?["streamKey"]
     let headers = manifestRewriter.decodeHeaders(request.query?["headers"])
 
     Task.detached { [weak self] in
@@ -267,7 +278,7 @@ final class HlsProxyServerController: NSObject {
 
       do {
         let data = try await self.networkClient.fetchData(url: url, headers: headers)
-        self.cache.put(url: url, data: data)
+        self.cache.put(url: url, data: data, streamKey: streamKey)
         completion(
           GCDWebServerDataResponse(
             data: data,

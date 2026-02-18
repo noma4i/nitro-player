@@ -64,12 +64,12 @@ class HlsCacheStore(context: Context) {
         return file.readBytes()
     }
 
-    fun put(url: String, data: ByteArray) {
+    fun put(url: String, data: ByteArray, streamKey: String?) {
         if (!cacheDir.exists()) cacheDir.mkdirs()
         val name = sha256(url) + ".seg"
         val file = File(cacheDir, name)
         file.writeBytes(data)
-        index[url] = HlsCacheEntry(url, name, data.size.toLong(), System.currentTimeMillis(), System.currentTimeMillis())
+        index[url] = HlsCacheEntry(url, name, data.size.toLong(), streamKey, System.currentTimeMillis(), System.currentTimeMillis())
         evictIfNeeded()
         scheduleSave()
     }
@@ -80,6 +80,18 @@ class HlsCacheStore(context: Context) {
             "totalSize" to index.values.sumOf { it.size },
             "fileCount" to index.size,
             "maxSize" to maxBytes
+        )
+    }
+
+    fun getStreamCacheStats(streamKey: String): Map<String, Any> {
+        evictExpired()
+        val streamEntries = index.values.filter { it.streamKey == streamKey }
+        return mapOf(
+            "totalSize" to index.values.sumOf { it.size },
+            "fileCount" to index.size,
+            "maxSize" to maxBytes,
+            "streamSize" to streamEntries.sumOf { it.size },
+            "streamFileCount" to streamEntries.size
         )
     }
 
@@ -132,6 +144,7 @@ class HlsCacheStore(context: Context) {
                 url = key,
                 fileName = obj.getString("fileName"),
                 size = obj.getLong("size"),
+                streamKey = if (obj.has("streamKey") && !obj.isNull("streamKey")) obj.getString("streamKey") else null,
                 createdAt = obj.getLong("createdAt"),
                 lastAccess = obj.getLong("lastAccess")
             )
@@ -153,6 +166,7 @@ class HlsCacheStore(context: Context) {
             val obj = JSONObject()
             obj.put("fileName", entry.fileName)
             obj.put("size", entry.size)
+            obj.put("streamKey", entry.streamKey)
             obj.put("createdAt", entry.createdAt)
             obj.put("lastAccess", entry.lastAccess)
             json.put(url, obj)
@@ -170,6 +184,7 @@ data class HlsCacheEntry(
     val url: String,
     val fileName: String,
     val size: Long,
+    val streamKey: String?,
     val createdAt: Long,
     var lastAccess: Long
 )

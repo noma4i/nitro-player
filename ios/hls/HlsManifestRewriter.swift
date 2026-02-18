@@ -1,19 +1,23 @@
 import Foundation
 
 final class HlsManifestRewriter {
-  func manifestProxyUrl(url: String, headers: [String: String]?, port: Int) -> String? {
-    buildProxyUrl(path: "/hls/manifest", url: url, headers: headers, port: port, flags: nil)
+  func manifestProxyUrl(url: String, headers: [String: String]?, port: Int, streamKey: String?) -> String? {
+    buildProxyUrl(path: "/hls/manifest", url: url, headers: headers, port: port, flags: streamKey.map { ["streamKey": $0] })
   }
 
-  func segmentProxyUrl(url: String, headers: [String: String]?, port: Int, flags: [String: String]?) -> String? {
-    buildProxyUrl(path: "/hls/segment", url: url, headers: headers, port: port, flags: flags)
-  }
-
-  func rewriteManifest(manifest: String, baseUrl: String, headers: [String: String]?, port: Int) -> String {
-    if isMasterPlaylist(manifest) {
-      return rewriteMaster(manifest: manifest, baseUrl: baseUrl, headers: headers, port: port)
+  func segmentProxyUrl(url: String, headers: [String: String]?, port: Int, streamKey: String?, flags: [String: String]?) -> String? {
+    var mergedFlags = flags ?? [:]
+    if let streamKey {
+      mergedFlags["streamKey"] = streamKey
     }
-    return rewriteMedia(manifest: manifest, baseUrl: baseUrl, headers: headers, port: port)
+    return buildProxyUrl(path: "/hls/segment", url: url, headers: headers, port: port, flags: mergedFlags)
+  }
+
+  func rewriteManifest(manifest: String, baseUrl: String, headers: [String: String]?, port: Int, streamKey: String?) -> String {
+    if isMasterPlaylist(manifest) {
+      return rewriteMaster(manifest: manifest, baseUrl: baseUrl, headers: headers, port: port, streamKey: streamKey)
+    }
+    return rewriteMedia(manifest: manifest, baseUrl: baseUrl, headers: headers, port: port, streamKey: streamKey)
   }
 
   func guessContentType(url: String) -> String {
@@ -81,7 +85,7 @@ final class HlsManifestRewriter {
     return map
   }
 
-  private func rewriteMaster(manifest: String, baseUrl: String, headers: [String: String]?, port: Int) -> String {
+  private func rewriteMaster(manifest: String, baseUrl: String, headers: [String: String]?, port: Int, streamKey: String?) -> String {
     var output: [String] = []
     let lines = manifest.split(separator: "\n", omittingEmptySubsequences: false)
     var index = 0
@@ -92,7 +96,7 @@ final class HlsManifestRewriter {
         let next = String(lines[index + 1])
         if !next.hasPrefix("#") && !next.isEmpty {
           let resolved = resolveUrl(base: baseUrl, relative: next)
-          output.append(manifestProxyUrl(url: resolved, headers: headers, port: port) ?? resolved)
+          output.append(manifestProxyUrl(url: resolved, headers: headers, port: port, streamKey: streamKey ?? baseUrl) ?? resolved)
           index += 1
         }
       }
@@ -101,7 +105,8 @@ final class HlsManifestRewriter {
     return output.joined(separator: "\n")
   }
 
-  private func rewriteMedia(manifest: String, baseUrl: String, headers: [String: String]?, port: Int) -> String {
+  private func rewriteMedia(manifest: String, baseUrl: String, headers: [String: String]?, port: Int, streamKey: String?) -> String {
+    let resolvedStreamKey = streamKey ?? baseUrl
     var output: [String] = []
     let lines = manifest.split(separator: "\n", omittingEmptySubsequences: false)
 
@@ -109,13 +114,13 @@ final class HlsManifestRewriter {
       let line = String(raw)
       if line.hasPrefix("#EXT-X-MAP"), let uri = extractUri(from: line) {
         let resolved = resolveUrl(base: baseUrl, relative: uri)
-        let proxy = segmentProxyUrl(url: resolved, headers: headers, port: port, flags: nil) ?? resolved
+        let proxy = segmentProxyUrl(url: resolved, headers: headers, port: port, streamKey: resolvedStreamKey, flags: nil) ?? resolved
         output.append(line.replacingOccurrences(of: uri, with: proxy))
         continue
       }
       if line.hasPrefix("#EXT-X-KEY"), let uri = extractUri(from: line) {
         let resolved = resolveUrl(base: baseUrl, relative: uri)
-        let proxy = segmentProxyUrl(url: resolved, headers: headers, port: port, flags: nil) ?? resolved
+        let proxy = segmentProxyUrl(url: resolved, headers: headers, port: port, streamKey: resolvedStreamKey, flags: nil) ?? resolved
         output.append(line.replacingOccurrences(of: uri, with: proxy))
         continue
       }
@@ -124,7 +129,7 @@ final class HlsManifestRewriter {
         continue
       }
       let resolved = resolveUrl(base: baseUrl, relative: line)
-      output.append(segmentProxyUrl(url: resolved, headers: headers, port: port, flags: nil) ?? resolved)
+      output.append(segmentProxyUrl(url: resolved, headers: headers, port: port, streamKey: resolvedStreamKey, flags: nil) ?? resolved)
     }
 
     return output.joined(separator: "\n")

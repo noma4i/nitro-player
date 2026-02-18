@@ -1,10 +1,21 @@
 import { NativeModules } from 'react-native';
-import type { Headers, HlsCacheProxyNative, HlsCacheStats } from './types';
+import type {
+  Headers,
+  HlsCacheProxyNative,
+  HlsCacheStats,
+  HlsStreamCacheStats,
+} from './types';
 
 const DEFAULT_CACHE_STATS: HlsCacheStats = {
   totalSize: 0,
   fileCount: 0,
   maxSize: 5_368_709_120
+};
+
+const DEFAULT_STREAM_CACHE_STATS: HlsStreamCacheStats = {
+  ...DEFAULT_CACHE_STATS,
+  streamSize: 0,
+  streamFileCount: 0,
 };
 
 const NativeProxy = NativeModules?.HlsCacheProxy as HlsCacheProxyNative | undefined;
@@ -57,6 +68,17 @@ class HlsCacheProxy {
       return await NativeProxy.getCacheStats();
     } catch {
       return DEFAULT_CACHE_STATS;
+    }
+  }
+
+  async getStreamCacheStats(url: string): Promise<HlsStreamCacheStats> {
+    if (!NativeProxy?.getStreamCacheStats) {
+      return DEFAULT_STREAM_CACHE_STATS;
+    }
+    try {
+      return await NativeProxy.getStreamCacheStats(url);
+    } catch {
+      return DEFAULT_STREAM_CACHE_STATS;
     }
   }
 

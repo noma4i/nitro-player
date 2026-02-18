@@ -1,12 +1,62 @@
-import React, { useEffect, useRef } from 'react';
-import { Pressable, SafeAreaView, StatusBar, StyleSheet, Text, View } from 'react-native';
-import { VideoView, hlsCacheProxy, usePlaybackState, type VideoViewRef } from '@noma4i/just-player';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import {
+  VideoView,
+  hlsCacheProxy,
+  usePlaybackState,
+  type HlsStreamCacheStats,
+  type onLoadData,
+  type onLoadStartData,
+  type VideoRuntimeError,
+  type VideoViewRef
+} from '@noma4i/just-player';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
-const SOURCE_URI = 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.mpd/.m3u8';
+const SOURCES = {
+  hls: {
+    label: 'HLS',
+    source: {
+      uri: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+      useHlsProxy: true,
+      initializeOnCreation: true,
+      memoryConfig: { profile: 'feed' as const }
+    }
+  },
+  mp4: {
+    label: 'MP4',
+    source: {
+      uri: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+      useHlsProxy: false,
+      initializeOnCreation: true,
+      memoryConfig: { profile: 'feed' as const }
+    }
+  }
+} as const;
 
 function App() {
+  const emptyStreamCacheStats = useMemo<HlsStreamCacheStats>(() => ({
+    totalSize: 0,
+    fileCount: 0,
+    maxSize: 5_368_709_120,
+    streamSize: 0,
+    streamFileCount: 0
+  }), []);
   const videoRef = useRef<VideoViewRef>(null);
-  const playbackState = usePlaybackState(videoRef.current?.player ?? null);
+  const [player, setPlayer] = useState<VideoViewRef['player'] | null>(null);
+  const [selectedSourceKey, setSelectedSourceKey] = useState<keyof typeof SOURCES>('hls');
+  const [lastError, setLastError] = useState<string | null>(null);
+  const [lastLoadStart, setLastLoadStart] = useState<string>('none');
+  const [lastLoad, setLastLoad] = useState<string>('none');
+  const [streamCacheStats, setStreamCacheStats] = useState<HlsStreamCacheStats>(emptyStreamCacheStats);
+  const playbackState = usePlaybackState(player);
+  const selectedSource = useMemo(
+    () => SOURCES[selectedSourceKey],
+    [selectedSourceKey]
+  );
+  const handleVideoRef = useCallback((instance: VideoViewRef | null) => {
+    videoRef.current = instance;
+    setPlayer(instance?.player ?? null);
+  }, []);
 
   useEffect(() => {
     hlsCacheProxy.start();
@@ -15,81 +65,200 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    setLastError(null);
+    setPlayer(null);
+  }, [selectedSourceKey]);
+
+  useEffect(() => {
+    console.log('[Example] playbackState', selectedSourceKey, playbackState);
+  }, [playbackState, selectedSourceKey]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    if (selectedSourceKey !== 'hls') {
+      setStreamCacheStats(emptyStreamCacheStats);
+      return;
+    }
+
+    const streamUrl = selectedSource.source.uri;
+
+    const refresh = async () => {
+      const nextStats = await hlsCacheProxy.getStreamCacheStats(streamUrl);
+      if (!isCancelled) {
+        setStreamCacheStats(nextStats);
+      }
+    };
+
+    refresh().catch(() => {});
+    const intervalId = setInterval(() => {
+      refresh().catch(() => {});
+    }, 1000);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [emptyStreamCacheStats, selectedSource.source.uri, selectedSourceKey]);
+
+  const handleLoadStart = (event: onLoadStartData) => {
+    const value = `${event.sourceType}:${event.source.url}`;
+    console.log('[Example] onLoadStart', value);
+    setLastLoadStart(value);
+  };
+
+  const handleLoad = (event: onLoadData) => {
+    const value = `${event.width}x${event.height} duration=${event.duration}`;
+    console.log('[Example] onLoad', value);
+    setLastLoad(value);
+  };
+
+  const handleError = (error: VideoRuntimeError) => {
+    const value = `${error.code}: ${error.message}`;
+    console.log('[Example] onError', value, error.cause);
+    setLastError(value);
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" />
-      <View style={styles.container}>
-        <Text style={styles.eyebrow}>JustPlayer Example</Text>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" />
+        <View style={styles.container}>
+          <Text style={styles.eyebrow}>JustPlayer Example</Text>
+          <Text style={styles.subtitle}>Switch between working HLS and MP4 demo sources</Text>
 
-        <VideoView
-          ref={videoRef}
-          source={{
-            uri: SOURCE_URI,
-            useHlsProxy: true,
-            initializeOnCreation: true,
-            memoryConfig: { profile: 'feed' }
-          }}
-          resizeMode="contain"
-          controls={false}
-          keepScreenAwake
-          style={styles.video}
-        />
+          <View style={styles.row}>
+            {Object.entries(SOURCES).map(([key, value]) => {
+              const isActive = key === selectedSourceKey;
 
-        <View style={styles.row}>
-          <ActionButton
-            label="Play"
-            onPress={() => {
-              videoRef.current?.player.play();
+              return (
+                <SourceButton
+                  key={key}
+                  label={value.label}
+                  active={isActive}
+                  onPress={() => {
+                    setSelectedSourceKey(key as keyof typeof SOURCES);
+                  }}
+                />
+              );
+            })}
+          </View>
+
+          <VideoView
+            key={selectedSourceKey}
+            ref={handleVideoRef}
+            source={selectedSource.source}
+            setup={(nextPlayer) => {
+              nextPlayer.play();
             }}
+            onLoadStart={handleLoadStart}
+            onLoad={handleLoad}
+            onError={handleError}
+            resizeMode="contain"
+            controls={false}
+            keepScreenAwake
+            style={styles.video}
           />
-          <ActionButton
-            label="Pause"
-            onPress={() => {
-              videoRef.current?.player.pause();
-            }}
-          />
+
+          <View style={styles.row}>
+            <ActionButton
+              label="Play"
+              onPress={() => {
+                videoRef.current?.player.play();
+              }}
+            />
+            <ActionButton
+              label="Pause"
+              onPress={() => {
+                videoRef.current?.player.pause();
+              }}
+            />
+          </View>
+
+          <View style={styles.row}>
+            <ActionButton
+              label="Seek 10s"
+              onPress={() => {
+                videoRef.current?.player.seekTo(10);
+              }}
+            />
+            <ActionButton
+              label="Replay"
+              onPress={() => {
+                const currentPlayer = videoRef.current?.player;
+                if (!currentPlayer) {
+                  return;
+                }
+                currentPlayer.seekTo(0);
+                currentPlayer.play();
+              }}
+            />
+          </View>
+
+          <View style={styles.panel}>
+            <StateRow
+              label="source"
+              value={selectedSource.label}
+            />
+            <StateRow
+              label="status"
+              value={playbackState?.status ?? 'idle'}
+            />
+            <StateRow
+              label="time"
+              value={formatSeconds(playbackState?.currentTime ?? 0)}
+            />
+            <StateRow
+              label="duration"
+              value={formatSeconds(playbackState?.duration ?? 0)}
+            />
+            <StateRow
+              label="buffered"
+              value={formatSeconds(playbackState?.bufferedPosition ?? 0)}
+            />
+            <StateRow
+              label="cache"
+              value={selectedSourceKey === 'hls' ? formatBytes(streamCacheStats.streamSize) : 'n/a'}
+            />
+            <StateRow
+              label="cacheFiles"
+              value={selectedSourceKey === 'hls' ? String(streamCacheStats.streamFileCount) : 'n/a'}
+            />
+            <StateRow
+              label="loadStart"
+              value={truncate(lastLoadStart)}
+            />
+            <StateRow
+              label="onLoad"
+              value={truncate(lastLoad)}
+            />
+            <StateRow
+              label="error"
+              value={truncate(lastError ?? 'none')}
+            />
+          </View>
         </View>
+      </SafeAreaView>
+    </SafeAreaProvider>
+  );
+}
 
-        <View style={styles.row}>
-          <ActionButton
-            label="Seek 10s"
-            onPress={() => {
-              videoRef.current?.player.seekTo(10);
-            }}
-          />
-          <ActionButton
-            label="Replay"
-            onPress={() => {
-              const player = videoRef.current?.player;
-              if (!player) {
-                return;
-              }
-              player.seekTo(0);
-              player.play();
-            }}
-          />
-        </View>
-
-        <View style={styles.panel}>
-          <StateRow
-            label="status"
-            value={playbackState?.status ?? 'idle'}
-          />
-          <StateRow
-            label="time"
-            value={formatSeconds(playbackState?.currentTime ?? 0)}
-          />
-          <StateRow
-            label="duration"
-            value={formatSeconds(playbackState?.duration ?? 0)}
-          />
-          <StateRow
-            label="buffered"
-            value={formatSeconds(playbackState?.bufferedPosition ?? 0)}
-          />
-        </View>
-      </View>
-    </SafeAreaView>
+function SourceButton({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.button, styles.sourceButton, active && styles.sourceButtonActive]}>
+      <Text style={styles.buttonLabel}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -127,6 +296,32 @@ function formatSeconds(value: number) {
   return `${minutes}:${seconds}`;
 }
 
+function truncate(value: string, max = 48) {
+  if (value.length <= max) {
+    return value;
+  }
+
+  return `${value.slice(0, max - 1)}…`;
+}
+
+function formatBytes(value: number) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return '0 B';
+  }
+
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let size = value;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+
+  const fractionDigits = unitIndex === 0 ? 0 : 1;
+  return `${size.toFixed(fractionDigits)} ${units[unitIndex]}`;
+}
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -145,12 +340,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1.2
   },
-  title: {
+  subtitle: {
     marginTop: 8,
-    marginBottom: 20,
-    color: '#f3f7fb',
-    fontSize: 28,
-    fontWeight: '700'
+    color: '#cde7f8',
+    fontSize: 15,
+    lineHeight: 21
   },
   video: {
     width: '100%',
@@ -170,6 +364,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 48,
     borderRadius: 14,
+    backgroundColor: '#0f8bd7'
+  },
+  sourceButton: {
+    backgroundColor: '#10324b'
+  },
+  sourceButtonActive: {
     backgroundColor: '#0f8bd7'
   },
   buttonLabel: {
