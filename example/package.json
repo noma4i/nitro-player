@@ -7,17 +7,18 @@
     "android:build": "cd android && ./gradlew assembleDebug",
     "ios": "react-native run-ios",
     "ios:build": "xcodebuild -workspace ios/JustPlayerExample.xcworkspace -scheme JustPlayerExample -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.5' build",
-    "ios:device": "react-native run-ios --device",
+    "ios:device": "sh ./scripts/ios-device.sh",
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest"
   },
   "dependencies": {
-    "@noma4i/just-player": "file:..",
+    "@noma4i/just-player": "file:vendor/noma4i-just-player-0.1.5.tgz",
+    "@react-native/new-app-screen": "0.83.4",
+    "@react-native/virtualized-lists": "0.83.4",
     "react": "19.2.0",
     "react-native": "0.83.4",
     "react-native-nitro-modules": "^0.35.2",
-    "@react-native/new-app-screen": "0.83.4",
     "react-native-safe-area-context": "^5.5.2"
   },
   "devDependencies": {

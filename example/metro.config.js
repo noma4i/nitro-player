@@ -1,23 +1,19 @@
 const path = require('path');
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
 
-/**
- * Metro configuration
- * https://reactnative.dev/docs/metro
- *
- * @type {import('@react-native/metro-config').MetroConfig}
- */
 const projectRoot = __dirname;
-const libraryRoot = path.resolve(projectRoot, '..');
+const rootNodeModules = path.resolve(projectRoot, 'node_modules');
 
 const config = {
-  watchFolders: [libraryRoot],
   resolver: {
-    nodeModulesPaths: [
-      path.resolve(projectRoot, 'node_modules'),
-      path.resolve(libraryRoot, 'node_modules'),
-    ],
+    extraNodeModules: {
+      react: path.join(rootNodeModules, 'react'),
+      'react-native': path.join(rootNodeModules, 'react-native'),
+      'react-native-nitro-modules': path.join(rootNodeModules, 'react-native-nitro-modules'),
+    },
+    nodeModulesPaths: [rootNodeModules],
+    disableHierarchicalLookup: true,
   },
 };
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+module.exports = mergeConfig(getDefaultConfig(projectRoot), config);

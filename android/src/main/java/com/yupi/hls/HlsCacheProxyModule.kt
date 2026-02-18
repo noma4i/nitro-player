@@ -75,6 +75,19 @@ class HlsCacheProxyModule(private val reactContext: ReactApplicationContext)
     }
 
     @ReactMethod
+    fun getStreamCacheStats(url: String, promise: Promise) {
+        val stats = server?.cacheStore?.getStreamCacheStats(url)
+        val result = Arguments.createMap().apply {
+            putDouble("totalSize", (stats?.get("totalSize") as? Long)?.toDouble() ?: 0.0)
+            putInt("fileCount", (stats?.get("fileCount") as? Int) ?: 0)
+            putDouble("maxSize", (stats?.get("maxSize") as? Long)?.toDouble() ?: 5368709120.0)
+            putDouble("streamSize", (stats?.get("streamSize") as? Long)?.toDouble() ?: 0.0)
+            putInt("streamFileCount", (stats?.get("streamFileCount") as? Int) ?: 0)
+        }
+        promise.resolve(result)
+    }
+
+    @ReactMethod
     fun clearCache(promise: Promise) {
         server?.cacheStore?.clearAll()
         promise.resolve(true)

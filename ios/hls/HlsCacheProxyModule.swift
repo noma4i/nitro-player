@@ -51,6 +51,11 @@ class HlsCacheProxy: NSObject, RCTBridgeModule {
   }
 
   @objc
+  func getStreamCacheStats(_ url: String, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+    resolver(controller.getCacheStats(streamKey: url))
+  }
+
+  @objc
   func clearCache(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
     controller.clearCache()
     resolver(true)
