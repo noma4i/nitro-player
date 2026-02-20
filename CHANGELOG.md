@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.6
+
+- added live per-stream HLS cache telemetry to the public `hlsCacheProxy` API on iOS and Android
+- fixed the in-repo `example/` app to use a packaged tarball dependency, a single-React Metro setup, and verified HLS/MP4 smoke sources
+- exposed realtime HLS cache stats in the `example/` UI for consumer-device validation
+
 ## 0.1.5
 
 - added an in-repo `example/` React Native consumer app for local library verification

@@ -13,7 +13,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@noma4i/just-player": "file:vendor/noma4i-just-player-0.1.5.tgz",
+    "@noma4i/just-player": "file:vendor/noma4i-just-player-0.1.6.tgz",
     "@react-native/new-app-screen": "0.83.4",
     "@react-native/virtualized-lists": "0.83.4",
     "react": "19.2.0",
