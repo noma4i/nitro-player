@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7
+
+- moved HLS proxy startup fully inside the library with lazy native autostart and native self-heal across resume/restart cycles
+- removed manual proxy bootstrap from the in-repo `example/` app so consumer apps no longer need app-level `hlsCacheProxy.start()` for normal playback
+- added a canonical `npm run release:notes -- <version>` workflow and corrected release-note publishing so GitHub Releases only include the current version section
+
 ## 0.1.6
 
 - added live per-stream HLS cache telemetry to the public `hlsCacheProxy` API on iOS and Android

@@ -15,30 +15,36 @@ class HlsCacheProxyModule(private val reactContext: ReactApplicationContext)
     private var server: HlsCacheProxyServer? = null
     private var port: Int = 18181
     private var shouldBeRunning: Boolean = false
+    private var wasExplicitlyStopped: Boolean = false
 
     init {
         reactContext.addLifecycleEventListener(this)
+        shouldBeRunning = true
+        ensureServerRunning()
     }
 
     override fun getName(): String = "HlsCacheProxy"
 
     @ReactMethod
     fun start(port: Int) {
-        if (server != null) return
-        this.port = if (port > 0) port else 18181
+        val nextPort = if (port > 0) port else 18181
+        val shouldRestartForPort = server?.isAlive == true && this.port != nextPort
         shouldBeRunning = true
-        startServer()
+        wasExplicitlyStopped = false
+        this.port = nextPort
+        ensureServerRunning(forceRestart = shouldRestartForPort || server?.isAlive != true)
     }
 
     @ReactMethod
     fun stop() {
         shouldBeRunning = false
-        server?.stop()
-        server = null
+        wasExplicitlyStopped = true
+        stopServer()
     }
 
     @ReactMethod(isBlockingSynchronousMethod = true)
     fun getProxiedUrl(url: String, headers: ReadableMap?): String {
+        ensureServerRunning()
         if (server == null) return url
         val encodedUrl = URLEncoder.encode(url, "UTF-8")
         val encodedHeaders = HlsHeaderCodec.encode(headers)
@@ -51,6 +57,7 @@ class HlsCacheProxyModule(private val reactContext: ReactApplicationContext)
 
     @ReactMethod
     fun prefetchFirstSegment(url: String, headers: ReadableMap?, promise: Promise) {
+        ensureServerRunning()
         if (server == null) {
             promise.resolve(true)
             return
@@ -65,6 +72,7 @@ class HlsCacheProxyModule(private val reactContext: ReactApplicationContext)
 
     @ReactMethod
     fun getCacheStats(promise: Promise) {
+        ensureServerRunning()
         val stats = server?.cacheStore?.getCacheStats()
         val result = Arguments.createMap().apply {
             putDouble("totalSize", (stats?.get("totalSize") as? Long)?.toDouble() ?: 0.0)
@@ -76,6 +84,7 @@ class HlsCacheProxyModule(private val reactContext: ReactApplicationContext)
 
     @ReactMethod
     fun getStreamCacheStats(url: String, promise: Promise) {
+        ensureServerRunning()
         val stats = server?.cacheStore?.getStreamCacheStats(url)
         val result = Arguments.createMap().apply {
             putDouble("totalSize", (stats?.get("totalSize") as? Long)?.toDouble() ?: 0.0)
@@ -89,17 +98,14 @@ class HlsCacheProxyModule(private val reactContext: ReactApplicationContext)
 
     @ReactMethod
     fun clearCache(promise: Promise) {
+        ensureServerRunning()
         server?.cacheStore?.clearAll()
         promise.resolve(true)
     }
 
     // LifecycleEventListener — self-heal on foreground return
     override fun onHostResume() {
-        if (shouldBeRunning && (server == null || server?.isAlive != true)) {
-            server?.stop()
-            server = null
-            startServer()
-        }
+        ensureServerRunning(forceRestart = server?.isAlive != true)
     }
 
     override fun onHostPause() {
@@ -108,8 +114,26 @@ class HlsCacheProxyModule(private val reactContext: ReactApplicationContext)
 
     override fun onHostDestroy() {
         shouldBeRunning = false
-        server?.stop()
-        server = null
+        stopServer()
+    }
+
+    private fun ensureServerRunning(forceRestart: Boolean = false): Boolean {
+        if (!shouldBeRunning && !wasExplicitlyStopped) {
+            shouldBeRunning = true
+        }
+
+        if (!shouldBeRunning) {
+            return false
+        }
+
+        val isAlive = server?.isAlive == true
+        if (!forceRestart && isAlive) {
+            return true
+        }
+
+        stopServer()
+        startServer()
+        return server?.isAlive == true
     }
 
     private fun startServer() {
@@ -119,5 +143,10 @@ class HlsCacheProxyModule(private val reactContext: ReactApplicationContext)
         } catch (_: Exception) {
             server = null
         }
+    }
+
+    private fun stopServer() {
+        server?.stop()
+        server = null
     }
 }

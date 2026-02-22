@@ -59,13 +59,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    hlsCacheProxy.start();
-    return () => {
-      hlsCacheProxy.stop();
-    };
-  }, []);
-
-  useEffect(() => {
     setLastError(null);
     setPlayer(null);
   }, [selectedSourceKey]);
