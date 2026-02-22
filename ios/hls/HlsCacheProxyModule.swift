@@ -8,6 +8,13 @@ class HlsCacheProxy: NSObject, RCTBridgeModule {
 
   private let controller = HlsProxyServerController()
 
+  override init() {
+    super.init()
+    performOnMainThread {
+      self.controller.start(port: nil)
+    }
+  }
+
   @objc
   func start(_ port: NSNumber?) {
     performOnMainThread {

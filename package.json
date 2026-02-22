@@ -1,6 +1,6 @@
 {
   "name": "@noma4i/just-player",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Lightweight video player for React Native",
   "author": "noma4i",
   "license": "MIT",
@@ -47,6 +47,7 @@
     "codegen:nitro": "npm run nitrogen",
     "codegen": "npm run codegen:nitro",
     "build": "npm run codegen && bob build",
+    "release:notes": "node ./scripts/release-notes.mjs",
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand",
     "test:ts": "jest --runInBand",
