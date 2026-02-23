@@ -29,7 +29,7 @@ for (let index = startIndex + 1; index < lines.length; index += 1) {
   }
 }
 
-const sectionLines = lines.slice(startIndex, endIndex);
+const sectionLines = lines.slice(startIndex + 1, endIndex);
 const body = sectionLines.join('\n').trim();
 
 if (!body) {
