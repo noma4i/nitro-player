@@ -11,7 +11,7 @@ PODS:
   - hermes-engine (0.14.1):
     - hermes-engine/Pre-built (= 0.14.1)
   - hermes-engine/Pre-built (0.14.1)
-  - JustPlayer (0.1.5):
+  - JustPlayer (0.1.7):
     - boost
     - DoubleConversion
     - fast_float
@@ -2863,7 +2863,7 @@ SPEC CHECKSUMS:
   GCDWebServer: 2c156a56c8226e2d5c0c3f208a3621ccffbe3ce4
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: c299039cef32b85f1d6f3a5ec97a2f546d2dd049
-  JustPlayer: daddd947d684ee7dbdc98fb026598a9d12f5fd8f
+  JustPlayer: 5fd1a997fc69fad61d9535d2cb92a34db3cad27d
   NitroModules: 17f56ebb3581e74931c870a789834582ce75470c
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
   RCTDeprecation: 9da1d0cf93db23ca8b41e8efe9ae558fd9c0077f

@@ -349,6 +349,7 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
         player.prepare()
       }
 
+      VideoManager.touchFeedHotCandidate(this)
       player.play()
     }
   }
@@ -356,6 +357,7 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
   override fun pause() {
     runOnMainThread {
       player.pause()
+      VideoManager.touchFeedHotCandidate(this)
 
       if (!isAttachedToView()) {
         scheduleOffscreenTrim()
@@ -568,14 +570,51 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
 
   fun notifyViewAttached() {
     cancelPendingTrim()
+    VideoManager.touchFeedHotCandidate(this)
   }
 
   fun notifyViewDetached() {
+    VideoManager.touchFeedHotCandidate(this)
     if (isPlaying) {
       return
     }
 
     scheduleOffscreenTrim()
+  }
+
+  internal fun isFeedProfile(): Boolean {
+    return source.config.memoryConfig?.profile == MemoryProfile.FEED
+  }
+
+  internal fun shouldStayHotInFeedPool(): Boolean {
+    if (isReleased) {
+      return false
+    }
+
+    if (isPlaying) {
+      return true
+    }
+
+    val currentView = currentPlayerView?.get()
+    val isPinnedByPictureInPicture =
+      VideoManager.getCurrentPictureInPictureVideo()?.hybridPlayer === this
+
+    return currentView?.isAttachedToWindow == true || isPinnedByPictureInPicture
+  }
+
+  internal fun trimForFeedHotPool() {
+    runOnMainThread {
+      if (
+        isReleased ||
+        !isFeedProfile() ||
+        shouldStayHotInFeedPool() ||
+        currentRetentionState() != MemoryRetentionState.HOT
+      ) {
+        return@runOnMainThread
+      }
+
+      trimToMetadataRetention()
+    }
   }
 
   private fun scheduleOffscreenTrim() {

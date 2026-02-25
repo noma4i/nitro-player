@@ -77,6 +77,31 @@ describe('sourceFactory', () => {
     });
   });
 
+  it('uses hot buffered defaults for feed profile sources', () => {
+    const { createSourceFromVideoConfig } = require('../core/utils/sourceFactory');
+
+    createSourceFromVideoConfig(
+      {
+        uri: 'https://cdn.example.com/feed-item.mp4',
+        memoryConfig: {
+          profile: 'feed',
+        },
+      },
+      'feed'
+    );
+
+    expect(fromVideoConfig).toHaveBeenCalledWith({
+      uri: 'https://cdn.example.com/feed-item.mp4',
+      initializeOnCreation: true,
+      memoryConfig: {
+        profile: 'feed',
+        preloadLevel: 'buffered',
+        offscreenRetention: 'hot',
+        pauseTrimDelayMs: 3000,
+      },
+    });
+  });
+
   it('does not mutate the caller provided config object', () => {
     const { createSourceFromVideoConfig } = require('../core/utils/sourceFactory');
 
