@@ -11,9 +11,12 @@ import AVFoundation
 class VideoManager {
   // MARK: - Singleton
   static let shared = VideoManager()
+  private let maxHotFeedPlayers = 2
   
   private var players = NSHashTable<HybridVideoPlayer>.weakObjects()
   private var videoView = NSHashTable<VideoComponentView>.weakObjects()
+  private var feedHotActivity: [ObjectIdentifier: UInt64] = [:]
+  private var feedHotSequence: UInt64 = 0
   
   private var isAudioSessionActive = false
   private var remoteControlEventsActive = false
@@ -75,22 +78,40 @@ class VideoManager {
   
   func register(player: HybridVideoPlayer) {
     players.add(player)
+    touchFeedHotCandidate(player)
   }
   
   func unregister(player: HybridVideoPlayer) {
     players.remove(player)
+    feedHotActivity.removeValue(forKey: ObjectIdentifier(player))
+    rebalanceFeedHotPlayers()
   }
   
   func register(view: VideoComponentView) {
     videoView.add(view)
+    if let player = view.player as? HybridVideoPlayer {
+      touchFeedHotCandidate(player)
+    }
   }
   
   func unregister(view: VideoComponentView) {
     videoView.remove(view)
+    rebalanceFeedHotPlayers()
   }
   
   func requestAudioSessionUpdate() {
     updateAudioSessionConfiguration()
+  }
+
+  func touchFeedHotCandidate(_ player: HybridVideoPlayer) {
+    if player.isFeedProfile() {
+      feedHotSequence += 1
+      feedHotActivity[ObjectIdentifier(player)] = feedHotSequence
+    } else {
+      feedHotActivity.removeValue(forKey: ObjectIdentifier(player))
+    }
+
+    rebalanceFeedHotPlayers()
   }
   
   // MARK: - Remote Control Events
@@ -403,6 +424,39 @@ class VideoManager {
     // Reset auto-pause flag; play is managed by JS layer (mediaCoordinator)
     for player in players.allObjects {
       player.wasAutoPaused = false
+    }
+  }
+
+  private func rebalanceFeedHotPlayers() {
+    let feedPlayers = players.allObjects.filter { $0.isFeedProfile() }
+    if feedPlayers.isEmpty {
+      feedHotActivity.removeAll()
+      return
+    }
+
+    let feedPlayerIds = Set(feedPlayers.map(ObjectIdentifier.init))
+    feedHotActivity = feedHotActivity.filter { feedPlayerIds.contains($0.key) }
+
+    let pinnedPlayers = feedPlayers.filter { $0.shouldStayHotInFeedPool() }
+      .sorted {
+        (feedHotActivity[ObjectIdentifier($0)] ?? 0) >
+          (feedHotActivity[ObjectIdentifier($1)] ?? 0)
+      }
+
+    let relaxedPlayers = feedPlayers.filter { !$0.shouldStayHotInFeedPool() }
+      .sorted {
+        (feedHotActivity[ObjectIdentifier($0)] ?? 0) >
+          (feedHotActivity[ObjectIdentifier($1)] ?? 0)
+      }
+
+    var playersToKeepHot = Set(pinnedPlayers.map(ObjectIdentifier.init))
+    let extraHotSlots = max(0, maxHotFeedPlayers - playersToKeepHot.count)
+    for player in relaxedPlayers.prefix(extraHotSlots) {
+      playersToKeepHot.insert(ObjectIdentifier(player))
+    }
+
+    for player in feedPlayers where !playersToKeepHot.contains(ObjectIdentifier(player)) {
+      player.trimForFeedHotPool()
     }
   }
 }

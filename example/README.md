@@ -42,5 +42,6 @@ npm run android:build
 ## Important
 
 - `example` must consume the local tarball from `vendor/`, not a symlink to the repo root
+- refresh the tarball after each library release with `npm pack` in the repo root, then update `example/vendor/` and `example/package.json`
 - `metro.config.js` hard-pins single React resolution from `example/node_modules`
 - the HLS smoke path uses the root manifest URL `https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8`; per-stream cache stats are computed relative to that root URL

@@ -52,9 +52,9 @@ type ResolvedMemoryConfig = Required<
 const MEMORY_PROFILE_DEFAULTS: Record<MemoryProfile, ResolvedMemoryConfig> = {
   feed: {
     profile: 'feed',
-    preloadLevel: 'metadata',
-    offscreenRetention: 'metadata',
-    pauseTrimDelayMs: 1500,
+    preloadLevel: 'buffered',
+    offscreenRetention: 'hot',
+    pauseTrimDelayMs: 3000,
   },
   balanced: {
     profile: 'balanced',

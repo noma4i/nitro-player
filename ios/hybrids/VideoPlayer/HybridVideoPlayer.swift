@@ -87,6 +87,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
     }
 
     VideoManager.shared.register(player: self)
+    VideoManager.shared.touchFeedHotCandidate(self)
   }
 
   deinit {
@@ -364,6 +365,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
 
   func play() throws {
     cancelPendingTrim()
+    VideoManager.shared.touchFeedHotCandidate(self)
 
     if player.currentItem != nil {
       player.play()
@@ -393,6 +395,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
 
   func pause() throws {
     player.pause()
+    VideoManager.shared.touchFeedHotCandidate(self)
 
     if !isAttachedToVideoView {
       scheduleOffscreenTrim()
@@ -546,10 +549,12 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
   func notifyViewAttached() {
     isAttachedToVideoView = true
     cancelPendingTrim()
+    VideoManager.shared.touchFeedHotCandidate(self)
   }
 
   func notifyViewDetached() {
     isAttachedToVideoView = false
+    VideoManager.shared.touchFeedHotCandidate(self)
 
     if isPlaying {
       return
@@ -650,6 +655,40 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
   private func trimToColdRetention() {
     trimToMetadataRetention()
     (source as? HybridVideoPlayerSource)?.trimToCold()
+  }
+
+  func isFeedProfile() -> Bool {
+    source.config.memoryConfig?.profile == .feed
+  }
+
+  func shouldStayHotInFeedPool() -> Bool {
+    if isReleased {
+      return false
+    }
+
+    return isPlaying || isAttachedToVideoView
+  }
+
+  func trimForFeedHotPool() {
+    let apply = { [weak self] in
+      guard let self else { return }
+      guard
+        !self.isReleased,
+        self.isFeedProfile(),
+        !self.shouldStayHotInFeedPool(),
+        self.currentRetentionState() == .hot
+      else {
+        return
+      }
+
+      self.trimToMetadataRetention()
+    }
+
+    if Thread.isMainThread {
+      apply()
+    } else {
+      DispatchQueue.main.async(execute: apply)
+    }
   }
 
   // MARK: - Text Track Management
