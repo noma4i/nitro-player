@@ -14,11 +14,14 @@ import java.lang.ref.WeakReference
 @OptIn(UnstableApi::class)
 object VideoManager : LifecycleEventListener {
   private const val TAG = "VideoManager"
+  private const val MAX_HOT_FEED_PLAYERS = 2
   
   // nitroId -> weak VideoView
   private val views = mutableMapOf<Int, WeakReference<VideoView>>()
   // player -> list of nitroIds of views that are using this player
   private val players = mutableMapOf<HybridVideoPlayer, MutableList<Int>>()
+  private val feedHotActivity = mutableMapOf<HybridVideoPlayer, Long>()
+  private var feedHotSequence = 0L
   
   // Keep track of players that were paused due to PiP so that they can be resumed later
   private val playersPausedForPip = mutableSetOf<HybridVideoPlayer>()
@@ -119,6 +122,7 @@ object VideoManager : LifecycleEventListener {
   fun registerView(view: VideoView) {
     runOnMainThread {
       views[view.nitroId] = WeakReference<VideoView>(view)
+      view.hybridPlayer?.let { touchFeedHotCandidate(it) }
     }
   }
 
@@ -136,6 +140,7 @@ object VideoManager : LifecycleEventListener {
       }
 
       views.remove(view.nitroId)
+      rebalanceFeedHotPlayersLocked()
     }
   }
 
@@ -149,6 +154,7 @@ object VideoManager : LifecycleEventListener {
 
       // Add view to player
       players[player]?.add(view.nitroId)
+      touchFeedHotCandidate(player)
     }
   }
 
@@ -159,10 +165,13 @@ object VideoManager : LifecycleEventListener {
       // If this was the last view using this player, clean up
       if (players[player]?.isEmpty() == true) {
         players.remove(player)
+        feedHotActivity.remove(player)
       } else {
         // If there are other views using this player, move to the latest one
         maybePassPlayerToView(player)
       }
+
+      rebalanceFeedHotPlayersLocked()
     }
   }
 
@@ -173,6 +182,7 @@ object VideoManager : LifecycleEventListener {
       }
 
       audioFocusManager.registerPlayer(player)
+      touchFeedHotCandidate(player)
     }
   }
 
@@ -188,6 +198,25 @@ object VideoManager : LifecycleEventListener {
       }
 
       players.remove(player)
+      feedHotActivity.remove(player)
+      rebalanceFeedHotPlayersLocked()
+    }
+  }
+
+  fun touchFeedHotCandidate(player: HybridVideoPlayer) {
+    runOnMainThread {
+      if (!players.containsKey(player)) {
+        return@runOnMainThread
+      }
+
+      if (player.isFeedProfile()) {
+        feedHotSequence += 1
+        feedHotActivity[player] = feedHotSequence
+      } else {
+        feedHotActivity.remove(player)
+      }
+
+      rebalanceFeedHotPlayersLocked()
     }
   }
 
@@ -317,5 +346,34 @@ object VideoManager : LifecycleEventListener {
 
   fun getLastPlayedVideoView(): VideoView? {
     return lastPlayedNitroId?.let { views[it]?.get() }
+  }
+
+  private fun rebalanceFeedHotPlayersLocked() {
+    val feedPlayers = players.keys.filter { it.isFeedProfile() }
+    if (feedPlayers.isEmpty()) {
+      feedHotActivity.clear()
+      return
+    }
+
+    val feedPlayerSet = feedPlayers.toSet()
+    feedHotActivity.keys.retainAll(feedPlayerSet)
+
+    val pinnedPlayers = feedPlayers
+      .filter { it.shouldStayHotInFeedPool() }
+      .sortedByDescending { feedHotActivity[it] ?: 0L }
+
+    val relaxedPlayers = feedPlayers
+      .filterNot { pinnedPlayers.contains(it) }
+      .sortedByDescending { feedHotActivity[it] ?: 0L }
+
+    val playersToKeepHot = linkedSetOf<HybridVideoPlayer>()
+    playersToKeepHot.addAll(pinnedPlayers)
+
+    val extraHotSlots = (MAX_HOT_FEED_PLAYERS - playersToKeepHot.size).coerceAtLeast(0)
+    relaxedPlayers.take(extraHotSlots).forEach { playersToKeepHot.add(it) }
+
+    feedPlayers
+      .filterNot { playersToKeepHot.contains(it) }
+      .forEach { it.trimForFeedHotPool() }
   }
 }

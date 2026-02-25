@@ -1,24 +1,20 @@
-# React Native Video Player
+# JustPlayer
 
 Lightweight video player + HLS caching proxy for React Native.
 
 ```bash
-yarn add @noma4i/just-player
+yarn add git+ssh://git@github.com/noma4i/just_player.git#v0.1.7
 ```
 
 ## Quick Start
 
 ```tsx
-import { VideoView, hlsCacheProxy } from '@noma4i/just-player';
+import { VideoView } from '@noma4i/just-player';
 
-// 1. Start HLS proxy once (App.tsx)
-hlsCacheProxy.start();
-
-// 2. Done. One component, one line.
 <VideoView source={{ uri: 'https://cdn.example.com/video.m3u8' }} style={{ flex: 1 }} />
 ```
 
-That's it. The player creates itself. HLS segments are cached to disk automatically. Everything cleans up on unmount.
+That's it. The player creates itself. HLS segments are cached to disk automatically. The proxy starts lazily inside the library on first HLS use. Everything cleans up on unmount.
 
 ---
 
@@ -26,10 +22,12 @@ That's it. The player creates itself. HLS segments are cached to disk automatica
 
 ### 1. Install the package
 
+The package is intended to be consumed from git tags or a local tarball. It is not documented here as an npm-published package.
+
 ```bash
-yarn add @noma4i/just-player
+yarn add git+ssh://git@github.com/noma4i/just_player.git#v0.1.7
 # or
-npm install @noma4i/just-player
+npm install git+ssh://git@github.com/noma4i/just_player.git#v0.1.7
 ```
 
 ### 2. Install peer dependencies
@@ -297,7 +295,7 @@ ref.current?.player.seekTo(30);
   uri: 'https://example.com/video.mp4',
   metadata: { title: 'My Video', artist: 'Author' },
   bufferConfig: { minBufferMs: 5000, maxBufferMs: 10000, bufferForPlaybackMs: 1000 },
-  memoryConfig: { profile: 'feed', preloadLevel: 'metadata', offscreenRetention: 'metadata' },
+  memoryConfig: { profile: 'feed', preloadLevel: 'buffered', offscreenRetention: 'hot', pauseTrimDelayMs: 3000 },
 }} />
 
 // With setup
@@ -312,8 +310,9 @@ ref.current?.player.seekTo(30);
   uri: feedItem.url,
   memoryConfig: {
     profile: 'feed',
-    preloadLevel: 'metadata',
-    offscreenRetention: 'metadata',
+    preloadLevel: 'buffered',
+    offscreenRetention: 'hot',
+    pauseTrimDelayMs: 3000,
   },
 }} />
 
@@ -399,7 +398,7 @@ Defaults:
 
 - `<VideoView />` uses `profile: 'feed'` unless `source.memoryConfig` overrides it
 - direct `new VideoPlayer(...)` uses `profile: 'balanced'`
-- `feed` defaults to metadata preload and metadata retention for offscreen paused players
+- `feed` defaults to buffered preload and hot retention, but the native manager keeps only a bounded hot pool for feed players and trims older offscreen instances back to metadata
 
 ### MemorySnapshot
 
@@ -560,19 +559,13 @@ console.log({
 
 Built-in localhost HTTP server that caches HLS segments to disk. **It's integrated into the player** - all `.m3u8` URLs are automatically routed through the proxy. You don't need to rewrite URLs yourself.
 
-### Setup (one line)
+### Setup
 
 ```tsx
-// App.tsx - call once on app boot
-import { hlsCacheProxy } from '@noma4i/just-player';
-
-useEffect(() => {
-  hlsCacheProxy.start();
-  return () => hlsCacheProxy.stop();
-}, []);
+import { VideoView } from '@noma4i/just-player';
 ```
 
-That's it. Now every `.m3u8` URL you pass to `VideoView` is automatically cached:
+That's it. Now every `.m3u8` URL you pass to `VideoView` is automatically cached. Manual `hlsCacheProxy.start()` is optional and only needed if you want to override the port or stop the proxy explicitly.
 
 ```tsx
 // This URL goes through the proxy automatically
@@ -617,7 +610,7 @@ To disable proxy for a specific source:
 |---------------|-------------|------------|
 | `true` (default) | Proxied | Not proxied |
 | `false` | Not proxied | Not proxied |
-| proxy not started | Not proxied (fallback) | Not proxied |
+| native proxy unavailable | Not proxied (fallback) | Not proxied |
 
 ### Prefetch
 
@@ -653,6 +646,7 @@ await hlsCacheProxy.clearCache();
 | `getProxiedUrl(url, headers?)` | `string` | Rewrite URL (called automatically by player) |
 | `prefetchFirstSegment(url, headers?)` | `Promise<void>` | Pre-download manifest + first segment |
 | `getCacheStats()` | `Promise<`[`HlsCacheStats`](#hlscachestats)`>` | Get cache usage |
+| `getStreamCacheStats(url)` | `Promise<`[`HlsStreamCacheStats`](#hlsstreamcachestats)`>` | Get cache usage for a root HLS manifest URL |
 | `clearCache()` | `Promise<boolean>` | Delete all cached segments |
 
 ### HlsCacheStats
@@ -662,6 +656,16 @@ await hlsCacheProxy.clearCache();
 | `totalSize` | `number` | Bytes used (e.g. `1_073_741_824` = 1 GB) |
 | `fileCount` | `number` | Number of cached segment files |
 | `maxSize` | `number` | Max cache size (`5_368_709_120` = 5 GB) |
+
+### HlsStreamCacheStats
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `totalSize` | `number` | Total bytes across the whole HLS cache |
+| `fileCount` | `number` | Total cached file count across the whole HLS cache |
+| `maxSize` | `number` | Max cache size (`5_368_709_120` = 5 GB) |
+| `streamSize` | `number` | Bytes attributed to the requested root manifest URL |
+| `streamFileCount` | `number` | Cached file count attributed to the requested root manifest URL |
 
 ### Cache Settings
 
