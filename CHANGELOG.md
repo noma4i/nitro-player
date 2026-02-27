@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.8
+
+- changed the default `feed` memory profile to use buffered preload, hot retention, and a longer trim delay so adjacent feed items stay warm across swipes
+- added a bounded native hot-feed player pool on iOS and Android so only the active feed item plus the freshest offscreen candidate stay hot while older feed players trim back to metadata
+- updated the in-repo `example/` consumer tarball and docs to validate the hot-feed behavior against the current library snapshot
+
 ## 0.1.7
 
 - moved HLS proxy startup fully inside the library with lazy native autostart and native self-heal across resume/restart cycles
