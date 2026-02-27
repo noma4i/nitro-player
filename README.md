@@ -3,7 +3,7 @@
 Lightweight video player + HLS caching proxy for React Native.
 
 ```bash
-yarn add git+ssh://git@github.com/noma4i/just_player.git#v0.1.7
+yarn add git+ssh://git@github.com/noma4i/just_player.git#v0.1.8
 ```
 
 ## Quick Start
@@ -25,9 +25,9 @@ That's it. The player creates itself. HLS segments are cached to disk automatica
 The package is intended to be consumed from git tags or a local tarball. It is not documented here as an npm-published package.
 
 ```bash
-yarn add git+ssh://git@github.com/noma4i/just_player.git#v0.1.7
+yarn add git+ssh://git@github.com/noma4i/just_player.git#v0.1.8
 # or
-npm install git+ssh://git@github.com/noma4i/just_player.git#v0.1.7
+npm install git+ssh://git@github.com/noma4i/just_player.git#v0.1.8
 ```
 
 ### 2. Install peer dependencies
