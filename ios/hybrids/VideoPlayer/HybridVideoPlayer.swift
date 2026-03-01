@@ -182,23 +182,11 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
 
   var loop: Bool = false
 
-  var mixAudioMode: MixAudioMode = .auto {
-    didSet {
-      VideoManager.shared.requestAudioSessionUpdate()
-    }
-  }
+  var mixAudioMode: MixAudioMode = .auto
 
-  var ignoreSilentSwitchMode: IgnoreSilentSwitchMode = .auto {
-    didSet {
-      VideoManager.shared.requestAudioSessionUpdate()
-    }
-  }
+  var ignoreSilentSwitchMode: IgnoreSilentSwitchMode = .auto
 
-  var playInBackground: Bool = false {
-    didSet {
-      VideoManager.shared.requestAudioSessionUpdate()
-    }
-  }
+  var playInBackground: Bool = false
 
   var playWhenInactive: Bool = false
 
