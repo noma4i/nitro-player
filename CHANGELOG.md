@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.9
+
+- fixed iOS foreground resume to auto-resume auto-paused players on return from background, matching Android behavior
+- removed dead iOS audio session management code (~200 lines) that was permanently disabled via `isAudioSessionManagementDisabled`; host app remains responsible for AVAudioSession category
+- aligned iOS progress observer interval from 500ms to 250ms to match Android `PROGRESS_UPDATE_INTERVAL_MS`
+- fixed Android `wasAutoPaused` redundant assignment in background pause logic
+- fixed `useManagedInstance` misleading variable name (`dependenciesChanged` → `dependenciesEqual`)
+- fixed `usePlaybackState` interpolation timer leak when player becomes null
+
 ## 0.1.8
 
 - changed the default `feed` memory profile to use buffered preload, hot retention, and a longer trim delay so adjacent feed items stay warm across swipes

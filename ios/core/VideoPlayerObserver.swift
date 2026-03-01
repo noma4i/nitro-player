@@ -122,8 +122,7 @@ class VideoPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
       self?.delegate?.onPlayerStatusChanged(status: status)
     }
     
-    // 500ms interval TODO: Make this configurable
-    let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
+    let interval = CMTime(seconds: 0.25, preferredTimescale: 600)
     playerProgressPeriodicObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] _ in
       guard let self, let player = self.player, let delegate = self.delegate else { return }
       
