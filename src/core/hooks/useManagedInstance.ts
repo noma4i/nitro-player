@@ -1,9 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  type DependencyList,
-} from 'react';
+import { useEffect, useMemo, useRef, type DependencyList } from 'react';
 
 /**
  * @internal
@@ -37,15 +32,11 @@ export const useManagedInstance = <T, D extends DependencyList[number]>(
   const object = useMemo(() => {
     let newObject = objectRef.current;
 
-    const dependenciesChanged =
+    const dependenciesEqual =
       previousDependencies.current?.length === dependencies.length &&
-      dependencies.every(
-        (value, index) =>
-          dependenciesEqualFn?.(value, previousDependencies.current[index]) ??
-          value === previousDependencies.current[index]
-      );
+      dependencies.every((value, index) => dependenciesEqualFn?.(value, previousDependencies.current[index]) ?? value === previousDependencies.current[index]);
 
-    if (!newObject || !dependenciesChanged) {
+    if (!newObject || !dependenciesEqual) {
       // Destroy the old object
       if (objectRef.current) {
         cleanup(objectRef.current);

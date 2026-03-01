@@ -68,7 +68,6 @@ import UIKit
       DispatchQueue.main.async { [weak self] in
         guard let self = self, let playerViewController = self.playerViewController else { return }
 
-        VideoManager.shared.requestAudioSessionUpdate()
         playerViewController.allowsPictureInPicturePlayback = self.allowsPictureInPicturePlayback
       }
     }
@@ -79,7 +78,6 @@ import UIKit
       DispatchQueue.main.async { [weak self] in
         guard let self = self, let playerViewController = self.playerViewController else { return }
 
-        VideoManager.shared.requestAudioSessionUpdate()
         playerViewController.canStartPictureInPictureAutomaticallyFromInline =
           self.autoEnterPictureInPicture
       }

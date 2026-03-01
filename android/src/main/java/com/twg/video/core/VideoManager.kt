@@ -282,7 +282,7 @@ object VideoManager : LifecycleEventListener {
 
     players.keys.forEach { player ->
       if (!player.playInBackground && player.isPlaying) {
-        player.wasAutoPaused = player.isPlaying
+        player.wasAutoPaused = true
         player.pause()
       }
     }
