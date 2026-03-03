@@ -1,9 +1,9 @@
 # JustPlayer
 
-Lightweight video player + HLS caching proxy for React Native.
+Lightweight video player(native+some js) + HLS caching proxy for React Native.
 
 ```bash
-yarn add git+ssh://git@github.com/noma4i/just_player.git#v0.1.8
+yarn add git+ssh://git@github.com/noma4i/just_player.git#v0.1.9
 ```
 
 ## Quick Start
@@ -25,9 +25,9 @@ That's it. The player creates itself. HLS segments are cached to disk automatica
 The package is intended to be consumed from git tags or a local tarball. It is not documented here as an npm-published package.
 
 ```bash
-yarn add git+ssh://git@github.com/noma4i/just_player.git#v0.1.8
+yarn add git+ssh://git@github.com/noma4i/just_player.git#v0.1.9
 # or
-npm install git+ssh://git@github.com/noma4i/just_player.git#v0.1.8
+npm install git+ssh://git@github.com/noma4i/just_player.git#v0.1.9
 ```
 
 ### 2. Install peer dependencies
@@ -47,40 +47,6 @@ cd ios && pod install
 NanoHTTPD and ExoPlayer are bundled automatically.
 
 If you want Android Picture in Picture, the host activity must support PiP in the app manifest.
-
-## Testing
-
-The library is validated with three layers:
-
-- `npm run test:ts` for TS/public-contract tests
-- `gradle -p android test` and `gradle -p android connectedAndroidTest` for Android library tests
-- iOS `XCTest` through the podspec `UnitTests` test spec
-
-Note: this library repo does not check in an Android Gradle wrapper, so Android tests require a Gradle installation on `PATH` or execution from a host app that provides the wrapper.
-
-## Library Development
-
-Nitro is the primary bridge layer for the player. The intended architecture is native-first: player state, timing, buffering, track logic and event emission should live in Swift/Kotlin, while JS stays as a thin UI/orchestration layer.
-
-### Nitro toolchain
-
-This repo treats Nitro codegen as part of the build, not as an optional manual step.
-
-```bash
-npm install
-npm run codegen
-npm run build
-```
-
-Canonical commands:
-
-- `npm run nitrogen` or `npm run codegen:nitro` regenerates `nitrogen/generated/*` from `src/spec/nitro/*.nitro.ts`
-- `npm run build` runs Nitro codegen first, then `react-native-builder-bob`
-- `npx nitrogen .` is the underlying generator command
-
-If you change `src/spec/nitro/*`, `nitro.json`, or the TS structs used by Nitro specs, regenerate `nitrogen/generated/*` before shipping native changes.
-
----
 
 ## VideoView
 
