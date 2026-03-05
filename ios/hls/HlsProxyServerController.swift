@@ -8,6 +8,7 @@ final class HlsProxyServerController: NSObject {
   private let manifestRewriter = HlsManifestRewriter()
   private let networkClient = HlsNetworkClient()
 
+  private let stateQueue = DispatchQueue(label: "com.yupi.hls.proxy-state")
   private var port: Int = 18181
   private var server: GCDWebServer?
   private var shouldBeRunning = false
@@ -33,9 +34,11 @@ final class HlsProxyServerController: NSObject {
   }
 
   func proxiedManifestUrl(for url: String, headers: [String: String]?) -> String? {
-    if !shouldBeRunning && !wasExplicitlyStopped {
-      shouldBeRunning = true
-      registerObserversIfNeeded()
+    stateQueue.sync {
+      if !shouldBeRunning && !wasExplicitlyStopped {
+        shouldBeRunning = true
+        registerObserversIfNeeded()
+      }
     }
 
     guard ensureListening(forceRestart: false) else {

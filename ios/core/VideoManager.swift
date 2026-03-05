@@ -55,17 +55,20 @@ class VideoManager {
   // MARK: - public
 
   func register(player: HybridVideoPlayer) {
+    dispatchPrecondition(condition: .onQueue(.main))
     players.add(player)
     touchFeedHotCandidate(player)
   }
 
   func unregister(player: HybridVideoPlayer) {
+    dispatchPrecondition(condition: .onQueue(.main))
     players.remove(player)
     feedHotActivity.removeValue(forKey: ObjectIdentifier(player))
     rebalanceFeedHotPlayers()
   }
 
   func register(view: VideoComponentView) {
+    dispatchPrecondition(condition: .onQueue(.main))
     videoView.add(view)
     if let player = view.player as? HybridVideoPlayer {
       touchFeedHotCandidate(player)
@@ -73,11 +76,13 @@ class VideoManager {
   }
 
   func unregister(view: VideoComponentView) {
+    dispatchPrecondition(condition: .onQueue(.main))
     videoView.remove(view)
     rebalanceFeedHotPlayers()
   }
 
   func touchFeedHotCandidate(_ player: HybridVideoPlayer) {
+    dispatchPrecondition(condition: .onQueue(.main))
     if player.isFeedProfile() {
       feedHotSequence += 1
       feedHotActivity[ObjectIdentifier(player)] = feedHotSequence

@@ -1,5 +1,8 @@
 import CommonCrypto
 import Foundation
+import OSLog
+
+private let cacheLogger = Logger(subsystem: "com.yupi.hls", category: "CacheStore")
 
 final class HlsCacheStore {
   private let maxBytes: Int = 5_368_709_120
@@ -64,6 +67,7 @@ final class HlsCacheStore {
         self.evictIfNeeded()
         self.scheduleSave()
       } catch {
+        cacheLogger.error("Failed to write cache entry for \(url): \(error.localizedDescription)")
         return
       }
     }

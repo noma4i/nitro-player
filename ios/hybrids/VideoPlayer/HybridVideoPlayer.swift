@@ -8,6 +8,9 @@
 import AVFoundation
 import Foundation
 import NitroModules
+import OSLog
+
+private let playerLogger = Logger(subsystem: "com.twg.video", category: "Player")
 
 class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
 
@@ -454,6 +457,8 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
           oldSource.trimToCold()
         }
 
+        self.artworkTask?.cancel()
+        self.artworkTask = nil
         self.source = newSource
         self.resumePositionSeconds = 0
 
@@ -518,7 +523,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
       if let imageUri, let imageUrl = URL(string: imageUri) {
         artworkTask = Task { [weak playerItem] in
           guard let (data, _) = try? await URLSession.shared.data(from: imageUrl) else {
-            print("[RNV] Failed to load artwork from: \(imageUrl)")
+            playerLogger.debug("Failed to load artwork from: \(imageUrl)")
             return
           }
           DispatchQueue.main.async {
@@ -527,7 +532,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
           }
         }
       } else if let imageUri {
-        print("[RNV] Invalid imageUri for artwork: \(imageUri)")
+        playerLogger.debug("Invalid imageUri for artwork: \(imageUri)")
       }
     }
 

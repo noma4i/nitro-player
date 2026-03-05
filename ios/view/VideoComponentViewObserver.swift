@@ -79,7 +79,7 @@ class VideoComponentViewObserver: NSObject, AVPlayerViewControllerDelegate {
     super.init()
   }
   
-  func initializePlayerViewContorollerObservers() {
+  func initializePlayerViewControllerObservers() {
     guard let playerViewController = playerViewController else {
       return
     }
@@ -99,7 +99,7 @@ class VideoComponentViewObserver: NSObject, AVPlayerViewControllerDelegate {
   
   func updatePlayerViewControllerObservers() {
     removePlayerViewControllerObservers()
-    initializePlayerViewContorollerObservers()
+    initializePlayerViewControllerObservers()
   }
   
   func playerViewControllerDidStartPictureInPicture(_: AVPlayerViewController) {
