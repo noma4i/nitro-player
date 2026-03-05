@@ -238,6 +238,24 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
     get = { readyToDisplay }
   )
 
+  private fun createExoPlayer(loadControl: DefaultLoadControl): ExoPlayer {
+    val renderersFactory = DefaultRenderersFactory(context)
+      .forceEnableMediaCodecAsynchronousQueueing()
+      .setEnableDecoderFallback(true)
+
+    val newPlayer = ExoPlayer.Builder(context)
+      .setLoadControl(loadControl)
+      .setLooper(Looper.getMainLooper())
+      .setRenderersFactory(renderersFactory)
+      .build()
+
+    newPlayer.repeatMode = if (cachedLoop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+    newPlayer.playbackParameters = PlaybackParameters(cachedRate.toFloat())
+    newPlayer.volume = if (cachedMuted) 0f else userVolume.toFloat()
+
+    return newPlayer
+  }
+
   private fun initializePlayer() {
     cancelPendingTrim()
 
@@ -268,23 +286,11 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
       )
       .build()
 
-    val renderersFactory = DefaultRenderersFactory(context)
-      .forceEnableMediaCodecAsynchronousQueueing()
-      .setEnableDecoderFallback(true)
-
     val mediaSource = hybridSource.createOrGetMediaSource()
 
     // Build the player with the LoadControl
     player.release()
-    player = ExoPlayer.Builder(context)
-      .setLoadControl(loadControl)
-      .setLooper(Looper.getMainLooper())
-      .setRenderersFactory(renderersFactory)
-      .build()
-
-    player.repeatMode = if (cachedLoop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
-    player.playbackParameters = PlaybackParameters(cachedRate.toFloat())
-    player.volume = if (cachedMuted) 0f else userVolume.toFloat()
+    player = createExoPlayer(loadControl)
 
     loadedWithSource = true
 
@@ -660,10 +666,7 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
       player.removeListener(playerListener)
       player.removeAnalyticsListener(analyticsListener)
       player.release()
-      player = ExoPlayer.Builder(context).build()
-      player.repeatMode = if (cachedLoop) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
-      player.playbackParameters = PlaybackParameters(cachedRate.toFloat())
-      player.volume = if (cachedMuted) 0f else userVolume.toFloat()
+      player = createExoPlayer(DefaultLoadControl.Builder().build())
       allocator = null
       loadedWithSource = false
     }

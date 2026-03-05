@@ -132,12 +132,22 @@ object HlsManifest {
         return regex.find(line)?.groups?.get(1)?.value
     }
 
-    private fun proxyManifestUrl(url: String, headers: Map<String, String>?, port: Int, streamKey: String): String {
+    private fun buildProxyQuery(
+        url: String,
+        headers: Map<String, String>?,
+        streamKey: String,
+        extras: Map<String, String>? = null
+    ): String {
         val query = StringBuilder("url=").append(java.net.URLEncoder.encode(url, "UTF-8"))
         val encoded = HlsHeaderCodec.encode(headers)
         if (encoded != null) query.append("&headers=").append(java.net.URLEncoder.encode(encoded, "UTF-8"))
         query.append("&streamKey=").append(java.net.URLEncoder.encode(streamKey, "UTF-8"))
-        return "http://127.0.0.1:$port/hls/manifest.m3u8?$query"
+        extras?.forEach { (k, v) -> query.append("&").append(k).append("=").append(v) }
+        return query.toString()
+    }
+
+    private fun proxyManifestUrl(url: String, headers: Map<String, String>?, port: Int, streamKey: String): String {
+        return "http://127.0.0.1:$port/hls/manifest.m3u8?${buildProxyQuery(url, headers, streamKey)}"
     }
 
     private fun proxySegmentUrl(
@@ -147,11 +157,6 @@ object HlsManifest {
         streamKey: String,
         flags: Map<String, String>?
     ): String {
-        val query = StringBuilder("url=").append(java.net.URLEncoder.encode(url, "UTF-8"))
-        val encoded = HlsHeaderCodec.encode(headers)
-        if (encoded != null) query.append("&headers=").append(java.net.URLEncoder.encode(encoded, "UTF-8"))
-        query.append("&streamKey=").append(java.net.URLEncoder.encode(streamKey, "UTF-8"))
-        flags?.forEach { (k, v) -> query.append("&").append(k).append("=").append(v) }
-        return "http://127.0.0.1:$port/hls/segment?$query"
+        return "http://127.0.0.1:$port/hls/segment?${buildProxyQuery(url, headers, streamKey, flags)}"
     }
 }

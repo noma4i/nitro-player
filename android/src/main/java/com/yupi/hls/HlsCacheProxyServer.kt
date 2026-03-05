@@ -1,6 +1,7 @@
 package com.yupi.hls
 
 import android.content.Context
+import android.util.Log
 import fi.iki.elonen.NanoHTTPD
 import java.io.ByteArrayInputStream
 import java.io.FileInputStream
@@ -12,8 +13,17 @@ class HlsCacheProxyServer(
     private val port: Int,
     private val context: Context
 ) : NanoHTTPD("127.0.0.1", port) {
+    companion object {
+        private const val TAG = "HlsCacheProxy"
+    }
+
     val cacheStore = HlsCacheStore(context)
     private val executor = Executors.newSingleThreadExecutor()
+
+    override fun stop() {
+        super.stop()
+        executor.shutdownNow()
+    }
 
     override fun serve(session: IHTTPSession): Response {
         return try {
@@ -23,6 +33,7 @@ class HlsCacheProxyServer(
                 else -> newFixedLengthResponse(Response.Status.NOT_FOUND, "text/plain", "Not found")
             }
         } catch (e: Exception) {
+            Log.e(TAG, "serve error", e)
             newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "Error")
         }
     }
