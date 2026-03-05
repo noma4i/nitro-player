@@ -20,9 +20,6 @@ public protocol NativeVideoPlayerSpec {
   /// The current player item
   var playerItem: AVPlayerItem? { get set }
   
-  /// The player observer for monitoring state changes
-  // var playerObserver: VideoPlayerObserver? { get set }
-  
   /// Whether the player was auto-paused
   var wasAutoPaused: Bool { get set }
   

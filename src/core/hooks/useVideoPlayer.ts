@@ -5,6 +5,7 @@ import type { MemoryProfile } from '../types/MemoryConfig';
 import type { VideoConfig, VideoSource } from '../types/VideoConfig';
 import { VideoPlayer } from '../VideoPlayer';
 import { useManagedInstance } from './useManagedInstance';
+import { getSourceIdentityKey } from '../utils/sourceFactory';
 
 /**
  * Creates a `VideoPlayer` instance and manages its lifecycle.
@@ -29,11 +30,11 @@ export const useVideoPlayer = (
       factory: () => {
         return new VideoPlayer(source, { defaultMemoryProfile });
       },
-      cleanup: (player) => {
+      cleanup: player => {
         player.__destroy();
-      },
+      }
     },
-    [JSON.stringify(source), defaultMemoryProfile]
+    [getSourceIdentityKey(source), defaultMemoryProfile]
   );
 
   const appliedSetupRef = useRef<{
@@ -41,7 +42,7 @@ export const useVideoPlayer = (
     setup?: ((player: VideoPlayer) => void) | undefined;
   }>({
     player: null,
-    setup: undefined,
+    setup: undefined
   });
 
   useEffect(() => {
@@ -50,15 +51,10 @@ export const useVideoPlayer = (
       return;
     }
 
-    const hasAppliedCurrentSetup =
-      appliedSetupRef.current.player === player &&
-      appliedSetupRef.current.setup === setup;
+    const hasAppliedCurrentSetup = appliedSetupRef.current.player === player && appliedSetupRef.current.setup === setup;
 
     const applySetup = () => {
-      if (
-        appliedSetupRef.current.player === player &&
-        appliedSetupRef.current.setup === setup
-      ) {
+      if (appliedSetupRef.current.player === player && appliedSetupRef.current.setup === setup) {
         return;
       }
 
@@ -84,14 +80,8 @@ export const useVideoPlayer = (
       return;
     }
 
-    const loadStartSubscription = player.addEventListener(
-      'onLoadStart',
-      applySetup
-    );
-    const playbackStateSubscription = player.addEventListener(
-      'onPlaybackState',
-      applySetup
-    );
+    const loadStartSubscription = player.addEventListener('onLoadStart', applySetup);
+    const playbackStateSubscription = player.addEventListener('onPlaybackState', applySetup);
 
     return () => {
       loadStartSubscription.remove();

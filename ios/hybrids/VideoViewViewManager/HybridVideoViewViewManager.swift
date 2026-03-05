@@ -8,6 +8,7 @@
 import Foundation
 import AVKit
 import NitroModules
+import OSLog
 
 struct ViewListenerPair {
   let id: UUID
@@ -15,10 +16,12 @@ struct ViewListenerPair {
   let callback: Any
 }
 
+private let vmLogger = Logger(subsystem: "com.twg.video", category: "ViewManager")
+
 class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
   weak var view: VideoComponentView?
   var listeners: [ViewListenerPair] = []
-  
+
   let DEALOCATED_WARNING = "JustPlayer: VideoComponentView is no longer available. It is likely that the view was deallocated."
   
   init(nitroId: Double) throws {
@@ -47,10 +50,10 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
         do {
           try invoke(callback)
         } catch {
-          print("[JustPlayer] Error calling \(eventName) listener: \(error)")
+          vmLogger.error("[JustPlayer] Error calling \(eventName) listener: \(error)")
         }
       } else {
-        print("[JustPlayer] Invalid callback type for \(eventName)")
+        vmLogger.error("[JustPlayer] Invalid callback type for \(eventName)")
       }
     }
   }
@@ -60,14 +63,14 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
   weak var player: (any HybridVideoPlayerSpec)? {
     get {
       guard let view = view else {
-        print(DEALOCATED_WARNING)
+        vmLogger.warning("\(self.DEALOCATED_WARNING)")
         return nil
       }
       return view.player
     }
     set {
       guard let view = view else {
-        print(DEALOCATED_WARNING)
+        vmLogger.warning("\(self.DEALOCATED_WARNING)")
         return
       }
       view.player = newValue
@@ -77,7 +80,7 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
   var controls: Bool {
     get {
       guard let view else {
-        print(DEALOCATED_WARNING)
+        vmLogger.warning("\(self.DEALOCATED_WARNING)")
         return false
       }
       
@@ -85,7 +88,7 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
     }
     set {
       guard let view else {
-        print(DEALOCATED_WARNING)
+        vmLogger.warning("\(self.DEALOCATED_WARNING)")
         return
       }
       
@@ -96,7 +99,7 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
   var pictureInPicture: Bool {
     get {
       guard let view else {
-        print(DEALOCATED_WARNING)
+        vmLogger.warning("\(self.DEALOCATED_WARNING)")
         return false
       }
       
@@ -104,7 +107,7 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
     }
     set {
       guard let view else {
-        print(DEALOCATED_WARNING)
+        vmLogger.warning("\(self.DEALOCATED_WARNING)")
         return
       }
       
@@ -115,7 +118,7 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
   var autoEnterPictureInPicture: Bool {
     get {
       guard let view else {
-        print(DEALOCATED_WARNING)
+        vmLogger.warning("\(self.DEALOCATED_WARNING)")
         return false
       }
       
@@ -123,7 +126,7 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
     }
     set {
       guard let view else {
-        print(DEALOCATED_WARNING)
+        vmLogger.warning("\(self.DEALOCATED_WARNING)")
         return
       }
       
@@ -134,7 +137,7 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
   var resizeMode: ResizeMode {
     get {
       guard let view else {
-        print(DEALOCATED_WARNING)
+        vmLogger.warning("\(self.DEALOCATED_WARNING)")
         return .none
       }
       
@@ -142,7 +145,7 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
     }
     set {
       guard let view else {
-        print(DEALOCATED_WARNING)
+        vmLogger.warning("\(self.DEALOCATED_WARNING)")
         return
       }
       
@@ -153,7 +156,7 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
   var keepScreenAwake: Bool {
     get {
       guard let view else {
-        print(DEALOCATED_WARNING)
+        vmLogger.warning("\(self.DEALOCATED_WARNING)")
         return false
       }
       
@@ -161,7 +164,7 @@ class HybridVideoViewViewManager: HybridVideoViewViewManagerSpec {
     }
     set {
       guard let view else {
-        print(DEALOCATED_WARNING)
+        vmLogger.warning("\(self.DEALOCATED_WARNING)")
         return
       }
       
