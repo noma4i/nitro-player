@@ -46,6 +46,7 @@ extension VideoPlayerObserverDelegate {
 
 class VideoPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVPlayerItemLegibleOutputPushDelegate {
   private weak var delegate: HybridVideoPlayer?
+  private weak var observedPlayer: AVPlayer?
   var player: AVPlayer? {
     delegate?.player
   }
@@ -92,8 +93,11 @@ class VideoPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
     guard let player else {
       return
     }
-    
-    playerCurrentItemObserver = player.observe(\.currentItem, options: [.new, .old]) { [weak self] _, change in
+
+    observedPlayer = player
+
+    playerCurrentItemObserver = player.observe(\.currentItem, options: [.new, .old]) { [weak self, weak player] _, change in
+      guard let player else { return }
       self?.onPlayerCurrentItemChanged(player: player, change: change)
     }
     
@@ -135,7 +139,8 @@ class VideoPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
       forName: .AVPlayerItemDidPlayToEndTime,
       object: playerItem,
       queue: nil
-    ) { [weak self] notification in
+    ) { [weak self, weak player] notification in
+      guard let player else { return }
       self?.delegate?.onPlayedToEnd(player: player)
     }
     
@@ -143,13 +148,15 @@ class VideoPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
       forName: .AVPlayerItemNewAccessLogEntry,
       object: playerItem,
       queue: nil
-    ) { [weak self] notification in
+    ) { [weak self, weak playerItem] notification in
+      guard let playerItem else { return }
       self?.onPlayerAccessLog(playerItem: playerItem)
     }
     
     setupBufferObservers(for: playerItem)
     
-    playerItemStatusObserver = playerItem.observe(\.status, options: [.new]) { [weak self] _, change in
+    playerItemStatusObserver = playerItem.observe(\.status, options: [.new]) { [weak self, weak playerItem] _, change in
+      guard let playerItem else { return }
       self?.delegate?.onPlayerItemStatusChanged(status: playerItem.status)
     }
     
@@ -209,10 +216,12 @@ class VideoPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
     playerStatusObserver?.invalidate()
     playerStatusObserver = nil
     // Remove periodic time observer from player
-    if let player = player, let periodicObserver = playerProgressPeriodicObserver {
-      player.removeTimeObserver(periodicObserver)
+    if let periodicObserver = playerProgressPeriodicObserver {
+      let targetPlayer = player ?? observedPlayer
+      targetPlayer?.removeTimeObserver(periodicObserver)
       playerProgressPeriodicObserver = nil
     }
+    observedPlayer = nil
   }
   
   // MARK: - AVPlayerItemLegibleOutputPushDelegate

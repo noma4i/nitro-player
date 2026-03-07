@@ -119,7 +119,7 @@ final class HlsProxyServerController: NSObject {
   }
 
   private var hasLiveServer: Bool {
-    server?.serverURL != nil
+    server?.isRunning == true
   }
 
   private func ensureListening(forceRestart: Bool) -> Bool {
