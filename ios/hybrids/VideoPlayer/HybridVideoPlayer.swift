@@ -126,15 +126,15 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
     set {
       if newValue {
         userVolume = player.volume
-      }
-      player.isMuted = newValue
-      if !newValue {
+        player.volume = 0
+      } else {
         player.volume = userVolume
       }
+      player.isMuted = newValue
       _eventEmitter?.onVolumeChange(
         onVolumeChangeData(
           volume: Double(player.volume),
-          muted: muted
+          muted: newValue
         )
       )
     }
@@ -470,6 +470,8 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
           oldSource.trimToCold()
         }
 
+        self.initTask?.cancel()
+        self.initTask = nil
         self.artworkTask?.cancel()
         self.artworkTask = nil
         self.source = newSource
