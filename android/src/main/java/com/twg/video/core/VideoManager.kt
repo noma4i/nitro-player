@@ -199,6 +199,7 @@ object VideoManager : LifecycleEventListener {
 
       players.remove(player)
       feedHotActivity.remove(player)
+      playersPausedForPip.remove(player)
       rebalanceFeedHotPlayersLocked()
     }
   }
