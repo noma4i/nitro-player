@@ -54,43 +54,51 @@ class VideoManager {
 
   // MARK: - public
 
+  private func onMainThread(_ work: @escaping () -> Void) {
+    if Thread.isMainThread { work() } else { DispatchQueue.main.async(execute: work) }
+  }
+
   func register(player: HybridVideoPlayer) {
-    dispatchPrecondition(condition: .onQueue(.main))
-    players.add(player)
-    touchFeedHotCandidate(player)
+    onMainThread {
+      self.players.add(player)
+      self.touchFeedHotCandidate(player)
+    }
   }
 
   func unregister(player: HybridVideoPlayer) {
-    dispatchPrecondition(condition: .onQueue(.main))
-    players.remove(player)
-    feedHotActivity.removeValue(forKey: ObjectIdentifier(player))
-    rebalanceFeedHotPlayers()
+    onMainThread {
+      self.players.remove(player)
+      self.feedHotActivity.removeValue(forKey: ObjectIdentifier(player))
+      self.rebalanceFeedHotPlayers()
+    }
   }
 
   func register(view: VideoComponentView) {
-    dispatchPrecondition(condition: .onQueue(.main))
-    videoView.add(view)
-    if let player = view.player as? HybridVideoPlayer {
-      touchFeedHotCandidate(player)
+    onMainThread {
+      self.videoView.add(view)
+      if let player = view.player as? HybridVideoPlayer {
+        self.touchFeedHotCandidate(player)
+      }
     }
   }
 
   func unregister(view: VideoComponentView) {
-    dispatchPrecondition(condition: .onQueue(.main))
-    videoView.remove(view)
-    rebalanceFeedHotPlayers()
+    onMainThread {
+      self.videoView.remove(view)
+      self.rebalanceFeedHotPlayers()
+    }
   }
 
   func touchFeedHotCandidate(_ player: HybridVideoPlayer) {
-    dispatchPrecondition(condition: .onQueue(.main))
-    if player.isFeedProfile() {
-      feedHotSequence += 1
-      feedHotActivity[ObjectIdentifier(player)] = feedHotSequence
-    } else {
-      feedHotActivity.removeValue(forKey: ObjectIdentifier(player))
+    onMainThread {
+      if player.isFeedProfile() {
+        self.feedHotSequence += 1
+        self.feedHotActivity[ObjectIdentifier(player)] = self.feedHotSequence
+      } else {
+        self.feedHotActivity.removeValue(forKey: ObjectIdentifier(player))
+      }
+      self.rebalanceFeedHotPlayers()
     }
-
-    rebalanceFeedHotPlayers()
   }
 
   // MARK: - App Lifecycle
