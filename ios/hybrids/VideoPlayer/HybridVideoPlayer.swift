@@ -36,6 +36,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
   var playerObserver: VideoPlayerObserver?
   private let sourceLoader = SourceLoader()
   private var artworkTask: Task<Void, Never>?
+  private var initTask: Task<Void, Never>?
   private var isReleased = false
   var readyToDisplay = false
   private var resumePositionSeconds: Double = 0
@@ -67,7 +68,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
     self.playerObserver = VideoPlayerObserver(delegate: self)
     self.playerObserver?.initializePlayerObservers()
 
-    Task { [weak self] in
+    initTask = Task { [weak self] in
       guard let self else { return }
       if source.config.initializeOnCreation == true {
         switch self.resolvedPreloadLevel() {
@@ -87,6 +88,7 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
           break
         }
       }
+      self.initTask = nil
     }
 
     VideoManager.shared.register(player: self)
@@ -108,8 +110,11 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
     return eventEmitter as? HybridVideoPlayerEventEmitter
   }
 
+  private var userVolume: Float = 1.0
+
   var volume: Double {
     set {
+      userVolume = Float(newValue)
       player.volume = Float(newValue)
     }
     get {
@@ -119,7 +124,13 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
 
   var muted: Bool {
     set {
+      if newValue {
+        userVolume = player.volume
+      }
       player.isMuted = newValue
+      if !newValue {
+        player.volume = userVolume
+      }
       _eventEmitter?.onVolumeChange(
         onVolumeChangeData(
           volume: Double(player.volume),
@@ -282,6 +293,8 @@ class HybridVideoPlayer: HybridVideoPlayerSpec, NativeVideoPlayerSpec {
 
     cancelPendingTrim()
     sourceLoader.cancelSync()
+    initTask?.cancel()
+    initTask = nil
     artworkTask?.cancel()
     artworkTask = nil
 
