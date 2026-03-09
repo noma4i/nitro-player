@@ -447,25 +447,26 @@ class HybridVideoPlayer() : HybridVideoPlayerSpec(), AutoCloseable {
       if (isReleased) return@runOnMainThread
       isReleased = true
 
-      VideoManager.unregisterPlayer(this)
-      stopProgressUpdates()
-      cancelPendingTrim()
-      loadedWithSource = false
+      try {
+        VideoManager.unregisterPlayer(this)
+        stopProgressUpdates()
+        cancelPendingTrim()
+        loadedWithSource = false
 
-      eventEmitter.clearAllListeners()
+        eventEmitter.clearAllListeners()
 
-      player.removeListener(playerListener)
-      player.removeAnalyticsListener(analyticsListener)
-      player.release()
+        player.removeListener(playerListener)
+        player.removeAnalyticsListener(analyticsListener)
 
-      // Clean Listeners
-      audioFocusChangedListener.removeEventEmitter()
+        audioFocusChangedListener.removeEventEmitter()
 
-      // Update status
-      status = VideoPlayerStatus.IDLE
-      readyToDisplay = false
-      allocator = null
-      (source as? HybridVideoPlayerSource)?.trimToCold()
+        status = VideoPlayerStatus.IDLE
+        readyToDisplay = false
+        allocator = null
+        (source as? HybridVideoPlayerSource)?.trimToCold()
+      } finally {
+        player.release()
+      }
     }
   }
 

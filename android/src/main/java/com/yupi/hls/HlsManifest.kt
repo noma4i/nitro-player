@@ -127,9 +127,10 @@ object HlsManifest {
         }
     }
 
+    private val URI_REGEX = Regex("URI=\"([^\"]+)\"")
+
     private fun extractUri(line: String): String? {
-        val regex = Regex("URI=\"([^\"]+)\"")
-        return regex.find(line)?.groups?.get(1)?.value
+        return URI_REGEX.find(line)?.groups?.get(1)?.value
     }
 
     private fun buildProxyQuery(

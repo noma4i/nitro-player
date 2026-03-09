@@ -320,12 +320,14 @@ object VideoManager : LifecycleEventListener {
 
   private fun resumePlayersPausedForPip() {
     playersPausedForPip.forEach { player ->
-      // Ensure the player is attached to the latest visible VideoView before resuming
-      maybePassPlayerToView(player)
-
-      if (!player.isPlaying) {
-        player.play()
-        Log.v(TAG, "Resumed player after PiP exit (nitroIds: ${players[player]})")
+      try {
+        maybePassPlayerToView(player)
+        if (!player.isPlaying) {
+          player.play()
+          Log.v(TAG, "Resumed player after PiP exit (nitroIds: ${players[player]})")
+        }
+      } catch (e: Exception) {
+        Log.e(TAG, "Failed to resume player after PiP", e)
       }
     }
     playersPausedForPip.clear()

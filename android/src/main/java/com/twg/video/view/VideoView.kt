@@ -342,21 +342,24 @@ class VideoView @JvmOverloads constructor(
 
   // -------- View Lifecycle Methods --------
   override fun onDetachedFromWindow() {
-    if (isInFullscreen) {
-      restoreFromFullscreen()
-      fullscreenDialog?.dismiss()
-      fullscreenDialog = null
+    try {
+      if (isInFullscreen) {
+        restoreFromFullscreen()
+        fullscreenDialog?.dismiss()
+        fullscreenDialog = null
+      }
+      if (isInPictureInPicture) {
+        isInPictureInPicture = false
+        VideoManager.notifyPictureInPictureExited(this)
+      }
+      globalLayoutListener?.let { viewTreeObserver.removeOnGlobalLayoutListener(it) }
+      globalLayoutListener = null
+      removeCallbacks(layoutRunnable)
+      hybridPlayer?.notifyViewDetached()
+    } finally {
+      VideoManager.unregisterView(this)
+      super.onDetachedFromWindow()
     }
-    if (isInPictureInPicture) {
-      isInPictureInPicture = false
-      VideoManager.notifyPictureInPictureExited(this)
-    }
-    globalLayoutListener?.let { viewTreeObserver.removeOnGlobalLayoutListener(it) }
-    globalLayoutListener = null
-    removeCallbacks(layoutRunnable)
-    hybridPlayer?.notifyViewDetached()
-    VideoManager.unregisterView(this)
-    super.onDetachedFromWindow()
   }
 
   override fun onAttachedToWindow() {
