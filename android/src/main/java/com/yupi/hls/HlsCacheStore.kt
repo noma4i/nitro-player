@@ -111,8 +111,8 @@ class HlsCacheStore(context: Context) {
         val entries = index.values.sortedBy { it.lastAccess }
         for (entry in entries) {
             if (total <= maxBytes) break
+            total -= entry.size
             remove(entry.url)
-            total = index.values.sumOf { it.size }
         }
     }
 
