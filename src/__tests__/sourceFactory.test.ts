@@ -108,15 +108,6 @@ describe('sourceFactory', () => {
     const source = {
       uri: 'https://cdn.example.com/live.m3u8',
       headers: { Authorization: 'Bearer token' },
-      drm: {
-        licenseServer: 'https://license.example.com',
-      },
-      externalSubtitles: [
-        {
-          uri: 'https://cdn.example.com/subtitles.vtt',
-          label: 'English',
-        },
-      ],
     };
 
     const snapshot = JSON.parse(JSON.stringify(source));
@@ -127,18 +118,6 @@ describe('sourceFactory', () => {
     expect(fromVideoConfig).toHaveBeenCalledWith({
       ...source,
       uri: 'proxied:https://cdn.example.com/live.m3u8',
-      drm: {
-        licenseServer: 'https://license.example.com',
-        type: 'fairplay',
-      },
-      externalSubtitles: [
-        {
-          uri: 'https://cdn.example.com/subtitles.vtt',
-          label: 'English',
-          type: 'auto',
-          language: 'und',
-        },
-      ],
       memoryConfig: {
         profile: 'balanced',
         preloadLevel: 'buffered',

@@ -1,7 +1,7 @@
-import { Image, Platform } from 'react-native';
+import { Image } from 'react-native';
 import { NitroModules } from 'react-native-nitro-modules';
 import type { VideoPlayerSource, VideoPlayerSourceFactory } from '../../spec/nitro/VideoPlayerSource.nitro';
-import type { ExternalSubtitle, NativeVideoConfig, SubtitleType, VideoConfig, VideoSource } from '../types/VideoConfig';
+import type { NativeVideoConfig, VideoConfig, VideoSource } from '../types/VideoConfig';
 import type { MemoryConfig, MemoryProfile, OffscreenRetention, PreloadLevel } from '../types/MemoryConfig';
 import { tryParseNativeVideoError, VideoRuntimeError } from '../types/VideoError';
 import { hlsCacheProxy } from '../../hls/hlsCacheProxy';
@@ -18,7 +18,7 @@ export const getSourceIdentityKey = (source: VideoConfig | VideoSource | VideoPl
   if (isVideoPlayerSource(source)) return source.uri;
   if (typeof source === 'object' && source !== null && 'uri' in source) {
     const s = source as VideoConfig;
-    return [s.uri, s.drm?.type, s.drm?.licenseUrl, s.useHlsProxy, s.memoryConfig?.profile, s.memoryConfig?.preloadLevel, s.memoryConfig?.offscreenRetention].join('|');
+    return [s.uri, s.useHlsProxy, s.memoryConfig?.profile, s.memoryConfig?.preloadLevel, s.memoryConfig?.offscreenRetention].join('|');
   }
   return '';
 };
@@ -126,26 +126,6 @@ export const createSourceFromVideoConfig = (config: VideoConfig & { uri: string 
     normalizedConfig.uri = hlsCacheProxy.getProxiedUrl(normalizedConfig.uri, normalizedConfig.headers);
   }
 
-  if (normalizedConfig.externalSubtitles) {
-    normalizedConfig.externalSubtitles = parseExternalSubtitles(normalizedConfig.externalSubtitles);
-  }
-
-  // Ensure platform-based default for DRM type if DRM is provided without a type
-  if (normalizedConfig.drm && normalizedConfig.drm.type === undefined) {
-    const defaultDrmType = Platform.select({
-      android: 'widevine',
-      ios: 'fairplay',
-      default: undefined
-    });
-
-    if (defaultDrmType) {
-      normalizedConfig.drm = {
-        ...normalizedConfig.drm,
-        type: defaultDrmType
-      };
-    }
-  }
-
   // Set default value for initializeOnCreation (true)
   if (normalizedConfig.initializeOnCreation === undefined) {
     normalizedConfig.initializeOnCreation = true;
@@ -158,21 +138,6 @@ export const createSourceFromVideoConfig = (config: VideoConfig & { uri: string 
   } catch (error) {
     throw tryParseNativeVideoError(error);
   }
-};
-
-/**
- * Parses the external subtitles from the `ExternalSubtitle` to the `NativeExternalSubtitle` format.
- *
- * @param externalSubtitles - The external subtitles to parse
- * @returns The parsed external subtitles
- */
-const parseExternalSubtitles = (externalSubtitles: ExternalSubtitle[]): NativeVideoConfig['externalSubtitles'] => {
-  return externalSubtitles.map(subtitle => ({
-    uri: subtitle.uri,
-    label: subtitle.label,
-    type: (subtitle.type ?? 'auto') as SubtitleType,
-    language: subtitle.language ?? 'und'
-  }));
 };
 
 /**

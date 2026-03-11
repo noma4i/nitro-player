@@ -1,36 +1,13 @@
 import type { PlaybackState } from './PlaybackState';
 import type { VideoPlayerSource } from '../../spec/nitro/VideoPlayerSource.nitro';
-import type { TextTrack } from './TextTrack';
 import type { VideoRuntimeError } from './VideoError';
 import type { VideoOrientation } from './VideoOrientation';
 
 export interface VideoPlayerEvents {
   /**
-   * Called when the audio becomes noisy.
-   * @platform Android
-   */
-  onAudioBecomingNoisy: () => void;
-  /**
-   * Called when the audio focus changes.
-   * @param hasAudioFocus Whether the audio has focus.
-   * @platform Android
-   */
-  onAudioFocusChange: (hasAudioFocus: boolean) => void;
-  /**
    * Called when the bandwidth of the video changes.
    */
   onBandwidthUpdate: (data: BandwidthData) => void;
-  /**
-   * Called when the video view's controls visibility changes.
-   * @param visible Whether the video view's controls are visible.
-   */
-  onControlsVisibleChange: (visible: boolean) => void;
-  /**
-   * Called when the external playback state changes.
-   * @param externalPlaybackActive Whether the external playback is active.
-   * @platform iOS
-   */
-  onExternalPlaybackChange: (externalPlaybackActive: boolean) => void;
   /**
    * Called when the video is loaded.
    * @note onLoadStart -> initialize the player -> onLoad
@@ -46,19 +23,6 @@ export interface VideoPlayerEvents {
    */
   onPlaybackState: (state: PlaybackState) => void;
   /**
-   * Called when player receives timed metadata.
-   */
-  onTimedMetadata: (metadata: TimedMetadata) => void;
-  /**
-   * Called when the text track (currently displayed subtitle) data changes.
-   */
-  onTextTrackDataChanged: (texts: string[]) => void;
-  /**
-   * Called when the selected text track changes.
-   * @param track - The newly selected text track, or null if no track is selected
-   */
-  onTrackChange: (track: TextTrack | null) => void;
-  /**
    * Called when the volume of the player changes.
    */
   onVolumeChange: (data: onVolumeChangeData) => void;
@@ -72,11 +36,6 @@ export type AllPlayerEvents = VideoPlayerEvents & JSVideoPlayerEvents;
 
 export interface VideoViewEvents {
   /**
-   * Called when the video view's picture in picture state changes.
-   * @param isInPictureInPicture Whether the video view is in picture in picture mode.
-   */
-  onPictureInPictureChange: (isInPictureInPicture: boolean) => void;
-  /**
    * Called when the video view's fullscreen state changes.
    * @param fullscreen Whether the video view is in fullscreen mode.
    */
@@ -89,14 +48,6 @@ export interface VideoViewEvents {
    * Called when the video view will exit fullscreen mode.
    */
   willExitFullscreen: () => void;
-  /**
-   * Called when the video view will enter picture in picture mode.
-   */
-  willEnterPictureInPicture: () => void;
-  /**
-   * Called when the video view will exit picture in picture mode.
-   */
-  willExitPictureInPicture: () => void;
 }
 
 export interface BandwidthData {
@@ -117,71 +68,28 @@ export interface BandwidthData {
 }
 
 export interface onLoadData {
-  /**
-   * The current time of the video in seconds.
-   */
   currentTime: number;
-  /**
-   * The duration of the video in seconds.
-   * @note NaN if the duration is unknown.
-   */
   duration: number;
-  /**
-   * The height of the video in pixels.
-   */
   height: number;
-  /**
-   * The width of the video in pixels.
-   */
   width: number;
-  /**
-   * The orientation of the video.
-   */
   orientation: VideoOrientation;
 }
 
 export type SourceType = 'local' | 'network';
 
 export interface onLoadStartData {
-  /**
-   * The type of the source.
-   * @note `local` for local files, `network` for network sources.
-   */
   sourceType: SourceType;
-  /**
-   * The source of the video.
-   */
   source: VideoPlayerSource;
 }
 
-export type TimedMetadataObject = {
-  value: string;
-  identifier: string;
-};
-
-export interface TimedMetadata {
-  /**
-   * The timed metadata of the video.
-   */
-  metadata: Array<TimedMetadataObject>;
-}
-
 export interface onVolumeChangeData {
-  /**
-   * The volume of the player (0.0 = 0%, 1.0 = 100%).
-   */
   volume: number;
-  /**
-   * Whether the player is muted.
-   */
   muted: boolean;
 }
 
 type CheckAllAndOnly<T, A extends readonly (keyof T)[]> =
-  // Missing keys?
   Exclude<keyof T, A[number]> extends never
-    ? // Extra keys?
-      Exclude<A[number], keyof T> extends never
+    ? Exclude<A[number], keyof T> extends never
       ? A
       : ['Extra keys', Exclude<A[number], keyof T>]
     : ['Missing keys', Exclude<keyof T, A[number]>];
@@ -194,27 +102,17 @@ function allKeysOf<T>() {
 
 export const ALL_PLAYER_EVENTS: (keyof AllPlayerEvents)[] =
   allKeysOf<AllPlayerEvents>()(
-    'onAudioBecomingNoisy',
-    'onAudioFocusChange',
     'onBandwidthUpdate',
-    'onControlsVisibleChange',
     'onError',
-    'onExternalPlaybackChange',
     'onLoad',
     'onLoadStart',
     'onPlaybackState',
-    'onTimedMetadata',
-    'onTextTrackDataChanged',
-    'onTrackChange',
     'onVolumeChange'
   );
 
 export const ALL_VIEW_EVENTS: (keyof VideoViewEvents)[] =
   allKeysOf<VideoViewEvents>()(
-    'onPictureInPictureChange',
     'onFullscreenChange',
     'willEnterFullscreen',
-    'willExitFullscreen',
-    'willEnterPictureInPicture',
-    'willExitPictureInPicture'
+    'willExitFullscreen'
   );
