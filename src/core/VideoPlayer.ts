@@ -6,7 +6,6 @@ import type { IgnoreSilentSwitchMode } from './types/IgnoreSilentSwitchMode';
 import type { MemorySnapshot } from './types/MemorySnapshot';
 import type { MixAudioMode } from './types/MixAudioMode';
 import type { PlaybackState } from './types/PlaybackState';
-import type { TextTrack } from './types/TextTrack';
 import type { NoAutocomplete } from './types/Utils';
 import type { VideoConfig, VideoSource } from './types/VideoConfig';
 import {
@@ -257,14 +256,6 @@ class VideoPlayer extends VideoPlayerEvents implements VideoPlayerBase {
     return this.playbackState.isReadyToDisplay;
   }
 
-  get showNotificationControls(): boolean {
-    return this.player.showNotificationControls;
-  }
-
-  set showNotificationControls(value: boolean) {
-    this.player.showNotificationControls = value;
-  }
-
   async initialize(): Promise<void> {
     await this.wrapPromise(this.player.initialize());
 
@@ -333,28 +324,6 @@ class VideoPlayer extends VideoPlayerEvents implements VideoPlayerBase {
     this.updateMemorySize();
   }
 
-  // Text Track Management
-  getAvailableTextTracks(): TextTrack[] {
-    try {
-      return this.player.getAvailableTextTracks();
-    } catch (error) {
-      this.throwError(error);
-      return [];
-    }
-  }
-
-  selectTextTrack(textTrack: TextTrack | null): void {
-    try {
-      this.player.selectTextTrack(textTrack);
-    } catch (error) {
-      this.throwError(error);
-    }
-  }
-
-  // Selected Text Track
-  get selectedTrack(): TextTrack | undefined {
-    return this.player.selectedTrack;
-  }
 }
 
 export { VideoPlayer };

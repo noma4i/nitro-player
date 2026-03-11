@@ -9,8 +9,6 @@ export type {
   onLoadData,
   onLoadStartData,
   SourceType,
-  TimedMetadataObject,
-  TimedMetadata,
   onVolumeChangeData
 } from './core/types/Events';
 export { ALL_PLAYER_EVENTS, ALL_VIEW_EVENTS } from './core/types/Events';
@@ -20,7 +18,6 @@ export type { PlaybackState } from './core/types/PlaybackState';
 export type { IgnoreSilentSwitchMode } from './core/types/IgnoreSilentSwitchMode';
 export type { MixAudioMode } from './core/types/MixAudioMode';
 export type { ResizeMode } from './core/types/ResizeMode';
-export type { TextTrack } from './core/types/TextTrack';
 export type { VideoConfig, VideoSource } from './core/types/VideoConfig';
 export {
   type LibraryError,
