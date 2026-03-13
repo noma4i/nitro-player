@@ -4,9 +4,11 @@ import {
   VideoView,
   hlsCacheProxy,
   usePlaybackState,
+  useEvent,
   type HlsStreamCacheStats,
   type onLoadData,
   type onLoadStartData,
+  type BandwidthData,
   type VideoRuntimeError,
   type VideoViewRef
 } from '@noma4i/just-player';
@@ -48,6 +50,8 @@ function App() {
   const [lastLoadStart, setLastLoadStart] = useState<string>('none');
   const [lastLoad, setLastLoad] = useState<string>('none');
   const [streamCacheStats, setStreamCacheStats] = useState<HlsStreamCacheStats>(emptyStreamCacheStats);
+  const [showControls, setShowControls] = useState(false);
+  const [bandwidth, setBandwidth] = useState<BandwidthData | null>(null);
   const playbackState = usePlaybackState(player);
   const selectedSource = useMemo(
     () => SOURCES[selectedSourceKey],
@@ -58,9 +62,14 @@ function App() {
     setPlayer(instance?.player ?? null);
   }, []);
 
+  useEvent(player, 'onBandwidthUpdate', useCallback((data: BandwidthData) => {
+    setBandwidth(data);
+  }, []));
+
   useEffect(() => {
     setLastError(null);
     setPlayer(null);
+    setBandwidth(null);
   }, [selectedSourceKey]);
 
   useEffect(() => {
@@ -149,7 +158,7 @@ function App() {
             onLoad={handleLoad}
             onError={handleError}
             resizeMode="contain"
-            controls={false}
+            controls={showControls}
             keepScreenAwake
             style={styles.video}
           />
@@ -189,6 +198,19 @@ function App() {
             />
           </View>
 
+          <View style={styles.row}>
+            <ActionButton
+              label="Fullscreen"
+              onPress={() => {
+                videoRef.current?.enterFullscreen();
+              }}
+            />
+            <ActionButton
+              label={showControls ? 'Hide Controls' : 'Show Controls'}
+              onPress={() => setShowControls(v => !v)}
+            />
+          </View>
+
           <View style={styles.panel}>
             <StateRow
               label="source"
@@ -209,6 +231,10 @@ function App() {
             <StateRow
               label="buffered"
               value={formatSeconds(playbackState?.bufferedPosition ?? 0)}
+            />
+            <StateRow
+              label="bitrate"
+              value={bandwidth ? `${(bandwidth.bitrate / 1_000_000).toFixed(2)} Mbps` : '-'}
             />
             <StateRow
               label="cache"
