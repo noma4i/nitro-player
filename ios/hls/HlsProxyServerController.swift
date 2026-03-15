@@ -238,7 +238,7 @@ final class HlsProxyServerController: NSObject {
       }
 
       do {
-        let manifest = try await self.networkClient.fetchText(url: url, headers: headers)
+        let manifest = try await self.networkClient.fetchText(url: url, headers: headers, cachePolicy: .reloadIgnoringLocalCacheData)
         let rewritten = self.manifestRewriter.rewriteManifest(
           manifest: manifest,
           baseUrl: url,
@@ -250,6 +250,9 @@ final class HlsProxyServerController: NSObject {
           data: rewritten.data(using: .utf8) ?? Data(),
           contentType: "application/vnd.apple.mpegurl"
         )
+        response?.setValue("no-cache, no-store, must-revalidate", forAdditionalHeader: "Cache-Control")
+        response?.setValue("no-cache", forAdditionalHeader: "Pragma")
+        response?.setValue("0", forAdditionalHeader: "Expires")
         completion(response)
       } catch {
         completion(GCDWebServerDataResponse(statusCode: 500))
@@ -296,20 +299,21 @@ final class HlsProxyServerController: NSObject {
 }
 
 final class HlsNetworkClient {
-  func fetchText(url: String, headers: [String: String]?) async throws -> String {
-    let data = try await fetchData(url: url, headers: headers)
+  func fetchText(url: String, headers: [String: String]?, cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy) async throws -> String {
+    let data = try await fetchData(url: url, headers: headers, cachePolicy: cachePolicy)
     guard let text = String(data: data, encoding: .utf8) else {
       throw NSError(domain: "hls", code: 1)
     }
     return text
   }
 
-  func fetchData(url: String, headers: [String: String]?) async throws -> Data {
+  func fetchData(url: String, headers: [String: String]?, cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy) async throws -> Data {
     guard let requestUrl = URL(string: url) else {
       throw NSError(domain: "hls", code: 2)
     }
 
     var request = URLRequest(url: requestUrl)
+    request.cachePolicy = cachePolicy
     headers?.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
     let (data, response) = try await URLSession.shared.data(for: request)
     guard let http = response as? HTTPURLResponse, http.statusCode < 400 else {

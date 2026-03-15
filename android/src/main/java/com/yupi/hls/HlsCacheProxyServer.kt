@@ -87,14 +87,18 @@ class HlsCacheProxyServer(
             ?: return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "Missing url")
         val headers = HlsHeaderCodec.decode(session.parameters["headers"]?.firstOrNull())
         val streamKey = HlsHeaderCodec.decodeUrl(session.parameters["streamKey"]?.firstOrNull()) ?: url
-        val manifest = fetchText(url, headers)
+        val manifest = fetchText(url, headers, useCaches = false)
         val rewritten = if (HlsManifest.isMaster(manifest)) {
             HlsManifest.rewriteMaster(manifest, url, headers, port, streamKey)
         } else {
             HlsManifest.rewriteMedia(manifest, url, headers, port, streamKey)
         }
         val data = rewritten.toByteArray(Charsets.UTF_8)
-        return newFixedLengthResponse(Response.Status.OK, "application/vnd.apple.mpegurl", ByteArrayInputStream(data), data.size.toLong())
+        val response = newFixedLengthResponse(Response.Status.OK, "application/vnd.apple.mpegurl", ByteArrayInputStream(data), data.size.toLong())
+        response.addHeader("Cache-Control", "no-cache, no-store, must-revalidate")
+        response.addHeader("Pragma", "no-cache")
+        response.addHeader("Expires", "0")
+        return response
     }
 
     private fun handleSegment(session: IHTTPSession): Response {
@@ -117,13 +121,14 @@ class HlsCacheProxyServer(
         return newFixedLengthResponse(Response.Status.OK, contentType, ByteArrayInputStream(data), data.size.toLong())
     }
 
-    private fun fetchText(url: String, headers: Map<String, String>?): String {
-        val data = fetchData(url, headers)
+    private fun fetchText(url: String, headers: Map<String, String>?, useCaches: Boolean = true): String {
+        val data = fetchData(url, headers, useCaches)
         return String(data, Charsets.UTF_8)
     }
 
-    private fun fetchData(url: String, headers: Map<String, String>?): ByteArray {
+    private fun fetchData(url: String, headers: Map<String, String>?, useCaches: Boolean = true): ByteArray {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            this.useCaches = useCaches
             connectTimeout = 12_000
             readTimeout = 12_000
             requestMethod = "GET"
