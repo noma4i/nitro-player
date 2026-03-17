@@ -8,7 +8,12 @@ type UsePlaybackStateOptions = {
   fps?: number;
 };
 
-const nowMs = () => Date.now();
+const nowMs = (): number => {
+  if (typeof performance !== 'undefined' && typeof performance.timeOrigin === 'number') {
+    return performance.timeOrigin + performance.now();
+  }
+  return Date.now();
+};
 
 const shouldInterpolate = (state: PlaybackState) => state.status === 'playing' && state.isPlaying && !state.isBuffering;
 
@@ -19,11 +24,12 @@ const interpolatePlaybackState = (state: PlaybackState, currentTimestampMs: numb
 
   const elapsedMs = Math.max(0, currentTimestampMs - state.nativeTimestampMs);
   const advancedTime = (elapsedMs / 1000) * state.rate;
-  const nextCurrentTime = Math.min(state.duration, state.currentTime + advancedTime);
+  const duration = Number.isFinite(state.duration) ? state.duration : Infinity;
+  const nextCurrentTime = Math.min(duration, state.currentTime + advancedTime);
 
   return {
     ...state,
-    currentTime: nextCurrentTime,
+    currentTime: Number.isFinite(nextCurrentTime) ? nextCurrentTime : state.currentTime,
     bufferDuration: Math.max(0, state.bufferedPosition - nextCurrentTime)
   };
 };
@@ -45,7 +51,7 @@ const getPlaybackStateSafe = (player: VideoPlayer | null | undefined) => {
 };
 
 export const usePlaybackState = (player: VideoPlayer | null | undefined, options: UsePlaybackStateOptions = {}) => {
-  const { interpolate = true, fps = 30 } = options;
+  const { interpolate = true, fps = 60 } = options;
   const [state, setState] = useState<PlaybackState | null>(() => getPlaybackStateSafe(player));
   const latestStateRef = useRef(state);
 
