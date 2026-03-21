@@ -60,19 +60,14 @@ function App() {
 
   const handleVideoRef = useCallback((instance: NitroPlayerViewRef | null) => {
     videoRef.current = instance;
-    console.log('[NitroPlay] ref callback:', instance ? 'instance' : 'null', 'player:', instance?.player ? 'valid' : 'null');
     setPlayer(instance?.player ?? null);
   }, []);
 
-  const playbackState = usePlaybackState(player, { interpolate: false });
+  const playbackState = usePlaybackState(player, { interpolate: true });
   const status = playbackState?.status ?? 'idle';
   const isPlaying = status === 'playing';
   const isPaused = status === 'paused';
   const isReady = isPlaying || isPaused || status === 'ended';
-
-  useEffect(() => {
-    console.log('[NitroPlay] status:', status, 'isPlaying:', isPlaying, 'player:', player ? 'valid' : 'null');
-  }, [status, isPlaying, player]);
 
   useEvent(
     player,
@@ -201,15 +196,6 @@ function App() {
             />
           </View>
 
-          <View style={styles.row}>
-            <ActionButton
-              label="Clear Cache"
-              onPress={() => {
-                hlsCacheProxy.clearCache().catch(() => {});
-              }}
-            />
-          </View>
-
           <PlaybackStats
             player={player}
             sourceLabel={selectedSource.label}
@@ -273,10 +259,14 @@ const PlaybackStats = React.memo(function PlaybackStats({
         label="bitrate"
         value={bandwidth ? `${(bandwidth.bitrate / 1_000_000).toFixed(2)} Mbps` : '-'}
       />
-      <StateRow
-        label="cache"
-        value={selectedSourceKey === 'hls' ? formatBytes(streamCacheStats.streamSize) : 'n/a'}
-      />
+      <View style={styles.stateRow}>
+        <Text style={styles.stateLabel}>cache</Text>
+        <Pressable onPress={() => hlsCacheProxy.clearCache().catch(() => {})}>
+          <Text style={[styles.stateValue, selectedSourceKey === 'hls' && { color: '#ff6b6b' }]}>
+            {selectedSourceKey === 'hls' ? `${formatBytes(streamCacheStats.streamSize)} (clear)` : 'n/a'}
+          </Text>
+        </Pressable>
+      </View>
       <StateRow
         label="cacheFiles"
         value={selectedSourceKey === 'hls' ? String(streamCacheStats.streamFileCount) : 'n/a'}
