@@ -372,6 +372,9 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
 
     if player.currentItem != nil {
       player.play()
+      status = .playing
+      isCurrentlyBuffering = false
+      emitPlaybackState()
       return
     }
 
@@ -398,6 +401,13 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
 
   func pause() throws {
     player.pause()
+
+    if status != .ended && status != .idle {
+      status = .paused
+      isCurrentlyBuffering = false
+      emitPlaybackState()
+    }
+
     NitroPlayerManager.shared.touchFeedHotCandidate(self)
 
     if !isAttachedToVideoView {

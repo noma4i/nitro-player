@@ -70,6 +70,10 @@ function App() {
   const isPaused = status === 'paused';
   const isReady = isPlaying || isPaused || status === 'ended';
 
+  useEffect(() => {
+    console.log('[NitroPlay] status:', status, 'isPlaying:', isPlaying, 'player:', player ? 'valid' : 'null');
+  }, [status, isPlaying, player]);
+
   useEvent(
     player,
     'onBandwidthUpdate',

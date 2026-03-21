@@ -357,12 +357,20 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
       NitroPlayerManager.touchFeedHotCandidate(this)
       player.play()
+      status = NitroPlayerStatus.PLAYING
+      emitPlaybackState()
     }
   }
 
   override fun pause() {
     runOnMainThread {
       player.pause()
+
+      if (status != NitroPlayerStatus.ENDED && status != NitroPlayerStatus.IDLE) {
+        status = NitroPlayerStatus.PAUSED
+        emitPlaybackState()
+      }
+
       NitroPlayerManager.touchFeedHotCandidate(this)
 
       if (!isAttachedToView()) {
