@@ -195,9 +195,18 @@ function App() {
               onPress={() => videoRef.current?.enterFullscreen()}
             />
             <ActionButton
-              label={showControls ? 'Hide Controls' : 'Show Controls'}
+              label={showControls ? 'Disallow Controls' : 'Allow Controls'}
               active={showControls}
               onPress={() => setShowControls(v => !v)}
+            />
+          </View>
+
+          <View style={styles.row}>
+            <ActionButton
+              label="Clear Cache"
+              onPress={() => {
+                hlsCacheProxy.clearCache().catch(() => {});
+              }}
             />
           </View>
 
