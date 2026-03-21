@@ -9,7 +9,6 @@ CONFIGURATION="Debug"
 DEVICE_NAME="${IOS_DEVICE_NAME:-TimTam}"
 XCODE_DEVICE_UDID="${IOS_DEVICE_UDID:-}"
 BUNDLE_ID="com.noma4i.nitroplay.example"
-APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/NitroPlayExample-ckthjrerxttszxgrffwfbjzvfcmb/Build/Products/${CONFIGURATION}-iphoneos/NitroPlayExample.app"
 
 if [ ! -d "$WORKSPACE" ]; then
   echo "Workspace not found: $WORKSPACE" >&2
@@ -36,8 +35,10 @@ xcodebuild \
   -allowProvisioningDeviceRegistration \
   build
 
-if [ ! -d "$APP_PATH" ]; then
-  echo "Built app not found: $APP_PATH" >&2
+APP_PATH="$(find "$HOME/Library/Developer/Xcode/DerivedData" -path "*/NitroPlayExample-*/Build/Products/${CONFIGURATION}-iphoneos/NitroPlayExample.app" -maxdepth 5 2>/dev/null | head -1)"
+
+if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+  echo "Built app not found in DerivedData" >&2
   exit 1
 fi
 

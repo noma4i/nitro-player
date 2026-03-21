@@ -10,11 +10,13 @@ import { type AllNitroPlayerEvents } from '../types/Events';
  * @param callback - The callback for the event
  */
 export const useEvent = <T extends keyof AllNitroPlayerEvents>(
-  player: NitroPlayer,
+  player: NitroPlayer | null | undefined,
   event: T,
   callback: AllNitroPlayerEvents[T]
 ) => {
   useEffect(() => {
+    if (!player) return;
+
     const subscription = player.addEventListener(event, callback);
 
     return () => {
