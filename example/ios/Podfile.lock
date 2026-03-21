@@ -11,19 +11,18 @@ PODS:
   - hermes-engine (0.14.1):
     - hermes-engine/Pre-built (= 0.14.1)
   - hermes-engine/Pre-built (0.14.1)
-  - JustPlayer (0.1.8):
+  - NitroModules (0.35.2):
     - boost
     - DoubleConversion
     - fast_float
     - fmt
-    - GCDWebServer (~> 3.5)
     - glog
     - hermes-engine
-    - NitroModules
     - RCT-Folly
     - RCT-Folly/Fabric
     - RCTRequired
     - RCTTypeSafety
+    - React-callinvoker
     - React-Core
     - React-debug
     - React-Fabric
@@ -41,18 +40,19 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - NitroModules (0.35.2):
+  - NitroPlay (0.1.9):
     - boost
     - DoubleConversion
     - fast_float
     - fmt
+    - GCDWebServer (~> 3.5)
     - glog
     - hermes-engine
+    - NitroModules
     - RCT-Folly
     - RCT-Folly/Fabric
     - RCTRequired
     - RCTTypeSafety
-    - React-callinvoker
     - React-Core
     - React-debug
     - React-Fabric
@@ -2610,8 +2610,8 @@ DEPENDENCIES:
   - GCDWebServer
   - glog (from `../node_modules/react-native/third-party-podspecs/glog.podspec`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
-  - "JustPlayer (from `../node_modules/@noma4i/just-player`)"
   - NitroModules (from `../node_modules/react-native-nitro-modules`)
+  - "NitroPlay (from `../node_modules/@noma4i/nitro-play`)"
   - RCT-Folly (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
   - RCTRequired (from `../node_modules/react-native/Libraries/Required`)
@@ -2707,10 +2707,10 @@ EXTERNAL SOURCES:
   hermes-engine:
     :podspec: "../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-v0.14.1
-  JustPlayer:
-    :path: "../node_modules/@noma4i/just-player"
   NitroModules:
     :path: "../node_modules/react-native-nitro-modules"
+  NitroPlay:
+    :path: "../node_modules/@noma4i/nitro-play"
   RCT-Folly:
     :podspec: "../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec"
   RCTDeprecation:
@@ -2863,8 +2863,8 @@ SPEC CHECKSUMS:
   GCDWebServer: 2c156a56c8226e2d5c0c3f208a3621ccffbe3ce4
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: c299039cef32b85f1d6f3a5ec97a2f546d2dd049
-  JustPlayer: 25530ca08d8e0eead9f325362581d7bd0640e98e
   NitroModules: 17f56ebb3581e74931c870a789834582ce75470c
+  NitroPlay: fcc1217161f34894ff3c735f3ca9ffb8ebe53185
   RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
   RCTDeprecation: 9da1d0cf93db23ca8b41e8efe9ae558fd9c0077f
   RCTRequired: 92a63c7041031a131fa5206eb082d53f95729b79
@@ -2938,6 +2938,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: b669e79fa0f8d3f6f5e35372345f54b99e06b13c
 
-PODFILE CHECKSUM: d495e8c36748a2e7d9170e7705a0a74387c996fd
+PODFILE CHECKSUM: 94758c23a2c94462d164d1edffdc45ee133ef89f
 
 COCOAPODS: 1.16.2
