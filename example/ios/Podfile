@@ -32,5 +32,17 @@ target 'NitroPlayExample' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Xcode 26.3 sets _LIBCPP_HARDENING_MODE_DEBUG which breaks Swift-C++ interop
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+        config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << '_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_NONE'
+        %w[OTHER_CFLAGS OTHER_CPLUSPLUSFLAGS].each do |key|
+          config.build_settings[key] ||= ['$(inherited)']
+          config.build_settings[key] << '-Wno-macro-redefined'
+        end
+      end
+    end
   end
 end
