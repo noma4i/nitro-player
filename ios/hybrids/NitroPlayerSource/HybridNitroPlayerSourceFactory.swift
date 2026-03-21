@@ -8,17 +8,15 @@
 import Foundation
 
 class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
-  func fromVideoConfig(config: NativeVideoConfig) throws
+  func fromNitroPlayerConfig(config: NativeNitroPlayerConfig) throws
     -> any HybridNitroPlayerSourceSpec
   {
     return try HybridNitroPlayerSource(config: config)
   }
 
   func fromUri(uri: String) throws -> HybridNitroPlayerSourceSpec {
-    let config = NativeVideoConfig(
+    let config = NativeNitroPlayerConfig(
       uri: uri,
-      externalSubtitles: nil,
-      drm: nil,
       memoryConfig: nil,
       headers: nil,
       bufferConfig: nil,

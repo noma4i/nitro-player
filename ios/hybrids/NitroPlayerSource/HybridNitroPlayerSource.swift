@@ -12,13 +12,13 @@ import NitroModules
 class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSourceSpec {
   var asset: AVURLAsset?
   var uri: String
-  var config: NativeVideoConfig
+  var config: NativeNitroPlayerConfig
   var retentionState: MemoryRetentionState = .cold
 
   let url: URL
   private let sourceLoader = SourceLoader()
 
-  init(config: NativeVideoConfig) throws {
+  init(config: NativeNitroPlayerConfig) throws {
     self.uri = config.uri
     self.config = config
 

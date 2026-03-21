@@ -152,23 +152,9 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
     updateAndEmitPlaybackState()
   }
 
-  func onTextTrackDataChanged(texts: [NSAttributedString]) {
-    _eventEmitter?.onTextTrackDataChanged(texts.map { $0.string })
-  }
+  func onTextTrackDataChanged(texts: [NSAttributedString]) {}
 
-  func onTimedMetadataChanged(timedMetadata: [AVMetadataItem]) {
-    var metadata: [TimedMetadataObject] = []
-    for item in timedMetadata {
-      let value = item.value as? String
-      let identifier = item.identifier?.rawValue
-
-      if let value, let identifier {
-        metadata.append(.init(value: value, identifier: identifier))
-      }
-    }
-
-    _eventEmitter?.onTimedMetadata(.init(metadata: metadata))
-  }
+  func onTimedMetadataChanged(timedMetadata: [AVMetadataItem]) {}
 
   func onBandwidthUpdate(bitrate: Double) {
     _eventEmitter?.onBandwidthUpdate(

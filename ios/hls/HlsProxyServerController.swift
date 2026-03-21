@@ -250,9 +250,9 @@ final class HlsProxyServerController: NSObject {
           data: rewritten.data(using: .utf8) ?? Data(),
           contentType: "application/vnd.apple.mpegurl"
         )
-        response?.setValue("no-cache, no-store, must-revalidate", forAdditionalHeader: "Cache-Control")
-        response?.setValue("no-cache", forAdditionalHeader: "Pragma")
-        response?.setValue("0", forAdditionalHeader: "Expires")
+        response.setValue("no-cache, no-store, must-revalidate", forAdditionalHeader: "Cache-Control")
+        response.setValue("no-cache", forAdditionalHeader: "Pragma")
+        response.setValue("0", forAdditionalHeader: "Expires")
         completion(response)
       } catch {
         completion(GCDWebServerDataResponse(statusCode: 500))
