@@ -124,6 +124,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     set = { value ->
       val nextPositionMs = (value * 1000).toLong().coerceAtLeast(0L)
       desiredCurrentTimeMs = nextPositionMs
+      emitPlaybackState()
       runOnMainThread {
         if (loadedWithSource) {
           player.seekTo(nextPositionMs)

@@ -146,11 +146,9 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   var currentTime: Double {
     set {
       resumePositionSeconds = max(0, newValue)
+      emitPlaybackState()
 
-      guard player.currentItem != nil else {
-        emitPlaybackState()
-        return
-      }
+      guard player.currentItem != nil else { return }
 
       player.seek(
         to: CMTime(seconds: resumePositionSeconds, preferredTimescale: 1000),

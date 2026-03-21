@@ -75,7 +75,6 @@ export const usePlaybackState = (player: NitroPlayer | null | undefined, options
     }
 
     const subscription = player.addEventListener('onPlaybackState', next => {
-      console.log('[usePlaybackState] event:', next.status, 'isPlaying:', next.isPlaying, 'time:', next.currentTime.toFixed(1));
       latestStateRef.current = next;
       setState(next);
     });
