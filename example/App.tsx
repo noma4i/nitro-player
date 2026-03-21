@@ -10,8 +10,7 @@ import {
   type onLoadStartData,
   type BandwidthData,
   type NitroPlayerRuntimeError,
-  type NitroPlayerViewRef,
-  type PlaybackState,
+  type NitroPlayerViewRef
 } from '@noma4i/nitro-play';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
@@ -37,9 +36,16 @@ const SOURCES = {
 } as const;
 
 function App() {
-  const emptyStreamCacheStats = useMemo<HlsStreamCacheStats>(() => ({
-    totalSize: 0, fileCount: 0, maxSize: 5_368_709_120, streamSize: 0, streamFileCount: 0
-  }), []);
+  const emptyStreamCacheStats = useMemo<HlsStreamCacheStats>(
+    () => ({
+      totalSize: 0,
+      fileCount: 0,
+      maxSize: 5_368_709_120,
+      streamSize: 0,
+      streamFileCount: 0
+    }),
+    []
+  );
   const videoRef = useRef<NitroPlayerViewRef>(null);
   const [player, setPlayer] = useState<NitroPlayerViewRef['player'] | null>(null);
   const [selectedSourceKey, setSelectedSourceKey] = useState<keyof typeof SOURCES>('hls');
@@ -50,33 +56,33 @@ function App() {
   const [showControls, setShowControls] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bandwidth, setBandwidth] = useState<BandwidthData | null>(null);
-  const [status, setStatus] = useState<string>('idle');
-
-  const isPlaying = status === 'playing';
-  const isPaused = status === 'paused';
-  const isReady = isPlaying || isPaused || status === 'ended';
-
   const selectedSource = useMemo(() => SOURCES[selectedSourceKey], [selectedSourceKey]);
 
   const handleVideoRef = useCallback((instance: NitroPlayerViewRef | null) => {
     videoRef.current = instance;
+    console.log('[NitroPlay] ref callback:', instance ? 'instance' : 'null', 'player:', instance?.player ? 'valid' : 'null');
     setPlayer(instance?.player ?? null);
   }, []);
 
-  useEvent(player, 'onPlaybackState', useCallback((state: PlaybackState) => {
-    setStatus(prev => prev !== state.status ? state.status : prev);
-  }, []));
+  const playbackState = usePlaybackState(player, { interpolate: false });
+  const status = playbackState?.status ?? 'idle';
+  const isPlaying = status === 'playing';
+  const isPaused = status === 'paused';
+  const isReady = isPlaying || isPaused || status === 'ended';
 
-  useEvent(player, 'onBandwidthUpdate', useCallback((data: BandwidthData) => {
-    setBandwidth(data);
-  }, []));
+  useEvent(
+    player,
+    'onBandwidthUpdate',
+    useCallback((data: BandwidthData) => {
+      setBandwidth(data);
+    }, [])
+  );
 
   useEffect(() => {
     setLastError(null);
     setPlayer(null);
     setBandwidth(null);
     setIsFullscreen(false);
-    setStatus('idle');
   }, [selectedSourceKey]);
 
   useEffect(() => {
@@ -91,8 +97,13 @@ function App() {
       if (!isCancelled) setStreamCacheStats(nextStats);
     };
     refresh().catch(() => {});
-    const intervalId = setInterval(() => { refresh().catch(() => {}); }, 1000);
-    return () => { isCancelled = true; clearInterval(intervalId); };
+    const intervalId = setInterval(() => {
+      refresh().catch(() => {});
+    }, 1000);
+    return () => {
+      isCancelled = true;
+      clearInterval(intervalId);
+    };
   }, [emptyStreamCacheStats, selectedSource.source.uri, selectedSourceKey]);
 
   return (
@@ -131,15 +142,14 @@ function App() {
               }, [])}
               onFullscreenChange={useCallback((fs: boolean) => setIsFullscreen(fs), [])}
               resizeMode="contain"
-              controls={showControls}
+              controls={showControls || isFullscreen}
               keepScreenAwake
               style={styles.video}
             />
             {isFullscreen && (
               <Pressable
                 style={styles.exitFsButton}
-                onPress={() => videoRef.current?.exitFullscreen()}
-              >
+                onPress={() => videoRef.current?.exitFullscreen()}>
                 <Text style={styles.exitFsLabel}>X</Text>
               </Pressable>
             )}
@@ -147,16 +157,12 @@ function App() {
 
           <View style={styles.row}>
             <ActionButton
-              label="Play"
-              active={isPlaying}
-              disabled={isPlaying}
-              onPress={() => videoRef.current?.player.play()}
-            />
-            <ActionButton
-              label="Pause"
-              active={isPaused}
-              disabled={!isPlaying}
-              onPress={() => videoRef.current?.player.pause()}
+              label={isPlaying ? 'Pause' : 'Play'}
+              onPress={() => {
+                const p = videoRef.current?.player;
+                if (!p) return;
+                isPlaying ? p.pause() : p.play();
+              }}
             />
           </View>
 
@@ -215,7 +221,7 @@ const PlaybackStats = React.memo(function PlaybackStats({
   selectedSourceKey,
   lastLoadStart,
   lastLoad,
-  lastError,
+  lastError
 }: {
   player: NitroPlayerViewRef['player'] | null;
   sourceLabel: string;
@@ -230,11 +236,26 @@ const PlaybackStats = React.memo(function PlaybackStats({
 
   return (
     <View style={styles.panel}>
-      <StateRow label="source" value={sourceLabel} />
-      <StateRow label="status" value={playbackState?.status ?? 'idle'} />
-      <StateRow label="time" value={formatSeconds(playbackState?.currentTime ?? 0)} />
-      <StateRow label="duration" value={formatSeconds(playbackState?.duration ?? 0)} />
-      <StateRow label="buffered" value={formatSeconds(playbackState?.bufferedPosition ?? 0)} />
+      <StateRow
+        label="source"
+        value={sourceLabel}
+      />
+      <StateRow
+        label="status"
+        value={playbackState?.status ?? 'idle'}
+      />
+      <StateRow
+        label="time"
+        value={formatSeconds(playbackState?.currentTime ?? 0)}
+      />
+      <StateRow
+        label="duration"
+        value={formatSeconds(playbackState?.duration ?? 0)}
+      />
+      <StateRow
+        label="buffered"
+        value={formatSeconds(playbackState?.bufferedPosition ?? 0)}
+      />
       <StateRow
         label="bitrate"
         value={bandwidth ? `${(bandwidth.bitrate / 1_000_000).toFixed(2)} Mbps` : '-'}
@@ -247,9 +268,18 @@ const PlaybackStats = React.memo(function PlaybackStats({
         label="cacheFiles"
         value={selectedSourceKey === 'hls' ? String(streamCacheStats.streamFileCount) : 'n/a'}
       />
-      <StateRow label="loadStart" value={truncate(lastLoadStart)} />
-      <StateRow label="onLoad" value={truncate(lastLoad)} />
-      <StateRow label="error" value={truncate(lastError ?? 'none')} />
+      <StateRow
+        label="loadStart"
+        value={truncate(lastLoadStart)}
+      />
+      <StateRow
+        label="onLoad"
+        value={truncate(lastLoad)}
+      />
+      <StateRow
+        label="error"
+        value={truncate(lastError ?? 'none')}
+      />
     </View>
   );
 });
@@ -268,7 +298,7 @@ const ActionButton = React.memo(function ActionButton({
   label,
   onPress,
   active = false,
-  disabled = false,
+  disabled = false
 }: {
   label: string;
   onPress: () => void;
@@ -279,14 +309,8 @@ const ActionButton = React.memo(function ActionButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={[
-        styles.button,
-        active && styles.buttonActive,
-        disabled && styles.buttonDisabled,
-      ]}>
-      <Text style={[styles.buttonLabel, disabled && styles.buttonLabelDisabled]}>
-        {label}
-      </Text>
+      style={[styles.button, active && styles.buttonActive, disabled && styles.buttonDisabled]}>
+      <Text style={[styles.buttonLabel, disabled && styles.buttonLabelDisabled]}>{label}</Text>
     </Pressable>
   );
 });
@@ -302,8 +326,12 @@ function StateRow({ label, value }: { label: string; value: string }) {
 
 function formatSeconds(value: number) {
   if (!Number.isFinite(value) || value < 0) return '--:--';
-  const s = Math.floor(value % 60).toString().padStart(2, '0');
-  const m = Math.floor(value / 60).toString().padStart(2, '0');
+  const s = Math.floor(value % 60)
+    .toString()
+    .padStart(2, '0');
+  const m = Math.floor(value / 60)
+    .toString()
+    .padStart(2, '0');
   return `${m}:${s}`;
 }
 
@@ -316,7 +344,10 @@ function formatBytes(value: number) {
   const units = ['B', 'KB', 'MB', 'GB'];
   let size = value;
   let i = 0;
-  while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
+  while (size >= 1024 && i < units.length - 1) {
+    size /= 1024;
+    i++;
+  }
   return `${size.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
@@ -328,8 +359,16 @@ const styles = StyleSheet.create({
   videoWrapper: { marginTop: 12, position: 'relative' },
   video: { width: '100%', aspectRatio: 16 / 9, borderRadius: 20, backgroundColor: '#000', overflow: 'hidden' },
   exitFsButton: {
-    position: 'absolute', top: 12, right: 12, width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', zIndex: 10,
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10
   },
   exitFsLabel: { color: '#fff', fontSize: 16, fontWeight: '700' },
   row: { flexDirection: 'row', gap: 12, marginTop: 16 },
@@ -343,7 +382,7 @@ const styles = StyleSheet.create({
   panel: { marginTop: 24, padding: 16, borderRadius: 18, backgroundColor: '#0d2234', gap: 10 },
   stateRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   stateLabel: { color: '#7ba6c4', fontSize: 14, textTransform: 'uppercase' },
-  stateValue: { color: '#f3f7fb', fontSize: 14, fontWeight: '600' },
+  stateValue: { color: '#f3f7fb', fontSize: 14, fontWeight: '600' }
 });
 
 export default App;
