@@ -367,6 +367,7 @@ const styles = StyleSheet.create({
   },
   video: {
     width: '100%',
+    marginTop: 12,
     aspectRatio: 16 / 9,
     borderRadius: 20,
     backgroundColor: '#000',
