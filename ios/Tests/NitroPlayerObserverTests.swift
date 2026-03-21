@@ -5,14 +5,14 @@ import XCTest
 final class NitroPlayerObserverTests: XCTestCase {
   func testInvalidatePlayerItemObserversRemovesOutputsFromObservedItem() throws {
     let source = try HybridNitroPlayerSource(
-      config: NativeVideoConfig(
+      config: NativeNitroPlayerConfig(
         uri: "https://cdn.example.com/video.mp4",
-        externalSubtitles: nil,
-        drm: nil,
+        memoryConfig: nil,
         headers: nil,
         bufferConfig: nil,
         metadata: nil,
-        initializeOnCreation: false
+        initializeOnCreation: false,
+        useHlsProxy: nil
       )
     )
     let player = try HybridNitroPlayer(source: source)

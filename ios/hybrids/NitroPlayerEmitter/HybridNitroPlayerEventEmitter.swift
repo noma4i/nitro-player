@@ -75,18 +75,6 @@ class HybridNitroPlayerEventEmitter: HybridNitroPlayerEventEmitterSpec {
     addListener(eventName: "onPlaybackState", listener: listener)
   }
 
-  func addOnTimedMetadataListener(listener: @escaping (TimedMetadata) -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onTimedMetadata", listener: listener)
-  }
-
-  func addOnTextTrackDataChangedListener(listener: @escaping ([String]) -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onTextTrackDataChanged", listener: listener)
-  }
-
-  func addOnTrackChangeListener(listener: @escaping (Variant_NullType_TextTrack?) -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onTrackChange", listener: listener)
-  }
-
   func addOnVolumeChangeListener(listener: @escaping (onVolumeChangeData) -> Void) throws -> ListenerSubscription {
     addListener(eventName: "onVolumeChange", listener: listener)
   }
@@ -127,18 +115,6 @@ class HybridNitroPlayerEventEmitter: HybridNitroPlayerEventEmitterSpec {
 
   func onPlaybackState(_ state: PlaybackState) {
     emitEvent(eventName: "onPlaybackState") { (callback: (PlaybackState) throws -> Void) in try callback(state) }
-  }
-
-  func onTimedMetadata(_ metadata: TimedMetadata) {
-    emitEvent(eventName: "onTimedMetadata") { (callback: (TimedMetadata) throws -> Void) in try callback(metadata) }
-  }
-
-  func onTextTrackDataChanged(_ tracks: [String]) {
-    emitEvent(eventName: "onTextTrackDataChanged") { (callback: ([String]) throws -> Void) in try callback(tracks) }
-  }
-
-  func onTrackChange(_ track: Variant_NullType_TextTrack?) {
-    emitEvent(eventName: "onTrackChange") { (callback: (Variant_NullType_TextTrack?) throws -> Void) in try callback(track) }
   }
 
   func onVolumeChange(_ data: onVolumeChangeData) {
