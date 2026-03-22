@@ -1,25 +1,22 @@
-import * as React from 'react';
-import * as TestRenderer from 'react-test-renderer';
-
-const { act } = TestRenderer;
+import { renderHook, act } from '@testing-library/react';
 
 jest.mock('react-native', () => ({
-  Platform: { OS: 'ios' },
+  Platform: { OS: 'ios' }
 }));
 
 jest.mock('react-native-nitro-modules', () => ({
   NitroModules: {
     createHybridObject: jest.fn(),
-    updateMemorySize: jest.fn(),
-  },
+    updateMemorySize: jest.fn()
+  }
 }));
 
 jest.mock('../core/utils/sourceFactory', () => ({
-  createSource: jest.fn(() => ({ id: 'source' })),
+  createSource: jest.fn(() => ({ id: 'source' }))
 }));
 
 jest.mock('../core/utils/playerFactory', () => ({
-  createPlayer: jest.fn(),
+  createPlayer: jest.fn()
 }));
 
 const MOCK_TIMESTAMP = 1000000;
@@ -30,10 +27,10 @@ beforeEach(() => {
   Object.defineProperty(globalThis, 'performance', {
     value: {
       timeOrigin: 0,
-      now: jest.fn(() => MOCK_TIMESTAMP),
+      now: jest.fn(() => MOCK_TIMESTAMP)
     },
     writable: true,
-    configurable: true,
+    configurable: true
   });
 });
 
@@ -41,7 +38,7 @@ afterEach(() => {
   Object.defineProperty(globalThis, 'performance', {
     value: originalPerformance,
     writable: true,
-    configurable: true,
+    configurable: true
   });
 });
 
@@ -57,7 +54,7 @@ function makePlaybackState(overrides: Record<string, unknown> = {}) {
     isBuffering: false,
     isReadyToDisplay: false,
     nativeTimestampMs: MOCK_TIMESTAMP,
-    ...overrides,
+    ...overrides
   };
 }
 
@@ -80,13 +77,13 @@ function makeMockPlayer(playbackState: ReturnType<typeof makePlaybackState> | nu
         remove: jest.fn(() => {
           const idx = listeners[event]!.indexOf(callback);
           if (idx >= 0) listeners[event]!.splice(idx, 1);
-        }),
+        })
       };
     }),
     _emit(event: string, data: unknown) {
-      listeners[event]?.forEach((cb) => cb(data));
+      listeners[event]?.forEach(cb => cb(data));
     },
-    clearAllEvents: jest.fn(),
+    clearAllEvents: jest.fn()
   };
 }
 
@@ -125,54 +122,30 @@ describe('usePlaybackState', () => {
 
   it('returns null for null player', () => {
     const { usePlaybackState } = require('../core/hooks/usePlaybackState');
-    let result: unknown = undefined;
 
-    function TestComponent() {
-      result = usePlaybackState(null);
-      return null;
-    }
+    const { result } = renderHook(() => usePlaybackState(null));
 
-    act(() => {
-      TestRenderer.create(<TestComponent />);
-    });
-
-    expect(result).toBeNull();
+    expect(result.current).toBeNull();
   });
 
   it('returns null for undefined player', () => {
     const { usePlaybackState } = require('../core/hooks/usePlaybackState');
-    let result: unknown = undefined;
 
-    function TestComponent() {
-      result = usePlaybackState(undefined);
-      return null;
-    }
+    const { result } = renderHook(() => usePlaybackState(undefined));
 
-    act(() => {
-      TestRenderer.create(<TestComponent />);
-    });
-
-    expect(result).toBeNull();
+    expect(result.current).toBeNull();
   });
 
   it('returns playbackState from player', () => {
     const { usePlaybackState } = require('../core/hooks/usePlaybackState');
     const state = makePlaybackState({ status: 'paused', currentTime: 42 });
     const player = makeMockPlayer(state);
-    let result: unknown = undefined;
 
-    function TestComponent() {
-      result = usePlaybackState(player, { interpolate: false });
-      return null;
-    }
+    const { result } = renderHook(() => usePlaybackState(player, { interpolate: false }));
 
-    act(() => {
-      TestRenderer.create(<TestComponent />);
-    });
-
-    expect(result).not.toBeNull();
-    expect((result as Record<string, unknown>).currentTime).toBe(42);
-    expect((result as Record<string, unknown>).status).toBe('paused');
+    expect(result.current).not.toBeNull();
+    expect((result.current as Record<string, unknown>).currentTime).toBe(42);
+    expect((result.current as Record<string, unknown>).status).toBe('paused');
   });
 
   it('interpolation advances currentTime when playing', () => {
@@ -185,31 +158,21 @@ describe('usePlaybackState', () => {
       duration: 100,
       bufferedPosition: 50,
       rate: 1,
-      nativeTimestampMs: MOCK_TIMESTAMP,
+      nativeTimestampMs: MOCK_TIMESTAMP
     });
     const player = makeMockPlayer(state);
-    let result: unknown = undefined;
 
-    function TestComponent() {
-      result = usePlaybackState(player, { interpolate: true, fps: 60 });
-      return null;
-    }
+    const { result } = renderHook(() => usePlaybackState(player, { interpolate: true, fps: 60 }));
 
-    act(() => {
-      TestRenderer.create(<TestComponent />);
-    });
-
-    // Advance performance.now by 500ms
     Object.defineProperty(globalThis, 'performance', {
       value: {
         timeOrigin: 0,
-        now: jest.fn(() => MOCK_TIMESTAMP + 500),
+        now: jest.fn(() => MOCK_TIMESTAMP + 500)
       },
       writable: true,
-      configurable: true,
+      configurable: true
     });
 
-    // Flush the first RAF, then advance timers to trigger setTimeout, then flush next RAF
     act(() => {
       flushRAF();
     });
@@ -222,8 +185,7 @@ describe('usePlaybackState', () => {
       flushRAF();
     });
 
-    // After 500ms at rate=1, currentTime should advance by 0.5s (from 10 to 10.5)
-    const currentTime = (result as Record<string, unknown>).currentTime as number;
+    const currentTime = (result.current as Record<string, unknown>).currentTime as number;
     expect(currentTime).toBeGreaterThanOrEqual(10);
   });
 
@@ -234,21 +196,13 @@ describe('usePlaybackState', () => {
       isPlaying: true,
       isBuffering: true,
       currentTime: 10,
-      nativeTimestampMs: MOCK_TIMESTAMP,
+      nativeTimestampMs: MOCK_TIMESTAMP
     });
     const player = makeMockPlayer(state);
-    let result: unknown = undefined;
 
-    function TestComponent() {
-      result = usePlaybackState(player, { interpolate: false });
-      return null;
-    }
+    const { result } = renderHook(() => usePlaybackState(player, { interpolate: false }));
 
-    act(() => {
-      TestRenderer.create(<TestComponent />);
-    });
-
-    expect((result as Record<string, unknown>).currentTime).toBe(10);
+    expect((result.current as Record<string, unknown>).currentTime).toBe(10);
   });
 
   it('no interpolation when paused', () => {
@@ -258,21 +212,13 @@ describe('usePlaybackState', () => {
       isPlaying: false,
       isBuffering: false,
       currentTime: 25,
-      nativeTimestampMs: MOCK_TIMESTAMP,
+      nativeTimestampMs: MOCK_TIMESTAMP
     });
     const player = makeMockPlayer(state);
-    let result: unknown = undefined;
 
-    function TestComponent() {
-      result = usePlaybackState(player, { interpolate: false });
-      return null;
-    }
+    const { result } = renderHook(() => usePlaybackState(player, { interpolate: false }));
 
-    act(() => {
-      TestRenderer.create(<TestComponent />);
-    });
-
-    expect((result as Record<string, unknown>).currentTime).toBe(25);
+    expect((result.current as Record<string, unknown>).currentTime).toBe(25);
   });
 
   it('no interpolation when playing but buffering', () => {
@@ -285,27 +231,19 @@ describe('usePlaybackState', () => {
       duration: 100,
       bufferedPosition: 20,
       rate: 1,
-      nativeTimestampMs: MOCK_TIMESTAMP,
+      nativeTimestampMs: MOCK_TIMESTAMP
     });
     const player = makeMockPlayer(state);
-    let result: unknown = undefined;
 
-    function TestComponent() {
-      result = usePlaybackState(player, { interpolate: true, fps: 60 });
-      return null;
-    }
-
-    act(() => {
-      TestRenderer.create(<TestComponent />);
-    });
+    const { result } = renderHook(() => usePlaybackState(player, { interpolate: true, fps: 60 }));
 
     Object.defineProperty(globalThis, 'performance', {
       value: {
         timeOrigin: 0,
-        now: jest.fn(() => MOCK_TIMESTAMP + 500),
+        now: jest.fn(() => MOCK_TIMESTAMP + 500)
       },
       writable: true,
-      configurable: true,
+      configurable: true
     });
 
     act(() => {
@@ -320,8 +258,7 @@ describe('usePlaybackState', () => {
       flushRAF();
     });
 
-    // isBuffering=true prevents interpolation, currentTime should stay at 15
-    expect((result as Record<string, unknown>).currentTime).toBe(15);
+    expect((result.current as Record<string, unknown>).currentTime).toBe(15);
   });
 
   it('event transition from buffering to playing updates state', () => {
@@ -330,37 +267,29 @@ describe('usePlaybackState', () => {
       status: 'playing',
       isPlaying: true,
       isBuffering: true,
-      currentTime: 0,
+      currentTime: 0
     });
     const player = makeMockPlayer(bufferingState);
-    let result: unknown = undefined;
 
-    function TestComponent() {
-      result = usePlaybackState(player, { interpolate: false });
-      return null;
-    }
+    const { result } = renderHook(() => usePlaybackState(player, { interpolate: false }));
 
-    act(() => {
-      TestRenderer.create(<TestComponent />);
-    });
-
-    expect((result as Record<string, unknown>).status).toBe('playing');
-    expect((result as Record<string, unknown>).isBuffering).toBe(true);
+    expect((result.current as Record<string, unknown>).status).toBe('playing');
+    expect((result.current as Record<string, unknown>).isBuffering).toBe(true);
 
     const playingState = makePlaybackState({
       status: 'playing',
       isPlaying: true,
       isBuffering: false,
-      currentTime: 0.5,
+      currentTime: 0.5
     });
 
     act(() => {
       player._emit('onPlaybackState', playingState);
     });
 
-    expect((result as Record<string, unknown>).status).toBe('playing');
-    expect((result as Record<string, unknown>).isBuffering).toBe(false);
-    expect((result as Record<string, unknown>).currentTime).toBe(0.5);
+    expect((result.current as Record<string, unknown>).status).toBe('playing');
+    expect((result.current as Record<string, unknown>).isBuffering).toBe(false);
+    expect((result.current as Record<string, unknown>).currentTime).toBe(0.5);
   });
 
   it('handles released player gracefully', () => {
@@ -368,17 +297,9 @@ describe('usePlaybackState', () => {
     const state = makePlaybackState({ status: 'playing' });
     const player = makeMockPlayer(state);
     player._released = true;
-    let result: unknown = 'not-set';
 
-    function TestComponent() {
-      result = usePlaybackState(player, { interpolate: false });
-      return null;
-    }
+    const { result } = renderHook(() => usePlaybackState(player, { interpolate: false }));
 
-    act(() => {
-      TestRenderer.create(<TestComponent />);
-    });
-
-    expect(result).toBeNull();
+    expect(result.current).toBeNull();
   });
 });
