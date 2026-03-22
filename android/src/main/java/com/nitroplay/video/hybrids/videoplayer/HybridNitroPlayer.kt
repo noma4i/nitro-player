@@ -4,21 +4,15 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.media3.common.C
-import androidx.media3.common.Metadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
-import androidx.media3.common.Tracks
-import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.upstream.DefaultAllocator
-import androidx.media3.extractor.metadata.emsg.EventMessage
-import androidx.media3.extractor.metadata.id3.Id3Frame
-import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import androidx.media3.ui.PlayerView
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
@@ -26,8 +20,6 @@ import com.margelo.nitro.core.Promise
 import com.nitroplay.video.core.LibraryError
 import com.nitroplay.video.core.PlayerError
 import com.nitroplay.video.core.NitroPlayerManager
-import com.nitroplay.video.core.player.OnAudioFocusChangedListener
-import com.nitroplay.video.core.utils.TextTrackUtils
 import com.nitroplay.video.core.utils.Threading.mainThreadProperty
 import com.nitroplay.video.core.utils.Threading.runOnMainThread
 import com.nitroplay.video.core.utils.Threading.runOnMainThreadSync
@@ -41,12 +33,6 @@ import kotlin.math.max
 class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override lateinit var source: HybridNitroPlayerSourceSpec
   override var eventEmitter = HybridNitroPlayerEventEmitter()
-    set(value) {
-      if (field != value) {
-        audioFocusChangedListener.setEventEmitter(value)
-      }
-      field = value
-    }
 
   private var isReleased = false
   private var allocator: DefaultAllocator? = null
@@ -79,12 +65,6 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   private val progressHandler = Handler(Looper.getMainLooper())
   private var progressRunnable: Runnable? = null
 
-  // Listeners
-  private val audioFocusChangedListener = OnAudioFocusChangedListener()
-
-  // Text track selection state
-  private var selectedExternalTrackIndex: Int? = null
-
   private companion object {
     const val PROGRESS_UPDATE_INTERVAL_MS = 250L
     private const val TAG = "HybridNitroPlayer"
@@ -106,11 +86,6 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override val memorySnapshot: MemorySnapshot
     get() = runOnMainThreadSync {
       buildMemorySnapshot()
-    }
-
-  override var showNotificationControls: Boolean = false
-    set(value) {
-      field = value
     }
 
   // Player Properties
@@ -468,8 +443,6 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
         player.removeListener(playerListener)
         player.removeAnalyticsListener(analyticsListener)
 
-        audioFocusChangedListener.removeEventEmitter()
-
         status = NitroPlayerStatus.IDLE
         readyToDisplay = false
         allocator = null
@@ -620,10 +593,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     }
 
     val currentView = currentPlayerView?.get()
-    val isPinnedByPictureInPicture =
-      NitroPlayerManager.getCurrentPictureInPictureVideo()?.hybridPlayer === this
-
-    return currentView?.isAttachedToWindow == true || isPinnedByPictureInPicture
+    return currentView?.isAttachedToWindow == true
   }
 
   internal fun trimForFeedHotPool() {
@@ -855,58 +825,5 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       ))
     }
 
-    override fun onCues(cueGroup: CueGroup) {
-      val texts = cueGroup.cues.mapNotNull { it.text?.toString() }
-      if (texts.isNotEmpty()) {
-        eventEmitter.onTextTrackDataChanged(texts.toTypedArray())
-      }
-    }
-
-    override fun onMetadata(metadata: Metadata) {
-      val timedMetadataObjects = mutableListOf<TimedMetadataObject>()
-      for (i in 0 until metadata.length()) {
-        val entry = metadata.get(i)
-
-        when (entry) {
-          is Id3Frame -> {
-            var value = ""
-
-            if (entry is TextInformationFrame) {
-              value = entry.values.first()
-            }
-
-            timedMetadataObjects.add(TimedMetadataObject(entry.id, value))
-          }
-          is EventMessage ->
-            timedMetadataObjects.add(TimedMetadataObject(entry.schemeIdUri, entry.value))
-          else -> Log.d(TAG, "Unknown metadata: $entry")
-        }
-      }
-      if (timedMetadataObjects.isNotEmpty()) {
-        eventEmitter.onTimedMetadata(TimedMetadata(metadata = timedMetadataObjects.toTypedArray()))
-      }
-    }
-
-    override fun onTracksChanged(tracks: Tracks) {
-      super.onTracksChanged(tracks)
-    }
   }
-
-  // MARK: - Text Track Management
-
-  override fun getAvailableTextTracks(): Array<TextTrack> {
-    return TextTrackUtils.getAvailableTextTracks(player, source)
-  }
-
-  override fun selectTextTrack(textTrack: Variant_NullType_TextTrack?) {
-    selectedExternalTrackIndex = TextTrackUtils.selectTextTrack(
-      player = player,
-      textTrack = textTrack?.asSecondOrNull(),
-      source = source,
-      onTrackChange = { track -> eventEmitter.onTrackChange(track) }
-    )
-  }
-
-  override val selectedTrack: TextTrack?
-    get() = TextTrackUtils.getSelectedTrack(player, source)
 }

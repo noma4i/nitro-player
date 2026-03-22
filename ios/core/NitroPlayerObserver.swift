@@ -12,13 +12,10 @@ protocol NitroPlayerObserverDelegate: AnyObject {
   func onPlayedToEnd(player: AVPlayer)
   func onPlayerItemChange(player: AVPlayer, playerItem: AVPlayerItem?)
   func onPlayerItemWillChange(hasNewPlayerItem: Bool)
-  func onTextTrackDataChanged(texts: [NSAttributedString])
-  func onTimedMetadataChanged(timedMetadata: [AVMetadataItem])
   func onRateChanged(rate: Float)
   func onPlaybackBufferEmpty()
   func onPlaybackLikelyToKeepUp()
   func onVolumeChanged(volume: Float)
-  func onExternalPlaybackActiveChanged(isActive: Bool)
   func onTimeControlStatusChanged(status: AVPlayer.TimeControlStatus)
   func onPlayerStatusChanged(status: AVPlayer.Status)
   func onPlayerItemStatusChanged(status: AVPlayerItem.Status)
@@ -30,13 +27,10 @@ extension NitroPlayerObserverDelegate {
   func onPlayedToEnd(player: AVPlayer) {}
   func onPlayerItemChange(player: AVPlayer, playerItem: AVPlayerItem?) {}
   func onPlayerItemWillChange(hasNewPlayerItem: Bool) {}
-  func onTextTrackDataChanged(texts: [NSAttributedString]) {}
-  func onTimedMetadataChanged(timedMetadata: [AVMetadataItem]) {}
   func onRateChanged(rate: Float) {}
   func onPlaybackBufferEmpty() {}
   func onPlaybackLikelyToKeepUp() {}
   func onVolumeChanged(volume: Float) {}
-  func onExternalPlaybackActiveChanged(isActive: Bool) {}
   func onTimeControlStatusChanged(status: AVPlayer.TimeControlStatus) {}
   func onPlayerStatusChanged(status: AVPlayer.Status) {}
   func onPlayerItemStatusChanged(status: AVPlayerItem.Status) {}
@@ -44,7 +38,7 @@ extension NitroPlayerObserverDelegate {
   func onProgressUpdate(currentTime: Double, bufferDuration: Double) {}
 }
 
-class NitroPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVPlayerItemLegibleOutputPushDelegate {
+class NitroPlayerObserver: NSObject {
   private weak var delegate: HybridNitroPlayer?
   private weak var observedPlayer: AVPlayer?
   var player: AVPlayer? {
@@ -55,9 +49,7 @@ class NitroPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
   var playerCurrentItemObserver: NSKeyValueObservation?
   var playerRateObserver: NSKeyValueObservation?
   var playerTimeControlStatusObserver: NSKeyValueObservation?
-  var playerExternalPlaybackActiveObserver: NSKeyValueObservation?
   var playerVolumeObserver: NSKeyValueObservation?
-  var playerTimedMetadataObserver: NSKeyValueObservation?
   var playerStatusObserver: NSKeyValueObservation?
   var playerProgressPeriodicObserver: Any?
   
@@ -70,8 +62,6 @@ class NitroPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
   var playerItemAccessLogObserver: NSObjectProtocol?
   
   var observedPlayerItem: AVPlayerItem?
-  var metadataOutput: AVPlayerItemMetadataOutput?
-  var legibleOutput: AVPlayerItemLegibleOutput?
   
   init(delegate: HybridNitroPlayer) {
     self.delegate = delegate
@@ -109,11 +99,6 @@ class NitroPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
     playerTimeControlStatusObserver = player.observe(\.timeControlStatus, options: [.new]) { [weak self] _, change in
       guard let status = change.newValue else { return }
       self?.delegate?.onTimeControlStatusChanged(status: status)
-    }
-    
-    playerExternalPlaybackActiveObserver = player.observe(\.isExternalPlaybackActive, options: [.new]) { [weak self] _, change in
-      guard let isActive = change.newValue else { return }
-      self?.delegate?.onExternalPlaybackActiveChanged(isActive: isActive)
     }
     
     playerVolumeObserver = player.observe(\.volume, options: [.new]) { [weak self] _, change in
@@ -160,15 +145,6 @@ class NitroPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
       self?.delegate?.onPlayerItemStatusChanged(status: playerItem.status)
     }
     
-    let metadataOutput = AVPlayerItemMetadataOutput()
-    playerItem.add(metadataOutput)
-    metadataOutput.setDelegate(self, queue: .global(qos: .userInteractive))
-    self.metadataOutput = metadataOutput
-    
-    let legibleOutput = AVPlayerItemLegibleOutput()
-    playerItem.add(legibleOutput)
-    legibleOutput.setDelegate(self, queue: .global(qos: .userInteractive))
-    self.legibleOutput = legibleOutput
     observedPlayerItem = playerItem
   }
   
@@ -186,19 +162,7 @@ class NitroPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
     clearBufferObservers()
     playerItemStatusObserver?.invalidate()
     playerItemStatusObserver = nil
-    // Remove outputs if needed
-    // (Assumes outputs are not shared between items)
-    if let playerItem = observedPlayerItem {
-      if let metadataOutput = metadataOutput {
-        playerItem.remove(metadataOutput)
-      }
-      if let legibleOutput = legibleOutput {
-        playerItem.remove(legibleOutput)
-      }
-    }
     observedPlayerItem = nil
-    metadataOutput = nil
-    legibleOutput = nil
   }
   
   func invalidatePlayerObservers() {
@@ -209,8 +173,6 @@ class NitroPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
     playerRateObserver = nil
     playerTimeControlStatusObserver?.invalidate()
     playerTimeControlStatusObserver = nil
-    playerExternalPlaybackActiveObserver?.invalidate()
-    playerExternalPlaybackActiveObserver = nil
     playerVolumeObserver?.invalidate()
     playerVolumeObserver = nil
     playerStatusObserver?.invalidate()
@@ -222,21 +184,6 @@ class NitroPlayerObserver: NSObject, AVPlayerItemMetadataOutputPushDelegate, AVP
       playerProgressPeriodicObserver = nil
     }
     observedPlayer = nil
-  }
-  
-  // MARK: - AVPlayerItemLegibleOutputPushDelegate
-  public func legibleOutput(_: AVPlayerItemLegibleOutput,
-                     didOutputAttributedStrings strings: [NSAttributedString],
-                     nativeSampleBuffers _: [Any],
-                     forItemTime _: CMTime) {
-    delegate?.onTextTrackDataChanged(texts: strings)
-  }
-  
-  // MARK: - AVPlayerItemMetadataOutputPushDelegate
-  public func metadataOutput(_: AVPlayerItemMetadataOutput, didOutputTimedMetadataGroups groups: [AVTimedMetadataGroup], from _: AVPlayerItemTrack?) {
-    for metadataGroup in groups {
-      delegate?.onTimedMetadataChanged(timedMetadata: metadataGroup.items)
-    }
   }
   
   // MARK: - AVPlayer Observers

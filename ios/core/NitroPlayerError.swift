@@ -11,14 +11,11 @@ import NitroModules
 // MARK: - LibraryError
 enum LibraryError: NitroPlayerError {
   case deallocated(objectName: String)
-  case DRMPluginNotFound
 
   var code: String {
     switch self {
     case .deallocated:
       return "library/deallocated"
-    case .DRMPluginNotFound:
-      return "library/drm-plugin-not-found"
     }
   }
 
@@ -26,8 +23,6 @@ enum LibraryError: NitroPlayerError {
     switch self {
     case let .deallocated(objectName: objectName):
       return "Object \(objectName) has been deallocated"
-    case .DRMPluginNotFound:
-      return "No DRM plugin have been found, please add one to the project"
     }
   }
 }
@@ -119,27 +114,22 @@ enum SourceError: NitroPlayerError {
 enum NitroPlayerViewError: NitroPlayerError {
   case viewNotFound(nitroId: Double)
   case viewIsDeallocated
-  case pictureInPictureNotSupported
-  
+
   var code: String {
     switch self {
     case .viewNotFound:
       return "view/not-found"
     case .viewIsDeallocated:
       return "view/deallocated"
-    case .pictureInPictureNotSupported:
-      return "view/picture-in-picture-not-supported"
     }
   }
-  
+
   var message: String {
     switch self {
     case let .viewNotFound(nitroId: nitroId):
       return "View with nitroId \(nitroId) not found"
     case .viewIsDeallocated:
       return "Attempt to access a view, but it has been deallocated (or not initialized)"
-    case .pictureInPictureNotSupported:
-      return "Picture in picture is not supported on this device"
     }
   }
 }

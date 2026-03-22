@@ -63,27 +63,6 @@ import UIKit
     }
   }
 
-  public var allowsPictureInPicturePlayback: Bool = false {
-    didSet {
-      DispatchQueue.main.async { [weak self] in
-        guard let self = self, let playerViewController = self.playerViewController else { return }
-
-        playerViewController.allowsPictureInPicturePlayback = self.allowsPictureInPicturePlayback
-      }
-    }
-  }
-
-  public var autoEnterPictureInPicture: Bool = false {
-    didSet {
-      DispatchQueue.main.async { [weak self] in
-        guard let self = self, let playerViewController = self.playerViewController else { return }
-
-        playerViewController.canStartPictureInPictureAutomaticallyFromInline =
-          self.autoEnterPictureInPicture
-      }
-    }
-  }
-
   public var resizeMode: ResizeMode = .none {
     didSet {
       DispatchQueue.main.async { [weak self] in
@@ -315,31 +294,4 @@ import UIKit
     }
   }
 
-  public func startPictureInPicture() throws {
-    guard let playerViewController else {
-      throw NitroPlayerViewError.viewIsDeallocated.error()
-    }
-
-    guard AVPictureInPictureController.isPictureInPictureSupported() else {
-      throw NitroPlayerViewError.pictureInPictureNotSupported.error()
-    }
-
-    DispatchQueue.main.async {
-      // Here we skip error handling for simplicity
-      // We do check for PiP support earlier in the code
-      try? playerViewController.startPictureInPicture()
-    }
-  }
-
-  public func stopPictureInPicture() throws {
-    guard let playerViewController else {
-      throw NitroPlayerViewError.viewIsDeallocated.error()
-    }
-
-    DispatchQueue.main.async {
-      // Here we skip error handling for simplicity
-      // We do check for PiP support earlier in the code
-      playerViewController.stopPictureInPicture()
-    }
-  }
 }

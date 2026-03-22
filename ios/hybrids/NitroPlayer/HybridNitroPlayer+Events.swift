@@ -51,10 +51,6 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
     updateAndEmitPlaybackState()
   }
 
-  func onExternalPlaybackActiveChanged(isActive: Bool) {
-    _eventEmitter?.onExternalPlaybackChange(isActive)
-  }
-
   func onTimeControlStatusChanged(status: AVPlayer.TimeControlStatus) {
     if player.status == .failed || playerItem?.status == .failed {
       self.status = .error
@@ -149,10 +145,6 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
     updateAndEmitPlaybackState()
   }
-
-  func onTextTrackDataChanged(texts: [NSAttributedString]) {}
-
-  func onTimedMetadataChanged(timedMetadata: [AVMetadataItem]) {}
 
   func onBandwidthUpdate(bitrate: Double) {
     _eventEmitter?.onBandwidthUpdate(

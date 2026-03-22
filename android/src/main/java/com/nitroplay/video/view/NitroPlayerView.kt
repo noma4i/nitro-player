@@ -3,12 +3,9 @@ package com.nitroplay.video.view
 import android.app.Activity
 import android.app.Dialog
 import android.annotation.SuppressLint
-import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Color
-import android.os.Build
-import android.util.Rational
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -62,11 +59,6 @@ class NitroPlayerView @JvmOverloads constructor(
       field = value
     }
 
-  var autoEnterPictureInPicture: Boolean = false
-    set(value) {
-      field = value
-    }
-
   var useController: Boolean = false
     set(value) {
       field = value
@@ -74,8 +66,6 @@ class NitroPlayerView @JvmOverloads constructor(
         playerView.useController = value
       }
     }
-
-  var pictureInPictureEnabled: Boolean = false
 
   var surfaceType: SurfaceType = SurfaceType.SURFACE
     set(value) {
@@ -126,23 +116,6 @@ class NitroPlayerView @JvmOverloads constructor(
       }
       field = value
     }
-  var isInPictureInPicture: Boolean = false
-    set(value) {
-      field = value
-      
-      if (value) {
-        playerView.useController = false
-        playerView.controllerAutoShow = false
-        playerView.controllerHideOnTouch = true
-      } else {
-        playerView.useController = useController
-        playerView.controllerAutoShow = true
-        playerView.controllerHideOnTouch = true
-      }
-      
-      eventsEmitter?.onPictureInPictureChange(value)
-    }
-
   val applicationContent: ReactApplicationContext
     get() {
       return NitroModules.applicationContext ?: throw LibraryError.ApplicationContextNotFound
@@ -266,80 +239,6 @@ class NitroPlayerView @JvmOverloads constructor(
     }
   }
 
-  private fun setupPipHelper() {
-    return
-  }
-
-  private fun removePipHelper() {
-    return
-  }
-
-  private fun removeFullscreenFragment() {
-    return
-  }
-
-  fun hideRootContentViews() {
-    return
-  }
-
-  fun restoreRootContentViews() {
-    return
-  }
-
-  fun enterPictureInPicture() {
-    runOnMainThread {
-      if (!canEnterPictureInPicture()) {
-        return@runOnMainThread
-      }
-
-      NitroPlayerManager.requestPictureInPicture(this)
-    }
-  }
-
-  internal fun internalEnterPictureInPicture(): Boolean {
-    if (!canEnterPictureInPicture()) {
-      return false
-    }
-
-    val activity = resolveActivity() ?: return false
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-      return false
-    }
-
-    eventsEmitter?.willEnterPictureInPicture()
-
-    val width = playerView.width.takeIf { it > 0 } ?: 16
-    val height = playerView.height.takeIf { it > 0 } ?: 9
-    val paramsBuilder = PictureInPictureParams.Builder()
-      .setAspectRatio(Rational(width, height))
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-      paramsBuilder.setAutoEnterEnabled(autoEnterPictureInPicture)
-    }
-
-    val entered = activity.enterPictureInPictureMode(paramsBuilder.build())
-
-    if (entered) {
-      isInPictureInPicture = true
-    }
-
-    return entered
-  }
-
-  fun exitPictureInPicture() {
-    runOnMainThread {
-      if (!isInPictureInPicture) return@runOnMainThread
-
-      eventsEmitter?.willExitPictureInPicture()
-      isInPictureInPicture = false
-      NitroPlayerManager.notifyPictureInPictureExited(this)
-    }
-  }
-
-  internal fun forceExitPictureInPicture() {
-    exitPictureInPicture()
-  }
-
   // -------- View Lifecycle Methods --------
   override fun onDetachedFromWindow() {
     try {
@@ -347,10 +246,6 @@ class NitroPlayerView @JvmOverloads constructor(
         restoreFromFullscreen()
         fullscreenDialog?.dismiss()
         fullscreenDialog = null
-      }
-      if (isInPictureInPicture) {
-        isInPictureInPicture = false
-        NitroPlayerManager.notifyPictureInPictureExited(this)
       }
       globalLayoutListener?.let { viewTreeObserver.removeOnGlobalLayoutListener(it) }
       globalLayoutListener = null
@@ -385,17 +280,6 @@ class NitroPlayerView @JvmOverloads constructor(
 
   private fun applySmallPlayerLayoutFixes() {
     SmallVideoPlayerOptimizer.applyOptimizations(playerView, context, isFullscreen = false)
-  }
-
-  fun canEnterPictureInPicture(): Boolean {
-    if (!pictureInPictureEnabled || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-      return false
-    }
-
-    val activity = resolveActivity() ?: return false
-    return activity.packageManager.hasSystemFeature(
-      android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE
-    )
   }
 
   private fun resolveActivity(): Activity? {
