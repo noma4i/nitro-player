@@ -19,6 +19,8 @@ export type { IgnoreSilentSwitchMode } from './core/types/IgnoreSilentSwitchMode
 export type { MixAudioMode } from './core/types/MixAudioMode';
 export type { ResizeMode } from './core/types/ResizeMode';
 export type { NitroPlayerConfig, NitroPlayerSource } from './core/types/NitroPlayerConfig';
+export type { BufferConfig, LivePlaybackParams } from './core/types/BufferConfig';
+export type { NitroPlayerInformation } from './core/types/NitroPlayerInformation';
 export {
   type LibraryError,
   type PlayerError,

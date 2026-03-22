@@ -5,9 +5,6 @@ import type { PlaybackState } from './PlaybackState';
 import type { NitroPlayerSourceBase } from './NitroPlayerSourceBase';
 import type { NitroPlayerStatus } from './NitroPlayerStatus';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { NitroPlayerConfig } from './NitroPlayerConfig';
-
 export interface NitroPlayerBase {
   readonly source: NitroPlayerSourceBase;
   readonly playbackState: PlaybackState;

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import {
   NitroPlayerView,
+  NitroPlayer,
   hlsCacheProxy,
   usePlaybackState,
   useEvent,
@@ -129,9 +130,9 @@ function App() {
               key={selectedSourceKey}
               ref={handleVideoRef}
               source={selectedSource.source}
-              setup={useCallback((p: any) => p.play(), [])}
+              setup={useCallback((p: NitroPlayer) => p.play(), [])}
               onLoadStart={useCallback((e: onLoadStartData) => {
-                setLastLoadStart(`${e.sourceType}:${e.source.url}`);
+                setLastLoadStart(`${e.sourceType}:${e.source.uri}`);
               }, [])}
               onLoad={useCallback((e: onLoadData) => {
                 setLastLoad(`${e.width}x${e.height} duration=${e.duration}`);
