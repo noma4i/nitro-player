@@ -12,18 +12,18 @@ jest.mock('react-native', () => ({
       getCacheStats: jest.fn(async () => ({
         totalSize: 0,
         fileCount: 0,
-        maxSize: 5_368_709_120,
+        maxSize: 5_368_709_120
       })),
       getStreamCacheStats: jest.fn(async () => ({
         totalSize: 0,
         fileCount: 0,
         maxSize: 5_368_709_120,
         streamSize: 0,
-        streamFileCount: 0,
+        streamFileCount: 0
       })),
-      clearCache: jest.fn(async () => true),
-    },
-  },
+      clearCache: jest.fn(async () => true)
+    }
+  }
 }));
 
 describe('hlsCacheProxy', () => {
@@ -82,7 +82,7 @@ describe('hlsCacheProxy', () => {
     expect(stats).toEqual({
       totalSize: 0,
       fileCount: 0,
-      maxSize: 5_368_709_120,
+      maxSize: 5_368_709_120
     });
   });
 
@@ -95,5 +95,39 @@ describe('hlsCacheProxy', () => {
 
     expect(nativeClearCache).toHaveBeenCalledTimes(1);
     expect(result).toBe(true);
+  });
+
+  it('getStreamCacheStats delegates to native getStreamCacheStats', async () => {
+    const { hlsCacheProxy } = require('../hls/hlsCacheProxy');
+    const { NativeModules } = require('react-native');
+    const nativeGetStreamStats = NativeModules.HlsCacheProxy.getStreamCacheStats;
+
+    const stats = await hlsCacheProxy.getStreamCacheStats('https://cdn.example.com/live.m3u8');
+
+    expect(nativeGetStreamStats).toHaveBeenCalledTimes(1);
+    expect(nativeGetStreamStats).toHaveBeenCalledWith('https://cdn.example.com/live.m3u8');
+    expect(stats).toEqual({
+      totalSize: 0,
+      fileCount: 0,
+      maxSize: 5_368_709_120,
+      streamSize: 0,
+      streamFileCount: 0
+    });
+  });
+
+  it('getStreamCacheStats returns defaults when native throws', async () => {
+    const { NativeModules } = require('react-native');
+    NativeModules.HlsCacheProxy.getStreamCacheStats.mockRejectedValueOnce(new Error('fail'));
+
+    const { hlsCacheProxy } = require('../hls/hlsCacheProxy');
+    const stats = await hlsCacheProxy.getStreamCacheStats('https://cdn.example.com/live.m3u8');
+
+    expect(stats).toEqual({
+      totalSize: 0,
+      fileCount: 0,
+      maxSize: 5_368_709_120,
+      streamSize: 0,
+      streamFileCount: 0
+    });
   });
 });

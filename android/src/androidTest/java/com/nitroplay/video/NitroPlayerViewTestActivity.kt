@@ -14,7 +14,6 @@ class NitroPlayerViewTestActivity : ComponentActivity() {
 
     videoView = NitroPlayerView(this).apply {
       nitroId = 101
-      pictureInPictureEnabled = true
       useController = true
     }
 
