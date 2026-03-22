@@ -18,12 +18,12 @@ public extension PlaybackState {
   /**
    * Create a new instance of `PlaybackState`.
    */
-  init(status: VideoPlayerStatus, currentTime: Double, duration: Double, bufferDuration: Double, bufferedPosition: Double, rate: Double, isPlaying: Bool, isBuffering: Bool, isReadyToDisplay: Bool, nativeTimestampMs: Double) {
+  init(status: NitroPlayerStatus, currentTime: Double, duration: Double, bufferDuration: Double, bufferedPosition: Double, rate: Double, isPlaying: Bool, isBuffering: Bool, isReadyToDisplay: Bool, nativeTimestampMs: Double) {
     self.init(status, currentTime, duration, bufferDuration, bufferedPosition, rate, isPlaying, isBuffering, isReadyToDisplay, nativeTimestampMs)
   }
 
   @inline(__always)
-  var status: VideoPlayerStatus {
+  var status: NitroPlayerStatus {
     return self.__status
   }
   

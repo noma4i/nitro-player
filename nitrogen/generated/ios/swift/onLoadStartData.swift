@@ -18,8 +18,8 @@ public extension onLoadStartData {
   /**
    * Create a new instance of `onLoadStartData`.
    */
-  init(sourceType: SourceType, source: (any HybridVideoPlayerSourceSpec)) {
-    self.init(sourceType, { () -> bridge.std__shared_ptr_HybridVideoPlayerSourceSpec_ in
+  init(sourceType: SourceType, source: (any HybridNitroPlayerSourceSpec)) {
+    self.init(sourceType, { () -> bridge.std__shared_ptr_HybridNitroPlayerSourceSpec_ in
       let __cxxWrapped = source.getCxxWrapper()
       return __cxxWrapped.getCxxPart()
     }())
@@ -31,11 +31,11 @@ public extension onLoadStartData {
   }
   
   @inline(__always)
-  var source: (any HybridVideoPlayerSourceSpec) {
-    return { () -> any HybridVideoPlayerSourceSpec in
-      let __unsafePointer = bridge.get_std__shared_ptr_HybridVideoPlayerSourceSpec_(self.__source)
-      let __instance = HybridVideoPlayerSourceSpec_cxx.fromUnsafe(__unsafePointer)
-      return __instance.getHybridVideoPlayerSourceSpec()
+  var source: (any HybridNitroPlayerSourceSpec) {
+    return { () -> any HybridNitroPlayerSourceSpec in
+      let __unsafePointer = bridge.get_std__shared_ptr_HybridNitroPlayerSourceSpec_(self.__source)
+      let __instance = HybridNitroPlayerSourceSpec_cxx.fromUnsafe(__unsafePointer)
+      return __instance.getHybridNitroPlayerSourceSpec()
     }()
   }
 }

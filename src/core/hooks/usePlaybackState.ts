@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { VideoPlayer } from '../VideoPlayer';
+import { NitroPlayer } from '../NitroPlayer';
 import type { PlaybackState } from '../types/PlaybackState';
-import { VideoRuntimeError } from '../types/VideoError';
+import { NitroPlayerRuntimeError } from '../types/NitroPlayerError';
 
 type UsePlaybackStateOptions = {
   interpolate?: boolean;
@@ -34,7 +34,7 @@ const interpolatePlaybackState = (state: PlaybackState, currentTimestampMs: numb
   };
 };
 
-const getPlaybackStateSafe = (player: VideoPlayer | null | undefined) => {
+const getPlaybackStateSafe = (player: NitroPlayer | null | undefined) => {
   if (!player) {
     return null;
   }
@@ -42,7 +42,7 @@ const getPlaybackStateSafe = (player: VideoPlayer | null | undefined) => {
   try {
     return player.playbackState;
   } catch (error) {
-    if (error instanceof VideoRuntimeError && error.code === 'player/released') {
+    if (error instanceof NitroPlayerRuntimeError && error.code === 'player/released') {
       return null;
     }
 
@@ -50,7 +50,7 @@ const getPlaybackStateSafe = (player: VideoPlayer | null | undefined) => {
   }
 };
 
-export const usePlaybackState = (player: VideoPlayer | null | undefined, options: UsePlaybackStateOptions = {}) => {
+export const usePlaybackState = (player: NitroPlayer | null | undefined, options: UsePlaybackStateOptions = {}) => {
   const { interpolate = true, fps = 60 } = options;
   const [state, setState] = useState<PlaybackState | null>(() => getPlaybackStateSafe(player));
   const latestStateRef = useRef(state);

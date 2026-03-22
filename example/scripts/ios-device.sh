@@ -3,13 +3,13 @@ set -eu
 
 ROOT_DIR="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 IOS_DIR="$ROOT_DIR/ios"
-WORKSPACE="$IOS_DIR/JustPlayerExample.xcworkspace"
-SCHEME="JustPlayerExample"
+WORKSPACE="$IOS_DIR/NitroPlayExample.xcworkspace"
+SCHEME="NitroPlayExample"
 CONFIGURATION="Debug"
 DEVICE_NAME="${IOS_DEVICE_NAME:-TimTam}"
 XCODE_DEVICE_UDID="${IOS_DEVICE_UDID:-}"
-BUNDLE_ID="com.noma4i.justplayer.example"
-APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/JustPlayerExample-ckthjrerxttszxgrffwfbjzvfcmb/Build/Products/${CONFIGURATION}-iphoneos/JustPlayerExample.app"
+BUNDLE_ID="com.noma4i.nitroplay.example"
+APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/NitroPlayExample-ckthjrerxttszxgrffwfbjzvfcmb/Build/Products/${CONFIGURATION}-iphoneos/NitroPlayExample.app"
 
 if [ ! -d "$WORKSPACE" ]; then
   echo "Workspace not found: $WORKSPACE" >&2

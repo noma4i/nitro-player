@@ -31,7 +31,7 @@ data class onLoadData(
   val width: Double,
   @DoNotStrip
   @Keep
-  val orientation: VideoOrientation
+  val orientation: NitroPlayerOrientation
 ) {
   /* primary constructor */
 
@@ -43,7 +43,7 @@ data class onLoadData(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(currentTime: Double, duration: Double, height: Double, width: Double, orientation: VideoOrientation): onLoadData {
+    private fun fromCpp(currentTime: Double, duration: Double, height: Double, width: Double, orientation: NitroPlayerOrientation): onLoadData {
       return onLoadData(currentTime, duration, height, width, orientation)
     }
   }

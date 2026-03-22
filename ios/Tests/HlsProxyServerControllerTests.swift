@@ -1,5 +1,5 @@
 import XCTest
-@testable import JustPlayer
+@testable import NitroPlay
 
 final class HlsProxyServerControllerTests: XCTestCase {
   func testCacheStatsContainExpectedKeys() {

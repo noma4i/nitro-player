@@ -10,8 +10,8 @@
 #include <fbjni/fbjni.h>
 #include "PlaybackState.hpp"
 
-#include "JVideoPlayerStatus.hpp"
-#include "VideoPlayerStatus.hpp"
+#include "JNitroPlayerStatus.hpp"
+#include "NitroPlayerStatus.hpp"
 
 namespace margelo::nitro::video {
 
@@ -32,8 +32,8 @@ namespace margelo::nitro::video {
     [[nodiscard]]
     PlaybackState toCpp() const {
       static const auto clazz = javaClassStatic();
-      static const auto fieldStatus = clazz->getField<JVideoPlayerStatus>("status");
-      jni::local_ref<JVideoPlayerStatus> status = this->getFieldValue(fieldStatus);
+      static const auto fieldStatus = clazz->getField<JNitroPlayerStatus>("status");
+      jni::local_ref<JNitroPlayerStatus> status = this->getFieldValue(fieldStatus);
       static const auto fieldCurrentTime = clazz->getField<double>("currentTime");
       double currentTime = this->getFieldValue(fieldCurrentTime);
       static const auto fieldDuration = clazz->getField<double>("duration");
@@ -72,12 +72,12 @@ namespace margelo::nitro::video {
      */
     [[maybe_unused]]
     static jni::local_ref<JPlaybackState::javaobject> fromCpp(const PlaybackState& value) {
-      using JSignature = JPlaybackState(jni::alias_ref<JVideoPlayerStatus>, double, double, double, double, double, jboolean, jboolean, jboolean, double);
+      using JSignature = JPlaybackState(jni::alias_ref<JNitroPlayerStatus>, double, double, double, double, double, jboolean, jboolean, jboolean, double);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
         clazz,
-        JVideoPlayerStatus::fromCpp(value.status),
+        JNitroPlayerStatus::fromCpp(value.status),
         value.currentTime,
         value.duration,
         value.bufferDuration,

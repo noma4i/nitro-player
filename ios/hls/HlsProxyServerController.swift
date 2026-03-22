@@ -8,7 +8,7 @@ final class HlsProxyServerController: NSObject {
   private let manifestRewriter = HlsManifestRewriter()
   private let networkClient = HlsNetworkClient()
 
-  private let stateQueue = DispatchQueue(label: "com.yupi.hls.proxy-state")
+  private let stateQueue = DispatchQueue(label: "com.nitroplay.hls.proxy-state")
   private var port: Int = 18181
   private var server: GCDWebServer?
   private var shouldBeRunning = false
