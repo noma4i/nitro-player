@@ -302,4 +302,129 @@ describe('usePlaybackState', () => {
 
     expect(result.current).toBeNull();
   });
+
+  it('interpolation clamps currentTime to not exceed duration', () => {
+    const { usePlaybackState } = require('../core/hooks/usePlaybackState');
+    const state = makePlaybackState({
+      status: 'playing',
+      isPlaying: true,
+      isBuffering: false,
+      currentTime: 99,
+      duration: 100,
+      bufferedPosition: 100,
+      rate: 1,
+      nativeTimestampMs: MOCK_TIMESTAMP
+    });
+    const player = makeMockPlayer(state);
+
+    const { result } = renderHook(() => usePlaybackState(player, { interpolate: true, fps: 60 }));
+
+    Object.defineProperty(globalThis, 'performance', {
+      value: {
+        timeOrigin: 0,
+        now: jest.fn(() => MOCK_TIMESTAMP + 5000)
+      },
+      writable: true,
+      configurable: true
+    });
+
+    act(() => {
+      flushRAF();
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    act(() => {
+      flushRAF();
+    });
+
+    const currentTime = (result.current as Record<string, unknown>).currentTime as number;
+    expect(currentTime).toBeLessThanOrEqual(100);
+  });
+
+  it('interpolation with rate 0 does not advance currentTime', () => {
+    const { usePlaybackState } = require('../core/hooks/usePlaybackState');
+    const state = makePlaybackState({
+      status: 'playing',
+      isPlaying: true,
+      isBuffering: false,
+      currentTime: 50,
+      duration: 100,
+      bufferedPosition: 100,
+      rate: 0,
+      nativeTimestampMs: MOCK_TIMESTAMP
+    });
+    const player = makeMockPlayer(state);
+
+    const { result } = renderHook(() => usePlaybackState(player, { interpolate: true, fps: 60 }));
+
+    Object.defineProperty(globalThis, 'performance', {
+      value: {
+        timeOrigin: 0,
+        now: jest.fn(() => MOCK_TIMESTAMP + 2000)
+      },
+      writable: true,
+      configurable: true
+    });
+
+    act(() => {
+      flushRAF();
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    act(() => {
+      flushRAF();
+    });
+
+    const currentTime = (result.current as Record<string, unknown>).currentTime as number;
+    expect(currentTime).toBe(50);
+  });
+
+  it('interpolation with rate 2 advances at double speed', () => {
+    const { usePlaybackState } = require('../core/hooks/usePlaybackState');
+    const state = makePlaybackState({
+      status: 'playing',
+      isPlaying: true,
+      isBuffering: false,
+      currentTime: 10,
+      duration: 100,
+      bufferedPosition: 100,
+      rate: 2,
+      nativeTimestampMs: MOCK_TIMESTAMP
+    });
+    const player = makeMockPlayer(state);
+
+    const { result } = renderHook(() => usePlaybackState(player, { interpolate: true, fps: 60 }));
+
+    Object.defineProperty(globalThis, 'performance', {
+      value: {
+        timeOrigin: 0,
+        now: jest.fn(() => MOCK_TIMESTAMP + 1000)
+      },
+      writable: true,
+      configurable: true
+    });
+
+    act(() => {
+      flushRAF();
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    act(() => {
+      flushRAF();
+    });
+
+    const currentTime = (result.current as Record<string, unknown>).currentTime as number;
+    // At rate 2, 1 second elapsed -> 2 seconds advance -> currentTime should be ~12
+    expect(currentTime).toBeGreaterThanOrEqual(12);
+    expect(currentTime).toBeLessThanOrEqual(100);
+  });
 });
