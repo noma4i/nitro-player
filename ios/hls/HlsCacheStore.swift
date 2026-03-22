@@ -152,12 +152,26 @@ final class HlsCacheStore {
   private func evictIfNeeded() {
     evictExpired()
     var total = index.values.reduce(0) { $0 + $1.size }
-    if total <= maxBytes { return }
-    let entries = index.values.sorted { $0.lastAccess < $1.lastAccess }
-    for entry in entries {
-      if total <= maxBytes { break }
-      remove(url: entry.url)
-      total = index.values.reduce(0) { $0 + $1.size }
+    let threshold = maxBytes * 80 / 100
+    if total <= threshold { return }
+
+    var streams: [String: [HlsCacheEntry]] = [:]
+    for entry in index.values {
+      let key = entry.streamKey ?? entry.url
+      streams[key, default: []].append(entry)
+    }
+    let sorted = streams.sorted { stream1, stream2 in
+      let oldest1 = stream1.value.map(\.lastAccess).min() ?? 0
+      let oldest2 = stream2.value.map(\.lastAccess).min() ?? 0
+      return oldest1 < oldest2
+    }
+
+    for (_, entries) in sorted {
+      if total <= threshold { break }
+      for entry in entries {
+        remove(url: entry.url)
+        total -= entry.size
+      }
     }
   }
 

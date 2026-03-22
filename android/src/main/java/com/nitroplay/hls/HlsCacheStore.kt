@@ -107,12 +107,20 @@ class HlsCacheStore(context: Context) {
     private fun evictIfNeeded() {
         evictExpired()
         var total = index.values.sumOf { it.size }
-        if (total <= maxBytes) return
-        val entries = index.values.sortedBy { it.lastAccess }
-        for (entry in entries) {
-            if (total <= maxBytes) break
-            total -= entry.size
-            remove(entry.url)
+        val threshold = maxBytes * 80 / 100
+        if (total <= threshold) return
+
+        val streams = index.values.groupBy { it.streamKey ?: it.url }
+        val sorted = streams.entries.sortedBy { entry ->
+            entry.value.minOfOrNull { it.lastAccess } ?: 0L
+        }
+
+        for ((_, entries) in sorted) {
+            if (total <= threshold) break
+            for (entry in entries) {
+                total -= entry.size
+                remove(entry.url)
+            }
         }
     }
 
