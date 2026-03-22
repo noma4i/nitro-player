@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.2.0
+
+### Breaking
+
+- Removed PiP, DRM, subtitles, timed metadata, notification controls from native code (iOS + Android)
+- Removed events: `onAudioBecomingNoisy`, `onAudioFocusChange`, `onControlsVisibleChange`, `onExternalPlaybackChange`, `onTimedMetadata`, `onTextTrackDataChanged`, `onTrackChange`
+- Removed `showNotificationControls`, `getAvailableTextTracks()`, `selectTextTrack()`, `selectedTrack`
+- Removed PiP API from ViewManager on both platforms
+
+### Added
+
+- Stream-based LRU cache eviction at 80% threshold (removes oldest stream as a whole)
+- Exported `BufferConfig`, `LivePlaybackParams`, `NitroPlayerInformation` types
+- `getStreamCacheStats` test (happy path + error fallback)
+- `docs/` folder with split documentation
+
+### Fixed
+
+- Android: aligned `NativeVideoConfig` -> `NativeNitroPlayerConfig` with nitrogen spec
+- Android: aligned `fromVideoConfig` -> `fromNitroPlayerConfig` with nitrogen spec
+- Example: `e.source.url` -> `e.source.uri`
+- Deep import warning for `codegenNativeComponent`
+
+### Changed
+
+- HLS cache evicts entire streams instead of individual chunks
+- README slimmed down, details moved to `docs/`
+
 ## 0.1.9
 
 - added comprehensive test suite (52 tests) covering NitroPlayer, NitroPlayerView, events, hooks, playback interpolation, error parsing, and HLS cache proxy
