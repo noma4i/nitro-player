@@ -18,7 +18,7 @@ public extension onLoadData {
   /**
    * Create a new instance of `onLoadData`.
    */
-  init(currentTime: Double, duration: Double, height: Double, width: Double, orientation: VideoOrientation) {
+  init(currentTime: Double, duration: Double, height: Double, width: Double, orientation: NitroPlayerOrientation) {
     self.init(currentTime, duration, height, width, orientation)
   }
 
@@ -43,7 +43,7 @@ public extension onLoadData {
   }
   
   @inline(__always)
-  var orientation: VideoOrientation {
+  var orientation: NitroPlayerOrientation {
     return self.__orientation
   }
 }

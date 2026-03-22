@@ -1,17 +1,17 @@
-# JustPlayer
+# NitroPlay
 
 Lightweight video player (native + JS) + HLS caching proxy for React Native.
 
 ```bash
-yarn add git+ssh://git@github.com/noma4i/just_player.git#v0.1.9
+yarn add git+ssh://git@github.com/noma4i/nitro-player.git#v0.1.9
 ```
 
 ## Quick Start
 
 ```tsx
-import { VideoView } from '@noma4i/just-player';
+import { NitroPlayerView } from '@noma4i/nitro-play';
 
-<VideoView
+<NitroPlayerView
   source={{ uri: 'https://cdn.example.com/video.m3u8' }}
   style={{ flex: 1 }}
 />;
@@ -26,9 +26,9 @@ That's it. The player creates itself. HLS segments are cached to disk automatica
 ### 1. Install the package
 
 ```bash
-yarn add git+ssh://git@github.com/noma4i/just_player.git#v0.1.9
+yarn add git+ssh://git@github.com/noma4i/nitro-player.git#v0.1.9
 # or
-npm install git+ssh://git@github.com/noma4i/just_player.git#v0.1.9
+npm install git+ssh://git@github.com/noma4i/nitro-player.git#v0.1.9
 ```
 
 ### 2. Install peer dependencies
@@ -47,12 +47,12 @@ cd ios && pod install
 
 NanoHTTPD and ExoPlayer are bundled automatically.
 
-## VideoView
+## NitroPlayerView
 
 The only component you need. Pass a source - it creates the player internally.
 
 ```tsx
-<VideoView
+<NitroPlayerView
   source={{ uri: 'https://cdn.example.com/video.m3u8' }}
   setup={p => {
     p.loop = true;
@@ -67,8 +67,8 @@ The only component you need. Pass a source - it creates the player internally.
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
-| `source` | `VideoConfig \| VideoSource` | **required** | URL string, asset number, or config object |
-| `setup` | `(player: VideoPlayer) => void` | - | Configure player on creation |
+| `source` | `NitroPlayerConfig \| NitroPlayerSource` | **required** | URL string, asset number, or config object |
+| `setup` | `(player: NitroPlayer) => void` | - | Configure player on creation |
 | `style` | `ViewStyle` | - | Standard React Native style |
 | `controls` | `boolean` | `false` | Show native playback controls |
 | `resizeMode` | `ResizeMode` | `'none'` | How video fills the view |
@@ -84,10 +84,10 @@ The only component you need. Pass a source - it creates the player internally.
 | `'cover'` | Fill view, maintain aspect ratio (may crop) |
 | `'stretch'` | Fill view, ignore aspect ratio |
 
-### Ref (VideoViewRef)
+### Ref (NitroPlayerViewRef)
 
 ```tsx
-const ref = useRef<VideoViewRef>(null);
+const ref = useRef<NitroPlayerViewRef>(null);
 
 ref.current?.player.play();
 ref.current?.enterFullscreen();
@@ -95,7 +95,7 @@ ref.current?.enterFullscreen();
 
 | Property/Method | Type | Description |
 |----------------|------|-------------|
-| `player` | `VideoPlayer` | The player instance |
+| `player` | `NitroPlayer` | The player instance |
 | `enterFullscreen()` | `void` | Enter fullscreen mode |
 | `exitFullscreen()` | `void` | Exit fullscreen mode |
 | `addEventListener()` | `ListenerSubscription` | Subscribe to view events |
@@ -112,19 +112,19 @@ ref.current?.enterFullscreen();
 
 ```tsx
 // String URL
-<VideoView source="https://example.com/video.mp4" />
+<NitroPlayerView source="https://example.com/video.mp4" />
 
 // Config object
-<VideoView source={{ uri: 'https://example.com/video.mp4', headers: { Authorization: 'Bearer token' } }} />
+<NitroPlayerView source={{ uri: 'https://example.com/video.mp4', headers: { Authorization: 'Bearer token' } }} />
 
 // Local asset
-<VideoView source={require('./assets/intro.mp4')} />
+<NitroPlayerView source={require('./assets/intro.mp4')} />
 
 // Disable HLS proxy
-<VideoView source={{ uri: 'https://example.com/live.m3u8', useHlsProxy: false }} />
+<NitroPlayerView source={{ uri: 'https://example.com/live.m3u8', useHlsProxy: false }} />
 
 // Memory config for feed
-<VideoView source={{
+<NitroPlayerView source={{
   uri: 'https://example.com/video.mp4',
   memoryConfig: { profile: 'feed' },
 }} />
@@ -132,7 +132,7 @@ ref.current?.enterFullscreen();
 
 ---
 
-## VideoPlayer
+## NitroPlayer
 
 Access via `ref.current.player`.
 
@@ -142,7 +142,7 @@ Access via `ref.current.player`.
 |----------|------|-----|-----|-------------|
 | `playbackState` | `PlaybackState` | yes | - | Full native playback snapshot |
 | `memorySnapshot` | `MemorySnapshot` | yes | - | Native RAM snapshot |
-| `status` | `VideoPlayerStatus` | yes | - | Current state |
+| `status` | `NitroPlayerStatus` | yes | - | Current state |
 | `duration` | `number` | yes | - | Duration in seconds |
 | `currentTime` | `number` | yes | yes | Position in seconds |
 | `volume` | `number` | yes | yes | Volume 0.0-1.0 |
@@ -177,12 +177,12 @@ Access via `ref.current.player`.
 | `onLoadStart` | `{ sourceType, source }` | Started loading |
 | `onBandwidthUpdate` | `{ bitrate, width?, height? }` | Bandwidth estimate |
 | `onVolumeChange` | `{ volume, muted }` | Volume changed |
-| `onError` | `VideoRuntimeError` | Error occurred |
+| `onError` | `NitroPlayerRuntimeError` | Error occurred |
 
 ### Playback UI
 
 ```tsx
-import { usePlaybackState } from '@noma4i/just-player';
+import { usePlaybackState } from '@noma4i/nitro-play';
 
 const playback = usePlaybackState(player);
 // 60fps interpolation from 250ms native ticks
@@ -215,6 +215,14 @@ Cache: 5 GB max, 7d TTL, LRU eviction. Manifest responses always fresh (no-cache
 |------------|---------|
 | React Native | >= 0.77.0 |
 | react-native-nitro-modules | >= 0.35.0 |
+
+## Native Dependencies (bundled)
+
+| Dependency | Platform | Version |
+|------------|----------|---------|
+| ExoPlayer (Media3) | Android | 1.9.3 |
+| GCDWebServer | iOS | ~> 3.5 |
+| NanoHTTPD | Android | 2.3.1 |
 
 ## License
 

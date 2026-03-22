@@ -1,6 +1,6 @@
 //
 //  ResizeMode.swift
-//  JustPlayer
+//  NitroPlay
 //
 //  Created for resizeMode feature
 //

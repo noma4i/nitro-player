@@ -30,12 +30,12 @@
 
 // Forward declaration of `SourceType` to properly resolve imports.
 namespace margelo::nitro::video { enum class SourceType; }
-// Forward declaration of `HybridVideoPlayerSourceSpec` to properly resolve imports.
-namespace margelo::nitro::video { class HybridVideoPlayerSourceSpec; }
+// Forward declaration of `HybridNitroPlayerSourceSpec` to properly resolve imports.
+namespace margelo::nitro::video { class HybridNitroPlayerSourceSpec; }
 
 #include "SourceType.hpp"
 #include <memory>
-#include "HybridVideoPlayerSourceSpec.hpp"
+#include "HybridNitroPlayerSourceSpec.hpp"
 
 namespace margelo::nitro::video {
 
@@ -45,11 +45,11 @@ namespace margelo::nitro::video {
   struct onLoadStartData final {
   public:
     SourceType sourceType     SWIFT_PRIVATE;
-    std::shared_ptr<HybridVideoPlayerSourceSpec> source     SWIFT_PRIVATE;
+    std::shared_ptr<HybridNitroPlayerSourceSpec> source     SWIFT_PRIVATE;
 
   public:
     onLoadStartData() = default;
-    explicit onLoadStartData(SourceType sourceType, std::shared_ptr<HybridVideoPlayerSourceSpec> source): sourceType(sourceType), source(source) {}
+    explicit onLoadStartData(SourceType sourceType, std::shared_ptr<HybridNitroPlayerSourceSpec> source): sourceType(sourceType), source(source) {}
 
   public:
     friend bool operator==(const onLoadStartData& lhs, const onLoadStartData& rhs) = default;
@@ -66,13 +66,13 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::video::onLoadStartData(
         JSIConverter<margelo::nitro::video::SourceType>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "sourceType"))),
-        JSIConverter<std::shared_ptr<margelo::nitro::video::HybridVideoPlayerSourceSpec>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "source")))
+        JSIConverter<std::shared_ptr<margelo::nitro::video::HybridNitroPlayerSourceSpec>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "source")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::video::onLoadStartData& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "sourceType"), JSIConverter<margelo::nitro::video::SourceType>::toJSI(runtime, arg.sourceType));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "source"), JSIConverter<std::shared_ptr<margelo::nitro::video::HybridVideoPlayerSourceSpec>>::toJSI(runtime, arg.source));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "source"), JSIConverter<std::shared_ptr<margelo::nitro::video::HybridNitroPlayerSourceSpec>>::toJSI(runtime, arg.source));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -84,7 +84,7 @@ namespace margelo::nitro {
         return false;
       }
       if (!JSIConverter<margelo::nitro::video::SourceType>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "sourceType")))) return false;
-      if (!JSIConverter<std::shared_ptr<margelo::nitro::video::HybridVideoPlayerSourceSpec>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "source")))) return false;
+      if (!JSIConverter<std::shared_ptr<margelo::nitro::video::HybridNitroPlayerSourceSpec>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "source")))) return false;
       return true;
     }
   };

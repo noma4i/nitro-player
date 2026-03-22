@@ -1,10 +1,10 @@
 buildscript {
   // Buildscript is evaluated before everything else so we can't use getExtOrDefault
-  def kotlin_version = rootProject.ext.has("kotlinVersion") ? rootProject.ext.get("kotlinVersion") : project.properties["RNVideo_kotlinVersion"]
-  def minKotlin_version = project.properties["RNVideo_minKotlinVersion"]
+  def kotlin_version = rootProject.ext.has("kotlinVersion") ? rootProject.ext.get("kotlinVersion") : project.properties["RNNitroPlay_kotlinVersion"]
+  def minKotlin_version = project.properties["RNNitroPlay_minKotlinVersion"]
 
-  def androidx_version = rootProject.ext.has('androidxActivityVersion') ? rootProject.ext.get('androidxActivityVersion') : project.properties['RNVideo_androidxActivityVersion']
-  def minAndroidx_version = project.properties["RNVideo_androidxActivityVersion"]
+  def androidx_version = rootProject.ext.has('androidxActivityVersion') ? rootProject.ext.get('androidxActivityVersion') : project.properties['RNNitroPlay_androidxActivityVersion']
+  def minAndroidx_version = project.properties["RNNitroPlay_androidxActivityVersion"]
 
   def isVersionAtLeast = { version, minVersion ->
     def (major, minor, patch) = version.tokenize('.')
@@ -55,7 +55,7 @@ def isNewArchitectureEnabled() {
 
 apply plugin: "com.android.library"
 apply plugin: "kotlin-android"
-apply from: '../nitrogen/generated/android/JustPlayer+autolinking.gradle'
+apply from: '../nitrogen/generated/android/NitroPlay+autolinking.gradle'
 apply from: './fix-prefab.gradle'
 
 if (isNewArchitectureEnabled()) {
@@ -63,11 +63,11 @@ if (isNewArchitectureEnabled()) {
 }
 
 def getExtOrDefault(name) {
-  return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties["RNVideo_" + name]
+  return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties["RNNitroPlay_" + name]
 }
 
 def getExtOrIntegerDefault(name) {
-  return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["RNVideo_" + name]).toInteger()
+  return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["RNNitroPlay_" + name]).toInteger()
 }
 
 def supportsNamespace() {
@@ -89,7 +89,7 @@ def ExoplayerDependencies = ExoplayerDependenciesList.collectEntries { property 
 }
 
 // Print Configuration
-println "[JustPlayer] Exoplayer Dependencies Configuration:"
+println "[NitroPlay] Exoplayer Dependencies Configuration:"
 ExoplayerDependenciesList.each { propertyName ->
   def propertyValue = ExoplayerDependencies[propertyName]
   println "$propertyName: $propertyValue"
@@ -97,7 +97,7 @@ ExoplayerDependenciesList.each { propertyName ->
 
 android {
   if (supportsNamespace()) {
-    namespace "com.twg.video"
+    namespace "com.nitroplay.video"
 
     sourceSets {
       main {
@@ -250,7 +250,7 @@ dependencies {
 if (isNewArchitectureEnabled()) {
   react {
     jsRootDir = file("../src/spec/fabric")
-    libraryName = "RNCVideoView"
-    codegenJavaPackageName = "com.twg.video"
+    libraryName = "RNCNitroPlayerView"
+    codegenJavaPackageName = "com.nitroplay.video"
   }
 }

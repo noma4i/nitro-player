@@ -1,6 +1,6 @@
 //
 //  AVAssetTrack+orientation.swift
-//  JustPlayer
+//  NitroPlay
 //
 //  Created by Krzysztof Moch on 23/01/2025.
 //
@@ -8,7 +8,7 @@
 import AVFoundation
 
 extension AVAssetTrack {
-  var orientation: VideoOrientation {
+  var orientation: NitroPlayerOrientation {
     let transform = preferredTransform
     let size = naturalSize.applying(transform)
     

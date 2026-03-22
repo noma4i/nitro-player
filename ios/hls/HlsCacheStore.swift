@@ -2,7 +2,7 @@ import CommonCrypto
 import Foundation
 import OSLog
 
-private let cacheLogger = Logger(subsystem: "com.yupi.hls", category: "CacheStore")
+private let cacheLogger = Logger(subsystem: "com.nitroplay.hls", category: "CacheStore")
 
 final class HlsCacheStore {
   private let maxBytes: Int = 5_368_709_120

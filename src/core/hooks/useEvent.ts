@@ -1,18 +1,18 @@
 import { useEffect } from 'react';
-import { VideoPlayer } from '../VideoPlayer';
-import { type AllPlayerEvents } from '../types/Events';
+import { NitroPlayer } from '../NitroPlayer';
+import { type AllNitroPlayerEvents } from '../types/Events';
 
 /**
- * Attaches an event listener to a `VideoPlayer` instance for a specified event.
+ * Attaches an event listener to a `NitroPlayer` instance for a specified event.
  *
  * @param player - The player to attach the event to
  * @param event - The name of the event to attach the callback to
  * @param callback - The callback for the event
  */
-export const useEvent = <T extends keyof AllPlayerEvents>(
-  player: VideoPlayer,
+export const useEvent = <T extends keyof AllNitroPlayerEvents>(
+  player: NitroPlayer,
   event: T,
-  callback: AllPlayerEvents[T]
+  callback: AllNitroPlayerEvents[T]
 ) => {
   useEffect(() => {
     const subscription = player.addEventListener(event, callback);

@@ -14,8 +14,8 @@
 #include <functional>
 #include <NitroModules/JNICallable.hpp>
 #include "JonLoadData.hpp"
-#include "VideoOrientation.hpp"
-#include "JVideoOrientation.hpp"
+#include "NitroPlayerOrientation.hpp"
+#include "JNitroPlayerOrientation.hpp"
 
 namespace margelo::nitro::video {
 

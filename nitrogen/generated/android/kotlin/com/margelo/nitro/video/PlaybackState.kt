@@ -19,7 +19,7 @@ import com.facebook.proguard.annotations.DoNotStrip
 data class PlaybackState(
   @DoNotStrip
   @Keep
-  val status: VideoPlayerStatus,
+  val status: NitroPlayerStatus,
   @DoNotStrip
   @Keep
   val currentTime: Double,
@@ -58,7 +58,7 @@ data class PlaybackState(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(status: VideoPlayerStatus, currentTime: Double, duration: Double, bufferDuration: Double, bufferedPosition: Double, rate: Double, isPlaying: Boolean, isBuffering: Boolean, isReadyToDisplay: Boolean, nativeTimestampMs: Double): PlaybackState {
+    private fun fromCpp(status: NitroPlayerStatus, currentTime: Double, duration: Double, bufferDuration: Double, bufferedPosition: Double, rate: Double, isPlaying: Boolean, isBuffering: Boolean, isReadyToDisplay: Boolean, nativeTimestampMs: Double): PlaybackState {
       return PlaybackState(status, currentTime, duration, bufferDuration, bufferedPosition, rate, isPlaying, isBuffering, isReadyToDisplay, nativeTimestampMs)
     }
   }

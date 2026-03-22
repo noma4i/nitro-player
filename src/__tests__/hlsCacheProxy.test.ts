@@ -62,4 +62,38 @@ describe('hlsCacheProxy', () => {
     expect(nativeStart).toHaveBeenCalledWith(18181);
     expect(nativeGetProxiedUrl).toHaveBeenLastCalledWith('https://cdn.example.com/live-2.m3u8', undefined);
   });
+
+  it('prefetchFirstSegment delegates to native prefetchFirstSegment', async () => {
+    const { hlsCacheProxy } = require('../hls/hlsCacheProxy');
+    const { NativeModules } = require('react-native');
+    const nativePrefetch = NativeModules.HlsCacheProxy.prefetchFirstSegment;
+
+    await hlsCacheProxy.prefetchFirstSegment('https://cdn.example.com/live.m3u8');
+
+    expect(nativePrefetch).toHaveBeenCalledTimes(1);
+    expect(nativePrefetch).toHaveBeenCalledWith('https://cdn.example.com/live.m3u8', undefined);
+  });
+
+  it('getCacheStats returns the result from native getCacheStats', async () => {
+    const { hlsCacheProxy } = require('../hls/hlsCacheProxy');
+
+    const stats = await hlsCacheProxy.getCacheStats();
+
+    expect(stats).toEqual({
+      totalSize: 0,
+      fileCount: 0,
+      maxSize: 5_368_709_120,
+    });
+  });
+
+  it('clearCache delegates to native clearCache', async () => {
+    const { hlsCacheProxy } = require('../hls/hlsCacheProxy');
+    const { NativeModules } = require('react-native');
+    const nativeClearCache = NativeModules.HlsCacheProxy.clearCache;
+
+    const result = await hlsCacheProxy.clearCache();
+
+    expect(nativeClearCache).toHaveBeenCalledTimes(1);
+    expect(result).toBe(true);
+  });
 });

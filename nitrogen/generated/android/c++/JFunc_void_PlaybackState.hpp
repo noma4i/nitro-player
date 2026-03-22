@@ -14,8 +14,8 @@
 #include <functional>
 #include <NitroModules/JNICallable.hpp>
 #include "JPlaybackState.hpp"
-#include "VideoPlayerStatus.hpp"
-#include "JVideoPlayerStatus.hpp"
+#include "NitroPlayerStatus.hpp"
+#include "JNitroPlayerStatus.hpp"
 
 namespace margelo::nitro::video {
 

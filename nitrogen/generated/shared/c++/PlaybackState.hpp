@@ -28,10 +28,10 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-// Forward declaration of `VideoPlayerStatus` to properly resolve imports.
-namespace margelo::nitro::video { enum class VideoPlayerStatus; }
+// Forward declaration of `NitroPlayerStatus` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroPlayerStatus; }
 
-#include "VideoPlayerStatus.hpp"
+#include "NitroPlayerStatus.hpp"
 
 namespace margelo::nitro::video {
 
@@ -40,7 +40,7 @@ namespace margelo::nitro::video {
    */
   struct PlaybackState final {
   public:
-    VideoPlayerStatus status     SWIFT_PRIVATE;
+    NitroPlayerStatus status     SWIFT_PRIVATE;
     double currentTime     SWIFT_PRIVATE;
     double duration     SWIFT_PRIVATE;
     double bufferDuration     SWIFT_PRIVATE;
@@ -53,7 +53,7 @@ namespace margelo::nitro::video {
 
   public:
     PlaybackState() = default;
-    explicit PlaybackState(VideoPlayerStatus status, double currentTime, double duration, double bufferDuration, double bufferedPosition, double rate, bool isPlaying, bool isBuffering, bool isReadyToDisplay, double nativeTimestampMs): status(status), currentTime(currentTime), duration(duration), bufferDuration(bufferDuration), bufferedPosition(bufferedPosition), rate(rate), isPlaying(isPlaying), isBuffering(isBuffering), isReadyToDisplay(isReadyToDisplay), nativeTimestampMs(nativeTimestampMs) {}
+    explicit PlaybackState(NitroPlayerStatus status, double currentTime, double duration, double bufferDuration, double bufferedPosition, double rate, bool isPlaying, bool isBuffering, bool isReadyToDisplay, double nativeTimestampMs): status(status), currentTime(currentTime), duration(duration), bufferDuration(bufferDuration), bufferedPosition(bufferedPosition), rate(rate), isPlaying(isPlaying), isBuffering(isBuffering), isReadyToDisplay(isReadyToDisplay), nativeTimestampMs(nativeTimestampMs) {}
 
   public:
     friend bool operator==(const PlaybackState& lhs, const PlaybackState& rhs) = default;
@@ -69,7 +69,7 @@ namespace margelo::nitro {
     static inline margelo::nitro::video::PlaybackState fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::video::PlaybackState(
-        JSIConverter<margelo::nitro::video::VideoPlayerStatus>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "status"))),
+        JSIConverter<margelo::nitro::video::NitroPlayerStatus>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "status"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "currentTime"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "duration"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bufferDuration"))),
@@ -83,7 +83,7 @@ namespace margelo::nitro {
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::video::PlaybackState& arg) {
       jsi::Object obj(runtime);
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "status"), JSIConverter<margelo::nitro::video::VideoPlayerStatus>::toJSI(runtime, arg.status));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "status"), JSIConverter<margelo::nitro::video::NitroPlayerStatus>::toJSI(runtime, arg.status));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "currentTime"), JSIConverter<double>::toJSI(runtime, arg.currentTime));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "duration"), JSIConverter<double>::toJSI(runtime, arg.duration));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "bufferDuration"), JSIConverter<double>::toJSI(runtime, arg.bufferDuration));
@@ -103,7 +103,7 @@ namespace margelo::nitro {
       if (!nitro::isPlainObject(runtime, obj)) {
         return false;
       }
-      if (!JSIConverter<margelo::nitro::video::VideoPlayerStatus>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "status")))) return false;
+      if (!JSIConverter<margelo::nitro::video::NitroPlayerStatus>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "status")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "currentTime")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "duration")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bufferDuration")))) return false;

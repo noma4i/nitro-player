@@ -17,8 +17,8 @@
 #include "SourceType.hpp"
 #include "JSourceType.hpp"
 #include <memory>
-#include "HybridVideoPlayerSourceSpec.hpp"
-#include "JHybridVideoPlayerSourceSpec.hpp"
+#include "HybridNitroPlayerSourceSpec.hpp"
+#include "JHybridNitroPlayerSourceSpec.hpp"
 
 namespace margelo::nitro::video {
 

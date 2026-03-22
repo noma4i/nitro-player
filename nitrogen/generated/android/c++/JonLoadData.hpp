@@ -10,8 +10,8 @@
 #include <fbjni/fbjni.h>
 #include "onLoadData.hpp"
 
-#include "JVideoOrientation.hpp"
-#include "VideoOrientation.hpp"
+#include "JNitroPlayerOrientation.hpp"
+#include "NitroPlayerOrientation.hpp"
 
 namespace margelo::nitro::video {
 
@@ -40,8 +40,8 @@ namespace margelo::nitro::video {
       double height = this->getFieldValue(fieldHeight);
       static const auto fieldWidth = clazz->getField<double>("width");
       double width = this->getFieldValue(fieldWidth);
-      static const auto fieldOrientation = clazz->getField<JVideoOrientation>("orientation");
-      jni::local_ref<JVideoOrientation> orientation = this->getFieldValue(fieldOrientation);
+      static const auto fieldOrientation = clazz->getField<JNitroPlayerOrientation>("orientation");
+      jni::local_ref<JNitroPlayerOrientation> orientation = this->getFieldValue(fieldOrientation);
       return onLoadData(
         currentTime,
         duration,
@@ -57,7 +57,7 @@ namespace margelo::nitro::video {
      */
     [[maybe_unused]]
     static jni::local_ref<JonLoadData::javaobject> fromCpp(const onLoadData& value) {
-      using JSignature = JonLoadData(double, double, double, double, jni::alias_ref<JVideoOrientation>);
+      using JSignature = JonLoadData(double, double, double, double, jni::alias_ref<JNitroPlayerOrientation>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -66,7 +66,7 @@ namespace margelo::nitro::video {
         value.duration,
         value.height,
         value.width,
-        JVideoOrientation::fromCpp(value.orientation)
+        JNitroPlayerOrientation::fromCpp(value.orientation)
       );
     }
   };

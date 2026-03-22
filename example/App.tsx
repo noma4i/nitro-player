@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import {
-  VideoView,
+  NitroPlayerView,
   hlsCacheProxy,
   usePlaybackState,
   useEvent,
@@ -9,9 +9,9 @@ import {
   type onLoadData,
   type onLoadStartData,
   type BandwidthData,
-  type VideoRuntimeError,
-  type VideoViewRef
-} from '@noma4i/just-player';
+  type NitroPlayerRuntimeError,
+  type NitroPlayerViewRef
+} from '@noma4i/nitro-play';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 const SOURCES = {
@@ -43,8 +43,8 @@ function App() {
     streamSize: 0,
     streamFileCount: 0
   }), []);
-  const videoRef = useRef<VideoViewRef>(null);
-  const [player, setPlayer] = useState<VideoViewRef['player'] | null>(null);
+  const videoRef = useRef<NitroPlayerViewRef>(null);
+  const [player, setPlayer] = useState<NitroPlayerViewRef['player'] | null>(null);
   const [selectedSourceKey, setSelectedSourceKey] = useState<keyof typeof SOURCES>('hls');
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastLoadStart, setLastLoadStart] = useState<string>('none');
@@ -57,7 +57,7 @@ function App() {
     () => SOURCES[selectedSourceKey],
     [selectedSourceKey]
   );
-  const handleVideoRef = useCallback((instance: VideoViewRef | null) => {
+  const handleVideoRef = useCallback((instance: NitroPlayerViewRef | null) => {
     videoRef.current = instance;
     setPlayer(instance?.player ?? null);
   }, []);
@@ -116,7 +116,7 @@ function App() {
     setLastLoad(value);
   };
 
-  const handleError = (error: VideoRuntimeError) => {
+  const handleError = (error: NitroPlayerRuntimeError) => {
     const value = `${error.code}: ${error.message}`;
     console.log('[Example] onError', value, error.cause);
     setLastError(value);
@@ -127,7 +127,7 @@ function App() {
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="light-content" />
         <View style={styles.container}>
-          <Text style={styles.eyebrow}>JustPlayer Example</Text>
+          <Text style={styles.eyebrow}>NitroPlay Example</Text>
           <Text style={styles.subtitle}>Switch between working HLS and MP4 demo sources</Text>
 
           <View style={styles.row}>
@@ -147,7 +147,7 @@ function App() {
             })}
           </View>
 
-          <VideoView
+          <NitroPlayerView
             key={selectedSourceKey}
             ref={handleVideoRef}
             source={selectedSource.source}

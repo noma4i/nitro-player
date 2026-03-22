@@ -14,7 +14,7 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'JustPlayerExample' do
+target 'NitroPlayExample' do
   config = use_native_modules!
 
   pod 'GCDWebServer', :modular_headers => true

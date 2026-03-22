@@ -10,8 +10,8 @@
 #include <fbjni/fbjni.h>
 #include "onLoadStartData.hpp"
 
-#include "HybridVideoPlayerSourceSpec.hpp"
-#include "JHybridVideoPlayerSourceSpec.hpp"
+#include "HybridNitroPlayerSourceSpec.hpp"
+#include "JHybridNitroPlayerSourceSpec.hpp"
 #include "JSourceType.hpp"
 #include "SourceType.hpp"
 #include <memory>
@@ -37,11 +37,11 @@ namespace margelo::nitro::video {
       static const auto clazz = javaClassStatic();
       static const auto fieldSourceType = clazz->getField<JSourceType>("sourceType");
       jni::local_ref<JSourceType> sourceType = this->getFieldValue(fieldSourceType);
-      static const auto fieldSource = clazz->getField<JHybridVideoPlayerSourceSpec::JavaPart>("source");
-      jni::local_ref<JHybridVideoPlayerSourceSpec::JavaPart> source = this->getFieldValue(fieldSource);
+      static const auto fieldSource = clazz->getField<JHybridNitroPlayerSourceSpec::JavaPart>("source");
+      jni::local_ref<JHybridNitroPlayerSourceSpec::JavaPart> source = this->getFieldValue(fieldSource);
       return onLoadStartData(
         sourceType->toCpp(),
-        source->getJHybridVideoPlayerSourceSpec()
+        source->getJHybridNitroPlayerSourceSpec()
       );
     }
 
@@ -51,13 +51,13 @@ namespace margelo::nitro::video {
      */
     [[maybe_unused]]
     static jni::local_ref<JonLoadStartData::javaobject> fromCpp(const onLoadStartData& value) {
-      using JSignature = JonLoadStartData(jni::alias_ref<JSourceType>, jni::alias_ref<JHybridVideoPlayerSourceSpec::JavaPart>);
+      using JSignature = JonLoadStartData(jni::alias_ref<JSourceType>, jni::alias_ref<JHybridNitroPlayerSourceSpec::JavaPart>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
         clazz,
         JSourceType::fromCpp(value.sourceType),
-        std::dynamic_pointer_cast<JHybridVideoPlayerSourceSpec>(value.source)->getJavaPart()
+        std::dynamic_pointer_cast<JHybridNitroPlayerSourceSpec>(value.source)->getJavaPart()
       );
     }
   };
