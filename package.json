@@ -49,9 +49,10 @@
     "build": "npm run codegen && bob build",
     "release:notes": "node ./scripts/release-notes.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "npm run test:ts && npm run test:android:unit",
+    "test": "npm run test:ts && npm run test:android && npm run test:ios",
     "test:ts": "jest --runInBand",
-    "test:android:unit": "cd example/android && ./gradlew :noma4i_nitro-play:test"
+    "test:android": "cd example/android && ./gradlew :noma4i_nitro-play:test",
+    "test:ios": "cd tests/ios && swift test"
   },
   "peerDependencies": {
     "react": "*",
