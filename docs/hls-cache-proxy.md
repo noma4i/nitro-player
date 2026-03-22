@@ -1,0 +1,81 @@
+# HLS Cache Proxy
+
+Localhost HTTP proxy (port 18181) that caches HLS segments to disk. All `.m3u8` URLs routed through `NitroPlayerView` go through the proxy automatically.
+
+## Architecture
+
+```
+App -> NitroPlayerView -> localhost:18181 -> CDN
+                              |
+                         HlsCacheStore (disk)
+```
+
+- iOS: GCDWebServer + `~/Library/Caches/hls-cache/`
+- Android: NanoHTTPD + `context.cacheDir/hls-cache/`
+
+Manifest responses always fresh (`Cache-Control: no-cache`). Segments cached to disk with SHA-256 filename.
+
+## API
+
+```typescript
+import { hlsCacheProxy } from '@noma4i/nitro-play';
+```
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `start(port?)` | `void` | Start proxy (default: 18181). Auto-starts on first use |
+| `stop()` | `void` | Stop proxy. Requires explicit `start()` to resume |
+| `getProxiedUrl(url, headers?)` | `string` | Get proxied URL for HLS stream |
+| `prefetchFirstSegment(url, headers?)` | `Promise<void>` | Pre-download init + first segment |
+| `getCacheStats()` | `Promise<HlsCacheStats>` | Total cache stats |
+| `getStreamCacheStats(url)` | `Promise<HlsStreamCacheStats>` | Per-stream cache stats |
+| `clearCache()` | `Promise<boolean>` | Delete all cached segments |
+
+## Types
+
+```typescript
+interface HlsCacheStats {
+  totalSize: number;    // bytes on disk
+  fileCount: number;    // cached segments
+  maxSize: number;      // 5 GB limit
+}
+
+interface HlsStreamCacheStats extends HlsCacheStats {
+  streamSize: number;       // bytes for this stream
+  streamFileCount: number;  // segments for this stream
+}
+```
+
+## Cache Policy
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Max size | 5 GB | Hardcoded |
+| TTL | 7 days | From creation time |
+| Eviction trigger | 80% full (4 GB) | Stream-based LRU |
+| Eviction unit | Whole stream | All chunks of oldest stream removed at once |
+| Index | `index.json` in cache dir | Debounced save (5s) |
+| Filename | `SHA256(url).seg` | Collision-safe |
+
+## Eviction Strategy
+
+1. **TTL** - entries older than 7 days removed lazily (on access or stats)
+2. **Size threshold** - when total cache > 80% of max (4 GB):
+   - Group all entries by `streamKey` (playlist URL)
+   - Sort streams by oldest `lastAccess`
+   - Remove entire oldest stream (all its chunks)
+   - Repeat until under threshold
+
+Streams are always removed as a whole unit - no partial cleanup that would leave broken playlists on disk.
+
+## Prefetch Deduplication
+
+`prefetchFirstSegment()` deduplicates calls within 60 seconds for the same URL. Safe to call on every feed item mount.
+
+## Disabling the Proxy
+
+```tsx
+<NitroPlayerView source={{ uri: 'https://example.com/live.m3u8', useHlsProxy: false }} />
+```
+
+Non-HLS sources (`.mp4`, etc.) are never proxied regardless of this setting.

@@ -3,6 +3,7 @@
 Minimal consumer app for validating `@noma4i/nitro-play` locally.
 
 What `App.tsx` covers:
+
 - HLS playback through the built-in proxy
 - MP4 playback without the proxy
 - Unified `playbackState`

@@ -64,7 +64,6 @@ tsconfig.tsbuildinfo
 # Documentation (AI-generated)
 **/CLAUDE.md
 CLAUDE.md
-/docs
 
 # Misc
 .watchman-*
