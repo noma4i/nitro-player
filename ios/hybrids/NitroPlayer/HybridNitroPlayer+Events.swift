@@ -35,8 +35,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
   }
 
   func onPlaybackBufferEmpty() {
-    isCurrentlyBuffering = true
-    status = .buffering
+    enterBuffering()
     updateAndEmitPlaybackState()
   }
 
@@ -67,8 +66,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
     switch status {
     case .waitingToPlayAtSpecifiedRate:
-      isCurrentlyBuffering = true
-      self.status = .buffering
+      enterBuffering()
       break
 
     case .playing:
@@ -180,5 +178,12 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
   func updateAndEmitPlaybackState() {
     emitPlaybackState()
+  }
+
+  private func enterBuffering() {
+    isCurrentlyBuffering = true
+    if status != .playing && status != .paused {
+      status = .buffering
+    }
   }
 }

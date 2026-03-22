@@ -275,6 +275,94 @@ describe('usePlaybackState', () => {
     expect((result as Record<string, unknown>).currentTime).toBe(25);
   });
 
+  it('no interpolation when playing but buffering', () => {
+    const { usePlaybackState } = require('../core/hooks/usePlaybackState');
+    const state = makePlaybackState({
+      status: 'playing',
+      isPlaying: true,
+      isBuffering: true,
+      currentTime: 15,
+      duration: 100,
+      bufferedPosition: 20,
+      rate: 1,
+      nativeTimestampMs: MOCK_TIMESTAMP,
+    });
+    const player = makeMockPlayer(state);
+    let result: unknown = undefined;
+
+    function TestComponent() {
+      result = usePlaybackState(player, { interpolate: true, fps: 60 });
+      return null;
+    }
+
+    act(() => {
+      TestRenderer.create(<TestComponent />);
+    });
+
+    Object.defineProperty(globalThis, 'performance', {
+      value: {
+        timeOrigin: 0,
+        now: jest.fn(() => MOCK_TIMESTAMP + 500),
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    act(() => {
+      flushRAF();
+    });
+
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    act(() => {
+      flushRAF();
+    });
+
+    // isBuffering=true prevents interpolation, currentTime should stay at 15
+    expect((result as Record<string, unknown>).currentTime).toBe(15);
+  });
+
+  it('event transition from buffering to playing updates state', () => {
+    const { usePlaybackState } = require('../core/hooks/usePlaybackState');
+    const bufferingState = makePlaybackState({
+      status: 'playing',
+      isPlaying: true,
+      isBuffering: true,
+      currentTime: 0,
+    });
+    const player = makeMockPlayer(bufferingState);
+    let result: unknown = undefined;
+
+    function TestComponent() {
+      result = usePlaybackState(player, { interpolate: false });
+      return null;
+    }
+
+    act(() => {
+      TestRenderer.create(<TestComponent />);
+    });
+
+    expect((result as Record<string, unknown>).status).toBe('playing');
+    expect((result as Record<string, unknown>).isBuffering).toBe(true);
+
+    const playingState = makePlaybackState({
+      status: 'playing',
+      isPlaying: true,
+      isBuffering: false,
+      currentTime: 0.5,
+    });
+
+    act(() => {
+      player._emit('onPlaybackState', playingState);
+    });
+
+    expect((result as Record<string, unknown>).status).toBe('playing');
+    expect((result as Record<string, unknown>).isBuffering).toBe(false);
+    expect((result as Record<string, unknown>).currentTime).toBe(0.5);
+  });
+
   it('handles released player gracefully', () => {
     const { usePlaybackState } = require('../core/hooks/usePlaybackState');
     const state = makePlaybackState({ status: 'playing' });
