@@ -130,4 +130,18 @@ describe('hlsCacheProxy', () => {
       streamFileCount: 0
     });
   });
+
+  it('prefetchFirstSegment deduplicates within 60s window', async () => {
+    const { hlsCacheProxy } = require('../hls/hlsCacheProxy');
+    const { NativeModules } = require('react-native');
+    const nativePrefetch = NativeModules.HlsCacheProxy.prefetchFirstSegment;
+
+    const url = 'https://cdn.example.com/dedup.m3u8';
+
+    await hlsCacheProxy.prefetchFirstSegment(url);
+    await hlsCacheProxy.prefetchFirstSegment(url);
+    await hlsCacheProxy.prefetchFirstSegment(url);
+
+    expect(nativePrefetch).toHaveBeenCalledTimes(1);
+  });
 });

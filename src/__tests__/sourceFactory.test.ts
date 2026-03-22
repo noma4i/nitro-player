@@ -1,10 +1,10 @@
 jest.mock('react-native', () => ({
   Image: {
-    resolveAssetSource: jest.fn(),
+    resolveAssetSource: jest.fn()
   },
   Platform: {
-    select: jest.fn((config: Record<string, string>) => config.ios),
-  },
+    select: jest.fn((config: Record<string, string>) => config.ios)
+  }
 }));
 
 const fromUri = jest.fn((uri: string) => ({ uri }));
@@ -14,17 +14,17 @@ jest.mock('react-native-nitro-modules', () => ({
   NitroModules: {
     createHybridObject: jest.fn(() => ({
       fromUri,
-      fromNitroPlayerConfig,
-    })),
-  },
+      fromNitroPlayerConfig
+    }))
+  }
 }));
 
 const getProxiedUrl = jest.fn((uri: string) => `proxied:${uri}`);
 
 jest.mock('../hls/hlsCacheProxy', () => ({
   hlsCacheProxy: {
-    getProxiedUrl,
-  },
+    getProxiedUrl
+  }
 }));
 
 describe('sourceFactory', () => {
@@ -43,10 +43,7 @@ describe('sourceFactory', () => {
 
     createSourceFromUri('https://cdn.example.com/live.M3U8?token=abc#main');
 
-    expect(getProxiedUrl).toHaveBeenCalledWith(
-      'https://cdn.example.com/live.M3U8?token=abc#main',
-      undefined
-    );
+    expect(getProxiedUrl).toHaveBeenCalledWith('https://cdn.example.com/live.M3U8?token=abc#main', undefined);
     expect(fromNitroPlayerConfig).toHaveBeenCalledWith({
       uri: 'proxied:https://cdn.example.com/live.M3U8?token=abc#main',
       initializeOnCreation: true,
@@ -54,8 +51,8 @@ describe('sourceFactory', () => {
         profile: 'balanced',
         preloadLevel: 'buffered',
         offscreenRetention: 'hot',
-        pauseTrimDelayMs: 10000,
-      },
+        pauseTrimDelayMs: 10000
+      }
     });
   });
 
@@ -72,8 +69,8 @@ describe('sourceFactory', () => {
         profile: 'balanced',
         preloadLevel: 'buffered',
         offscreenRetention: 'hot',
-        pauseTrimDelayMs: 10000,
-      },
+        pauseTrimDelayMs: 10000
+      }
     });
   });
 
@@ -84,8 +81,8 @@ describe('sourceFactory', () => {
       {
         uri: 'https://cdn.example.com/feed-item.mp4',
         memoryConfig: {
-          profile: 'feed',
-        },
+          profile: 'feed'
+        }
       },
       'feed'
     );
@@ -97,8 +94,8 @@ describe('sourceFactory', () => {
         profile: 'feed',
         preloadLevel: 'buffered',
         offscreenRetention: 'hot',
-        pauseTrimDelayMs: 3000,
-      },
+        pauseTrimDelayMs: 3000
+      }
     });
   });
 
@@ -107,7 +104,7 @@ describe('sourceFactory', () => {
 
     const source = {
       uri: 'https://cdn.example.com/live.m3u8',
-      headers: { Authorization: 'Bearer token' },
+      headers: { Authorization: 'Bearer token' }
     };
 
     const snapshot = JSON.parse(JSON.stringify(source));
@@ -122,18 +119,16 @@ describe('sourceFactory', () => {
         profile: 'balanced',
         preloadLevel: 'buffered',
         offscreenRetention: 'hot',
-        pauseTrimDelayMs: 10000,
+        pauseTrimDelayMs: 10000
       },
-      initializeOnCreation: true,
+      initializeOnCreation: true
     });
   });
 
   it('getSourceIdentityKey returns the string itself for a string URI', () => {
     const { getSourceIdentityKey } = require('../core/utils/sourceFactory');
 
-    expect(getSourceIdentityKey('https://cdn.example.com/video.mp4')).toBe(
-      'https://cdn.example.com/video.mp4'
-    );
+    expect(getSourceIdentityKey('https://cdn.example.com/video.mp4')).toBe('https://cdn.example.com/video.mp4');
   });
 
   it('getSourceIdentityKey returns String(number) for a number source', () => {
@@ -151,10 +146,99 @@ describe('sourceFactory', () => {
       memoryConfig: {
         profile: 'feed',
         preloadLevel: 'buffered',
-        offscreenRetention: 'hot',
-      },
+        offscreenRetention: 'hot'
+      }
     });
 
     expect(key).toBe('https://cdn.example.com/live.m3u8|true|feed|buffered|hot');
+  });
+
+  it('createSource returns source directly if isNitroPlayerSource returns true', () => {
+    const { createSource } = require('../core/utils/sourceFactory');
+
+    const nitroSource = { name: 'NitroPlayerSource', uri: 'https://cdn.example.com/video.mp4' };
+    const result = createSource(nitroSource);
+
+    expect(result).toBe(nitroSource);
+    expect(fromNitroPlayerConfig).not.toHaveBeenCalled();
+  });
+
+  it('createSource dispatches string to createSourceFromUri', () => {
+    const { createSource } = require('../core/utils/sourceFactory');
+
+    createSource('https://cdn.example.com/video.mp4');
+
+    expect(fromNitroPlayerConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        uri: 'https://cdn.example.com/video.mp4',
+        initializeOnCreation: true
+      })
+    );
+  });
+
+  it('createSource throws for null source', () => {
+    const { createSource } = require('../core/utils/sourceFactory');
+
+    expect(() => createSource(null)).toThrow();
+  });
+
+  it('createSource throws for undefined source', () => {
+    const { createSource } = require('../core/utils/sourceFactory');
+
+    expect(() => createSource(undefined)).toThrow();
+  });
+
+  it('createSourceFromNitroPlayerConfig with useHlsProxy:false skips proxy for m3u8', () => {
+    const { createSourceFromNitroPlayerConfig } = require('../core/utils/sourceFactory');
+
+    createSourceFromNitroPlayerConfig({
+      uri: 'https://cdn.example.com/live.m3u8',
+      useHlsProxy: false
+    });
+
+    expect(getProxiedUrl).not.toHaveBeenCalled();
+    expect(fromNitroPlayerConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        uri: 'https://cdn.example.com/live.m3u8'
+      })
+    );
+  });
+
+  it('createSourceFromNitroPlayerConfig sets initializeOnCreation:true by default', () => {
+    const { createSourceFromNitroPlayerConfig } = require('../core/utils/sourceFactory');
+
+    createSourceFromNitroPlayerConfig({
+      uri: 'https://cdn.example.com/video.mp4'
+    });
+
+    expect(fromNitroPlayerConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        initializeOnCreation: true
+      })
+    );
+  });
+
+  it('immersive profile has Infinity pauseTrimDelayMs', () => {
+    const { createSourceFromNitroPlayerConfig } = require('../core/utils/sourceFactory');
+
+    createSourceFromNitroPlayerConfig({
+      uri: 'https://cdn.example.com/video.mp4',
+      memoryConfig: { profile: 'immersive' }
+    });
+
+    expect(fromNitroPlayerConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memoryConfig: expect.objectContaining({
+          profile: 'immersive',
+          pauseTrimDelayMs: Infinity
+        })
+      })
+    );
+  });
+
+  it('getSourceIdentityKey returns empty string for null', () => {
+    const { getSourceIdentityKey } = require('../core/utils/sourceFactory');
+
+    expect(getSourceIdentityKey(null)).toBe('');
   });
 });

@@ -11,24 +11,24 @@ function makeMockEventEmitter(): NitroPlayerEventEmitter {
       remove: () => {
         const idx = listeners[event]!.indexOf(listener);
         if (idx >= 0) listeners[event]!.splice(idx, 1);
-      },
+      }
     };
   }
 
   return {
-    addOnBandwidthUpdateListener: jest.fn((cb) => addListener('onBandwidthUpdate', cb)),
-    addOnLoadListener: jest.fn((cb) => addListener('onLoad', cb)),
-    addOnLoadStartListener: jest.fn((cb) => addListener('onLoadStart', cb)),
-    addOnPlaybackStateListener: jest.fn((cb) => addListener('onPlaybackState', cb)),
-    addOnVolumeChangeListener: jest.fn((cb) => addListener('onVolumeChange', cb)),
+    addOnBandwidthUpdateListener: jest.fn(cb => addListener('onBandwidthUpdate', cb)),
+    addOnLoadListener: jest.fn(cb => addListener('onLoad', cb)),
+    addOnLoadStartListener: jest.fn(cb => addListener('onLoadStart', cb)),
+    addOnPlaybackStateListener: jest.fn(cb => addListener('onPlaybackState', cb)),
+    addOnVolumeChangeListener: jest.fn(cb => addListener('onVolumeChange', cb)),
     clearAllListeners: jest.fn(() => {
-      Object.keys(listeners).forEach((key) => {
+      Object.keys(listeners).forEach(key => {
         listeners[key] = [];
       });
     }),
     name: 'NitroPlayerEventEmitter',
     equals: jest.fn(),
-    dispose: jest.fn(),
+    dispose: jest.fn()
   } as unknown as NitroPlayerEventEmitter;
 }
 
@@ -120,5 +120,38 @@ describe('NitroPlayerEvents', () => {
       // @ts-expect-error testing unsupported event
       events.addEventListener('onNonExistent', jest.fn());
     }).toThrow(/Unsupported event/);
+  });
+
+  it('triggerJSEvent calls registered onError listeners', () => {
+    const emitter = makeMockEventEmitter();
+    const events = new NitroPlayerEvents(emitter);
+    const errorCallback = jest.fn();
+
+    events.addEventListener('onError', errorCallback);
+
+    // triggerJSEvent is protected, so we access it via subclass or cast
+    const triggered = (events as unknown as { triggerJSEvent: (event: string, ...params: unknown[]) => boolean }).triggerJSEvent('onError', new Error('test error'));
+
+    expect(triggered).toBe(true);
+    expect(errorCallback).toHaveBeenCalledTimes(1);
+    expect(errorCallback).toHaveBeenCalledWith(expect.any(Error));
+  });
+
+  it('multiple listeners on same event are all called', () => {
+    const emitter = makeMockEventEmitter();
+    const events = new NitroPlayerEvents(emitter);
+    const cb1 = jest.fn();
+    const cb2 = jest.fn();
+    const cb3 = jest.fn();
+
+    events.addEventListener('onError', cb1);
+    events.addEventListener('onError', cb2);
+    events.addEventListener('onError', cb3);
+
+    (events as unknown as { triggerJSEvent: (event: string, ...params: unknown[]) => boolean }).triggerJSEvent('onError', new Error('multi'));
+
+    expect(cb1).toHaveBeenCalledTimes(1);
+    expect(cb2).toHaveBeenCalledTimes(1);
+    expect(cb3).toHaveBeenCalledTimes(1);
   });
 });

@@ -90,4 +90,22 @@ describe('useEvent', () => {
     expect(player._removeFn).toHaveBeenCalled();
     expect(player.addEventListener).toHaveBeenCalledWith('onPlaybackState', callback);
   });
+
+  it('does nothing when player is null', () => {
+    const { useEvent } = require('../core/hooks/useEvent');
+    const callback = jest.fn();
+
+    const { result } = renderHook(() => useEvent(null, 'onPlaybackState', callback));
+
+    expect(result.current).toBeUndefined();
+  });
+
+  it('does nothing when player is undefined', () => {
+    const { useEvent } = require('../core/hooks/useEvent');
+    const callback = jest.fn();
+
+    const { result } = renderHook(() => useEvent(undefined, 'onLoad', callback));
+
+    expect(result.current).toBeUndefined();
+  });
 });
