@@ -1,10 +1,10 @@
 export { useEvent } from './core/hooks/useEvent';
 export { usePlaybackState } from './core/hooks/usePlaybackState';
 export type {
-  AllPlayerEvents,
-  VideoPlayerEvents as VideoPlayerEventsType,
-  JSVideoPlayerEvents,
-  VideoViewEvents,
+  AllNitroPlayerEvents,
+  NitroPlayerEvents as NitroPlayerEventsType,
+  JSNitroPlayerEvents,
+  NitroPlayerViewEvents,
   BandwidthData,
   onLoadData,
   onLoadStartData,
@@ -18,21 +18,21 @@ export type { PlaybackState } from './core/types/PlaybackState';
 export type { IgnoreSilentSwitchMode } from './core/types/IgnoreSilentSwitchMode';
 export type { MixAudioMode } from './core/types/MixAudioMode';
 export type { ResizeMode } from './core/types/ResizeMode';
-export type { VideoConfig, VideoSource } from './core/types/VideoConfig';
+export type { NitroPlayerConfig, NitroPlayerSource } from './core/types/NitroPlayerConfig';
 export {
   type LibraryError,
   type PlayerError,
   type SourceError,
   type UnknownError,
-  type VideoComponentError,
-  type VideoError,
-  type VideoErrorCode,
-  type VideoRuntimeError,
-  type VideoViewError
-} from './core/types/VideoError';
-export type { VideoPlayerStatus } from './core/types/VideoPlayerStatus';
-export { default as VideoView, type VideoViewProps, type VideoViewRef } from './core/video-view/VideoView';
-export { VideoPlayer } from './core/VideoPlayer';
+  type NitroPlayerComponentError,
+  type NitroPlayerError,
+  type NitroPlayerErrorCode,
+  type NitroPlayerRuntimeError,
+  type NitroPlayerViewError
+} from './core/types/NitroPlayerError';
+export type { NitroPlayerStatus } from './core/types/NitroPlayerStatus';
+export { default as NitroPlayerView, type NitroPlayerViewProps, type NitroPlayerViewRef } from './core/player-view/NitroPlayerView';
+export { NitroPlayer } from './core/NitroPlayer';
 
 // HLS Cache Proxy
 export { hlsCacheProxy } from './hls/hlsCacheProxy';

@@ -4,7 +4,7 @@
 
 ## Overview
 - **Цель**: AVPlayer-based видеоплеер для iOS
-- **Принцип**: Nitro Hybrids (Swift <-> C++ bridge), singleton VideoManager
+- **Принцип**: Nitro Hybrids (Swift <-> C++ bridge), singleton NitroPlayerManager
 
 ## Файлы
 
@@ -12,33 +12,40 @@
 
 | Файл | Назначение |
 |------|------------|
-| `VideoManager.swift` | Singleton: player registry, app lifecycle (auto-pause/resume), feed hot pool. Thread-safe via onMainThread dispatch |
-| `VideoPlayerObserver.swift` | KVO: player/playerItem transitions + periodic ticks (250ms). All KVO closures use [weak player] |
-| `VideoError.swift` | Error types |
-| `VideoFileHelper.swift` | Resolve file:// и bundle:// URLs |
+| `NitroPlayerManager.swift` | Singleton: player registry, app lifecycle (auto-pause/resume), feed hot pool. Thread-safe via onMainThread dispatch |
+| `NitroPlayerObserver.swift` | KVO: player/playerItem transitions + periodic ticks (250ms). All KVO closures use [weak player] |
+| `NitroPlayerError.swift` | Error types |
+| `NitroPlayerFileHelper.swift` | Resolve file:// и bundle:// URLs |
 
 ### core/Extensions/
 
-AVAsset memory, AVAssetTrack orientation, AVMetadataItem factory, AVPlayerItem buffering/config, VideoInformation, safe selector, ResizeMode gravity
+AVAsset memory, AVAssetTrack orientation, AVMetadataItem factory, AVPlayerItem buffering/config, NitroPlayerInformation, safe selector, ResizeMode gravity
+
+### core/Spec/
+
+| Файл | Назначение |
+|------|------------|
+| `NativeNitroPlayerSpec.swift` | Public protocol + typealias для player |
+| `NativeNitroPlayerSourceSpec.swift` | Public protocol + typealias для source |
 
 ### hybrids/
 
 | Файл | Назначение |
 |------|------------|
-| `VideoPlayer/HybridVideoPlayer.swift` | Player: play/pause/seek/volume/loop + native-first `PlaybackState` / `MemorySnapshot`. initTask + artworkTask cancellable. userVolume save/restore on mute. |
-| `VideoPlayer/HybridVideoPlayer+Events.swift` | AVPlayer -> unified playback snapshot transitions |
-| `VideoPlayerSource/HybridVideoPlayerSource.swift` | Source: URL -> AVURLAsset, retention state cold / metadata / hot |
-| `VideoPlayerSource/SourceLoader.swift` | Async loader с cancellation |
-| `VideoPlayerEmitter/HybridVideoPlayerEventEmitter.swift` | JS event bridge (OSLog logging) |
-| `VideoViewViewManager/HybridVideoViewViewManager.swift` | View props/events, fullscreen (OSLog logging) |
+| `NitroPlayer/HybridNitroPlayer.swift` | Player: play/pause/seek/volume/loop + native-first `PlaybackState` / `MemorySnapshot`. initTask + artworkTask cancellable. userVolume save/restore on mute. |
+| `NitroPlayer/HybridNitroPlayer+Events.swift` | AVPlayer -> unified playback snapshot transitions |
+| `NitroPlayerSource/HybridNitroPlayerSource.swift` | Source: URL -> AVURLAsset, retention state cold / metadata / hot |
+| `NitroPlayerSource/SourceLoader.swift` | Async loader с cancellation |
+| `NitroPlayerEmitter/HybridNitroPlayerEventEmitter.swift` | JS event bridge |
+| `NitroPlayerViewManager/HybridNitroPlayerViewManager.swift` | View props/events, fullscreen (OSLog logging) |
 
 ### view/
 
 | Файл | Назначение |
 |------|------------|
-| `VideoComponentView.swift` | Main UIView: player attachment, fullscreen, resize |
-| `VideoComponentViewObserver.swift` | View-level KVO observers (isReadyForDisplay) |
-| `fabric/` + `paper/` | Fabric/Paper bridges |
+| `NitroPlayerComponentView.swift` | Main UIView: player attachment, fullscreen, resize |
+| `NitroPlayerComponentViewObserver.swift` | View-level KVO observers (isReadyForDisplay) |
+| `fabric/` + `paper/` | Fabric/Paper bridges (RCTNitroPlayerComponentView, RCTNitroPlayerViewManager) |
 
 ### hls/ - HLS Cache Proxy
 
@@ -57,16 +64,16 @@ AVAsset memory, AVAssetTrack orientation, AVMetadataItem factory, AVPlayerItem b
 - `initTask` сохраняется как property, cancel в release() и replaceSourceAsync()
 - `artworkTask` cancel в release() и replaceSourceAsync()
 - `userVolume` save/restore при mute toggle (паритет с Android)
-- VideoManager: `onMainThread` dispatch вместо dispatchPrecondition (safe для non-main callers)
+- NitroPlayerManager: `onMainThread` dispatch вместо dispatchPrecondition (safe для non-main callers)
 - HLS manifest: `Cache-Control: no-cache` + upstream `reloadIgnoringLocalCacheData`
 - HLS segments: кешируются нормально (no bypass)
 
 ## Правила
 
-1. VideoManager.shared - singleton; audio session НЕ управляется библиотекой
+1. NitroPlayerManager.shared - singleton; audio session НЕ управляется библиотекой
 2. wasAutoPaused - auto-resume в `applicationWillEnterForeground`
 3. Progress interval = 250ms (паритет с Android)
 4. nitrogen/generated/ios/ - НЕ редактировать
 5. HLS proxy self-heals on didBecomeActive (server.isRunning check)
-6. Logging через OSLog Logger (subsystem com.twg.video / com.yupi.hls)
+6. Logging через OSLog Logger (subsystem com.nitroplay.video / com.nitroplay.hls)
 7. Удалены: PiP extension, timedMetadata/legibleOutput delegates, externalPlayback observer

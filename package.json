@@ -1,13 +1,13 @@
 {
-  "name": "@noma4i/just-player",
+  "name": "@noma4i/nitro-play",
   "version": "0.1.9",
   "description": "Lightweight video player for React Native",
   "author": "noma4i",
   "license": "MIT",
-  "homepage": "https://github.com/noma4i/just_player",
+  "homepage": "https://github.com/noma4i/nitro-player",
   "repository": {
     "type": "git",
-    "url": "https://github.com/noma4i/just_player.git"
+    "url": "https://github.com/noma4i/nitro-player.git"
   },
   "source": "./src/index.tsx",
   "main": "./src/index.tsx",
@@ -81,15 +81,15 @@
     ]
   },
   "codegenConfig": {
-    "name": "RNCVideoViewSpec",
+    "name": "RNCNitroPlayerViewSpec",
     "type": "components",
     "jsSrcsDir": "src/spec/fabric",
     "android": {
-      "javaPackageName": "com.twg.video.react"
+      "javaPackageName": "com.nitroplay.video.react"
     },
     "ios": {
       "componentProvider": {
-        "RNCVideoView": "RCTVideoViewComponentView"
+        "RNCNitroPlayerView": "RCTNitroPlayerComponentView"
       }
     }
   }

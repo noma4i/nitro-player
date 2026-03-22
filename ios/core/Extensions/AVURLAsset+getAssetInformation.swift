@@ -1,8 +1,8 @@
 import AVFoundation
 
 extension AVURLAsset {
-  func getAssetInformation() async throws -> VideoInformation {
-    let fileSize = try await VideoFileHelper.getFileSize(for: url)
+  func getAssetInformation() async throws -> NitroPlayerInformation {
+    let fileSize = try await NitroPlayerFileHelper.getFileSize(for: url)
     let durationValue: Int64
     let isLive: Bool
 
@@ -18,7 +18,7 @@ extension AVURLAsset {
     var width = Double.nan
     var height = Double.nan
     var bitrate = Double.nan
-    var orientation: VideoOrientation = .unknown
+    var orientation: NitroPlayerOrientation = .unknown
     var isHDR = false
 
     if let videoTrack = tracks(withMediaType: .video).first {
@@ -35,7 +35,7 @@ extension AVURLAsset {
       }
     }
 
-    return VideoInformation(
+    return NitroPlayerInformation(
       bitrate: bitrate,
       width: width,
       height: height,

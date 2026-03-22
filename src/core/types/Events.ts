@@ -1,9 +1,9 @@
 import type { PlaybackState } from './PlaybackState';
-import type { VideoPlayerSource } from '../../spec/nitro/VideoPlayerSource.nitro';
-import type { VideoRuntimeError } from './VideoError';
-import type { VideoOrientation } from './VideoOrientation';
+import type { NitroPlayerSource } from '../../spec/nitro/NitroPlayerSource.nitro';
+import type { NitroPlayerRuntimeError } from './NitroPlayerError';
+import type { NitroPlayerOrientation } from './NitroPlayerOrientation';
 
-export interface VideoPlayerEvents {
+export interface NitroPlayerEvents {
   /**
    * Called when the bandwidth of the video changes.
    */
@@ -28,13 +28,13 @@ export interface VideoPlayerEvents {
   onVolumeChange: (data: onVolumeChangeData) => void;
 }
 
-export interface JSVideoPlayerEvents {
-  onError: (error: VideoRuntimeError) => void;
+export interface JSNitroPlayerEvents {
+  onError: (error: NitroPlayerRuntimeError) => void;
 }
 
-export type AllPlayerEvents = VideoPlayerEvents & JSVideoPlayerEvents;
+export type AllNitroPlayerEvents = NitroPlayerEvents & JSNitroPlayerEvents;
 
-export interface VideoViewEvents {
+export interface NitroPlayerViewEvents {
   /**
    * Called when the video view's fullscreen state changes.
    * @param fullscreen Whether the video view is in fullscreen mode.
@@ -72,14 +72,14 @@ export interface onLoadData {
   duration: number;
   height: number;
   width: number;
-  orientation: VideoOrientation;
+  orientation: NitroPlayerOrientation;
 }
 
 export type SourceType = 'local' | 'network';
 
 export interface onLoadStartData {
   sourceType: SourceType;
-  source: VideoPlayerSource;
+  source: NitroPlayerSource;
 }
 
 export interface onVolumeChangeData {
@@ -100,8 +100,8 @@ function allKeysOf<T>() {
   };
 }
 
-export const ALL_PLAYER_EVENTS: (keyof AllPlayerEvents)[] =
-  allKeysOf<AllPlayerEvents>()(
+export const ALL_PLAYER_EVENTS: (keyof AllNitroPlayerEvents)[] =
+  allKeysOf<AllNitroPlayerEvents>()(
     'onBandwidthUpdate',
     'onError',
     'onLoad',
@@ -110,8 +110,8 @@ export const ALL_PLAYER_EVENTS: (keyof AllPlayerEvents)[] =
     'onVolumeChange'
   );
 
-export const ALL_VIEW_EVENTS: (keyof VideoViewEvents)[] =
-  allKeysOf<VideoViewEvents>()(
+export const ALL_VIEW_EVENTS: (keyof NitroPlayerViewEvents)[] =
+  allKeysOf<NitroPlayerViewEvents>()(
     'onFullscreenChange',
     'willEnterFullscreen',
     'willExitFullscreen'

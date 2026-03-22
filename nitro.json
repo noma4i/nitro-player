@@ -1,6 +1,6 @@
 {
   "android": {
-    "androidCxxLibName": "JustPlayer",
+    "androidCxxLibName": "NitroPlay",
     "androidNamespace": [
       "video"
     ]
@@ -9,37 +9,37 @@
     "video"
   ],
   "ios": {
-    "iosModuleName": "JustPlayer"
+    "iosModuleName": "NitroPlay"
   },
   "autolinking": {
-    "VideoPlayerFactory": {
+    "NitroPlayerFactory": {
       "ios": {
         "language": "swift",
-        "implementationClassName": "HybridVideoPlayerFactory"
+        "implementationClassName": "HybridNitroPlayerFactory"
       },
       "android": {
         "language": "kotlin",
-        "implementationClassName": "HybridVideoPlayerFactory"
+        "implementationClassName": "HybridNitroPlayerFactory"
       }
     },
-    "VideoPlayerSourceFactory": {
+    "NitroPlayerSourceFactory": {
       "ios": {
         "language": "swift",
-        "implementationClassName": "HybridVideoPlayerSourceFactory"
+        "implementationClassName": "HybridNitroPlayerSourceFactory"
       },
       "android": {
         "language": "kotlin",
-        "implementationClassName": "HybridVideoPlayerSourceFactory"
+        "implementationClassName": "HybridNitroPlayerSourceFactory"
       }
     },
-    "VideoViewViewManagerFactory": {
+    "NitroPlayerViewManagerFactory": {
       "ios": {
         "language": "swift",
-        "implementationClassName": "HybridVideoViewViewManagerFactory"
+        "implementationClassName": "HybridNitroPlayerViewManagerFactory"
       },
       "android": {
         "language": "kotlin",
-        "implementationClassName": "HybridVideoViewViewManagerFactory"
+        "implementationClassName": "HybridNitroPlayerViewManagerFactory"
       }
     }
   }

@@ -4,7 +4,7 @@
 
 ## Overview
 - **Цель**: ExoPlayer (Media3 1.9.3) видеоплеер для Android
-- **Принцип**: Nitro Hybrids (Kotlin <-> C++ JNI bridge), singleton VideoManager
+- **Принцип**: Nitro Hybrids (Kotlin <-> C++ JNI bridge), singleton NitroPlayerManager
 
 ## Файлы
 
@@ -12,8 +12,8 @@
 
 | Файл | Назначение |
 |------|------------|
-| `VideoManager.kt` | Singleton: view/player registry, lifecycle, feed hot pool. Все mutations через runOnMainThread |
-| `VideoError.kt` | Error sealed classes |
+| `NitroPlayerManager.kt` | Singleton: view/player registry, lifecycle, feed hot pool. Все mutations через runOnMainThread |
+| `NitroPlayerError.kt` | Error sealed classes |
 
 ### core/player/
 
@@ -26,31 +26,31 @@
 
 ### core/utils/
 
-Threading (runOnMainThread/runOnMainThreadSync), SourceLoader, VideoFileHelper, VideoInformationUtils, VideoOrientationUtils
+Threading (runOnMainThread/runOnMainThreadSync), SourceLoader, NitroPlayerFileHelper, NitroPlayerInformationUtils, NitroPlayerOrientationUtils
 
 ### hybrids/
 
 | Файл | Назначение |
 |------|------------|
-| `videoplayer/HybridVideoPlayer.kt` | ExoPlayer wrapper: `createExoPlayer()` factory, native-first `PlaybackState` (250ms), `MemorySnapshot`, try-finally release, delayed offscreen trim |
-| `videoplayersource/HybridVideoPlayerSource.kt` | Source retention states: cold / metadata / hot |
-| `videoplayereventemitter/HybridVideoPlayerEventEmitter.kt` | JS event bridge (try/catch per listener, synchronized) |
-| `videoviewviewmanager/HybridVideoViewViewManager.kt` | View props/events |
+| `videoplayer/HybridNitroPlayer.kt` | ExoPlayer wrapper: `createExoPlayer()` factory, native-first `PlaybackState` (250ms), `MemorySnapshot`, try-finally release, delayed offscreen trim |
+| `videoplayersource/HybridNitroPlayerSource.kt` | Source retention states: cold / metadata / hot |
+| `videoplayereventemitter/HybridNitroPlayerEventEmitter.kt` | JS event bridge (try/catch per listener, synchronized) |
+| `videoviewviewmanager/HybridNitroPlayerViewManager.kt` | View props/events |
 
 ### view/
 
 | Файл | Назначение |
 |------|------------|
-| `VideoView.kt` | FrameLayout: surface/texture, resize, fullscreen, try-finally onDetachedFromWindow |
+| `NitroPlayerView.kt` | FrameLayout: surface/texture, resize, fullscreen, try-finally onDetachedFromWindow |
 
 ### react/
 
 | Файл | Назначение |
 |------|------------|
-| `VideoPackage.kt` | RN package: VideoView + HlsCacheProxyModule |
-| `VideoViewViewManager.kt` | Fabric view manager |
+| `NitroPlayPackage.kt` | RN package: NitroPlayerView + HlsCacheProxyModule |
+| `NitroPlayerViewManager.kt` | Fabric view manager |
 
-### com/yupi/hls/ - HLS Cache Proxy
+### com/nitroplay/hls/ - HLS Cache Proxy
 
 | Файл | Назначение |
 |------|------------|
@@ -75,19 +75,20 @@ Threading (runOnMainThread/runOnMainThreadSync), SourceLoader, VideoFileHelper, 
 
 ## Build (build.gradle)
 
-- Namespace: `com.twg.video`
+- Namespace: `com.nitroplay.video`
 - Kotlin: 2.1.20
 - SDK: compile 36, target 36, min 24
 - Media3: 1.9.3
 - HLS proxy: nanohttpd 2.3.1
+- Gradle properties prefix: `RNNitroPlay_`
 
 ## Правила
 
-1. `com.twg.video` namespace - НЕ менять
+1. `com.nitroplay.video` namespace
 2. DRMManagerSpec.kt - interface stub, НЕ удалять
 3. nitrogen/generated/android/ - НЕ редактировать
-4. HLS proxy namespace: `com.yupi.hls`
+4. HLS proxy namespace: `com.nitroplay.hls`
 5. HlsCacheProxyModule self-heals on onHostResume
-6. VideoManager mutations - ТОЛЬКО через runOnMainThread
+6. NitroPlayerManager mutations - ТОЛЬКО через runOnMainThread
 7. Playback state через unified `PlaybackState`
 8. Удалены: AudioFocusManager, OnAudioFocusChangedListener, TextTrackUtils, SmallVideoPlayerOptimizer

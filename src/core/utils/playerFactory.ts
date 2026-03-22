@@ -1,33 +1,33 @@
 import { NitroModules } from 'react-native-nitro-modules';
 import type {
-  VideoPlayer,
-  VideoPlayerFactory,
-} from '../../spec/nitro/VideoPlayer.nitro';
-import type { VideoPlayerSource } from '../../spec/nitro/VideoPlayerSource.nitro';
-import type { VideoConfig, VideoSource } from '../types/VideoConfig';
-import { createSource, isVideoPlayerSource } from './sourceFactory';
-import { tryParseNativeVideoError } from '../types/VideoError';
+  NitroPlayer,
+  NitroPlayerFactory,
+} from '../../spec/nitro/NitroPlayer.nitro';
+import type { NitroPlayerSource } from '../../spec/nitro/NitroPlayerSource.nitro';
+import type { NitroPlayerConfig, NitroPlayerSource as NitroPlayerSourceType } from '../types/NitroPlayerConfig';
+import { createSource, isNitroPlayerSource } from './sourceFactory';
+import { tryParseNativeNitroPlayerError } from '../types/NitroPlayerError';
 
-const VideoPlayerFactory =
-  NitroModules.createHybridObject<VideoPlayerFactory>('VideoPlayerFactory');
+const NitroPlayerFactory =
+  NitroModules.createHybridObject<NitroPlayerFactory>('NitroPlayerFactory');
 
 /**
  * @internal
- * Creates a Native VideoPlayer instance.
+ * Creates a Native NitroPlayer instance.
  *
  * @param source - The source of the video to play
- * @returns The Native VideoPlayer instance
+ * @returns The Native NitroPlayer instance
  */
 export const createPlayer = (
-  source: VideoSource | VideoConfig | VideoPlayerSource
-): VideoPlayer => {
+  source: NitroPlayerSourceType | NitroPlayerConfig | NitroPlayerSource
+): NitroPlayer => {
   try {
-    if (isVideoPlayerSource(source)) {
-      return VideoPlayerFactory.createPlayer(source);
+    if (isNitroPlayerSource(source)) {
+      return NitroPlayerFactory.createPlayer(source);
     }
 
-    return VideoPlayerFactory.createPlayer(createSource(source));
+    return NitroPlayerFactory.createPlayer(createSource(source));
   } catch (error) {
-    throw tryParseNativeVideoError(error);
+    throw tryParseNativeNitroPlayerError(error);
   }
 };

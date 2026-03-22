@@ -1,6 +1,6 @@
-# JustPlayer Example
+# NitroPlay Example
 
-Minimal consumer app for validating `@noma4i/just-player` locally.
+Minimal consumer app for validating `@noma4i/nitro-play` locally.
 
 What `App.tsx` covers:
 - HLS playback through the built-in proxy
@@ -41,7 +41,6 @@ npm run android:build
 
 ## Important
 
-- `example` must consume the local tarball from `vendor/`, not a symlink to the repo root
-- refresh the tarball after each library release with `npm pack` in the repo root, then update `example/vendor/` and `example/package.json`
+- `example` consumes the library via `"file:.."` - direct link to the repo root
 - `metro.config.js` hard-pins single React resolution from `example/node_modules`
 - the HLS smoke path uses the root manifest URL `https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8`; per-stream cache stats are computed relative to that root URL

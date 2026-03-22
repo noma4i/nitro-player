@@ -1,23 +1,23 @@
 import { Image } from 'react-native';
 import { NitroModules } from 'react-native-nitro-modules';
-import type { VideoPlayerSource, VideoPlayerSourceFactory } from '../../spec/nitro/VideoPlayerSource.nitro';
-import type { NativeVideoConfig, VideoConfig, VideoSource } from '../types/VideoConfig';
+import type { NitroPlayerSource, NitroPlayerSourceFactory } from '../../spec/nitro/NitroPlayerSource.nitro';
+import type { NativeNitroPlayerConfig, NitroPlayerConfig, NitroPlayerSource as NitroPlayerSourceType } from '../types/NitroPlayerConfig';
 import type { MemoryConfig, MemoryProfile, OffscreenRetention, PreloadLevel } from '../types/MemoryConfig';
-import { tryParseNativeVideoError, VideoRuntimeError } from '../types/VideoError';
+import { tryParseNativeNitroPlayerError, NitroPlayerRuntimeError } from '../types/NitroPlayerError';
 import { hlsCacheProxy } from '../../hls/hlsCacheProxy';
 
-const VideoPlayerSourceFactory = NitroModules.createHybridObject<VideoPlayerSourceFactory>('VideoPlayerSourceFactory');
+const NitroPlayerSourceFactory = NitroModules.createHybridObject<NitroPlayerSourceFactory>('NitroPlayerSourceFactory');
 
-export const isVideoPlayerSource = (obj: unknown): obj is VideoPlayerSource => {
-  return obj != null && typeof obj === 'object' && 'name' in obj && (obj as { name: unknown }).name === 'VideoPlayerSource';
+export const isNitroPlayerSource = (obj: unknown): obj is NitroPlayerSource => {
+  return obj != null && typeof obj === 'object' && 'name' in obj && (obj as { name: unknown }).name === 'NitroPlayerSource';
 };
 
-export const getSourceIdentityKey = (source: VideoConfig | VideoSource | VideoPlayerSource): string => {
+export const getSourceIdentityKey = (source: NitroPlayerConfig | NitroPlayerSourceType | NitroPlayerSource): string => {
   if (typeof source === 'string') return source;
   if (typeof source === 'number') return String(source);
-  if (isVideoPlayerSource(source)) return source.uri;
+  if (isNitroPlayerSource(source)) return source.uri;
   if (typeof source === 'object' && source !== null && 'uri' in source) {
-    const s = source as VideoConfig;
+    const s = source as NitroPlayerConfig;
     return [s.uri, s.useHlsProxy, s.memoryConfig?.profile, s.memoryConfig?.preloadLevel, s.memoryConfig?.offscreenRetention].join('|');
   }
   return '';
@@ -84,17 +84,17 @@ const resolveMemoryConfig = (memoryConfig: MemoryConfig | undefined, defaultProf
 };
 
 /**
- * Creates a `VideoPlayerSource` instance from a URI (string).
+ * Creates a `NitroPlayerSource` instance from a URI (string).
  *
  * @param uri - The URI of the video to play
- * @returns The `VideoPlayerSource` instance
+ * @returns The `NitroPlayerSource` instance
  */
 export const createSourceFromUri = (uri: string, defaultMemoryProfile: MemoryProfile = 'balanced') => {
   if (!uri || typeof uri !== 'string') {
     throw new Error('RNV: Invalid source. The URI must be a non-empty string.');
   }
 
-  return createSourceFromVideoConfig(
+  return createSourceFromNitroPlayerConfig(
     {
       uri,
       initializeOnCreation: true,
@@ -107,19 +107,19 @@ export const createSourceFromUri = (uri: string, defaultMemoryProfile: MemoryPro
 };
 
 /**
- * Creates a `VideoPlayerSource` instance from a `VideoConfig`.
+ * Creates a `NitroPlayerSource` instance from a `NitroPlayerConfig`.
  *
  * @note The `uri` property is required to be a string.
  *
- * @param config - The `VideoConfig` to create the `VideoPlayerSource` from
- * @returns The `VideoPlayerSource` instance
+ * @param config - The `NitroPlayerConfig` to create the `NitroPlayerSource` from
+ * @returns The `NitroPlayerSource` instance
  */
-export const createSourceFromVideoConfig = (config: VideoConfig & { uri: string }, defaultMemoryProfile: MemoryProfile = 'balanced') => {
+export const createSourceFromNitroPlayerConfig = (config: NitroPlayerConfig & { uri: string }, defaultMemoryProfile: MemoryProfile = 'balanced') => {
   if (!config.uri || typeof config.uri !== 'string') {
-    throw new VideoRuntimeError('source/invalid-uri', 'Invalid source URI');
+    throw new NitroPlayerRuntimeError('source/invalid-uri', 'Invalid source URI');
   }
 
-  const normalizedConfig: VideoConfig & { uri: string } = { ...config };
+  const normalizedConfig: NitroPlayerConfig & { uri: string } = { ...config };
 
   // Auto-proxy .m3u8 URLs through HLS cache proxy (if running)
   if (normalizedConfig.useHlsProxy !== false && isHlsManifestUrl(normalizedConfig.uri)) {
@@ -134,21 +134,21 @@ export const createSourceFromVideoConfig = (config: VideoConfig & { uri: string 
   normalizedConfig.memoryConfig = resolveMemoryConfig(normalizedConfig.memoryConfig, defaultMemoryProfile);
 
   try {
-    return VideoPlayerSourceFactory.fromVideoConfig(normalizedConfig as NativeVideoConfig);
+    return NitroPlayerSourceFactory.fromNitroPlayerConfig(normalizedConfig as NativeNitroPlayerConfig);
   } catch (error) {
-    throw tryParseNativeVideoError(error);
+    throw tryParseNativeNitroPlayerError(error);
   }
 };
 
 /**
- * Creates a `VideoPlayerSource`
+ * Creates a `NitroPlayerSource`
  *
- * @param source - The `VideoSource` to create the `VideoPlayerSource` from
- * @returns The `VideoPlayerSource` instance
+ * @param source - The `NitroPlayerSourceType` to create the `NitroPlayerSource` from
+ * @returns The `NitroPlayerSource` instance
  */
-export const createSource = (source: VideoSource | VideoConfig | VideoPlayerSource, defaultMemoryProfile: MemoryProfile = 'balanced'): VideoPlayerSource => {
-  // If source is a VideoPlayerSource, we can directly return it
-  if (isVideoPlayerSource(source)) {
+export const createSource = (source: NitroPlayerSourceType | NitroPlayerConfig | NitroPlayerSource, defaultMemoryProfile: MemoryProfile = 'balanced'): NitroPlayerSource => {
+  // If source is a NitroPlayerSource, we can directly return it
+  if (isNitroPlayerSource(source)) {
     return source;
   }
 
@@ -161,21 +161,21 @@ export const createSource = (source: VideoSource | VideoConfig | VideoPlayerSour
   if (typeof source === 'number') {
     const resolvedSource = Image.resolveAssetSource(source);
     if (!resolvedSource?.uri || typeof resolvedSource.uri !== 'string') {
-      throw new VideoRuntimeError('source/invalid-uri', 'Invalid source URI');
+      throw new NitroPlayerRuntimeError('source/invalid-uri', 'Invalid source URI');
     }
     return createSourceFromUri(resolvedSource.uri, defaultMemoryProfile);
   }
 
-  // If source is an object (VideoConfig)
+  // If source is an object (NitroPlayerConfig)
   if (typeof source === 'object' && source !== null && 'uri' in source) {
     if (typeof source.uri === 'string') {
-      return createSourceFromVideoConfig(source as VideoConfig & { uri: string }, defaultMemoryProfile);
+      return createSourceFromNitroPlayerConfig(source as NitroPlayerConfig & { uri: string }, defaultMemoryProfile);
     }
 
     if (typeof source.uri === 'number') {
       const resolvedSource = Image.resolveAssetSource(source.uri);
       if (!resolvedSource?.uri || typeof resolvedSource.uri !== 'string') {
-        throw new VideoRuntimeError('source/invalid-uri', 'Invalid source URI');
+        throw new NitroPlayerRuntimeError('source/invalid-uri', 'Invalid source URI');
       }
 
       const config = {
@@ -183,11 +183,11 @@ export const createSource = (source: VideoSource | VideoConfig | VideoPlayerSour
         uri: resolvedSource.uri
       };
 
-      return createSourceFromVideoConfig(config, defaultMemoryProfile);
+      return createSourceFromNitroPlayerConfig(config, defaultMemoryProfile);
     }
 
-    throw new VideoRuntimeError('source/invalid-uri', 'Invalid source URI');
+    throw new NitroPlayerRuntimeError('source/invalid-uri', 'Invalid source URI');
   }
 
-  throw new VideoRuntimeError('player/invalid-source', 'Invalid source');
+  throw new NitroPlayerRuntimeError('player/invalid-source', 'Invalid source');
 };

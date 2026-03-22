@@ -1,27 +1,27 @@
-# @noma4i/just-player
+# @noma4i/nitro-play
 
 > **Правила:** max 500 строк, БЕЗ истории, для AI не для людей
 
 ## Overview
 - **Цель**: Standalone видеоплеер + HLS cache proxy для React Native
-- **Принцип**: `<VideoView source={{ uri }} />` - один компонент, player создается внутри. HLS auto-proxy встроен.
+- **Принцип**: `<NitroPlayerView source={{ uri }} />` - один компонент, player создается внутри. HLS auto-proxy встроен.
 
 ## Public API (src/index.tsx)
 
 | Export | Тип | Назначение |
 |--------|-----|-----------|
-| `VideoView` | component | Рендер видео (player внутри) |
+| `NitroPlayerView` | component | Рендер видео (player внутри) |
 | `useEvent` | hook | Подписка на события |
 | `usePlaybackState` | hook | Native-first playback snapshot + JS interpolation (60fps) |
-| `VideoPlayer` | class | Доступ через ref.current.player |
+| `NitroPlayer` | class | Доступ через ref.current.player |
 | `hlsCacheProxy` | singleton | HLS cache proxy management |
 | `HlsCacheStats`, `HlsStreamCacheStats` | type | Общая и per-stream статистика кэша |
-| Types | type exports | VideoConfig, PlaybackState, MemoryConfig, MemorySnapshot, VideoError, BandwidthData, etc. |
+| Types | type exports | NitroPlayerConfig, PlaybackState, MemoryConfig, MemorySnapshot, NitroPlayerError, BandwidthData, etc. |
 
-## VideoView API
+## NitroPlayerView API
 
 ```tsx
-<VideoView
+<NitroPlayerView
   source={{ uri: 'https://example.com/video.m3u8' }}
   setup={(p) => { p.loop = true; }}
   resizeMode="cover"
@@ -30,16 +30,16 @@
 
 | Prop | Тип | Default |
 |------|-----|---------|
-| `source` | `VideoConfig \| VideoSource` | required |
+| `source` | `NitroPlayerConfig \| NitroPlayerSource` | required |
 | `setup` | `(player) => void` | - |
 | `resizeMode` | `ResizeMode` | `'none'` |
 | `controls` | `boolean` | `false` |
 | `keepScreenAwake` | `boolean` | `true` |
 | `surfaceType` | `'surface' \| 'texture'` | `'surface'` (Android only) |
 
-Ref (`VideoViewRef`): `player`, `enterFullscreen()`, `exitFullscreen()`, `addEventListener()`
+Ref (`NitroPlayerViewRef`): `player`, `enterFullscreen()`, `exitFullscreen()`, `addEventListener()`
 
-## VideoPlayer API
+## NitroPlayer API
 
 | Метод/Свойство | Описание |
 |----------------|----------|
@@ -62,7 +62,7 @@ Ref (`VideoViewRef`): `player`, `enterFullscreen()`, `exitFullscreen()`, `addEve
 | `onLoadStart` | sourceType, source |
 | `onBandwidthUpdate` | bitrate, width?, height? |
 | `onVolumeChange` | volume, muted |
-| `onError` | VideoRuntimeError (JS-only event) |
+| `onError` | NitroPlayerRuntimeError (JS-only event) |
 | `onFullscreenChange` | fullscreen (view event) |
 | `willEnterFullscreen` / `willExitFullscreen` | void (view events) |
 
@@ -95,10 +95,10 @@ Manifest responses: `Cache-Control: no-cache` (always fresh для live streams)
 | Файл | API |
 |------|-----|
 | `index.tsx` | Public exports |
-| `core/video-view/VideoView.tsx` | `<VideoView source={} />` (player внутри) |
-| `core/VideoPlayer.ts` | play/pause/seekTo/seekBy/initialize/preload/release/replaceSourceAsync + props |
-| `core/VideoPlayerEvents.ts` | Event emitter (addEventListener/clearAll) |
-| `core/hooks/useVideoPlayer.ts` | Internal (вызывается VideoView), stable identity key |
+| `core/player-view/NitroPlayerView.tsx` | `<NitroPlayerView source={} />` (player внутри) |
+| `core/NitroPlayer.ts` | play/pause/seekTo/seekBy/initialize/preload/release/replaceSourceAsync + props |
+| `core/NitroPlayerEvents.ts` | Event emitter (addEventListener/clearAll) |
+| `core/hooks/useNitroPlayer.ts` | Internal (вызывается NitroPlayerView), stable identity key |
 | `core/hooks/usePlaybackState.ts` | Native snapshot + 60fps JS interpolation (performance.now) |
 | `core/utils/sourceFactory.ts` | HLS auto-proxy + Nitro source creation + identity key |
 | `hls/hlsCacheProxy.ts` | NativeModules bridge |
@@ -113,27 +113,27 @@ Manifest responses: `Cache-Control: no-cache` (always fresh для live streams)
 - **Nitro entrypoint**: `npm run codegen` -> `nitrogen .` -> `nitrogen/generated/*`
 - **Playback contract**: `player.playbackState` + `onPlaybackState` - единственный state source для JS
 - **Playback interpolation**: 250ms native ticks + JS RAF interpolation (60fps, performance.now, NaN-safe)
-- **Memory contract**: `VideoConfig.memoryConfig` управляет preload/retention, `player.memorySnapshot` даёт sync native RAM snapshot
+- **Memory contract**: `NitroPlayerConfig.memoryConfig` управляет preload/retention, `player.memorySnapshot` даёт sync native RAM snapshot
 - **Feed hot pool**: profile `feed` держит bounded hot pool (2 hot players)
 - **HLS autostart**: proxy стартует lazy/native-first; consumer app не вызывает `hlsCacheProxy.start()`
 - **Foreground resume**: обе платформы auto-resume auto-paused players
 - **Audio session**: библиотека НЕ управляет audio session на iOS
 - **Progress interval**: 250ms на обеих платформах (native -> JS via onPlaybackState)
 - **Consumer harness**: `example/` - demo app (HLS+MP4, fullscreen, controls, bandwidth, cache stats)
-- **Example package source**: tarball в `example/vendor/`
+- **Example package source**: `"file:.."` - прямая ссылка на корень репо
 
 ## Правила
 
 1. nitrogen/generated/ - НЕ редактировать вручную
 1.1. После изменения `src/spec/nitro/*` или `nitro.json` запускать `npm run codegen`
-2. Android namespace: `com.twg.video` - НЕ менять
-3. HLS proxy namespace: `com.yupi.hls` - отдельный от video
-4. VideoPackage регистрирует И VideoView И HlsCacheProxyModule
+2. Android namespace: `com.nitroplay.video` - НЕ менять
+3. HLS proxy namespace: `com.nitroplay.hls` - НЕ менять
+4. NitroPlayPackage регистрирует И NitroPlayerView И HlsCacheProxyModule
 5. Self-heal на обеих платформах (iOS + Android)
-6. `useVideoPlayer` - internal, не экспортируется. Public API: `<VideoView source={} />`
+6. `useNitroPlayer` - internal, не экспортируется. Public API: `<NitroPlayerView source={} />`
 7. sourceFactory авто-проксирует HLS manifest URLs c `.m3u8` (opt-out: `useHlsProxy: false`)
 8. Для playback UI использовать `player.playbackState` / `usePlaybackState()`
-9. Memory lifecycle через `VideoConfig.memoryConfig`; default: VideoView = `feed`, new VideoPlayer = `balanced`
+9. Memory lifecycle через `NitroPlayerConfig.memoryConfig`; default: NitroPlayerView = `feed`, new NitroPlayer = `balanced`
 10. Релизный процесс: version -> CHANGELOG -> README tags -> git tag -> GitHub Release
 11. HLS proxy lifecycle внутри библиотеки (lazy start + native self-heal)
 12. Device install через `example/scripts/ios-device.sh`

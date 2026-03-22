@@ -1,7 +1,7 @@
-import type { VideoPlayerStatus } from './VideoPlayerStatus';
+import type { NitroPlayerStatus } from './NitroPlayerStatus';
 
 export interface PlaybackState {
-  status: VideoPlayerStatus;
+  status: NitroPlayerStatus;
   currentTime: number;
   duration: number;
   bufferDuration: number;

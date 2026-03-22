@@ -28,10 +28,10 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-// Forward declaration of `VideoOrientation` to properly resolve imports.
-namespace margelo::nitro::video { enum class VideoOrientation; }
+// Forward declaration of `NitroPlayerOrientation` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroPlayerOrientation; }
 
-#include "VideoOrientation.hpp"
+#include "NitroPlayerOrientation.hpp"
 
 namespace margelo::nitro::video {
 
@@ -44,11 +44,11 @@ namespace margelo::nitro::video {
     double duration     SWIFT_PRIVATE;
     double height     SWIFT_PRIVATE;
     double width     SWIFT_PRIVATE;
-    VideoOrientation orientation     SWIFT_PRIVATE;
+    NitroPlayerOrientation orientation     SWIFT_PRIVATE;
 
   public:
     onLoadData() = default;
-    explicit onLoadData(double currentTime, double duration, double height, double width, VideoOrientation orientation): currentTime(currentTime), duration(duration), height(height), width(width), orientation(orientation) {}
+    explicit onLoadData(double currentTime, double duration, double height, double width, NitroPlayerOrientation orientation): currentTime(currentTime), duration(duration), height(height), width(width), orientation(orientation) {}
 
   public:
     friend bool operator==(const onLoadData& lhs, const onLoadData& rhs) = default;
@@ -68,7 +68,7 @@ namespace margelo::nitro {
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "duration"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "height"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "width"))),
-        JSIConverter<margelo::nitro::video::VideoOrientation>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "orientation")))
+        JSIConverter<margelo::nitro::video::NitroPlayerOrientation>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "orientation")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::video::onLoadData& arg) {
@@ -77,7 +77,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "duration"), JSIConverter<double>::toJSI(runtime, arg.duration));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "height"), JSIConverter<double>::toJSI(runtime, arg.height));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "width"), JSIConverter<double>::toJSI(runtime, arg.width));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "orientation"), JSIConverter<margelo::nitro::video::VideoOrientation>::toJSI(runtime, arg.orientation));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "orientation"), JSIConverter<margelo::nitro::video::NitroPlayerOrientation>::toJSI(runtime, arg.orientation));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -92,7 +92,7 @@ namespace margelo::nitro {
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "duration")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "height")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "width")))) return false;
-      if (!JSIConverter<margelo::nitro::video::VideoOrientation>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "orientation")))) return false;
+      if (!JSIConverter<margelo::nitro::video::NitroPlayerOrientation>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "orientation")))) return false;
       return true;
     }
   };
