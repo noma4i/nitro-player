@@ -1,13 +1,10 @@
 package com.margelo.nitro.video
 
 import androidx.media3.common.MediaItem
-import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.drm.DrmSessionManager
 import androidx.media3.exoplayer.source.MediaSource
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
 import com.nitroplay.video.core.LibraryError
-import com.nitroplay.video.core.player.DRMManagerSpec
 import com.nitroplay.video.core.player.buildMediaSource
 import com.nitroplay.video.core.player.createMediaItemFromVideoConfig
 import com.nitroplay.video.core.utils.SourceLoader
@@ -15,21 +12,16 @@ import com.nitroplay.video.core.utils.NitroPlayerInformationUtils
 
 class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
   override lateinit var uri: String
-  override lateinit var config: NativeVideoConfig
+  override lateinit var config: NativeNitroPlayerConfig
 
   private var mediaItem: MediaItem? = null
   private var mediaSource: MediaSource? = null
   var retentionState: MemoryRetentionState = MemoryRetentionState.COLD
     private set
 
-  var drmManager: DRMManagerSpec? = null
-
-  @UnstableApi
-  var drmSessionManager: DrmSessionManager? = null
-
   internal val sourceLoader = SourceLoader()
 
-  constructor(config: NativeVideoConfig) : this() {
+  constructor(config: NativeNitroPlayerConfig) : this() {
     this.uri = config.uri
     this.config = config
   }
@@ -95,12 +87,6 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
     config.headers?.forEach { (key, value) ->
       bytes += key.toByteArray().size.toLong()
       bytes += value.toByteArray().size.toLong()
-    }
-
-    config.externalSubtitles?.forEach { subtitle ->
-      bytes += subtitle.uri.toByteArray().size.toLong()
-      bytes += subtitle.label.toByteArray().size.toLong()
-      bytes += subtitle.language.toByteArray().size.toLong()
     }
 
     config.metadata?.let { metadata ->

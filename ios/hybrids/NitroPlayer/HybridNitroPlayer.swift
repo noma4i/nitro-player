@@ -235,8 +235,6 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     )
   }
 
-  var showNotificationControls: Bool = false
-
   var memorySnapshot: MemorySnapshot {
     let playerBytes = player.currentItem == nil ? 0 : max(bufferDuration * 256_000, 64_000)
     let sourceBytes = Double((source as? HybridNitroPlayerSource)?.memorySize ?? 0)

@@ -36,11 +36,9 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
   }
 
   override fun fromUri(uri: String): HybridNitroPlayerSourceSpec {
-    val config = NativeVideoConfig(
+    val config = NativeNitroPlayerConfig(
       uri = normalizeUri(uri),
       useHlsProxy = false,
-      externalSubtitles = null,
-      drm = null,
       headers = null,
       bufferConfig = null,
       memoryConfig = null,
@@ -51,7 +49,7 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
     return HybridNitroPlayerSource(config)
   }
 
-  override fun fromVideoConfig(config: NativeVideoConfig): HybridNitroPlayerSourceSpec {
+  override fun fromNitroPlayerConfig(config: NativeNitroPlayerConfig): HybridNitroPlayerSourceSpec {
     return HybridNitroPlayerSource(config)
   }
 

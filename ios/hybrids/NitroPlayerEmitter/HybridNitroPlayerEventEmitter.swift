@@ -43,24 +43,8 @@ class HybridNitroPlayerEventEmitter: HybridNitroPlayerEventEmitterSpec {
 
   // MARK: - Listener registration methods
 
-  func addOnAudioBecomingNoisyListener(listener: @escaping () -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onAudioBecomingNoisy", listener: listener)
-  }
-
-  func addOnAudioFocusChangeListener(listener: @escaping (Bool) -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onAudioFocusChange", listener: listener)
-  }
-
   func addOnBandwidthUpdateListener(listener: @escaping (BandwidthData) -> Void) throws -> ListenerSubscription {
     addListener(eventName: "onBandwidthUpdate", listener: listener)
-  }
-
-  func addOnControlsVisibleChangeListener(listener: @escaping (Bool) -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onControlsVisibleChange", listener: listener)
-  }
-
-  func addOnExternalPlaybackChangeListener(listener: @escaping (Bool) -> Void) throws -> ListenerSubscription {
-    addListener(eventName: "onExternalPlaybackChange", listener: listener)
   }
 
   func addOnLoadListener(listener: @escaping (onLoadData) -> Void) throws -> ListenerSubscription {
@@ -85,24 +69,8 @@ class HybridNitroPlayerEventEmitter: HybridNitroPlayerEventEmitterSpec {
 
   // MARK: - Event emission methods
 
-  func onAudioBecomingNoisy() {
-    emitEvent(eventName: "onAudioBecomingNoisy") { (callback: () throws -> Void) in try callback() }
-  }
-
-  func onAudioFocusChange(_ hasFocus: Bool) {
-    emitEvent(eventName: "onAudioFocusChange") { (callback: (Bool) throws -> Void) in try callback(hasFocus) }
-  }
-
   func onBandwidthUpdate(_ data: BandwidthData) {
     emitEvent(eventName: "onBandwidthUpdate") { (callback: (BandwidthData) throws -> Void) in try callback(data) }
-  }
-
-  func onControlsVisibleChange(_ isVisible: Bool) {
-    emitEvent(eventName: "onControlsVisibleChange") { (callback: (Bool) throws -> Void) in try callback(isVisible) }
-  }
-
-  func onExternalPlaybackChange(_ isExternalPlaybackActive: Bool) {
-    emitEvent(eventName: "onExternalPlaybackChange") { (callback: (Bool) throws -> Void) in try callback(isExternalPlaybackActive) }
   }
 
   func onLoad(_ data: onLoadData) {

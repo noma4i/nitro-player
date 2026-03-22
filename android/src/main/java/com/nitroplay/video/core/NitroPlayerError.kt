@@ -22,11 +22,6 @@ sealed class LibraryError(code: String, message: String) : NitroPlayerError(code
     "library/method-not-supported",
     "Method $methodName() is not supported on Android"
   )
-
-  object DRMPluginNotFound : LibraryError(
-    "library/drm-plugin-not-found",
-    "No DRM plugin have been found, please add one to the project",
-  )
 }
 
 // Player related errors
@@ -94,10 +89,6 @@ sealed class NitroPlayerViewError(code: String, message: String) : NitroPlayerEr
   object ViewIsDeallocated : NitroPlayerViewError(
     "view/deallocated",
     "Attempt to access a view, but it has been deallocated (or not initialized)"
-  )
-  object PictureInPictureNotSupported : NitroPlayerViewError(
-    "view/picture-in-picture-not-supported",
-    "Picture in picture is not supported on this device"
   )
 }
 

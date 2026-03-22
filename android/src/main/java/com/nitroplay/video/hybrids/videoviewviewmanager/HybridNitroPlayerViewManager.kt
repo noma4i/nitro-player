@@ -35,10 +35,6 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
       }
     }
 
-  override fun canEnterPictureInPicture(): Boolean {
-    return videoView.get()?.canEnterPictureInPicture() == true
-  }
-
   override fun enterFullscreen() {
     videoView.get()?.enterFullscreen()
   }
@@ -46,32 +42,6 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
   override fun exitFullscreen() {
     videoView.get()?.exitFullscreen()
   }
-
-  override fun enterPictureInPicture() {
-    Threading.runOnMainThread {
-      videoView.get()?.enterPictureInPicture()
-    }
-  }
-
-  override fun exitPictureInPicture() {
-    Threading.runOnMainThread {
-      videoView.get()?.exitPictureInPicture()
-    }
-  }
-
-  override var autoEnterPictureInPicture: Boolean
-    get() = videoView.get()?.autoEnterPictureInPicture == true
-    set(value) {
-      Threading.runOnMainThread {
-        videoView.get()?.autoEnterPictureInPicture = value
-      }
-    }
-
-  override var pictureInPicture: Boolean
-    get() = videoView.get()?.pictureInPictureEnabled == true
-    set(value) {
-      videoView.get()?.pictureInPictureEnabled = value
-    }
 
   override var controls: Boolean
     get() = videoView.get()?.useController == true
@@ -118,10 +88,6 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
 
   // MARK: - Listener registration methods
 
-  override fun addOnPictureInPictureChangeListener(listener: (Boolean) -> Unit): ListenerSubscription {
-    return addListener("onPictureInPictureChange", listener)
-  }
-
   override fun addOnFullscreenChangeListener(listener: (Boolean) -> Unit): ListenerSubscription {
     return addListener("onFullscreenChange", listener)
   }
@@ -134,23 +100,11 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
     return addListener("willExitFullscreen", listener)
   }
 
-  override fun addWillEnterPictureInPictureListener(listener: () -> Unit): ListenerSubscription {
-    return addListener("willEnterPictureInPicture", listener)
-  }
-
-  override fun addWillExitPictureInPictureListener(listener: () -> Unit): ListenerSubscription {
-    return addListener("willExitPictureInPicture", listener)
-  }
-
   override fun clearAllListeners() {
     listeners.clear()
   }
 
   // MARK: - Event emission methods (called by NitroPlayerView)
-
-  override fun onPictureInPictureChange(isActive: Boolean) {
-    emitEvent<(Boolean) -> Unit>("onPictureInPictureChange") { it(isActive) }
-  }
 
   override fun onFullscreenChange(isActive: Boolean) {
     emitEvent<(Boolean) -> Unit>("onFullscreenChange") { it(isActive) }
@@ -164,23 +118,12 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
     emitEvent<() -> Unit>("willExitFullscreen") { it() }
   }
 
-  override fun willEnterPictureInPicture() {
-    emitEvent<() -> Unit>("willEnterPictureInPicture") { it() }
-  }
-
-  override fun willExitPictureInPicture() {
-    emitEvent<() -> Unit>("willExitPictureInPicture") { it() }
-  }
-
   override val memorySize: Long
     get() = 0
 }
 
 interface NitroPlayerViewEventsEmitter {
-  fun onPictureInPictureChange(isActive: Boolean)
   fun onFullscreenChange(isActive: Boolean)
   fun willEnterFullscreen()
   fun willExitFullscreen()
-  fun willEnterPictureInPicture()
-  fun willExitPictureInPicture()
 }
