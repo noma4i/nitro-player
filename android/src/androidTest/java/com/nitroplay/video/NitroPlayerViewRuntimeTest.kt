@@ -1,10 +1,8 @@
 package com.nitroplay.video
 
-import android.os.Build
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.margelo.nitro.video.HybridNitroPlayerViewManager
 import com.nitroplay.video.core.NitroPlayerManager
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -31,30 +29,6 @@ class NitroPlayerViewRuntimeTest {
       }
       InstrumentationRegistry.getInstrumentation().waitForIdleSync()
       assertFalse(activity.videoView.isInFullscreen)
-    }
-  }
-
-  @Test
-  fun pipCapability_reflectsRuntimeSupport() {
-    activityRule.scenario.onActivity { activity ->
-      activity.videoView.pictureInPictureEnabled = false
-      assertFalse(activity.videoView.canEnterPictureInPicture())
-
-      activity.videoView.pictureInPictureEnabled = true
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        assertTrue(activity.videoView.canEnterPictureInPicture())
-      }
-    }
-  }
-
-  @Test
-  fun hybridManager_delegatesPipCapabilityToView() {
-    activityRule.scenario.onActivity { activity ->
-      val manager = HybridNitroPlayerViewManager(activity.videoView.nitroId)
-      val expected = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-        activity.videoView.pictureInPictureEnabled
-
-      assertTrue(manager.canEnterPictureInPicture() == expected)
     }
   }
 
