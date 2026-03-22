@@ -213,7 +213,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   var isBuffering: Bool {
-    status == .buffering
+    isCurrentlyBuffering
   }
 
   var isReadyToDisplay: Bool {

@@ -96,6 +96,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   override var status: NitroPlayerStatus = NitroPlayerStatus.IDLE
+  private var isCurrentlyBuffering: Boolean = false
 
   override val playbackState: PlaybackState
     get() = runOnMainThreadSync {
@@ -232,7 +233,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   )
 
   override val isBuffering: Boolean by mainThreadProperty(
-    get = { status == NitroPlayerStatus.BUFFERING }
+    get = { isCurrentlyBuffering }
   )
 
   override val isReadyToDisplay: Boolean by mainThreadProperty(
@@ -533,7 +534,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       bufferedPosition = calculateBufferedPositionSeconds(),
       rate = player.playbackParameters.speed.toDouble(),
       isPlaying = player.isPlaying,
-      isBuffering = status == NitroPlayerStatus.BUFFERING,
+      isBuffering = isCurrentlyBuffering,
       isReadyToDisplay = readyToDisplay,
       nativeTimestampMs = System.currentTimeMillis().toDouble()
     )
@@ -556,6 +557,13 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   private fun emitPlaybackState() {
     eventEmitter.onPlaybackState(buildPlaybackState())
+  }
+
+  private fun enterBuffering() {
+    isCurrentlyBuffering = true
+    if (status != NitroPlayerStatus.PLAYING && status != NitroPlayerStatus.PAUSED) {
+      status = NitroPlayerStatus.BUFFERING
+    }
   }
 
   private fun resolvedPreloadLevel(): PreloadLevel {
@@ -732,13 +740,15 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     override fun onPlaybackStateChanged(playbackState: Int) {
       when (playbackState) {
         Player.STATE_IDLE -> {
+          isCurrentlyBuffering = false
           status = NitroPlayerStatus.IDLE
           readyToDisplay = false
         }
         Player.STATE_BUFFERING -> {
-          status = NitroPlayerStatus.BUFFERING
+          enterBuffering()
         }
         Player.STATE_READY -> {
+          isCurrentlyBuffering = false
           status = if (player.isPlaying) {
             NitroPlayerStatus.PLAYING
           } else {
@@ -775,6 +785,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
           }
         }
         Player.STATE_ENDED -> {
+          isCurrentlyBuffering = false
           status = NitroPlayerStatus.ENDED
           stopProgressUpdates()
         }
@@ -785,6 +796,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
       super.onIsPlayingChanged(isPlaying)
+      if (isPlaying) isCurrentlyBuffering = false
       if (player.playbackState == Player.STATE_READY) {
         status = if (isPlaying) {
           NitroPlayerStatus.PLAYING
@@ -804,6 +816,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     }
 
     override fun onPlayerError(error: PlaybackException) {
+      isCurrentlyBuffering = false
       status = NitroPlayerStatus.ERROR
       readyToDisplay = false
       stopProgressUpdates()
