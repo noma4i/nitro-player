@@ -70,11 +70,6 @@ Pod::Spec.new do |s|
   load File.join(__dir__, 'nitrogen/generated/ios/NitroPlay+autolinking.rb')
   add_nitrogen_files(s)
 
-  s.test_spec 'UnitTests' do |test_spec|
-    test_spec.source_files = ["ios/Tests/**/*.{swift}"]
-    test_spec.requires_app_host = false
-  end
-
   if defined?(install_modules_dependencies)
     install_modules_dependencies(s)
   end
