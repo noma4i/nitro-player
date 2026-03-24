@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.1
+
+### Fixed
+
+- iOS: fix App Hang (6.9-7.7s deadlock) caused by `DispatchQueue.main.sync` in `replaceCurrentItem` contending with AVPlayer internal `fpNotificationCallback`
+- iOS: use `await MainActor.run` for atomic player item commit in `prepareBufferedState`
+- iOS: set NotificationCenter observer queue to `.main` to prevent reentrancy from AVPlayer internal threads
+- iOS: set `automaticallyWaitsToMinimizeStalling = false` to reduce internal interstitial event check frequency
+- Android: replace `runOnMainThreadSync` with async `runOnMainThread` in `replaceSourceAsync`, `initialize`, `preload`, `movePlayerToNitroPlayerView` to prevent ANR
+- Android: add `isReleased` guard in async dispatch blocks to prevent post-release work
+
+### Added
+
+- iOS: `MainThreadSafetyTests` - race condition tests for release/prepare/cancel
+- Android: `ThreadingTest` - threading safety and isReleased guard tests
+- Project `CLAUDE.md` with platform parity rules and threading guidelines
+
 ## 0.2.0
 
 ### Breaking

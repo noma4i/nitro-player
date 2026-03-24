@@ -54,7 +54,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
       return
     }
 
-    DispatchQueue.main.sync(execute: apply)
+    DispatchQueue.main.async(execute: apply)
   }
 
   init(source: (any HybridNitroPlayerSourceSpec)) throws {
@@ -63,6 +63,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
 
     // Initialize AVPlayer with empty item
     self.player = AVPlayer()
+    self.player.automaticallyWaitsToMinimizeStalling = false
 
     super.init()
     self.playerObserver = NitroPlayerObserver(delegate: self)
@@ -603,13 +604,14 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     let playerItem = try await self.sourceLoader.load {
       try await self.initializePlayerItem()
     }
-    self.playerItem = playerItem
-    self.replaceCurrentItem(playerItem)
-
-    if resumePositionSeconds > 0 {
-      let time = CMTime(seconds: resumePositionSeconds, preferredTimescale: 1000)
-      DispatchQueue.main.async { [weak self] in
-        self?.player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+    let resumeSeconds = resumePositionSeconds
+    await MainActor.run { [weak self] in
+      guard let self, !self.isReleased else { return }
+      self.playerItem = playerItem
+      self.player.replaceCurrentItem(with: playerItem)
+      if resumeSeconds > 0 {
+        let time = CMTime(seconds: resumeSeconds, preferredTimescale: 1000)
+        self.player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
       }
     }
   }

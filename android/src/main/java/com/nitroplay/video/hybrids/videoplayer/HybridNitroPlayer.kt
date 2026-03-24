@@ -290,7 +290,8 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   override fun initialize(): Promise<Unit> {
     return Promise.async {
-      return@async runOnMainThreadSync {
+      runOnMainThreadSync {
+        if (isReleased) return@runOnMainThreadSync
         initializePlayer()
         player.prepare()
       }
@@ -379,6 +380,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       oldSource?.sourceLoader?.cancel()
 
       runOnMainThreadSync {
+        if (isReleased) return@runOnMainThreadSync
         // Update source
         this.source = source
         desiredCurrentTimeMs = 0L
@@ -401,6 +403,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override fun preload(): Promise<Unit> {
     return Promise.async {
       runOnMainThreadSync {
+        if (isReleased) return@runOnMainThreadSync
         cancelPendingTrim()
 
         when (resolvedPreloadLevel()) {
@@ -456,7 +459,8 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   fun movePlayerToNitroPlayerView(videoView: NitroPlayerView) {
     NitroPlayerManager.addViewToPlayer(videoView, this)
 
-    runOnMainThreadSync {
+    runOnMainThread {
+      if (isReleased) return@runOnMainThread
       PlayerView.switchTargetView(player, currentPlayerView?.get(), videoView.playerView)
       currentPlayerView = WeakReference(videoView.playerView)
     }

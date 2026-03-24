@@ -123,7 +123,7 @@ class NitroPlayerObserver: NSObject {
     playbackEndedObserver = NotificationCenter.default.addObserver(
       forName: .AVPlayerItemDidPlayToEndTime,
       object: playerItem,
-      queue: nil
+      queue: .main
     ) { [weak self, weak player] notification in
       guard let player else { return }
       self?.delegate?.onPlayedToEnd(player: player)
@@ -132,7 +132,7 @@ class NitroPlayerObserver: NSObject {
     playerItemAccessLogObserver = NotificationCenter.default.addObserver(
       forName: .AVPlayerItemNewAccessLogEntry,
       object: playerItem,
-      queue: nil
+      queue: .main
     ) { [weak self, weak playerItem] notification in
       guard let playerItem else { return }
       self?.onPlayerAccessLog(playerItem: playerItem)
