@@ -298,6 +298,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     this.cachedRate = 1.0
 
     runOnMainThread {
+      if (isReleased) return@runOnMainThread
       if (source.config.initializeOnCreation == true) {
         when (resolvedPreloadLevel()) {
           PreloadLevel.BUFFERED -> {
@@ -496,6 +497,12 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   private fun buildPlaybackState(): PlaybackState {
+    if (isReleased) return PlaybackState(
+      status = NitroPlayerStatus.IDLE, currentTime = 0.0, duration = 0.0,
+      bufferDuration = 0.0, bufferedPosition = 0.0, rate = 0.0,
+      isPlaying = false, isBuffering = false, isReadyToDisplay = false,
+      nativeTimestampMs = System.currentTimeMillis().toDouble()
+    )
     return PlaybackState(
       status = status,
       currentTime = calculateCurrentTimeSeconds(),
@@ -511,6 +518,11 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   private fun buildMemorySnapshot(): MemorySnapshot {
+    if (isReleased) return MemorySnapshot(
+      playerBytes = 0.0, sourceBytes = 0.0, totalBytes = 0.0,
+      preloadLevel = resolvedPreloadLevel(), retentionState = currentRetentionState(),
+      isAttachedToView = false, isPlaying = false
+    )
     val playerBytes = memorySize.toDouble()
     val sourceBytes = source.memorySize.toDouble()
 
@@ -643,6 +655,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   private fun trimToMetadataRetention() {
+    if (isReleased) return
     val hybridSource = source as? HybridNitroPlayerSource ?: return
 
     if (loadedWithSource) {

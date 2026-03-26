@@ -184,6 +184,7 @@ class NitroPlayerView @JvmOverloads constructor(
       if (isInFullscreen) return@runOnMainThread
 
       val activity = resolveActivity() ?: return@runOnMainThread
+      if (activity.isFinishing || activity.isDestroyed) return@runOnMainThread
       val currentParent = playerView.parent as? ViewGroup ?: return@runOnMainThread
 
       eventsEmitter?.willEnterFullscreen()
