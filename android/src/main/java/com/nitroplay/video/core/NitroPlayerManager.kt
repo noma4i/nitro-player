@@ -96,7 +96,7 @@ object NitroPlayerManager : LifecycleEventListener {
     runOnMainThread {
       audioFocusManager.unregisterPlayer(player)
 
-      players[player]?.forEach { nitroId ->
+      players[player]?.toList()?.forEach { nitroId ->
         views[nitroId]?.get()?.let { view ->
           view.hybridPlayer = null
         }
@@ -157,6 +157,7 @@ object NitroPlayerManager : LifecycleEventListener {
   private fun onAppEnterForeground() {
     players.keys.forEach { player ->
       if (player.wasAutoPaused) {
+        player.wasAutoPaused = false
         player.play()
       }
     }

@@ -83,6 +83,7 @@ class NitroPlayerView @JvmOverloads constructor(
         applyResizeMode()
         addView(playerView)
         playerView.player = nextPlayer
+        setupFullscreenButton()
       }
     }
 

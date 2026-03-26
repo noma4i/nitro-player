@@ -340,6 +340,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   override fun pause() {
     runOnMainThread {
+      if (isReleased) return@runOnMainThread
       player.pause()
 
       if (status != NitroPlayerStatus.ENDED && status != NitroPlayerStatus.IDLE) {
@@ -400,19 +401,20 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   override fun preload(): Promise<Unit> {
     return Promise.async {
-      runOnMainThreadSync {
-        if (isReleased) return@runOnMainThreadSync
+      val level = runOnMainThreadSync {
+        if (isReleased) return@runOnMainThreadSync PreloadLevel.NONE
         cancelPendingTrim()
+        resolvedPreloadLevel()
+      }
 
-        when (resolvedPreloadLevel()) {
-          PreloadLevel.NONE -> return@runOnMainThreadSync
-          PreloadLevel.METADATA -> {
-            Promise.async {
-              (source as? HybridNitroPlayerSource)?.warmMetadata()
-            }
-            return@runOnMainThreadSync
-          }
-          PreloadLevel.BUFFERED -> {
+      when (level) {
+        PreloadLevel.NONE -> {}
+        PreloadLevel.METADATA -> {
+          (source as? HybridNitroPlayerSource)?.warmMetadata()
+        }
+        PreloadLevel.BUFFERED -> {
+          runOnMainThreadSync {
+            if (isReleased) return@runOnMainThreadSync
             if (!loadedWithSource) {
               initializePlayer()
             }
