@@ -115,16 +115,19 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
 
   var volume: Double {
     set {
+      guard !isReleased else { return }
       userVolume = Float(newValue)
       player.volume = Float(newValue)
     }
     get {
+      guard !isReleased else { return Double(userVolume) }
       return Double(player.volume)
     }
   }
 
   var muted: Bool {
     set {
+      guard !isReleased else { return }
       if newValue {
         userVolume = player.volume
         player.volume = 0
@@ -140,6 +143,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
       )
     }
     get {
+      guard !isReleased else { return false }
       return player.isMuted
     }
   }
@@ -149,7 +153,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
       resumePositionSeconds = max(0, newValue)
       emitPlaybackState()
 
-      guard player.currentItem != nil else { return }
+      guard !isReleased, player.currentItem != nil else { return }
 
       player.seek(
         to: CMTime(seconds: resumePositionSeconds, preferredTimescale: 1000),
@@ -160,7 +164,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
       }
     }
     get {
-      if player.currentItem == nil {
+      if isReleased || player.currentItem == nil {
         return resumePositionSeconds
       }
 
@@ -182,6 +186,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
 
   var rate: Double {
     set {
+      guard !isReleased else { return }
       if #available(iOS 16.0, tvOS 16.0, *) {
         player.defaultRate = Float(newValue)
       }
@@ -189,6 +194,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
       player.rate = Float(newValue)
     }
     get {
+      guard !isReleased else { return 0 }
       return Double(player.rate)
     }
   }
@@ -210,6 +216,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   var isCurrentlyBuffering: Bool = false
 
   var isPlaying: Bool {
+    guard !isReleased else { return false }
     return player.rate != 0
   }
 
@@ -237,7 +244,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
       )
     }
 
-    PlaybackState(
+    return PlaybackState(
       status: status,
       currentTime: currentTime,
       duration: duration,
@@ -391,6 +398,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   func play() throws {
+    guard !isReleased else { return }
     cancelPendingTrim()
     NitroPlayerManager.shared.touchFeedHotCandidate(self)
 
@@ -424,6 +432,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   func pause() throws {
+    guard !isReleased else { return }
     player.pause()
 
     if status != .ended && status != .idle {
@@ -440,7 +449,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   func seekBy(time: Double) throws {
-    guard let currentItem = player.currentItem else {
+    guard !isReleased, let currentItem = player.currentItem else {
       throw PlayerError.notInitialized.error()
     }
 

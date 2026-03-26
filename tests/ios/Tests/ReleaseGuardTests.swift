@@ -3,199 +3,56 @@ import XCTest
 
 final class ReleaseGuardTests: XCTestCase {
 
-  func testConstructorInitSkipsWhenReleased() async {
-    actor MockPlayerState {
-      var isReleased = false
-      var initCalled = false
+  // Tests SourceLoader cancellation - REAL production code (symlinked).
+  // HybridNitroPlayer.release() calls sourceLoader.cancelSync(),
+  // so SourceLoader cancellation IS the release guard for async operations.
 
-      func simulateConstructorInit() {
-        guard !isReleased else { return }
-        initCalled = true
-      }
+  func testConcurrentCancelDuringLoad() async {
+    let loader = SourceLoader()
 
-      func release() {
-        isReleased = true
-      }
-    }
-
-    let state = MockPlayerState()
-    await state.release()
-    await state.simulateConstructorInit()
-
-    let initCalled = await state.initCalled
-    XCTAssertFalse(initCalled, "Init should not run after release")
-  }
-
-  func testConstructorInitRunsWhenNotReleased() async {
-    actor MockPlayerState {
-      var initCalled = false
-
-      func simulateConstructorInit() {
-        initCalled = true
+    // Start load and cancel concurrently - should not crash
+    let loadTask = Task {
+      try? await loader.load {
+        try await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        return "result"
       }
     }
 
-    let state = MockPlayerState()
-    await state.simulateConstructorInit()
+    // Cancel immediately (simulates release during load)
+    await loader.cancel()
+    loadTask.cancel()
 
-    let initCalled = await state.initCalled
-    XCTAssertTrue(initCalled, "Init should run when not released")
+    // No crash = success
   }
 
-  func testReleaseIsIdempotent() async {
-    actor MockPlayerState {
-      var isReleased = false
-      var releaseCount = 0
-
-      func release() {
-        guard !isReleased else { return }
-        isReleased = true
-        releaseCount += 1
-      }
-    }
-
-    let state = MockPlayerState()
-    await state.release()
-    await state.release()
-
-    let count = await state.releaseCount
-    XCTAssertEqual(count, 1, "Release should only execute once")
+  func testCancelIsIdempotent() async {
+    let loader = SourceLoader()
+    await loader.cancel()
+    await loader.cancel()
+    // No crash = idempotent
   }
 
-  func testBuildPlaybackStateReturnsIdleWhenReleased() async {
-    actor MockPlayerState {
-      var isReleased = false
+  func testLoadAfterCancelWorks() async throws {
+    let loader = SourceLoader()
+    await loader.cancel()
 
-      struct PlaybackState {
-        let status: String
-        let isPlaying: Bool
-      }
+    let result: String = try await loader.load { "fresh" }
+    XCTAssertEqual(result, "fresh", "New load should work after cancel")
+  }
 
-      func release() {
-        isReleased = true
-      }
-
-      func buildPlaybackState() -> PlaybackState {
-        if isReleased {
-          return PlaybackState(status: "idle", isPlaying: false)
+  func testRapidCreateDestroyCycles() async {
+    // Simulates rapid create/release in feed scroll
+    for _ in 0..<50 {
+      let loader = SourceLoader()
+      let task = Task {
+        try? await loader.load {
+          try? await Task.sleep(nanoseconds: 1_000)
+          return "result"
         }
-
-        return PlaybackState(status: "playing", isPlaying: true)
       }
+      await loader.cancel()
+      task.cancel()
     }
-
-    let state = MockPlayerState()
-    await state.release()
-
-    let playbackState = await state.buildPlaybackState()
-    XCTAssertEqual(playbackState.status, "idle")
-    XCTAssertFalse(playbackState.isPlaying)
-  }
-
-  func testBuildMemorySnapshotReturnsZerosWhenReleased() async {
-    actor MockPlayerState {
-      var isReleased = false
-      var loadedWithSource = false
-
-      struct MemorySnapshot {
-        let totalBytes: Double
-        let isPlaying: Bool
-      }
-
-      func release() {
-        isReleased = true
-        loadedWithSource = false
-      }
-
-      func buildMemorySnapshot() -> MemorySnapshot {
-        if isReleased {
-          return MemorySnapshot(totalBytes: 0, isPlaying: false)
-        }
-
-        return MemorySnapshot(totalBytes: 1024, isPlaying: loadedWithSource)
-      }
-    }
-
-    let state = MockPlayerState()
-    await state.release()
-
-    let memorySnapshot = await state.buildMemorySnapshot()
-    XCTAssertEqual(memorySnapshot.totalBytes, 0, accuracy: 0.001)
-    XCTAssertFalse(memorySnapshot.isPlaying)
-  }
-
-  func testTrimSkipsWhenReleased() async {
-    actor MockPlayerState {
-      var isReleased = false
-      var trimExecuted = false
-
-      func trim() {
-        guard !isReleased else { return }
-        trimExecuted = true
-      }
-
-      func release() {
-        isReleased = true
-      }
-    }
-
-    let state = MockPlayerState()
-    await state.release()
-    await state.trim()
-
-    let trimmed = await state.trimExecuted
-    XCTAssertFalse(trimmed, "Trim should not execute after release")
-  }
-
-  func testTrimSkipsWhenNotLoaded() async {
-    actor MockPlayerState {
-      var loadedWithSource = false
-      var trimExecuted = false
-
-      func trim() {
-        guard loadedWithSource else { return }
-        trimExecuted = true
-      }
-    }
-
-    let state = MockPlayerState()
-    await state.trim()
-
-    let trimmed = await state.trimExecuted
-    XCTAssertFalse(trimmed, "Trim should not execute when not loaded")
-  }
-
-  func testConcurrentReleaseAndTrim() async {
-    actor MockPlayerState {
-      var isReleased = false
-      var loadedWithSource = true
-      var trimCount = 0
-
-      func trim() {
-        guard !isReleased else { return }
-        guard loadedWithSource else { return }
-        trimCount += 1
-        loadedWithSource = false
-      }
-
-      func release() {
-        guard !isReleased else { return }
-        isReleased = true
-        loadedWithSource = false
-      }
-    }
-
-    let state = MockPlayerState()
-
-    await withTaskGroup(of: Void.self) { group in
-      group.addTask { await state.release() }
-      group.addTask { await state.trim() }
-    }
-
-    let isReleased = await state.isReleased
-    XCTAssertTrue(isReleased)
-
-    let trimCount = await state.trimCount
-    XCTAssertLessThanOrEqual(trimCount, 1, "Trim should run at most once")
+    // No crash, no leak = success
   }
 }

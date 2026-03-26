@@ -91,7 +91,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   // Player Properties
   override var currentTime: Double by mainThreadProperty(
     get = {
-      if (!loadedWithSource) {
+      if (isReleased || !loadedWithSource) {
         return@mainThreadProperty desiredCurrentTimeMs.toDouble() / 1000.0
       }
 
@@ -102,7 +102,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       desiredCurrentTimeMs = nextPositionMs
       emitPlaybackState()
       runOnMainThread {
-        if (loadedWithSource) {
+        if (!isReleased && loadedWithSource) {
           player.seekTo(nextPositionMs)
         }
       }
@@ -113,15 +113,16 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   var userVolume: Double = 1.0
 
   override var volume: Double by mainThreadProperty(
-    get = { player.volume.toDouble() },
+    get = { if (isReleased) userVolume else player.volume.toDouble() },
     set = { value ->
       userVolume = value
-      player.volume = value.toFloat()
+      if (!isReleased) player.volume = value.toFloat()
     }
   )
 
   override val duration: Double by mainThreadProperty(
     get = {
+      if (isReleased) return@mainThreadProperty Double.NaN
       val duration = player.duration
       return@mainThreadProperty if (duration == C.TIME_UNSET) Double.NaN else duration.toDouble() / 1000.0
     }
@@ -129,7 +130,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   override var loop: Boolean by mainThreadProperty(
     get = {
-      if (!loadedWithSource) {
+      if (isReleased || !loadedWithSource) {
         return@mainThreadProperty cachedLoop
       }
 
@@ -137,7 +138,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     },
     set = { value ->
       cachedLoop = value
-      player.repeatMode = if (value) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+      if (!isReleased) player.repeatMode = if (value) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
     }
   )
 
@@ -145,22 +146,24 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     get = { cachedMuted },
     set = { value ->
       cachedMuted = value
-      if (value) {
-        userVolume = volume
-        player.volume = 0f
-      } else {
-        player.volume = userVolume.toFloat()
+      if (!isReleased) {
+        if (value) {
+          userVolume = volume
+          player.volume = 0f
+        } else {
+          player.volume = userVolume.toFloat()
+        }
+        eventEmitter.onVolumeChange(onVolumeChangeData(
+          volume = player.volume.toDouble(),
+          muted = muted
+        ))
       }
-      eventEmitter.onVolumeChange(onVolumeChangeData(
-        volume = player.volume.toDouble(),
-        muted = muted
-      ))
     }
   )
 
   override var rate: Double by mainThreadProperty(
     get = {
-      if (!loadedWithSource) {
+      if (isReleased || !loadedWithSource) {
         return@mainThreadProperty cachedRate
       }
 
@@ -168,7 +171,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     },
     set = { value ->
       cachedRate = value
-      player.playbackParameters = player.playbackParameters.withSpeed(value.toFloat())
+      if (!isReleased) player.playbackParameters = player.playbackParameters.withSpeed(value.toFloat())
     }
   )
 
@@ -189,7 +192,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override var playWhenInactive: Boolean = false
 
   override var isPlaying: Boolean by mainThreadProperty(
-    get = { player.isPlaying == true }
+    get = { !isReleased && player.isPlaying }
   )
 
   override val bufferDuration: Double by mainThreadProperty(
@@ -239,8 +242,9 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     allocator = DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
 
     // Create a LoadControl with the allocator
+    val currentAllocator = allocator ?: return
     val loadControl = DefaultLoadControl.Builder()
-      .setAllocator(allocator!!)
+      .setAllocator(currentAllocator)
       .setBufferDurationsMs(
         bufferConfig?.minBufferMs?.toInt() ?: DEFAULT_MIN_BUFFER_DURATION_MS, // minBufferMs
         bufferConfig?.maxBufferMs?.toInt() ?: DEFAULT_MAX_BUFFER_DURATION_MS, // maxBufferMs
@@ -705,6 +709,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       totalBytesLoaded: Long,
       bitrateEstimate: Long
     ) {
+      if (isReleased) return
       val videoFormat = player.videoFormat
       eventEmitter.onBandwidthUpdate(
         BandwidthData(
@@ -718,6 +723,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   private val playerListener = object : Player.Listener {
     override fun onPlaybackStateChanged(playbackState: Int) {
+      if (isReleased) return
       when (playbackState) {
         Player.STATE_IDLE -> {
           isCurrentlyBuffering = false
