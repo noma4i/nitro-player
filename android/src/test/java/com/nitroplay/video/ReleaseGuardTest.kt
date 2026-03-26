@@ -1,7 +1,6 @@
 package com.nitroplay.video
 
 import com.nitroplay.video.core.utils.SourceLoader
-import com.nitroplay.video.core.utils.SourceError
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
