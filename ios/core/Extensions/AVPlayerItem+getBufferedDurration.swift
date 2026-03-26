@@ -23,7 +23,9 @@ extension AVPlayerItem {
     }
     
     if let effectiveTimeRange {
-      let playableDuration: Float64 = CMTimeGetSeconds(CMTimeRangeGetEnd(effectiveTimeRange))
+      let bufferEnd = CMTimeGetSeconds(CMTimeRangeGetEnd(effectiveTimeRange))
+      let current = CMTimeGetSeconds(currentTime())
+      let playableDuration = bufferEnd - current
       if playableDuration > 0 {
         return playableDuration
       }

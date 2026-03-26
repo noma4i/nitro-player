@@ -142,14 +142,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   )
 
   override var muted: Boolean by mainThreadProperty(
-    get = {
-      if (!loadedWithSource) {
-        return@mainThreadProperty cachedMuted
-      }
-
-      val playerVolume = player.volume.toDouble()
-      return@mainThreadProperty playerVolume == 0.0
-    },
+    get = { cachedMuted },
     set = { value ->
       cachedMuted = value
       if (value) {
@@ -181,8 +174,8 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   override var mixAudioMode: MixAudioMode = MixAudioMode.AUTO
     set(value) {
-      NitroPlayerManager.audioFocusManager.requestAudioFocusUpdate()
       field = value
+      NitroPlayerManager.audioFocusManager.requestAudioFocusUpdate()
     }
 
   // iOS only property

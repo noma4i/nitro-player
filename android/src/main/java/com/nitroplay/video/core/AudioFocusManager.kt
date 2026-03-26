@@ -19,6 +19,7 @@ class AudioFocusManager() {
   private val players = mutableListOf<HybridNitroPlayer>()
   private var currentMixAudioMode: MixAudioMode? = null
   private var audioFocusRequest: AudioFocusRequest? = null
+  private val preDuckVolumes = mutableMapOf<HybridNitroPlayer, Float>()
 
   val appContext by lazy {
     NitroModules.applicationContext ?: throw UnknownError()
@@ -210,8 +211,9 @@ class AudioFocusManager() {
     Threading.runOnMainThread {
       players.forEach { player ->
         player.player.let { mediaPlayer ->
-          // We need to duck the volume to 50%. After the audio focus is regained,
-          // we will restore the volume to the user's volume.
+          if (!preDuckVolumes.containsKey(player)) {
+            preDuckVolumes[player] = mediaPlayer.volume
+          }
           mediaPlayer.volume = mediaPlayer.volume * 0.5f
         }
       }
@@ -220,12 +222,11 @@ class AudioFocusManager() {
 
   private fun unDuckActivePlayers() {
     Threading.runOnMainThread {
-      // Resume players that were paused due to audio focus loss
       players.forEach { player ->
         player.player.let { mediaPlayer ->
-          // Restore full volume if it was ducked
-          if (mediaPlayer.volume != 0f && mediaPlayer.volume.toDouble() != player.userVolume) {
-            mediaPlayer.volume = player.userVolume.toFloat()
+          val originalVolume = preDuckVolumes.remove(player)
+          if (originalVolume != null) {
+            mediaPlayer.volume = originalVolume
           }
         }
       }
