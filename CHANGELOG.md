@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.2
+
+### Fixed
+
+- iOS: align released `playbackState` and `memorySnapshot` semantics with Android by returning an idle/zero snapshot after `release()`
+
+### Added
+
+- iOS: expand `ReleaseGuardTests` to cover constructor init after release, released getters, trim when not loaded, and concurrent release/trim
+- Android: expand `ReleaseGuardTest` to mirror the iOS release/parity guard scenarios and assert idempotent release bookkeeping
+
 ## 0.2.1
 
 ### Fixed

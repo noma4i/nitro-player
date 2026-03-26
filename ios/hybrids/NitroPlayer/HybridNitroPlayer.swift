@@ -222,6 +222,21 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   var playbackState: PlaybackState {
+    if isReleased {
+      return PlaybackState(
+        status: .idle,
+        currentTime: 0,
+        duration: 0,
+        bufferDuration: 0,
+        bufferedPosition: 0,
+        rate: 0,
+        isPlaying: false,
+        isBuffering: false,
+        isReadyToDisplay: false,
+        nativeTimestampMs: Date().timeIntervalSince1970 * 1000
+      )
+    }
+
     PlaybackState(
       status: status,
       currentTime: currentTime,
@@ -237,6 +252,18 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   var memorySnapshot: MemorySnapshot {
+    if isReleased {
+      return MemorySnapshot(
+        playerBytes: 0,
+        sourceBytes: 0,
+        totalBytes: 0,
+        preloadLevel: resolvedPreloadLevel(),
+        retentionState: currentRetentionState(),
+        isAttachedToView: false,
+        isPlaying: false
+      )
+    }
+
     let playerBytes = player.currentItem == nil ? 0 : max(bufferDuration * 256_000, 64_000)
     let sourceBytes = Double((source as? HybridNitroPlayerSource)?.memorySize ?? 0)
 

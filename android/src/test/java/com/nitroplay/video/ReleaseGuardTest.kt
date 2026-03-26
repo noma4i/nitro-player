@@ -11,7 +11,8 @@ class ReleaseGuardTest {
     var isReleased = false
     var loadedWithSource = false
     var initCalled = false
-    var trimCalled = false
+    var trimCount = 0
+    var releaseCount = 0
 
     fun simulateConstructorInit() {
       if (isReleased) return
@@ -21,13 +22,15 @@ class ReleaseGuardTest {
     fun simulateTrim() {
       if (isReleased) return
       if (!loadedWithSource) return
-      trimCalled = true
+      trimCount += 1
+      loadedWithSource = false
     }
 
     fun release() {
       if (isReleased) return
       isReleased = true
       loadedWithSource = false
+      releaseCount += 1
     }
 
     data class PlaybackState(val status: String, val isPlaying: Boolean)
@@ -69,7 +72,7 @@ class ReleaseGuardTest {
     state.release()
     state.simulateTrim()
 
-    assertFalse("Trim should not run after release", state.trimCalled)
+    assertEquals("Trim should not run after release", 0, state.trimCount)
   }
 
   @Test
@@ -77,7 +80,7 @@ class ReleaseGuardTest {
     val state = MockPlayerState()
     state.simulateTrim()
 
-    assertFalse("Trim should not run when not loaded", state.trimCalled)
+    assertEquals("Trim should not run when not loaded", 0, state.trimCount)
   }
 
   @Test
@@ -107,5 +110,27 @@ class ReleaseGuardTest {
     state.release()
 
     assertTrue(state.isReleased)
+    assertEquals("Release should only execute once", 1, state.releaseCount)
+  }
+
+  @Test
+  fun concurrentReleaseAndTrim_trimRunsAtMostOnce() {
+    val state = MockPlayerState()
+    state.loadedWithSource = true
+
+    val releaseThread = Thread {
+      state.release()
+    }
+    val trimThread = Thread {
+      state.simulateTrim()
+    }
+
+    releaseThread.start()
+    trimThread.start()
+    releaseThread.join()
+    trimThread.join()
+
+    assertTrue(state.isReleased)
+    assertTrue("Trim should run at most once", state.trimCount <= 1)
   }
 }

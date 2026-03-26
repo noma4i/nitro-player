@@ -3,7 +3,7 @@
 Lightweight video player (native + JS) + HLS caching proxy for React Native.
 
 ```bash
-yarn add https://github.com/noma4i/nitro-player.git#v0.2.1
+yarn add https://github.com/noma4i/nitro-player.git#v0.2.2
 ```
 
 ## Quick Start
@@ -32,7 +32,7 @@ The player creates itself. HLS segments are cached to disk automatically. Everyt
 ## Installation
 
 ```bash
-yarn add https://github.com/noma4i/nitro-player.git#v0.2.1
+yarn add https://github.com/noma4i/nitro-player.git#v0.2.2
 yarn add react-native-nitro-modules
 
 # iOS
