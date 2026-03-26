@@ -67,15 +67,7 @@ export const useNitroPlayer = (
       return;
     }
 
-    if (
-      hasAppliedCurrentSetup ||
-      player.playbackState.status === 'loading' ||
-      player.playbackState.status === 'buffering' ||
-      player.playbackState.status === 'playing' ||
-      player.playbackState.status === 'paused' ||
-      player.playbackState.status === 'ended' ||
-      player.status === 'error'
-    ) {
+    if (hasAppliedCurrentSetup || player.playbackState.status !== 'idle') {
       applySetup();
       return;
     }

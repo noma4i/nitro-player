@@ -23,6 +23,9 @@ const interpolatePlaybackState = (state: PlaybackState, currentTimestampMs: numb
   }
 
   const elapsedMs = Math.max(0, currentTimestampMs - state.nativeTimestampMs);
+  if (elapsedMs > 1000) {
+    return state;
+  }
   const advancedTime = (elapsedMs / 1000) * state.rate;
   const duration = Number.isFinite(state.duration) ? state.duration : Infinity;
   const nextCurrentTime = Math.min(duration, state.currentTime + advancedTime);
@@ -53,21 +56,20 @@ const getPlaybackStateSafe = (player: NitroPlayer | null | undefined) => {
 export const usePlaybackState = (player: NitroPlayer | null | undefined, options: UsePlaybackStateOptions = {}) => {
   const { interpolate = true, fps = 60 } = options;
   const [state, setState] = useState<PlaybackState | null>(() => getPlaybackStateSafe(player));
-  const latestStateRef = useRef(state);
-
-  useEffect(() => {
-    latestStateRef.current = state;
-  }, [state]);
+  const nativeStateRef = useRef<PlaybackState | null>(state);
+  const lastEmittedTimeRef = useRef<number>(0);
 
   useEffect(() => {
     if (!player) {
-      latestStateRef.current = null;
+      nativeStateRef.current = null;
+      lastEmittedTimeRef.current = 0;
       setState(null);
       return;
     }
 
     const initialState = getPlaybackStateSafe(player);
-    latestStateRef.current = initialState;
+    nativeStateRef.current = initialState;
+    lastEmittedTimeRef.current = initialState?.currentTime ?? 0;
     setState(initialState);
 
     if (initialState === null) {
@@ -75,14 +77,16 @@ export const usePlaybackState = (player: NitroPlayer | null | undefined, options
     }
 
     const subscription = player.addEventListener('onPlaybackState', next => {
-      latestStateRef.current = next;
-      setState(next);
+      nativeStateRef.current = next;
+      if (!interpolate) {
+        setState(next);
+      }
     });
 
     return () => {
       subscription.remove();
     };
-  }, [player]);
+  }, [player, interpolate]);
 
   useEffect(() => {
     if (!interpolate || !player) {
@@ -94,11 +98,19 @@ export const usePlaybackState = (player: NitroPlayer | null | undefined, options
     const frameDurationMs = Math.max(1, Math.round(1000 / fps));
 
     const tick = () => {
-      const latest = latestStateRef.current;
-      if (latest && shouldInterpolate(latest)) {
-        setState(interpolatePlaybackState(latest, nowMs()));
+      const native = nativeStateRef.current;
+      if (native && shouldInterpolate(native)) {
+        const interpolated = interpolatePlaybackState(native, nowMs());
+        const monotonicTime = Math.max(lastEmittedTimeRef.current, interpolated.currentTime);
+        if (monotonicTime - lastEmittedTimeRef.current >= 0.05) {
+          lastEmittedTimeRef.current = monotonicTime;
+          setState({ ...interpolated, currentTime: monotonicTime });
+        }
       } else {
-        setState(latest ?? null);
+        if (native) {
+          lastEmittedTimeRef.current = native.currentTime;
+        }
+        setState(native ?? null);
       }
 
       timeoutId = setTimeout(() => {
@@ -116,5 +128,5 @@ export const usePlaybackState = (player: NitroPlayer | null | undefined, options
     };
   }, [fps, interpolate, player]);
 
-  return interpolate ? state : latestStateRef.current;
+  return state;
 };

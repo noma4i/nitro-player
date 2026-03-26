@@ -2,19 +2,11 @@ import * as React from 'react';
 import type { ViewProps, ViewStyle } from 'react-native';
 import { NitroModules } from 'react-native-nitro-modules';
 import type { ListenerSubscription } from '../../spec/nitro/NitroPlayerEventEmitter.nitro';
-import type {
-  SurfaceType,
-  NitroPlayerViewManager,
-  NitroPlayerViewManagerFactory,
-} from '../../spec/nitro/NitroPlayerViewManager.nitro';
+import type { SurfaceType, NitroPlayerViewManager, NitroPlayerViewManagerFactory } from '../../spec/nitro/NitroPlayerViewManager.nitro';
 import { type NitroPlayerViewEvents } from '../types/Events';
 import type { ResizeMode } from '../types/ResizeMode';
 import type { NitroPlayerConfig, NitroPlayerSource } from '../types/NitroPlayerConfig';
-import {
-  tryParseNativeNitroPlayerError,
-  NitroPlayerComponentError,
-  NitroPlayerError,
-} from '../types/NitroPlayerError';
+import { tryParseNativeNitroPlayerError, NitroPlayerComponentError, NitroPlayerError } from '../types/NitroPlayerError';
 import { NitroPlayer } from '../NitroPlayer';
 import { useNitroPlayer } from '../hooks/useNitroPlayer';
 import { NativeNitroPlayerView } from './NativeNitroPlayerView';
@@ -33,22 +25,13 @@ export interface NitroPlayerViewRef {
   player: NitroPlayer;
   enterFullscreen: () => void;
   exitFullscreen: () => void;
-  addEventListener: <Event extends keyof NitroPlayerViewEvents>(
-    event: Event,
-    callback: NitroPlayerViewEvents[Event]
-  ) => ListenerSubscription;
+  addEventListener: <Event extends keyof NitroPlayerViewEvents>(event: Event, callback: NitroPlayerViewEvents[Event]) => ListenerSubscription;
 }
 
 let nitroIdCounter = 1;
-const NitroPlayerViewManagerFactory =
-  NitroModules.createHybridObject<NitroPlayerViewManagerFactory>(
-    'NitroPlayerViewManagerFactory'
-  );
+const NitroPlayerViewManagerFactory = NitroModules.createHybridObject<NitroPlayerViewManagerFactory>('NitroPlayerViewManagerFactory');
 
-const wrapNativeViewManagerFunction = <T,>(
-  manager: NitroPlayerViewManager | null,
-  func: (manager: NitroPlayerViewManager) => T
-) => {
+const wrapNativeViewManagerFunction = <T,>(manager: NitroPlayerViewManager | null, func: (manager: NitroPlayerViewManager) => T) => {
   try {
     if (manager === null) {
       throw new NitroPlayerError('view/not-found', 'View manager not found');
@@ -59,11 +42,7 @@ const wrapNativeViewManagerFunction = <T,>(
   }
 };
 
-const updateNativeProps = (
-  manager: NitroPlayerViewManager,
-  player: NitroPlayer,
-  props: Omit<NitroPlayerViewProps, 'source' | 'setup'>
-) => {
+const updateNativeProps = (manager: NitroPlayerViewManager, player: NitroPlayer, props: Omit<NitroPlayerViewProps, 'source' | 'setup'>) => {
   manager.surfaceType = props.surfaceType ?? 'surface';
   manager.controls = props.controls ?? false;
   manager.resizeMode = props.resizeMode ?? 'none';
@@ -78,6 +57,8 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
       setup,
       controls = false,
       resizeMode = 'none',
+      keepScreenAwake = true,
+      surfaceType = 'surface',
       onFullscreenChange,
       willEnterFullscreen,
       willExitFullscreen,
@@ -86,7 +67,7 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
     ref
   ) => {
     const player = useNitroPlayer(source, setup, {
-      defaultMemoryProfile: 'feed',
+      defaultMemoryProfile: 'feed'
     });
     const nitroId = React.useMemo(() => nitroIdCounter++, []);
     const nitroViewManager = React.useRef<NitroPlayerViewManager | null>(null);
@@ -96,14 +77,10 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
       (id: number) => {
         try {
           if (nitroViewManager.current === null) {
-            nitroViewManager.current =
-              NitroPlayerViewManagerFactory.createViewManager(id);
+            nitroViewManager.current = NitroPlayerViewManagerFactory.createViewManager(id);
 
             if (!nitroViewManager.current) {
-              throw new NitroPlayerError(
-                'view/not-found',
-                'Failed to create View Manager'
-              );
+              throw new NitroPlayerError('view/not-found', 'Failed to create View Manager');
             }
           }
 
@@ -111,14 +88,9 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
         } catch (error) {
           const parsedError = tryParseNativeNitroPlayerError(error);
 
-          if (
-            parsedError instanceof NitroPlayerComponentError &&
-            parsedError.code === 'view/not-found'
-          ) {
+          if (parsedError instanceof NitroPlayerComponentError && parsedError.code === 'view/not-found') {
             if (id === nitroId) {
-              console.warn(
-                '[NitroPlay] NitroPlayerView was unmounted before native manager was able to find it.'
-              );
+              console.warn('[NitroPlay] NitroPlayerView was unmounted before native manager was able to find it.');
               return;
             }
           }
@@ -141,43 +113,29 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
       () => ({
         player,
         enterFullscreen: () => {
-          wrapNativeViewManagerFunction(nitroViewManager.current, (manager) => {
+          wrapNativeViewManagerFunction(nitroViewManager.current, manager => {
             manager.enterFullscreen();
           });
         },
         exitFullscreen: () => {
-          wrapNativeViewManagerFunction(nitroViewManager.current, (manager) => {
+          wrapNativeViewManagerFunction(nitroViewManager.current, manager => {
             manager.exitFullscreen();
           });
         },
-        addEventListener: <Event extends keyof NitroPlayerViewEvents>(
-          event: Event,
-          callback: NitroPlayerViewEvents[Event]
-        ): ListenerSubscription => {
-          return wrapNativeViewManagerFunction(
-            nitroViewManager.current,
-            (manager) => {
-              switch (event) {
-                case 'onFullscreenChange':
-                  return manager.addOnFullscreenChangeListener(
-                    callback as NitroPlayerViewEvents['onFullscreenChange']
-                  );
-                case 'willEnterFullscreen':
-                  return manager.addWillEnterFullscreenListener(
-                    callback as NitroPlayerViewEvents['willEnterFullscreen']
-                  );
-                case 'willExitFullscreen':
-                  return manager.addWillExitFullscreenListener(
-                    callback as NitroPlayerViewEvents['willExitFullscreen']
-                  );
-                default:
-                  throw new Error(
-                    `[NitroPlay] Unsupported event: ${event}`
-                  );
-              }
+        addEventListener: <Event extends keyof NitroPlayerViewEvents>(event: Event, callback: NitroPlayerViewEvents[Event]): ListenerSubscription => {
+          return wrapNativeViewManagerFunction(nitroViewManager.current, manager => {
+            switch (event) {
+              case 'onFullscreenChange':
+                return manager.addOnFullscreenChangeListener(callback as NitroPlayerViewEvents['onFullscreenChange']);
+              case 'willEnterFullscreen':
+                return manager.addWillEnterFullscreenListener(callback as NitroPlayerViewEvents['willEnterFullscreen']);
+              case 'willExitFullscreen':
+                return manager.addWillExitFullscreenListener(callback as NitroPlayerViewEvents['willExitFullscreen']);
+              default:
+                throw new Error(`[NitroPlay] Unsupported event: ${event}`);
             }
-          );
-        },
+          });
+        }
       }),
       [player]
     );
@@ -199,36 +157,19 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
       const subscriptions: ListenerSubscription[] = [];
 
       if (onFullscreenChange) {
-        subscriptions.push(
-          nitroViewManager.current.addOnFullscreenChangeListener(
-            onFullscreenChange
-          )
-        );
+        subscriptions.push(nitroViewManager.current.addOnFullscreenChangeListener(onFullscreenChange));
       }
       if (willEnterFullscreen) {
-        subscriptions.push(
-          nitroViewManager.current.addWillEnterFullscreenListener(
-            willEnterFullscreen
-          )
-        );
+        subscriptions.push(nitroViewManager.current.addWillEnterFullscreenListener(willEnterFullscreen));
       }
       if (willExitFullscreen) {
-        subscriptions.push(
-          nitroViewManager.current.addWillExitFullscreenListener(
-            willExitFullscreen
-          )
-        );
+        subscriptions.push(nitroViewManager.current.addWillExitFullscreenListener(willExitFullscreen));
       }
 
       return () => {
-        subscriptions.forEach((sub) => sub.remove());
+        subscriptions.forEach(sub => sub.remove());
       };
-    }, [
-      onFullscreenChange,
-      willEnterFullscreen,
-      willExitFullscreen,
-      isManagerReady,
-    ]);
+    }, [onFullscreenChange, willEnterFullscreen, willExitFullscreen, isManagerReady]);
 
     React.useEffect(() => {
       if (!nitroViewManager.current) {
@@ -236,17 +177,12 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
       }
 
       updateNativeProps(nitroViewManager.current, player, {
-        ...props,
         controls,
         resizeMode,
+        keepScreenAwake,
+        surfaceType
       });
-    }, [
-      player,
-      controls,
-      resizeMode,
-      props,
-      isManagerReady,
-    ]);
+    }, [player, controls, resizeMode, keepScreenAwake, surfaceType, isManagerReady]);
 
     return (
       <NativeNitroPlayerView

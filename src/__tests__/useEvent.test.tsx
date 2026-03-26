@@ -21,10 +21,15 @@ jest.mock('../core/utils/playerFactory', () => ({
 
 function makeMockPlayer() {
   const removeFn = jest.fn();
-  const addEventListenerMock = jest.fn(() => ({ remove: removeFn }));
+  let capturedCallback: ((...args: unknown[]) => void) | null = null;
+  const addEventListenerMock = jest.fn((_event: string, cb: (...args: unknown[]) => void) => {
+    capturedCallback = cb;
+    return { remove: removeFn };
+  });
   return {
     addEventListener: addEventListenerMock,
-    _removeFn: removeFn
+    _removeFn: removeFn,
+    _trigger: (...args: unknown[]) => capturedCallback?.(...args)
   };
 }
 
@@ -36,7 +41,7 @@ describe('useEvent', () => {
 
     renderHook(() => useEvent(player, 'onPlaybackState', callback));
 
-    expect(player.addEventListener).toHaveBeenCalledWith('onPlaybackState', callback);
+    expect(player.addEventListener).toHaveBeenCalledWith('onPlaybackState', expect.any(Function));
   });
 
   it('removes subscription on unmount', () => {
@@ -53,7 +58,7 @@ describe('useEvent', () => {
     expect(player._removeFn).toHaveBeenCalledTimes(1);
   });
 
-  it('updates subscription when callback changes', () => {
+  it('callback change does not resubscribe (uses ref)', () => {
     const { useEvent } = require('../core/hooks/useEvent');
     const player = makeMockPlayer();
     const callback1 = jest.fn();
@@ -61,16 +66,18 @@ describe('useEvent', () => {
 
     const { rerender } = renderHook(({ cb }) => useEvent(player, 'onLoad', cb), { initialProps: { cb: callback1 } });
 
-    expect(player.addEventListener).toHaveBeenCalledWith('onLoad', callback1);
-    const firstCallRemove = player._removeFn;
-
-    const secondRemove = jest.fn();
-    player.addEventListener.mockReturnValueOnce({ remove: secondRemove });
+    expect(player.addEventListener).toHaveBeenCalledTimes(1);
 
     rerender({ cb: callback2 });
 
-    expect(firstCallRemove).toHaveBeenCalled();
-    expect(player.addEventListener).toHaveBeenCalledWith('onLoad', callback2);
+    // Should NOT resubscribe - callback is in ref
+    expect(player.addEventListener).toHaveBeenCalledTimes(1);
+    expect(player._removeFn).not.toHaveBeenCalled();
+
+    // But triggering should call the new callback
+    player._trigger('data');
+    expect(callback2).toHaveBeenCalledWith('data');
+    expect(callback1).not.toHaveBeenCalled();
   });
 
   it('updates subscription when event name changes', () => {
@@ -80,7 +87,7 @@ describe('useEvent', () => {
 
     const { rerender } = renderHook(({ event }) => useEvent(player, event, callback), { initialProps: { event: 'onLoad' } });
 
-    expect(player.addEventListener).toHaveBeenCalledWith('onLoad', callback);
+    expect(player.addEventListener).toHaveBeenCalledWith('onLoad', expect.any(Function));
 
     const secondRemove = jest.fn();
     player.addEventListener.mockReturnValueOnce({ remove: secondRemove });
@@ -88,7 +95,7 @@ describe('useEvent', () => {
     rerender({ event: 'onPlaybackState' });
 
     expect(player._removeFn).toHaveBeenCalled();
-    expect(player.addEventListener).toHaveBeenCalledWith('onPlaybackState', callback);
+    expect(player.addEventListener).toHaveBeenCalledWith('onPlaybackState', expect.any(Function));
   });
 
   it('does nothing when player is null', () => {

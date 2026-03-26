@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import {
   NitroPlayerView,
   NitroPlayer,
@@ -80,7 +80,6 @@ function App() {
 
   useEffect(() => {
     setLastError(null);
-    setPlayer(null);
     setBandwidth(null);
     setIsFullscreen(false);
   }, [selectedSourceKey]);
@@ -110,7 +109,9 @@ function App() {
     <SafeAreaProvider>
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="light-content" />
-        <View style={styles.container}>
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.contentContainer}>
           <Text style={styles.eyebrow}>NitroPlay Example</Text>
           <Text style={styles.subtitle}>Switch between working HLS and MP4 demo sources</Text>
 
@@ -207,7 +208,7 @@ function App() {
             lastLoad={lastLoad}
             lastError={lastError}
           />
-        </View>
+        </ScrollView>
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -357,7 +358,8 @@ function formatBytes(value: number) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#06131f' },
-  container: { flex: 1, paddingHorizontal: 20, paddingVertical: 24, backgroundColor: '#06131f' },
+  container: { flex: 1, backgroundColor: '#06131f' },
+  contentContainer: { paddingHorizontal: 20, paddingVertical: 24, paddingBottom: 40 },
   eyebrow: { color: '#75d7ff', fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2 },
   subtitle: { marginTop: 8, color: '#cde7f8', fontSize: 15, lineHeight: 21 },
   videoWrapper: { marginTop: 12, position: 'relative' },
