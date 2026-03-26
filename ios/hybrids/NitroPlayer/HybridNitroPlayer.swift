@@ -420,12 +420,14 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
       do {
         try await self.prepareBufferedState()
         DispatchQueue.main.async { [weak self] in
-          self?.player.play()
+          guard let self, !self.isReleased else { return }
+          self.player.play()
         }
       } catch {
         DispatchQueue.main.async { [weak self] in
-          self?.status = .error
-          self?.emitPlaybackState()
+          guard let self, !self.isReleased else { return }
+          self.status = .error
+          self.emitPlaybackState()
         }
       }
     }

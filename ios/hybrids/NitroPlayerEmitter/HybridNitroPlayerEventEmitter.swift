@@ -15,28 +15,36 @@ struct ListenerPair {
 }
 
 class HybridNitroPlayerEventEmitter: HybridNitroPlayerEventEmitterSpec {
-  var listeners: [ListenerPair] = []
+  private var listeners: [ListenerPair] = []
+  private let lock = NSLock()
 
   // MARK: - Private helpers
 
   private func addListener<T>(eventName: String, listener: T) -> ListenerSubscription {
     let id = UUID()
+    lock.lock()
     listeners.append(ListenerPair(id: id, eventName: eventName, callback: listener))
+    lock.unlock()
     return ListenerSubscription(remove: { [weak self] in
-      self?.listeners.removeAll { $0.id == id }
+      guard let self else { return }
+      self.lock.lock()
+      self.listeners.removeAll { $0.id == id }
+      self.lock.unlock()
     })
   }
 
   private func emitEvent<T>(eventName: String, invoke: (T) throws -> Void) {
-    for pair in listeners where pair.eventName == eventName {
+    lock.lock()
+    let snapshot = listeners.filter { $0.eventName == eventName }
+    lock.unlock()
+
+    for pair in snapshot {
       if let callback = pair.callback as? T {
         do {
           try invoke(callback)
         } catch {
           print("[NitroPlay] Error calling \(eventName) listener: \(error)")
         }
-      } else {
-        print("[NitroPlay] Invalid callback type for \(eventName)")
       }
     }
   }
@@ -64,7 +72,9 @@ class HybridNitroPlayerEventEmitter: HybridNitroPlayerEventEmitterSpec {
   }
 
   func clearAllListeners() throws {
+    lock.lock()
     listeners.removeAll()
+    lock.unlock()
   }
 
   // MARK: - Event emission methods

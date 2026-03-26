@@ -20,6 +20,7 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
   private var videoView =
     NitroPlayerManager.getNitroPlayerViewWeakReferenceByNitroId(nitroId) ?: throw NitroPlayerViewError.ViewNotFound(nitroId)
   private val listeners = mutableListOf<ViewListenerPair>()
+  private val listenersLock = Any()
 
   init {
     videoView.get()?.eventsEmitter = this
@@ -71,13 +72,20 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
 
   private fun <T> addListener(eventName: String, listener: T): ListenerSubscription {
     val id = UUID.randomUUID()
-    listeners.add(ViewListenerPair(id, eventName, listener as Any))
-    return ListenerSubscription { listeners.removeAll { it.id == id } }
+    synchronized(listenersLock) {
+      listeners.add(ViewListenerPair(id, eventName, listener as Any))
+    }
+    return ListenerSubscription {
+      synchronized(listenersLock) { listeners.removeAll { it.id == id } }
+    }
   }
 
   @Suppress("UNCHECKED_CAST")
   private fun <T> emitEvent(eventName: String, invoke: (T) -> Unit) {
-    listeners.filter { it.eventName == eventName }.forEach { pair ->
+    val snapshot = synchronized(listenersLock) {
+      listeners.filter { it.eventName == eventName }.toList()
+    }
+    snapshot.forEach { pair ->
       try {
         invoke(pair.callback as T)
       } catch (e: Exception) {
@@ -101,7 +109,7 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
   }
 
   override fun clearAllListeners() {
-    listeners.clear()
+    synchronized(listenersLock) { listeners.clear() }
   }
 
   // MARK: - Event emission methods (called by NitroPlayerView)

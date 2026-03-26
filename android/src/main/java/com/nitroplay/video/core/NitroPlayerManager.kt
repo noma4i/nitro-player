@@ -7,6 +7,7 @@ import com.facebook.react.bridge.LifecycleEventListener
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.video.HybridNitroPlayer
 import com.nitroplay.video.core.utils.Threading.runOnMainThread
+import com.nitroplay.video.core.utils.Threading.runOnMainThreadSync
 import com.nitroplay.video.view.NitroPlayerView
 import java.lang.ref.WeakReference
 
@@ -126,8 +127,10 @@ object NitroPlayerManager : LifecycleEventListener {
   }
 
   fun getPlayerByNitroId(nitroId: Int): HybridNitroPlayer? {
-    return players.keys.find { player ->
-      players[player]?.contains(nitroId) == true
+    return runOnMainThreadSync {
+      players.keys.find { player ->
+        players[player]?.contains(nitroId) == true
+      }
     }
   }
 
@@ -150,7 +153,7 @@ object NitroPlayerManager : LifecycleEventListener {
   }
 
   fun getNitroPlayerViewWeakReferenceByNitroId(nitroId: Int): WeakReference<NitroPlayerView>? {
-    return views[nitroId]
+    return runOnMainThreadSync { views[nitroId] }
   }
 
   // ------------ Lifecycle Handler ------------
@@ -183,9 +186,11 @@ object NitroPlayerManager : LifecycleEventListener {
   override fun onHostDestroy() {}
 
   fun getAnyPlayingNitroPlayerView(): NitroPlayerView? {
-    return views.values.firstOrNull { ref ->
-      ref.get()?.hybridPlayer?.isPlaying == true
-    }?.get()
+    return runOnMainThreadSync {
+      views.values.firstOrNull { ref ->
+        ref.get()?.hybridPlayer?.isPlaying == true
+      }?.get()
+    }
   }
 
   fun setLastPlayedPlayer(player: HybridNitroPlayer) {
@@ -196,7 +201,7 @@ object NitroPlayerManager : LifecycleEventListener {
   }
 
   fun getLastPlayedNitroPlayerView(): NitroPlayerView? {
-    return lastPlayedNitroId?.let { views[it]?.get() }
+    return runOnMainThreadSync { lastPlayedNitroId?.let { views[it]?.get() } }
   }
 
   private fun rebalanceFeedHotPlayersLocked() {

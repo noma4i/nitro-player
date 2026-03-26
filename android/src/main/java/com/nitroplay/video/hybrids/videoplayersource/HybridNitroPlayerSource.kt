@@ -16,6 +16,7 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
 
   private var mediaItem: MediaItem? = null
   private var mediaSource: MediaSource? = null
+  private val stateLock = Any()
   var retentionState: MemoryRetentionState = MemoryRetentionState.COLD
     private set
 
@@ -27,40 +28,44 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
   }
 
   private fun createOrGetMediaItem(): MediaItem {
-    val currentMediaItem = mediaItem
-    if (currentMediaItem != null) {
-      return currentMediaItem
-    }
+    synchronized(stateLock) {
+      val currentMediaItem = mediaItem
+      if (currentMediaItem != null) {
+        return currentMediaItem
+      }
 
-    return createMediaItemFromVideoConfig(this).also {
-      mediaItem = it
-      if (retentionState == MemoryRetentionState.COLD) {
-        retentionState = MemoryRetentionState.METADATA
+      return createMediaItemFromVideoConfig(this).also {
+        mediaItem = it
+        if (retentionState == MemoryRetentionState.COLD) {
+          retentionState = MemoryRetentionState.METADATA
+        }
       }
     }
   }
 
   fun createOrGetMediaSource(): MediaSource {
-    val currentMediaSource = mediaSource
-    if (currentMediaSource != null) {
-      return currentMediaSource
+    synchronized(stateLock) {
+      val currentMediaSource = mediaSource
+      if (currentMediaSource != null) {
+        return currentMediaSource
+      }
+
+      val nextMediaItem = createOrGetMediaItem()
+
+      val nextMediaSource = NitroModules.applicationContext?.let {
+        buildMediaSource(
+          context = it,
+          source = this,
+          nextMediaItem
+        )
+      } ?: run {
+        throw LibraryError.ApplicationContextNotFound
+      }
+
+      mediaSource = nextMediaSource
+      retentionState = MemoryRetentionState.HOT
+      return nextMediaSource
     }
-
-    val nextMediaItem = createOrGetMediaItem()
-
-    val nextMediaSource = NitroModules.applicationContext?.let {
-      buildMediaSource(
-        context = it,
-        source = this,
-        nextMediaItem
-      )
-    } ?: run {
-      throw LibraryError.ApplicationContextNotFound
-    }
-
-    mediaSource = nextMediaSource
-    retentionState = MemoryRetentionState.HOT
-    return nextMediaSource
   }
 
   suspend fun warmMetadata() {
@@ -70,15 +75,19 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
   }
 
   fun trimToMetadata() {
-    createOrGetMediaItem()
-    mediaSource = null
-    retentionState = MemoryRetentionState.METADATA
+    synchronized(stateLock) {
+      createOrGetMediaItem()
+      mediaSource = null
+      retentionState = MemoryRetentionState.METADATA
+    }
   }
 
   fun trimToCold() {
-    mediaSource = null
-    mediaItem = null
-    retentionState = MemoryRetentionState.COLD
+    synchronized(stateLock) {
+      mediaSource = null
+      mediaItem = null
+      retentionState = MemoryRetentionState.COLD
+    }
   }
 
   private fun estimateConfigMemoryBytes(): Long {

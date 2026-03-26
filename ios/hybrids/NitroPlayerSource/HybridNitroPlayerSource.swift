@@ -10,10 +10,22 @@ import Foundation
 import NitroModules
 
 class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSourceSpec {
-  var asset: AVURLAsset?
+  private var _asset: AVURLAsset?
+  private var _retentionState: MemoryRetentionState = .cold
+  private let stateLock = NSLock()
+
+  var asset: AVURLAsset? {
+    get { stateLock.lock(); defer { stateLock.unlock() }; return _asset }
+    set { stateLock.lock(); _asset = newValue; stateLock.unlock() }
+  }
+
+  var retentionState: MemoryRetentionState {
+    get { stateLock.lock(); defer { stateLock.unlock() }; return _retentionState }
+    set { stateLock.lock(); _retentionState = newValue; stateLock.unlock() }
+  }
+
   var uri: String
   var config: NativeNitroPlayerConfig
-  var retentionState: MemoryRetentionState = .cold
 
   let url: URL
   private let sourceLoader = SourceLoader()
