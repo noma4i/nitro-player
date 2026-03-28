@@ -11,6 +11,7 @@ import NitroModules
 public protocol HybridNitroPlayerViewManagerSpec_protocol: HybridObject {
   // Properties
   var player: (any HybridNitroPlayerSpec)? { get set }
+  var isAttached: Bool { get set }
   var controls: Bool { get set }
   var resizeMode: ResizeMode { get set }
   var keepScreenAwake: Bool { get set }
@@ -19,6 +20,8 @@ public protocol HybridNitroPlayerViewManagerSpec_protocol: HybridObject {
   // Methods
   func enterFullscreen() throws -> Void
   func exitFullscreen() throws -> Void
+  func addOnAttachedListener(listener: @escaping () -> Void) throws -> ListenerSubscription
+  func addOnDetachedListener(listener: @escaping () -> Void) throws -> ListenerSubscription
   func addOnFullscreenChangeListener(listener: @escaping (_ fullscreen: Bool) -> Void) throws -> ListenerSubscription
   func addWillEnterFullscreenListener(listener: @escaping () -> Void) throws -> ListenerSubscription
   func addWillExitFullscreenListener(listener: @escaping () -> Void) throws -> ListenerSubscription

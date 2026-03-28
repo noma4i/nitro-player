@@ -23,6 +23,7 @@ export interface NitroPlayerViewProps extends Partial<NitroPlayerViewEvents>, Vi
 
 export interface NitroPlayerViewRef {
   player: NitroPlayer;
+  isAttached: boolean;
   enterFullscreen: () => void;
   exitFullscreen: () => void;
   addEventListener: <Event extends keyof NitroPlayerViewEvents>(event: Event, callback: NitroPlayerViewEvents[Event]) => ListenerSubscription;
@@ -59,6 +60,8 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
       resizeMode = 'none',
       keepScreenAwake = true,
       surfaceType = 'surface',
+      onAttached,
+      onDetached,
       onFullscreenChange,
       willEnterFullscreen,
       willExitFullscreen,
@@ -72,6 +75,8 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
     const nitroId = React.useMemo(() => nitroIdCounter++, []);
     const nitroViewManager = React.useRef<NitroPlayerViewManager | null>(null);
     const [isManagerReady, setIsManagerReady] = React.useState(false);
+    const [isAttached, setIsAttached] = React.useState(false);
+    const lastDeliveredAttachStateRef = React.useRef(false);
 
     const setupViewManager = React.useCallback(
       (id: number) => {
@@ -84,6 +89,7 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
             }
           }
 
+          setIsAttached(nitroViewManager.current.isAttached);
           setIsManagerReady(true);
         } catch (error) {
           const parsedError = tryParseNativeNitroPlayerError(error);
@@ -112,6 +118,7 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
       ref,
       () => ({
         player,
+        isAttached,
         enterFullscreen: () => {
           wrapNativeViewManagerFunction(nitroViewManager.current, manager => {
             manager.enterFullscreen();
@@ -125,6 +132,12 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
         addEventListener: <Event extends keyof NitroPlayerViewEvents>(event: Event, callback: NitroPlayerViewEvents[Event]): ListenerSubscription => {
           return wrapNativeViewManagerFunction(nitroViewManager.current, manager => {
             switch (event) {
+              case 'onAttached':
+                return manager.addOnAttachedListener(() => {
+                  (callback as NitroPlayerViewEvents['onAttached'])(player);
+                });
+              case 'onDetached':
+                return manager.addOnDetachedListener(callback as NitroPlayerViewEvents['onDetached']);
               case 'onFullscreenChange':
                 return manager.addOnFullscreenChangeListener(callback as NitroPlayerViewEvents['onFullscreenChange']);
               case 'willEnterFullscreen':
@@ -137,15 +150,17 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
           });
         }
       }),
-      [player]
+      [isAttached, player]
     );
 
     React.useEffect(() => {
       return () => {
         if (nitroViewManager.current) {
           nitroViewManager.current.clearAllListeners();
-          setIsManagerReady(false);
         }
+        lastDeliveredAttachStateRef.current = false;
+        setIsAttached(false);
+        setIsManagerReady(false);
       };
     }, []);
 
@@ -155,21 +170,46 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
       }
 
       const subscriptions: ListenerSubscription[] = [];
+      const manager = nitroViewManager.current;
 
+      subscriptions.push(
+        manager.addOnAttachedListener(() => {
+          setIsAttached(true);
+          if (!lastDeliveredAttachStateRef.current) {
+            lastDeliveredAttachStateRef.current = true;
+            onAttached?.(player);
+          }
+        })
+      );
+      subscriptions.push(
+        manager.addOnDetachedListener(() => {
+          setIsAttached(false);
+          if (lastDeliveredAttachStateRef.current) {
+            lastDeliveredAttachStateRef.current = false;
+            onDetached?.();
+          }
+        })
+      );
       if (onFullscreenChange) {
-        subscriptions.push(nitroViewManager.current.addOnFullscreenChangeListener(onFullscreenChange));
+        subscriptions.push(manager.addOnFullscreenChangeListener(onFullscreenChange));
       }
       if (willEnterFullscreen) {
-        subscriptions.push(nitroViewManager.current.addWillEnterFullscreenListener(willEnterFullscreen));
+        subscriptions.push(manager.addWillEnterFullscreenListener(willEnterFullscreen));
       }
       if (willExitFullscreen) {
-        subscriptions.push(nitroViewManager.current.addWillExitFullscreenListener(willExitFullscreen));
+        subscriptions.push(manager.addWillExitFullscreenListener(willExitFullscreen));
+      }
+
+      if (manager.isAttached && !lastDeliveredAttachStateRef.current) {
+        lastDeliveredAttachStateRef.current = true;
+        setIsAttached(true);
+        onAttached?.(player);
       }
 
       return () => {
         subscriptions.forEach(sub => sub.remove());
       };
-    }, [onFullscreenChange, willEnterFullscreen, willExitFullscreen, isManagerReady]);
+    }, [isManagerReady, onAttached, onDetached, onFullscreenChange, player, willEnterFullscreen, willExitFullscreen]);
 
     React.useEffect(() => {
       if (!nitroViewManager.current) {

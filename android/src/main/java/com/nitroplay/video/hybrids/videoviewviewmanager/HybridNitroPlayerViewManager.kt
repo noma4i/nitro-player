@@ -36,6 +36,10 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
       }
     }
 
+  override var isAttached: Boolean
+    get() = Threading.runOnMainThreadSync { videoView.get()?.isAttachedToWindow == true }
+    set(_) {}
+
   override fun enterFullscreen() {
     videoView.get()?.enterFullscreen()
   }
@@ -100,6 +104,14 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
     return addListener("onFullscreenChange", listener)
   }
 
+  override fun addOnAttachedListener(listener: () -> Unit): ListenerSubscription {
+    return addListener("onAttached", listener)
+  }
+
+  override fun addOnDetachedListener(listener: () -> Unit): ListenerSubscription {
+    return addListener("onDetached", listener)
+  }
+
   override fun addWillEnterFullscreenListener(listener: () -> Unit): ListenerSubscription {
     return addListener("willEnterFullscreen", listener)
   }
@@ -118,6 +130,14 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
     emitEvent<(Boolean) -> Unit>("onFullscreenChange") { it(isActive) }
   }
 
+  override fun onAttached() {
+    emitEvent<() -> Unit>("onAttached") { it() }
+  }
+
+  override fun onDetached() {
+    emitEvent<() -> Unit>("onDetached") { it() }
+  }
+
   override fun willEnterFullscreen() {
     emitEvent<() -> Unit>("willEnterFullscreen") { it() }
   }
@@ -131,6 +151,8 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
 }
 
 interface NitroPlayerViewEventsEmitter {
+  fun onAttached()
+  fun onDetached()
   fun onFullscreenChange(isActive: Boolean)
   fun willEnterFullscreen()
   fun willExitFullscreen()

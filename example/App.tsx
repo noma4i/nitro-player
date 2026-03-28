@@ -49,6 +49,7 @@ function App() {
   );
   const videoRef = useRef<NitroPlayerViewRef>(null);
   const [player, setPlayer] = useState<NitroPlayerViewRef['player'] | null>(null);
+  const [isAttached, setIsAttached] = useState(false);
   const [selectedSourceKey, setSelectedSourceKey] = useState<keyof typeof SOURCES>('hls');
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastLoadStart, setLastLoadStart] = useState<string>('none');
@@ -62,6 +63,7 @@ function App() {
   const handleVideoRef = useCallback((instance: NitroPlayerViewRef | null) => {
     videoRef.current = instance;
     setPlayer(instance?.player ?? null);
+    setIsAttached(instance?.isAttached ?? false);
   }, []);
 
   const playbackState = usePlaybackState(player, { interpolate: true });
@@ -131,7 +133,11 @@ function App() {
               key={selectedSourceKey}
               ref={handleVideoRef}
               source={selectedSource.source}
-              setup={useCallback((p: NitroPlayer) => p.play(), [])}
+              setup={useCallback((p: NitroPlayer) => {
+                p.loop = true;
+              }, [])}
+              onAttached={useCallback(() => setIsAttached(true), [])}
+              onDetached={useCallback(() => setIsAttached(false), [])}
               onLoadStart={useCallback((e: onLoadStartData) => {
                 setLastLoadStart(`${e.sourceType}:${e.source.uri}`);
               }, [])}
@@ -161,7 +167,7 @@ function App() {
               label={isPlaying ? 'Pause' : 'Play'}
               onPress={() => {
                 const p = videoRef.current?.player;
-                if (!p) return;
+                if (!p || !videoRef.current?.isAttached) return;
                 isPlaying ? p.pause() : p.play();
               }}
             />
@@ -170,15 +176,15 @@ function App() {
           <View style={styles.row}>
             <ActionButton
               label="+10s"
-              disabled={!isReady}
+              disabled={!isReady || !isAttached}
               onPress={() => videoRef.current?.player.seekBy(10)}
             />
             <ActionButton
               label="Replay"
-              disabled={!isReady}
+              disabled={!isReady || !isAttached}
               onPress={() => {
                 const p = videoRef.current?.player;
-                if (!p) return;
+                if (!p || !videoRef.current?.isAttached) return;
                 p.seekTo(0);
                 p.play();
               }}

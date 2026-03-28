@@ -2,6 +2,7 @@ import type { PlaybackState } from './PlaybackState';
 import type { NitroPlayerSource } from '../../spec/nitro/NitroPlayerSource.nitro';
 import type { NitroPlayerRuntimeError } from './NitroPlayerError';
 import type { NitroPlayerOrientation } from './NitroPlayerOrientation';
+import type { NitroPlayer } from '../NitroPlayer';
 
 export interface NitroPlayerEvents {
   /**
@@ -35,6 +36,14 @@ export interface JSNitroPlayerEvents {
 export type AllNitroPlayerEvents = NitroPlayerEvents & JSNitroPlayerEvents;
 
 export interface NitroPlayerViewEvents {
+  /**
+   * Called when the native video view becomes attached.
+   */
+  onAttached: (player: NitroPlayer) => void;
+  /**
+   * Called when the native video view detaches from the window hierarchy.
+   */
+  onDetached: () => void;
   /**
    * Called when the video view's fullscreen state changes.
    * @param fullscreen Whether the video view is in fullscreen mode.
@@ -112,6 +121,8 @@ export const ALL_PLAYER_EVENTS: (keyof AllNitroPlayerEvents)[] =
 
 export const ALL_VIEW_EVENTS: (keyof NitroPlayerViewEvents)[] =
   allKeysOf<NitroPlayerViewEvents>()(
+    'onAttached',
+    'onDetached',
     'onFullscreenChange',
     'willEnterFullscreen',
     'willExitFullscreen'

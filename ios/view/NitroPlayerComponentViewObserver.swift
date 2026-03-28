@@ -10,6 +10,8 @@ import AVKit
 import AVFoundation
 
 protocol NitroPlayerComponentViewDelegate: AnyObject {
+  func onAttached()
+  func onDetached()
   func onFullscreenChange(_ isActive: Bool)
   func willEnterFullscreen()
   func willExitFullscreen()
@@ -22,6 +24,14 @@ final class NitroPlayerViewDelegate: NSObject, NitroPlayerComponentViewDelegate 
 
   init(viewManager: HybridNitroPlayerViewManager) {
     self.viewManager = viewManager
+  }
+
+  func onAttached() {
+    viewManager?.onAttached()
+  }
+
+  func onDetached() {
+    viewManager?.onDetached()
   }
 
   func onFullscreenChange(_ isActive: Bool) {

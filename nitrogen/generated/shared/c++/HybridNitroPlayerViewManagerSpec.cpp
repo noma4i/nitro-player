@@ -16,6 +16,8 @@ namespace margelo::nitro::video {
     registerHybrids(this, [](Prototype& prototype) {
       prototype.registerHybridGetter("player", &HybridNitroPlayerViewManagerSpec::getPlayer);
       prototype.registerHybridSetter("player", &HybridNitroPlayerViewManagerSpec::setPlayer);
+      prototype.registerHybridGetter("isAttached", &HybridNitroPlayerViewManagerSpec::getIsAttached);
+      prototype.registerHybridSetter("isAttached", &HybridNitroPlayerViewManagerSpec::setIsAttached);
       prototype.registerHybridGetter("controls", &HybridNitroPlayerViewManagerSpec::getControls);
       prototype.registerHybridSetter("controls", &HybridNitroPlayerViewManagerSpec::setControls);
       prototype.registerHybridGetter("resizeMode", &HybridNitroPlayerViewManagerSpec::getResizeMode);
@@ -26,6 +28,8 @@ namespace margelo::nitro::video {
       prototype.registerHybridSetter("surfaceType", &HybridNitroPlayerViewManagerSpec::setSurfaceType);
       prototype.registerHybridMethod("enterFullscreen", &HybridNitroPlayerViewManagerSpec::enterFullscreen);
       prototype.registerHybridMethod("exitFullscreen", &HybridNitroPlayerViewManagerSpec::exitFullscreen);
+      prototype.registerHybridMethod("addOnAttachedListener", &HybridNitroPlayerViewManagerSpec::addOnAttachedListener);
+      prototype.registerHybridMethod("addOnDetachedListener", &HybridNitroPlayerViewManagerSpec::addOnDetachedListener);
       prototype.registerHybridMethod("addOnFullscreenChangeListener", &HybridNitroPlayerViewManagerSpec::addOnFullscreenChangeListener);
       prototype.registerHybridMethod("addWillEnterFullscreenListener", &HybridNitroPlayerViewManagerSpec::addWillEnterFullscreenListener);
       prototype.registerHybridMethod("addWillExitFullscreenListener", &HybridNitroPlayerViewManagerSpec::addWillExitFullscreenListener);

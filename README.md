@@ -3,7 +3,7 @@
 Lightweight video player (native + JS) + HLS caching proxy for React Native.
 
 ```bash
-yarn add https://github.com/noma4i/nitro-player.git#v0.2.2
+yarn add https://github.com/noma4i/nitro-player.git#v0.3.0
 ```
 
 ## Quick Start
@@ -32,7 +32,7 @@ The player creates itself. HLS segments are cached to disk automatically. Everyt
 ## Installation
 
 ```bash
-yarn add https://github.com/noma4i/nitro-player.git#v0.2.2
+yarn add https://github.com/noma4i/nitro-player.git#v0.3.0
 yarn add react-native-nitro-modules
 
 # iOS
@@ -69,7 +69,9 @@ Android - no extra steps. ExoPlayer and NanoHTTPD are bundled.
 
 ```tsx
 const ref = useRef<NitroPlayerViewRef>(null);
-ref.current?.player.play();
+if (ref.current?.isAttached) {
+  ref.current.player.play();
+}
 ref.current?.enterFullscreen();
 ```
 
@@ -77,6 +79,8 @@ ref.current?.enterFullscreen();
 
 | Event                 | Payload                   | When                      |
 | --------------------- | ------------------------- | ------------------------- |
+| `onAttached`          | `NitroPlayer`             | Native video view attached |
+| `onDetached`          | -                         | Native video view detached |
 | `onFullscreenChange`  | `boolean`                 | Fullscreen state changed  |
 | `willEnterFullscreen` | -                         | About to enter fullscreen |
 | `willExitFullscreen`  | -                         | About to exit fullscreen  |

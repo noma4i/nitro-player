@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.0
+
+### Breaking
+
+- `NitroPlayerView` now exposes canonical attach lifecycle via `onAttached`, `onDetached`, and `ref.isAttached`
+- `setup` is now documented and supported as configuration-only; consumer apps must not treat it as a view-attach signal
+
+### Added
+
+- TypeScript: `NitroPlayerViewEvents` now includes `onAttached(player)` and `onDetached()`
+- TypeScript: `NitroPlayerViewRef` now exposes `isAttached`
+- iOS + Android: view manager APIs now expose attach/detach listeners and attach state parity for the view layer
+- tests: added `NitroPlayerView` attach-contract coverage in the TS suite
+
+### Fixed
+
+- iOS: unified attach/detach reporting in `NitroPlayerComponentView` so the JS layer sees one canonical attach state instead of inferring from multiple signals
+- Android: aligned generated `isAttached` property contract with the hybrid spec and attach/detach event emitter semantics
+- docs/example: moved consumer guidance to attach-first playback and removed `setup`-driven autoplay examples
+
 ## 0.2.2
 
 ### Fixed

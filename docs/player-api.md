@@ -1,6 +1,6 @@
 # NitroPlayer API
 
-Access via `ref.current.player` or the `setup` callback.
+Access player commands via `ref.current.player`. Treat attach readiness as `ref.current.isAttached` or `onAttached`/`onDetached` view events. `setup` is configuration-only and is not an attach signal.
 
 ## Properties
 
@@ -69,6 +69,18 @@ Subscribe via `useEvent` hook or `addEventListener` on view ref.
 | `onBandwidthUpdate` | `{ bitrate, width?, height? }` | Network bandwidth estimate |
 | `onVolumeChange` | `{ volume, muted }` | Volume changed |
 | `onError` | `NitroPlayerRuntimeError` | Error occurred |
+
+### View Events
+
+Subscribe via `ref.current?.addEventListener(...)` or `NitroPlayerView` props.
+
+| Event | Payload | When |
+|-------|---------|------|
+| `onAttached` | `NitroPlayer` | Native view attached and ready to bind commands |
+| `onDetached` | `void` | Native view detached from the window hierarchy |
+| `onFullscreenChange` | `boolean` | Fullscreen state changed |
+| `willEnterFullscreen` | `void` | About to enter fullscreen |
+| `willExitFullscreen` | `void` | About to exit fullscreen |
 
 ## Hooks
 

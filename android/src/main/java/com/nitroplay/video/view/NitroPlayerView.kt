@@ -253,6 +253,7 @@ class NitroPlayerView @JvmOverloads constructor(
       globalLayoutListener = null
       removeCallbacks(layoutRunnable)
       hybridPlayer?.notifyViewDetached()
+      eventsEmitter?.onDetached()
     } finally {
       NitroPlayerManager.unregisterView(this)
       super.onDetachedFromWindow()
@@ -264,6 +265,7 @@ class NitroPlayerView @JvmOverloads constructor(
       NitroPlayerManager.registerView(this)
     }
     hybridPlayer?.notifyViewAttached()
+    eventsEmitter?.onAttached()
     hybridPlayer?.movePlayerToNitroPlayerView(this)
     super.onAttachedToWindow()
   }

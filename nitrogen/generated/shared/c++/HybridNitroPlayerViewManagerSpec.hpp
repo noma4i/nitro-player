@@ -59,6 +59,8 @@ namespace margelo::nitro::video {
       // Properties
       virtual std::optional<std::shared_ptr<HybridNitroPlayerSpec>> getPlayer() = 0;
       virtual void setPlayer(const std::optional<std::shared_ptr<HybridNitroPlayerSpec>>& player) = 0;
+      virtual bool getIsAttached() = 0;
+      virtual void setIsAttached(bool isAttached) = 0;
       virtual bool getControls() = 0;
       virtual void setControls(bool controls) = 0;
       virtual ResizeMode getResizeMode() = 0;
@@ -72,6 +74,8 @@ namespace margelo::nitro::video {
       // Methods
       virtual void enterFullscreen() = 0;
       virtual void exitFullscreen() = 0;
+      virtual ListenerSubscription addOnAttachedListener(const std::function<void()>& listener) = 0;
+      virtual ListenerSubscription addOnDetachedListener(const std::function<void()>& listener) = 0;
       virtual ListenerSubscription addOnFullscreenChangeListener(const std::function<void(bool /* fullscreen */)>& listener) = 0;
       virtual ListenerSubscription addWillEnterFullscreenListener(const std::function<void()>& listener) = 0;
       virtual ListenerSubscription addWillExitFullscreenListener(const std::function<void()>& listener) = 0;

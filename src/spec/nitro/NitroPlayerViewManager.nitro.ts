@@ -9,12 +9,17 @@ export type SurfaceType = 'surface' | 'texture';
 export interface NitroPlayerViewManager
   extends HybridObject<{ ios: 'swift'; android: 'kotlin' }> {
   player?: NitroPlayer;
+  isAttached: boolean;
   controls: boolean;
   resizeMode: ResizeMode;
   enterFullscreen(): void;
   exitFullscreen(): void;
   keepScreenAwake: boolean;
   surfaceType: SurfaceType;
+
+  addOnAttachedListener(listener: () => void): ListenerSubscription;
+
+  addOnDetachedListener(listener: () => void): ListenerSubscription;
 
   addOnFullscreenChangeListener(
     listener: (fullscreen: boolean) => void

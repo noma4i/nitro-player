@@ -82,6 +82,12 @@ namespace margelo::nitro::video {
     inline void setPlayer(const std::optional<std::shared_ptr<HybridNitroPlayerSpec>>& player) noexcept override {
       _swiftPart.setPlayer(player);
     }
+    inline bool getIsAttached() noexcept override {
+      return _swiftPart.isAttached();
+    }
+    inline void setIsAttached(bool isAttached) noexcept override {
+      _swiftPart.setIsAttached(std::forward<decltype(isAttached)>(isAttached));
+    }
     inline bool getControls() noexcept override {
       return _swiftPart.getControls();
     }
@@ -122,6 +128,22 @@ namespace margelo::nitro::video {
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
+    }
+    inline ListenerSubscription addOnAttachedListener(const std::function<void()>& listener) override {
+      auto __result = _swiftPart.addOnAttachedListener(listener);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline ListenerSubscription addOnDetachedListener(const std::function<void()>& listener) override {
+      auto __result = _swiftPart.addOnDetachedListener(listener);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
     }
     inline ListenerSubscription addOnFullscreenChangeListener(const std::function<void(bool /* fullscreen */)>& listener) override {
       auto __result = _swiftPart.addOnFullscreenChangeListener(listener);

@@ -13,11 +13,12 @@ import UIKit
 @objc public class NitroPlayerComponentView: UIView {
   public weak var player: HybridNitroPlayerSpec? = nil {
     didSet {
-      guard let player = player as? HybridNitroPlayer else { return }
-      configureAVPlayerViewController(with: player.player)
-      if superview != nil, window != nil {
-        player.notifyViewAttached()
+      guard let player = player as? HybridNitroPlayer else {
+        refreshAttachmentStateIfNeeded()
+        return
       }
+      configureAVPlayerViewController(with: player.player)
+      refreshAttachmentStateIfNeeded()
     }
   }
 
@@ -25,6 +26,7 @@ import UIKit
   private var playerView: UIView? = nil
   private var pendingPlayer: AVPlayer? = nil
   private var configurationGeneration: UInt = 0
+  private var hasReportedAttached = false
 
   private var observer: NitroPlayerComponentViewObserver? {
     didSet {
@@ -128,6 +130,27 @@ import UIKit
     return findViewController() != nil
   }
 
+  var isEffectivelyAttached: Bool {
+    return player != nil && superview != nil && window != nil
+  }
+
+  private func refreshAttachmentStateIfNeeded() {
+    let nextAttached = isEffectivelyAttached
+    guard nextAttached != hasReportedAttached else {
+      return
+    }
+
+    hasReportedAttached = nextAttached
+
+    if nextAttached {
+      (player as? HybridNitroPlayer)?.notifyViewAttached()
+      delegate?.onAttached()
+    } else {
+      (player as? HybridNitroPlayer)?.notifyViewDetached()
+      delegate?.onDetached()
+    }
+  }
+
   private func detachPlayerViewController() {
     guard let playerViewController else {
       return
@@ -223,7 +246,6 @@ import UIKit
     super.willMove(toSuperview: newSuperview)
 
     if newSuperview == nil {
-      (player as? HybridNitroPlayer)?.notifyViewDetached()
       invalidatePendingConfiguration()
       pendingPlayer = nil
       detachPlayerViewController()
@@ -237,23 +259,21 @@ import UIKit
         keepScreenAwake = true
       }
     }
+
+    refreshAttachmentStateIfNeeded()
   }
 
   public override func didMoveToSuperview() {
     super.didMoveToSuperview()
 
-    if superview != nil {
-      (player as? HybridNitroPlayer)?.notifyViewAttached()
-    }
+    refreshAttachmentStateIfNeeded()
     flushPendingPlayerConfigurationIfNeeded()
   }
 
   public override func didMoveToWindow() {
     super.didMoveToWindow()
 
-    if window != nil {
-      (player as? HybridNitroPlayer)?.notifyViewAttached()
-    }
+    refreshAttachmentStateIfNeeded()
     flushPendingPlayerConfigurationIfNeeded()
   }
 

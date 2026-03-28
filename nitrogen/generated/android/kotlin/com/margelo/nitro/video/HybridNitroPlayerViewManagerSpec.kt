@@ -35,6 +35,12 @@ abstract class HybridNitroPlayerViewManagerSpec: HybridObject() {
   @get:Keep
   @set:DoNotStrip
   @set:Keep
+  abstract var isAttached: Boolean
+  
+  @get:DoNotStrip
+  @get:Keep
+  @set:DoNotStrip
+  @set:Keep
   abstract var controls: Boolean
   
   @get:DoNotStrip
@@ -63,6 +69,24 @@ abstract class HybridNitroPlayerViewManagerSpec: HybridObject() {
   @DoNotStrip
   @Keep
   abstract fun exitFullscreen(): Unit
+  
+  abstract fun addOnAttachedListener(listener: () -> Unit): ListenerSubscription
+  
+  @DoNotStrip
+  @Keep
+  private fun addOnAttachedListener_cxx(listener: Func_void): ListenerSubscription {
+    val __result = addOnAttachedListener(listener)
+    return __result
+  }
+  
+  abstract fun addOnDetachedListener(listener: () -> Unit): ListenerSubscription
+  
+  @DoNotStrip
+  @Keep
+  private fun addOnDetachedListener_cxx(listener: Func_void): ListenerSubscription {
+    val __result = addOnDetachedListener(listener)
+    return __result
+  }
   
   abstract fun addOnFullscreenChangeListener(listener: (fullscreen: Boolean) -> Unit): ListenerSubscription
   

@@ -70,6 +70,15 @@ namespace margelo::nitro::video {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JHybridNitroPlayerSpec::JavaPart> /* player */)>("setPlayer");
     method(_javaPart, player.has_value() ? std::dynamic_pointer_cast<JHybridNitroPlayerSpec>(player.value())->getJavaPart() : nullptr);
   }
+  bool JHybridNitroPlayerViewManagerSpec::getIsAttached() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("isAttached");
+    auto __result = method(_javaPart);
+    return static_cast<bool>(__result);
+  }
+  void JHybridNitroPlayerViewManagerSpec::setIsAttached(bool isAttached) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jboolean /* isAttached */)>("setAttached");
+    method(_javaPart, isAttached);
+  }
   bool JHybridNitroPlayerViewManagerSpec::getControls() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("getControls");
     auto __result = method(_javaPart);
@@ -115,6 +124,16 @@ namespace margelo::nitro::video {
   void JHybridNitroPlayerViewManagerSpec::exitFullscreen() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void()>("exitFullscreen");
     method(_javaPart);
+  }
+  ListenerSubscription JHybridNitroPlayerViewManagerSpec::addOnAttachedListener(const std::function<void()>& listener) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void::javaobject> /* listener */)>("addOnAttachedListener_cxx");
+    auto __result = method(_javaPart, JFunc_void_cxx::fromCpp(listener));
+    return __result->toCpp();
+  }
+  ListenerSubscription JHybridNitroPlayerViewManagerSpec::addOnDetachedListener(const std::function<void()>& listener) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void::javaobject> /* listener */)>("addOnDetachedListener_cxx");
+    auto __result = method(_javaPart, JFunc_void_cxx::fromCpp(listener));
+    return __result->toCpp();
   }
   ListenerSubscription JHybridNitroPlayerViewManagerSpec::addOnFullscreenChangeListener(const std::function<void(bool /* fullscreen */)>& listener) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_bool::javaobject> /* listener */)>("addOnFullscreenChangeListener_cxx");

@@ -77,6 +77,15 @@ class HybridNitroPlayerViewManager: HybridNitroPlayerViewManagerSpec {
     }
   }
 
+  var isAttached: Bool {
+    guard let view else {
+      vmLogger.warning("\(self.DEALOCATED_WARNING)")
+      return false
+    }
+
+    return view.isEffectivelyAttached
+  }
+
   var controls: Bool {
     get {
       guard let view else {
@@ -159,6 +168,14 @@ class HybridNitroPlayerViewManager: HybridNitroPlayerViewManagerSpec {
     addListener(eventName: "onFullscreenChange", listener: listener)
   }
 
+  func addOnAttachedListener(listener: @escaping () -> Void) throws -> ListenerSubscription {
+    addListener(eventName: "onAttached", listener: listener)
+  }
+
+  func addOnDetachedListener(listener: @escaping () -> Void) throws -> ListenerSubscription {
+    addListener(eventName: "onDetached", listener: listener)
+  }
+
   func addWillEnterFullscreenListener(listener: @escaping () -> Void) throws -> ListenerSubscription {
     addListener(eventName: "willEnterFullscreen", listener: listener)
   }
@@ -175,6 +192,14 @@ class HybridNitroPlayerViewManager: HybridNitroPlayerViewManagerSpec {
 
   func onFullscreenChange(_ isActive: Bool) {
     emitEvent(eventName: "onFullscreenChange") { (callback: (Bool) throws -> Void) in try callback(isActive) }
+  }
+
+  func onAttached() {
+    emitEvent(eventName: "onAttached") { (callback: () throws -> Void) in try callback() }
+  }
+
+  func onDetached() {
+    emitEvent(eventName: "onDetached") { (callback: () throws -> Void) in try callback() }
   }
 
   func willEnterFullscreen() {
