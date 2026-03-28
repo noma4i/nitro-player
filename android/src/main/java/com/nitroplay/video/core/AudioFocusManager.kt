@@ -20,6 +20,7 @@ class AudioFocusManager() {
   private var currentMixAudioMode: MixAudioMode? = null
   private var audioFocusRequest: AudioFocusRequest? = null
   private val preDuckVolumes = mutableMapOf<HybridNitroPlayer, Float>()
+  private var isDucking = false
 
   val appContext by lazy {
     NitroModules.applicationContext ?: throw UnknownError()
@@ -67,6 +68,7 @@ class AudioFocusManager() {
 
   fun unregisterPlayer(player: HybridNitroPlayer) {
     players.remove(player)
+    preDuckVolumes.remove(player)
     if (players.isEmpty()) {
       abandonAudioFocus()
     } else {
@@ -209,6 +211,7 @@ class AudioFocusManager() {
 
   private fun duckActivePlayers() {
     Threading.runOnMainThread {
+      isDucking = true
       players.forEach { player ->
         player.player.let { mediaPlayer ->
           if (!preDuckVolumes.containsKey(player)) {
@@ -217,11 +220,13 @@ class AudioFocusManager() {
           mediaPlayer.volume = mediaPlayer.volume * 0.5f
         }
       }
+      isDucking = false
     }
   }
 
   private fun unDuckActivePlayers() {
     Threading.runOnMainThread {
+      isDucking = true
       players.forEach { player ->
         player.player.let { mediaPlayer ->
           val originalVolume = preDuckVolumes.remove(player)
@@ -230,7 +235,10 @@ class AudioFocusManager() {
           }
         }
       }
+      isDucking = false
     }
   }
+
+  fun isDucking(): Boolean = isDucking
 }
 

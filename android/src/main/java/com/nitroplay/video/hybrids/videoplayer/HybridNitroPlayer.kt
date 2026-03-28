@@ -145,18 +145,22 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override var muted: Boolean by mainThreadProperty(
     get = { cachedMuted },
     set = { value ->
-      cachedMuted = value
       if (!isReleased) {
         if (value) {
-          userVolume = volume
+          if (!cachedMuted) {
+            userVolume = volume
+          }
           player.volume = 0f
         } else {
           player.volume = userVolume.toFloat()
         }
+        cachedMuted = value
         eventEmitter.onVolumeChange(onVolumeChangeData(
           volume = player.volume.toDouble(),
-          muted = muted
+          muted = cachedMuted
         ))
+      } else {
+        cachedMuted = value
       }
     }
   )
@@ -230,6 +234,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   private fun initializePlayer() {
+    if (isReleased) return
     cancelPendingTrim()
 
     if (NitroModules.applicationContext == null) {
@@ -288,7 +293,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override fun initialize(): Promise<Unit> {
     return Promise.async {
       runOnMainThreadSync {
-        if (isReleased) return@runOnMainThreadSync
+        if (isReleased || loadedWithSource) return@runOnMainThreadSync
         initializePlayer()
         player.prepare()
       }
@@ -324,6 +329,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   override fun play() {
     runOnMainThread {
+      if (isReleased) return@runOnMainThread
       cancelPendingTrim()
 
       if (!loadedWithSource) {
@@ -357,11 +363,13 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   override fun seekBy(time: Double) {
-    currentTime = (currentTime + time).coerceIn(0.0, duration)
+    val safeDuration = if (duration.isNaN()) Double.MAX_VALUE else duration
+    currentTime = (currentTime + time).coerceIn(0.0, safeDuration)
   }
 
   override fun seekTo(time: Double) {
-    currentTime = time.coerceIn(0.0, duration)
+    val safeDuration = if (duration.isNaN()) Double.MAX_VALUE else duration
+    currentTime = time.coerceIn(0.0, safeDuration)
   }
 
   override fun replaceSourceAsync(source: Variant_NullType_HybridNitroPlayerSourceSpec?): Promise<Unit> {
@@ -767,10 +775,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
               orientation = NitroPlayerOrientationUtils.fromWHR(width, height, rotationDegrees)
             )
           )
-          // If player becomes ready and is set to play, start progress updates
-          if (player.playWhenReady) {
-            startProgressUpdates()
-          }
+          // Progress updates are started in onIsPlayingChanged(true)
         }
         Player.STATE_ENDED -> {
           isCurrentlyBuffering = false
@@ -830,9 +835,9 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     }
 
     override fun onVolumeChanged(volume: Float) {
-      // We get here device volume changes, and if
-      // player is not muted we will sync it
-      if (!muted) {
+      // Sync userVolume only for real user/system changes,
+      // not transient duck/unduck volume adjustments
+      if (!muted && !NitroPlayerManager.audioFocusManager.isDucking()) {
         this@HybridNitroPlayer.volume = volume.toDouble()
       }
 

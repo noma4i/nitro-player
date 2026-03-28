@@ -115,7 +115,7 @@ class NitroPlayerObserver: NSObject {
     playerProgressPeriodicObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] _ in
       guard let self, let player = self.player, let delegate = self.delegate else { return }
       
-      delegate.onProgressUpdate(currentTime: player.currentTime().seconds, bufferDuration: player.currentItem?.getbufferDuration() ?? 0)
+      delegate.onProgressUpdate(currentTime: player.currentTime().seconds, bufferDuration: player.currentItem?.getBufferDuration() ?? 0)
     }
   }
   

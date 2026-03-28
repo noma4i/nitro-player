@@ -129,7 +129,9 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     set {
       guard !isReleased else { return }
       if newValue {
-        userVolume = player.volume
+        if !player.isMuted {
+          userVolume = player.volume
+        }
         player.volume = 0
       } else {
         player.volume = userVolume
@@ -177,7 +179,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   var bufferDuration: Double {
-    player.currentItem?.getbufferDuration() ?? 0
+    player.currentItem?.getBufferDuration() ?? 0
   }
 
   var bufferedPosition: Double {
@@ -458,10 +460,10 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     let currentItemTime = currentItem.currentTime()
 
     // Duration is NaN for live streams
-    let fixedDurration = duration.isNaN ? Double.infinity : duration
+    let fixedDuration = duration.isNaN ? Double.infinity : duration
 
     // Clap by <0, duration>
-    let newTime = max(0, min(currentItemTime.seconds + time, fixedDurration))
+    let newTime = max(0, min(currentItemTime.seconds + time, fixedDuration))
 
     currentTime = newTime
   }

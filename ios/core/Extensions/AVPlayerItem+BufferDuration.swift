@@ -11,7 +11,7 @@ import AVFoundation
 extension AVPlayerItem {
   
   // Duration that can be played using only the buffer (seconds)
-  func getbufferDuration() -> Double {
+  func getBufferDuration() -> Double {
     var effectiveTimeRange: CMTimeRange?
     
     for value in loadedTimeRanges {

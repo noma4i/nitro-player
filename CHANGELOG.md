@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.2
+
+### Fixed
+
+- Android: fix crash when `play()` called after `release()` (missing `isReleased` guard)
+- Android: fix `IllegalArgumentException` in `seekBy`/`seekTo` when duration is NaN
+- iOS + Android: fix double-mute losing user volume (repeated `muted = true` no longer overwrites saved volume)
+- Android: fix double initialization when `initializeOnCreation` is true and `initialize()` called manually
+- Android: fix audio focus duck corrupting `userVolume` via `onVolumeChanged` sync
+- Android: fix `preDuckVolumes` leak on player unregister during duck
+- TS: fix unbounded growth of `prefetchTimestamps` map in `hlsCacheProxy`
+- TS: fix `hlsCacheProxy.start()` leaving `didAutoStart = true` on native error
+- iOS: rename `getbufferDuration` to `getBufferDuration` (Swift naming convention)
+
 ## 0.3.1
 
 ### Fixed

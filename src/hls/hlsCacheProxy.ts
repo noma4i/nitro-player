@@ -66,8 +66,14 @@ class HlsCacheProxy {
     this.isExplicitlyStopped = false;
     const resolvedPort = typeof port === 'number' ? port : this.defaultPort;
     this.defaultPort = resolvedPort;
-    this.didAutoStart = true;
-    NativeProxy.start(resolvedPort);
+
+    try {
+      NativeProxy.start(resolvedPort);
+      this.didAutoStart = true;
+    } catch (error) {
+      this.didAutoStart = false;
+      console.warn('[HlsCacheProxy] Failed to start proxy', error);
+    }
   }
 
   stop(): void {
@@ -97,6 +103,7 @@ class HlsCacheProxy {
       return;
     }
     this.prefetchTimestamps.set(url, Date.now());
+    this.evictStalePrefetchEntries();
     try {
       await NativeProxy.prefetchFirstSegment(url, headers);
     } catch (error) {
@@ -139,6 +146,17 @@ class HlsCacheProxy {
     } catch {
       console.warn('[HlsCacheProxy] clearCache failed');
       return false;
+    }
+  }
+  private evictStalePrefetchEntries(): void {
+    if (this.prefetchTimestamps.size <= 500) {
+      return;
+    }
+    const now = Date.now();
+    for (const [key, ts] of this.prefetchTimestamps) {
+      if (now - ts > this.prefetchDedupMs) {
+        this.prefetchTimestamps.delete(key);
+      }
     }
   }
 }
