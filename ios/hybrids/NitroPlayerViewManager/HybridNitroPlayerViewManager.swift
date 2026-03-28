@@ -78,12 +78,17 @@ class HybridNitroPlayerViewManager: HybridNitroPlayerViewManagerSpec {
   }
 
   var isAttached: Bool {
-    guard let view else {
-      vmLogger.warning("\(self.DEALOCATED_WARNING)")
-      return false
-    }
+    get {
+      guard let view else {
+        vmLogger.warning("\(self.DEALOCATED_WARNING)")
+        return false
+      }
 
-    return view.isEffectivelyAttached
+      return view.isEffectivelyAttached
+    }
+    set {
+      // Read-only semantic in consumer code; setter exists only to satisfy the generated HybridObject protocol.
+    }
   }
 
   var controls: Bool {

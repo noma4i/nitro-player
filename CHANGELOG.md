@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+### Fixed
+
+- iOS: fix `HybridNitroPlayerViewManager` conformance to the generated `HybridNitroPlayerViewManagerSpec_protocol` by implementing the required `isAttached` setter, unblocking consumer iOS builds on the published attach-first release
+
 ## 0.3.0
 
 ### Breaking
