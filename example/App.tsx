@@ -60,7 +60,12 @@ function App() {
     setIsAttached(instance?.isAttached ?? false);
   }, []);
 
-  const playbackState = usePlaybackState(player, { interpolate: true });
+  const handleAttached = useCallback(() => {
+    setIsAttached(true);
+    videoRef.current?.player.initialize().catch(() => {});
+  }, []);
+
+  const playbackState = usePlaybackState(player);
   const status = playbackState?.status ?? 'idle';
   const isPlaying = status === 'playing';
   const isPaused = status === 'paused';
@@ -128,7 +133,7 @@ function App() {
               ref={handleVideoRef}
               source={selectedSource.source}
               playerDefaults={playerDefaults}
-              onAttached={useCallback(() => setIsAttached(true), [])}
+              onAttached={handleAttached}
               onDetached={useCallback(() => setIsAttached(false), [])}
               onFullscreenChange={useCallback((fs: boolean) => setIsFullscreen(fs), [])}
               resizeMode="contain"

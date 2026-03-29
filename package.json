@@ -1,6 +1,6 @@
 {
   "name": "@noma4i/nitro-play",
-  "version": "1.0.0-beta.4",
+  "version": "1.0.0-beta.5",
   "description": "Lightweight video player for React Native",
   "author": "Alexander Tsirel",
   "license": "MIT",

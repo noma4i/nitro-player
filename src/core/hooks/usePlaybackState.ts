@@ -3,11 +3,6 @@ import { NitroPlayer } from '../NitroPlayer';
 import type { PlaybackState } from '../types/PlaybackState';
 import { NitroPlayerRuntimeError } from '../types/NitroPlayerError';
 
-type UsePlaybackStateOptions = {
-  interpolate?: boolean;
-  fps?: number;
-};
-
 const getPlaybackStateSafe = (player: NitroPlayer | null | undefined) => {
   if (!player) {
     return null;
@@ -24,8 +19,7 @@ const getPlaybackStateSafe = (player: NitroPlayer | null | undefined) => {
   }
 };
 
-export const usePlaybackState = (player: NitroPlayer | null | undefined, options: UsePlaybackStateOptions = {}) => {
-  void options;
+export const usePlaybackState = (player: NitroPlayer | null | undefined) => {
   const [state, setState] = useState<PlaybackState | null>(() => getPlaybackStateSafe(player));
 
   useEffect(() => {

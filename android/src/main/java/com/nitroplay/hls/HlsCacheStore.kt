@@ -66,11 +66,11 @@ class HlsCacheStore(context: Context) {
 
     fun put(url: String, data: ByteArray, streamKey: String?) {
         if (!cacheDir.exists()) cacheDir.mkdirs()
+        evictIfNeeded()
         val name = sha256(url) + ".seg"
         val file = File(cacheDir, name)
         file.writeBytes(data)
         index[url] = HlsCacheEntry(url, name, data.size.toLong(), streamKey, System.currentTimeMillis(), System.currentTimeMillis())
-        evictIfNeeded()
         scheduleSave()
     }
 

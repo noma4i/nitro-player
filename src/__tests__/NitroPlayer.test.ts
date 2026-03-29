@@ -18,8 +18,7 @@ jest.mock('react-native-nitro-modules', () => ({
 }));
 
 jest.mock('../core/utils/sourceFactory', () => ({
-  createNitroSource: jest.fn(() => ({ id: 'source' })),
-  createSource: jest.fn(() => ({ id: 'source' }))
+  createNitroSource: jest.fn(() => ({ id: 'source' }))
 }));
 
 jest.mock('../core/utils/playerFactory', () => ({

@@ -5,24 +5,36 @@ jest.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
 jest.mock('react-native-nitro-modules', () => ({
   NitroModules: {
     createHybridObject: jest.fn(() => ({
-      createPlayer: nativeCreatePlayer,
-    })),
-  },
+      createPlayer: nativeCreatePlayer
+    }))
+  }
 }));
 
 jest.mock('../core/utils/sourceFactory', () => ({
-  createSource: jest.fn((s: unknown) => ({ uri: s })),
-  isNitroPlayerSource: jest.fn((s: unknown) => s != null && typeof s === 'object' && 'uri' in (s as Record<string, unknown>) && 'name' in (s as Record<string, unknown>) && (s as Record<string, unknown>).name === 'NitroPlayerSource'),
+  createNitroSource: jest.fn((s: unknown) => ({ uri: s })),
+  isNitroPlayerSource: jest.fn(
+    (s: unknown) =>
+      s != null &&
+      typeof s === 'object' &&
+      'uri' in (s as Record<string, unknown>) &&
+      'name' in (s as Record<string, unknown>) &&
+      (s as Record<string, unknown>).name === 'NitroPlayerSource'
+  )
 }));
 
 describe('playerFactory', () => {
   beforeEach(() => {
     nativeCreatePlayer.mockImplementation((source: unknown) => ({ source }));
 
-    const { createSource, isNitroPlayerSource } = require('../core/utils/sourceFactory');
-    (createSource as jest.Mock).mockImplementation((s: unknown) => ({ uri: s }));
+    const { createNitroSource, isNitroPlayerSource } = require('../core/utils/sourceFactory');
+    (createNitroSource as jest.Mock).mockImplementation((s: unknown) => ({ uri: s }));
     (isNitroPlayerSource as jest.Mock).mockImplementation(
-      (s: unknown) => s != null && typeof s === 'object' && 'uri' in (s as Record<string, unknown>) && 'name' in (s as Record<string, unknown>) && (s as Record<string, unknown>).name === 'NitroPlayerSource'
+      (s: unknown) =>
+        s != null &&
+        typeof s === 'object' &&
+        'uri' in (s as Record<string, unknown>) &&
+        'name' in (s as Record<string, unknown>) &&
+        (s as Record<string, unknown>).name === 'NitroPlayerSource'
     );
   });
 
@@ -47,12 +59,12 @@ describe('playerFactory', () => {
 
   it('createPlayer passes NitroPlayerSource directly if isNitroPlayerSource is true', () => {
     const { createPlayer } = require('../core/utils/playerFactory');
-    const { createSource } = require('../core/utils/sourceFactory');
+    const { createNitroSource } = require('../core/utils/sourceFactory');
 
     const nitroSource = { name: 'NitroPlayerSource', uri: 'https://cdn.example.com/video.mp4' };
     createPlayer(nitroSource);
 
-    expect(createSource).not.toHaveBeenCalled();
+    expect(createNitroSource).not.toHaveBeenCalled();
     expect(nativeCreatePlayer).toHaveBeenCalledWith(nitroSource);
   });
 });

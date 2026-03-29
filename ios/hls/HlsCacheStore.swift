@@ -51,6 +51,7 @@ final class HlsCacheStore {
   func put(url: String, data: Data, streamKey: String?) {
     queue.async {
       self.ensureDir()
+      self.evictIfNeeded()
       let name = self.sha256(url) + ".seg"
       let fileUrl = self.cacheDir.appendingPathComponent(name)
       do {
@@ -64,7 +65,6 @@ final class HlsCacheStore {
           lastAccess: Date().timeIntervalSince1970
         )
         self.index[url] = entry
-        self.evictIfNeeded()
         self.scheduleSave()
       } catch {
         cacheLogger.error("Failed to write cache entry for \(url): \(error.localizedDescription)")

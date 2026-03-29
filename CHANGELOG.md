@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0-beta.5
+
+### Fixed
+
+- iOS + Android: evict cache before writing new segment to prevent exceeding cache limit
+- TS: removed dead `UsePlaybackStateOptions` type and unused `createSource` alias
+- TS: cleaned up formatting in `playerFactory` and `sourceFactory`
+- Example app: added `player.initialize()` on attach to fix first-press play not starting playback with `feed` lifecycle
+- Example app: added `ios:tunnel` script for iOS USB device development via iproxy
+
+### Changed
+
+- Example app uses `handleAttached` callback for explicit player initialization instead of relying on implicit async init in `play()`
+
 ## 1.0.0-beta.4
 
 ### Changed

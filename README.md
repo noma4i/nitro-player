@@ -2,11 +2,11 @@
 
 Lightweight native-first video player and HLS cache proxy for React Native.
 
-Current prerelease: `1.0.0-beta.4`
+Current prerelease: `1.0.0-beta.5`
 
 ## Installation
 
-Install from GitHub tag `v1.0.0-beta.4`.
+Install from GitHub tag `v1.0.0-beta.5`.
 
 Peer dependency: `react-native-nitro-modules >= 0.35.0`
 

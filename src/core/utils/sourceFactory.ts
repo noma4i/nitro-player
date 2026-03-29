@@ -46,9 +46,7 @@ const createSourceFromConfig = (config: NitroSourceConfig) => {
   }
 };
 
-export const createNitroSource = (
-  source: NitroSourceConfig | NitroPlayerSource
-): NitroPlayerSource => {
+export const createNitroSource = (source: NitroSourceConfig | NitroPlayerSource): NitroPlayerSource => {
   if (isNitroPlayerSource(source)) {
     return source;
   }
@@ -59,5 +57,3 @@ export const createNitroSource = (
 
   throw new NitroPlayerRuntimeError('player/invalid-source', 'Invalid source');
 };
-
-export const createSource = createNitroSource;

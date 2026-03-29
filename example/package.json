@@ -10,6 +10,7 @@
     "android:emulator": "$ANDROID_HOME/emulator/emulator -avd Pixel_4a -no-snapshot-load & sleep 20 && react-native run-android",
     "ios": "react-native run-ios",
     "ios:build": "xcodebuild -workspace ios/NitroPlayExample.xcworkspace -scheme NitroPlayExample -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.5' build",
+    "ios:tunnel": "iproxy 8081 8081",
     "ios:device": "react-native run-ios --device",
     "lint": "eslint .",
     "metro:start": "watchman watch-del-all && react-native start --reset-cache",
