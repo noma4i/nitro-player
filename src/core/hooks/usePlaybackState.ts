@@ -58,6 +58,7 @@ export const usePlaybackState = (player: NitroPlayer | null | undefined, options
   const [state, setState] = useState<PlaybackState | null>(() => getPlaybackStateSafe(player));
   const nativeStateRef = useRef<PlaybackState | null>(state);
   const lastEmittedTimeRef = useRef<number>(0);
+  const shouldAnimate = interpolate && state !== null && shouldInterpolate(state);
 
   useEffect(() => {
     if (!player) {
@@ -79,9 +80,7 @@ export const usePlaybackState = (player: NitroPlayer | null | undefined, options
     const subscription = player.addEventListener('onPlaybackState', next => {
       nativeStateRef.current = next;
       lastEmittedTimeRef.current = next.currentTime;
-      if (!interpolate) {
-        setState(next);
-      }
+      setState(next);
     });
 
     return () => {
@@ -90,44 +89,49 @@ export const usePlaybackState = (player: NitroPlayer | null | undefined, options
   }, [player, interpolate]);
 
   useEffect(() => {
-    if (!interpolate || !player) {
+    if (!player || !shouldAnimate) {
       return;
     }
 
     let frameId = 0;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const frameDurationMs = Math.max(1, Math.round(1000 / fps));
+    let running = true;
+    const minFrameDurationMs = Math.max(1, Math.round(1000 / fps));
+    let lastTickTimestampMs = 0;
 
     const tick = () => {
-      const native = nativeStateRef.current;
-      if (native && shouldInterpolate(native)) {
-        const interpolated = interpolatePlaybackState(native, nowMs());
-        const monotonicTime = Math.max(lastEmittedTimeRef.current, interpolated.currentTime);
-        if (monotonicTime - lastEmittedTimeRef.current >= 0.05) {
-          lastEmittedTimeRef.current = monotonicTime;
-          setState({ ...interpolated, currentTime: monotonicTime });
-        }
-      } else {
-        if (native) {
-          lastEmittedTimeRef.current = native.currentTime;
-        }
-        setState(native ?? null);
+      if (!running) {
+        return;
       }
 
-      timeoutId = setTimeout(() => {
+      const native = nativeStateRef.current;
+      if (native && shouldInterpolate(native)) {
+        const currentTimestampMs = nowMs();
+        if (currentTimestampMs - lastTickTimestampMs >= minFrameDurationMs) {
+          lastTickTimestampMs = currentTimestampMs;
+          const interpolated = interpolatePlaybackState(native, currentTimestampMs);
+          const monotonicTime = Math.max(lastEmittedTimeRef.current, interpolated.currentTime);
+          if (monotonicTime - lastEmittedTimeRef.current >= 0.05) {
+            lastEmittedTimeRef.current = monotonicTime;
+            setState({ ...interpolated, currentTime: monotonicTime });
+          }
+        }
+
         frameId = requestAnimationFrame(tick);
-      }, frameDurationMs);
+        return;
+      }
+
+      if (native) {
+        lastEmittedTimeRef.current = native.currentTime;
+      }
     };
 
     frameId = requestAnimationFrame(tick);
 
     return () => {
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId);
-      }
+      running = false;
       cancelAnimationFrame(frameId);
     };
-  }, [fps, interpolate, player]);
+  }, [fps, player, shouldAnimate]);
 
   return state;
 };

@@ -55,6 +55,7 @@ const setupSubject = (initiallyAttached = false) => {
   const mockPlayer = {
     __getNativePlayer: jest.fn(() => ({ name: 'native-player' }))
   };
+  const useNitroPlayer = jest.fn(() => mockPlayer);
 
   jest.doMock('react-native-nitro-modules', () => ({
     NitroModules: {
@@ -65,7 +66,7 @@ const setupSubject = (initiallyAttached = false) => {
   }));
 
   jest.doMock('../core/hooks/useNitroPlayer', () => ({
-    useNitroPlayer: jest.fn(() => mockPlayer)
+    useNitroPlayer
   }));
 
   jest.doMock('../core/player-view/NativeNitroPlayerView', () => {
@@ -95,7 +96,8 @@ const setupSubject = (initiallyAttached = false) => {
     act: React.act,
     renderNode: (node: unknown) => root.render(node),
     NitroPlayerView,
-    listeners
+    listeners,
+    useNitroPlayer
   };
 };
 
@@ -180,5 +182,25 @@ describe('NitroPlayerView attach contract', () => {
 
     attachedSubscription?.remove();
     detachedSubscription?.remove();
+  });
+
+  it('creates NitroPlayerView players with balanced default memory profile', () => {
+    const { React, act, renderNode, NitroPlayerView, useNitroPlayer } = setupSubject(false);
+
+    act(() => {
+      renderNode(
+        React.createElement(NitroPlayerView, {
+          source: { uri: 'https://cdn.example.com/video.mp4' }
+        })
+      );
+    });
+
+    expect(useNitroPlayer).toHaveBeenCalledWith(
+      { uri: 'https://cdn.example.com/video.mp4' },
+      undefined,
+      expect.objectContaining({
+        defaultMemoryProfile: 'balanced'
+      })
+    );
   });
 });

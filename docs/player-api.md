@@ -35,6 +35,7 @@ Access player commands via `ref.current.player`. Treat attach readiness as `ref.
 |-------|----------|
 | `'auto'` | Default system behavior |
 | `'mixWithOthers'` | Mix with other audio sources |
+| `'doNotMix'` | Request exclusive audio focus |
 | `'duckOthers'` | Lower other audio volume |
 
 ### IgnoreSilentSwitchMode (iOS only)
@@ -43,6 +44,7 @@ Access player commands via `ref.current.player`. Treat attach readiness as `ref.
 |-------|----------|
 | `'auto'` | Respect silent switch |
 | `'ignore'` | Play audio even in silent mode |
+| `'obey'` | Always obey the silent switch |
 
 ## Methods
 
@@ -55,7 +57,7 @@ Access player commands via `ref.current.player`. Treat attach readiness as `ref.
 | `initialize()` | `Promise<void>` | Manual initialization |
 | `preload()` | `Promise<void>` | Preload without playing |
 | `release()` | `void` | Release native resources |
-| `replaceSourceAsync(source)` | `Promise<void>` | Replace source (null to clear) |
+| `replaceSourceAsync(source)` | `Promise<void>` | Replace source (`null` clears current source but keeps the player reusable) |
 
 ## Events
 

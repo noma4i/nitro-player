@@ -104,6 +104,13 @@ class HlsCacheStore(context: Context) {
         saveIndex()
     }
 
+    fun close() {
+        pendingSave?.cancel(false)
+        pendingSave = null
+        saveIndex()
+        saveExecutor.shutdownNow()
+    }
+
     private fun evictIfNeeded() {
         evictExpired()
         var total = index.values.sumOf { it.size }

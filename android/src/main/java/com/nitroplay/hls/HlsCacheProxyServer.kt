@@ -23,6 +23,7 @@ class HlsCacheProxyServer(
     override fun stop() {
         super.stop()
         executor.shutdownNow()
+        cacheStore.close()
     }
 
     override fun serve(session: IHTTPSession): Response {

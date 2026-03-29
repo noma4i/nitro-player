@@ -7,6 +7,38 @@ import { tryParseNativeNitroPlayerError, NitroPlayerRuntimeError } from '../type
 import { hlsCacheProxy } from '../../hls/hlsCacheProxy';
 
 const NitroPlayerSourceFactory = NitroModules.createHybridObject<NitroPlayerSourceFactory>('NitroPlayerSourceFactory');
+const nitroSourceIds = new WeakMap<object, number>();
+let nitroSourceIdCounter = 1;
+
+const stableSerialize = (value: unknown): string => {
+  if (value === null) return 'null';
+  if (value === undefined) return 'undefined';
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, entryValue]) => entryValue !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right));
+
+    return `{${entries
+      .map(([key, entryValue]) => `${JSON.stringify(key)}:${stableSerialize(entryValue)}`)
+      .join(',')}}`;
+  }
+
+  return JSON.stringify(String(value));
+};
+
+const getNitroSourceObjectId = (source: NitroPlayerSource): number => {
+  const existingId = nitroSourceIds.get(source);
+  if (existingId !== undefined) {
+    return existingId;
+  }
+
+  const nextId = nitroSourceIdCounter++;
+  nitroSourceIds.set(source, nextId);
+  return nextId;
+};
 
 export const isNitroPlayerSource = (obj: unknown): obj is NitroPlayerSource => {
   return obj != null && typeof obj === 'object' && 'name' in obj && (obj as { name: unknown }).name === 'NitroPlayerSource';
@@ -15,10 +47,9 @@ export const isNitroPlayerSource = (obj: unknown): obj is NitroPlayerSource => {
 export const getSourceIdentityKey = (source: NitroPlayerConfig | NitroPlayerSourceType | NitroPlayerSource): string => {
   if (typeof source === 'string') return source;
   if (typeof source === 'number') return String(source);
-  if (isNitroPlayerSource(source)) return source.uri;
+  if (isNitroPlayerSource(source)) return `nitro-source:${getNitroSourceObjectId(source)}`;
   if (typeof source === 'object' && source !== null && 'uri' in source) {
-    const s = source as NitroPlayerConfig;
-    return [s.uri, s.useHlsProxy, s.memoryConfig?.profile, s.memoryConfig?.preloadLevel, s.memoryConfig?.offscreenRetention].join('|');
+    return stableSerialize(source);
   }
   return '';
 };
@@ -36,8 +67,8 @@ type ResolvedMemoryConfig = Required<Pick<MemoryConfig, 'profile' | 'preloadLeve
 const MEMORY_PROFILE_DEFAULTS: Record<MemoryProfile, ResolvedMemoryConfig> = {
   feed: {
     profile: 'feed',
-    preloadLevel: 'buffered',
-    offscreenRetention: 'hot',
+    preloadLevel: 'metadata',
+    offscreenRetention: 'metadata',
     pauseTrimDelayMs: 3000
   },
   balanced: {

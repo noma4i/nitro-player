@@ -74,7 +74,7 @@ describe('sourceFactory', () => {
     });
   });
 
-  it('uses hot buffered defaults for feed profile sources', () => {
+  it('uses metadata retention defaults for feed profile sources', () => {
     const { createSourceFromNitroPlayerConfig } = require('../core/utils/sourceFactory');
 
     createSourceFromNitroPlayerConfig(
@@ -92,8 +92,8 @@ describe('sourceFactory', () => {
       initializeOnCreation: true,
       memoryConfig: {
         profile: 'feed',
-        preloadLevel: 'buffered',
-        offscreenRetention: 'hot',
+        preloadLevel: 'metadata',
+        offscreenRetention: 'metadata',
         pauseTrimDelayMs: 3000
       }
     });
@@ -137,20 +137,41 @@ describe('sourceFactory', () => {
     expect(getSourceIdentityKey(42)).toBe('42');
   });
 
-  it('getSourceIdentityKey returns uri|useHlsProxy|profile|preloadLevel|offscreenRetention for config object', () => {
+  it('getSourceIdentityKey changes when material source config changes', () => {
     const { getSourceIdentityKey } = require('../core/utils/sourceFactory');
 
-    const key = getSourceIdentityKey({
+    const baseSource = {
       uri: 'https://cdn.example.com/live.m3u8',
       useHlsProxy: true,
+      headers: {
+        Authorization: 'Bearer one'
+      },
       memoryConfig: {
         profile: 'feed',
-        preloadLevel: 'buffered',
-        offscreenRetention: 'hot'
+        preloadLevel: 'metadata',
+        offscreenRetention: 'metadata'
+      }
+    };
+    const key = getSourceIdentityKey(baseSource);
+    const nextKey = getSourceIdentityKey({
+      ...baseSource,
+      headers: {
+        Authorization: 'Bearer two'
       }
     });
 
-    expect(key).toBe('https://cdn.example.com/live.m3u8|true|feed|buffered|hot');
+    expect(key).not.toBe(nextKey);
+    expect(key).toContain('https://cdn.example.com/live.m3u8');
+  });
+
+  it('getSourceIdentityKey uses object identity for NitroPlayerSource instances', () => {
+    const { getSourceIdentityKey } = require('../core/utils/sourceFactory');
+
+    const firstSource = { name: 'NitroPlayerSource', uri: 'https://cdn.example.com/video.mp4' };
+    const secondSource = { name: 'NitroPlayerSource', uri: 'https://cdn.example.com/video.mp4' };
+
+    expect(getSourceIdentityKey(firstSource)).not.toBe(getSourceIdentityKey(secondSource));
+    expect(getSourceIdentityKey(firstSource)).toBe(getSourceIdentityKey(firstSource));
   });
 
   it('createSource returns source directly if isNitroPlayerSource returns true', () => {

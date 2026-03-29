@@ -221,6 +221,21 @@ describe('usePlaybackState', () => {
     expect((result.current as Record<string, unknown>).currentTime).toBe(25);
   });
 
+  it('does not start a frame loop when playback is paused', () => {
+    const { usePlaybackState } = require('../core/hooks/usePlaybackState');
+    const state = makePlaybackState({
+      status: 'paused',
+      isPlaying: false,
+      isBuffering: false,
+      currentTime: 25
+    });
+    const player = makeMockPlayer(state);
+
+    renderHook(() => usePlaybackState(player, { interpolate: true, fps: 60 }));
+
+    expect(rafCallbacks.size).toBe(0);
+  });
+
   it('no interpolation when playing but buffering', () => {
     const { usePlaybackState } = require('../core/hooks/usePlaybackState');
     const state = makePlaybackState({
@@ -290,6 +305,35 @@ describe('usePlaybackState', () => {
     expect((result.current as Record<string, unknown>).status).toBe('playing');
     expect((result.current as Record<string, unknown>).isBuffering).toBe(false);
     expect((result.current as Record<string, unknown>).currentTime).toBe(0.5);
+  });
+
+  it('stops the frame loop when native playback transitions to paused', () => {
+    const { usePlaybackState } = require('../core/hooks/usePlaybackState');
+    const player = makeMockPlayer(
+      makePlaybackState({
+        status: 'playing',
+        isPlaying: true,
+        isBuffering: false,
+        currentTime: 4
+      })
+    );
+
+    const { result } = renderHook(() => usePlaybackState(player, { interpolate: true, fps: 60 }));
+
+    act(() => {
+      player._emit(
+        'onPlaybackState',
+        makePlaybackState({
+          status: 'paused',
+          isPlaying: false,
+          isBuffering: false,
+          currentTime: 4.5
+        })
+      );
+    });
+
+    expect((result.current as Record<string, unknown>).status).toBe('paused');
+    expect(rafCallbacks.size).toBe(0);
   });
 
   it('handles released player gracefully', () => {

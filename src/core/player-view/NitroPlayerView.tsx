@@ -70,7 +70,7 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
     ref
   ) => {
     const player = useNitroPlayer(source, setup, {
-      defaultMemoryProfile: 'feed'
+      defaultMemoryProfile: 'balanced'
     });
     const nitroId = React.useMemo(() => nitroIdCounter++, []);
     const nitroViewManager = React.useRef<NitroPlayerViewManager | null>(null);

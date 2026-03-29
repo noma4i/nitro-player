@@ -84,7 +84,6 @@ ref.current?.enterFullscreen();
 | `onFullscreenChange`  | `boolean`                 | Fullscreen state changed  |
 | `willEnterFullscreen` | -                         | About to enter fullscreen |
 | `willExitFullscreen`  | -                         | About to exit fullscreen  |
-| `onError`             | `NitroPlayerRuntimeError` | Error occurred            |
 
 See [Player API](docs/player-api.md) for player properties, methods, and events.
 

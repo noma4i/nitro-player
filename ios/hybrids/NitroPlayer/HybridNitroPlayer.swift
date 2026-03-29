@@ -38,6 +38,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   private var artworkTask: Task<Void, Never>?
   private var initTask: Task<Void, Never>?
   private var isReleased = false
+  private var hasActiveSource = true
   var readyToDisplay = false
   private var resumePositionSeconds: Double = 0
   private var isAttachedToVideoView = false
@@ -274,7 +275,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     }
 
     let playerBytes = player.currentItem == nil ? 0 : max(bufferDuration * 256_000, 64_000)
-    let sourceBytes = Double((source as? HybridNitroPlayerSource)?.memorySize ?? 0)
+    let sourceBytes = hasActiveSource ? Double((source as? HybridNitroPlayerSource)?.memorySize ?? 0) : 0
 
     return MemorySnapshot(
       playerBytes: playerBytes,
@@ -304,7 +305,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
 
       self.cancelPendingTrim()
 
-      if self.playerItem != nil {
+      if !self.hasActiveSource || self.playerItem != nil {
         return
       }
 
@@ -322,6 +323,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   func release() {
     if isReleased { return }
     isReleased = true
+    hasActiveSource = false
 
     cancelPendingTrim()
     sourceLoader.cancelSync()
@@ -353,6 +355,11 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   func preload() throws -> NitroModules.Promise<Void> {
     let promise = Promise<Void>()
     cancelPendingTrim()
+
+    if !hasActiveSource {
+      promise.resolve(withResult: ())
+      return promise
+    }
 
     switch resolvedPreloadLevel() {
     case .none:
@@ -403,6 +410,14 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     guard !isReleased else { return }
     cancelPendingTrim()
     NitroPlayerManager.shared.touchFeedHotCandidate(self)
+
+    guard hasActiveSource else {
+      status = .idle
+      readyToDisplay = false
+      isCurrentlyBuffering = false
+      emitPlaybackState()
+      return
+    }
 
     if player.currentItem != nil {
       player.play()
@@ -487,17 +502,17 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
      }
      */
 
-    // if source is nil, release player
+    // if source is nil, clear current source
     // if source is not NullType, set source
     guard let source else {
-      release()
+      clearCurrentSource()
       promise.resolve(withResult: ())
       return promise
     }
 
     switch source {
     case .first(_):
-      release()
+      clearCurrentSource()
       promise.resolve(withResult: ())
       return promise
     case .second(let newSource):
@@ -521,6 +536,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
         self.artworkTask?.cancel()
         self.artworkTask = nil
         self.source = newSource
+        self.hasActiveSource = true
         self.resumePositionSeconds = 0
 
         do {
@@ -618,10 +634,16 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   private func resolvedPreloadLevel() -> PreloadLevel {
+    guard hasActiveSource else {
+      return .none
+    }
     source.config.memoryConfig?.preloadLevel ?? .buffered
   }
 
   private func resolvedOffscreenRetention() -> OffscreenRetention {
+    guard hasActiveSource else {
+      return .hot
+    }
     source.config.memoryConfig?.offscreenRetention ?? .hot
   }
 
@@ -634,10 +656,43 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   private func currentRetentionState() -> MemoryRetentionState {
+    guard hasActiveSource else {
+      return .cold
+    }
     (source as? HybridNitroPlayerSource)?.retentionState ?? .cold
   }
 
+  private func clearCurrentSource() {
+    guard !isReleased else { return }
+
+    cancelPendingTrim()
+    sourceLoader.cancelSync()
+    initTask?.cancel()
+    initTask = nil
+    artworkTask?.cancel()
+    artworkTask = nil
+
+    if let source = self.source as? HybridNitroPlayerSource {
+      source.trimToCold()
+    }
+
+    hasActiveSource = false
+    resumePositionSeconds = 0
+    player.pause()
+    playerItem = nil
+    readyToDisplay = false
+    isCurrentlyBuffering = false
+    replaceCurrentItem(nil)
+    status = .idle
+    emitPlaybackState()
+  }
+
   private func prepareBufferedState() async throws {
+    guard hasActiveSource else {
+      return
+    }
+
+    let activeSource = source
     status = .loading
     readyToDisplay = false
     emitPlaybackState()
@@ -646,7 +701,8 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     }
     let resumeSeconds = resumePositionSeconds
     await MainActor.run { [weak self] in
-      guard let self, !self.isReleased else { return }
+      guard let self, !self.isReleased, self.hasActiveSource else { return }
+      guard (activeSource as AnyObject) === (self.source as AnyObject) else { return }
       self.playerItem = playerItem
       self.player.replaceCurrentItem(with: playerItem)
       if resumeSeconds > 0 {
@@ -697,6 +753,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   private func trimToMetadataRetention() {
+    guard hasActiveSource else { return }
     resumePositionSeconds = currentTime.isNaN ? 0 : currentTime
     player.pause()
     playerItem = nil
@@ -713,6 +770,9 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   func isFeedProfile() -> Bool {
+    guard hasActiveSource else {
+      return false
+    }
     source.config.memoryConfig?.profile == .feed
   }
 

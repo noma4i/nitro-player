@@ -347,6 +347,22 @@ describe('NitroPlayer async methods', () => {
     expect(nativeReplaceSourceAsync).toHaveBeenCalledTimes(1);
   });
 
+  it('replaceSourceAsync(source) preserves the player default memory profile', async () => {
+    const { createSource } = require('../core/utils/sourceFactory');
+    const { NitroPlayer } = require('../core/NitroPlayer');
+    const player = new NitroPlayer(
+      { uri: 'https://cdn.example.com/video.mp4' },
+      { defaultMemoryProfile: 'feed' }
+    );
+
+    await player.replaceSourceAsync({ uri: 'https://cdn.example.com/video2.mp4' });
+
+    expect(createSource).toHaveBeenLastCalledWith(
+      { uri: 'https://cdn.example.com/video2.mp4' },
+      'feed'
+    );
+  });
+
   it('replaceSourceAsync(null) passes null to native', async () => {
     const { NitroPlayer } = require('../core/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
@@ -354,6 +370,17 @@ describe('NitroPlayer async methods', () => {
     await player.replaceSourceAsync(null);
 
     expect(nativeReplaceSourceAsync).toHaveBeenCalledWith(null);
+  });
+
+  it('replaceSourceAsync(null) does not release the JS player instance', async () => {
+    const { NitroPlayer } = require('../core/NitroPlayer');
+    const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
+
+    await player.replaceSourceAsync(null);
+    player.play();
+
+    expect(release).not.toHaveBeenCalled();
+    expect(nativePlay).toHaveBeenCalledTimes(1);
   });
 
   it('__destroy is idempotent - second call is no-op', () => {

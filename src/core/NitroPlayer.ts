@@ -20,6 +20,7 @@ import { NitroPlayerEvents } from './NitroPlayerEvents';
 
 class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
   private _player: NitroPlayerImpl | undefined;
+  private readonly defaultMemoryProfile: import('./types/MemoryConfig').MemoryProfile;
 
   protected get player(): NitroPlayerImpl {
     if (this._player === undefined) {
@@ -38,14 +39,16 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
       defaultMemoryProfile?: import('./types/MemoryConfig').MemoryProfile;
     } = {}
   ) {
+    const defaultMemoryProfile = options.defaultMemoryProfile ?? 'balanced';
     const hybridSource = createSource(
       source,
-      options.defaultMemoryProfile ?? 'balanced'
+      defaultMemoryProfile
     );
     const player = createPlayer(hybridSource);
 
     // Initialize events
     super(player.eventEmitter);
+    this.defaultMemoryProfile = defaultMemoryProfile;
     this._player = player;
   }
 
@@ -317,7 +320,7 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
 
     await this.wrapPromise(
       this.player.replaceSourceAsync(
-        source === null ? null : createSource(source)
+        source === null ? null : createSource(source, this.defaultMemoryProfile)
       )
     );
 

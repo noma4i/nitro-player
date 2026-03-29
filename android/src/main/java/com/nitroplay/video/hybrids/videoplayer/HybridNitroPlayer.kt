@@ -54,6 +54,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   private var cachedMuted = false
   private var cachedRate = 1.0
   private var pendingTrimRunnable: Runnable? = null
+  private var hasActiveSource = false
 
   var wasAutoPaused = false
 
@@ -233,8 +234,44 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     return newPlayer
   }
 
+  private fun rebindCurrentPlayerView() {
+    currentPlayerView?.get()?.player = player
+  }
+
+  private fun replacePlayerInstance(
+    loadControl: DefaultLoadControl,
+    attachPlaybackListeners: Boolean
+  ) {
+    stopProgressUpdates()
+    player.removeListener(playerListener)
+    player.removeAnalyticsListener(analyticsListener)
+    player.release()
+    player = createExoPlayer(loadControl)
+    rebindCurrentPlayerView()
+    if (attachPlaybackListeners) {
+      player.addListener(playerListener)
+      player.addAnalyticsListener(analyticsListener)
+    }
+  }
+
+  private fun clearCurrentSourceState(sourceToTrim: HybridNitroPlayerSource?) {
+    cancelPendingTrim()
+    stopProgressUpdates()
+    sourceToTrim?.sourceLoader?.cancel()
+    sourceToTrim?.trimToCold()
+    replacePlayerInstance(DefaultLoadControl.Builder().build(), attachPlaybackListeners = false)
+    allocator = null
+    loadedWithSource = false
+    hasActiveSource = false
+    desiredCurrentTimeMs = 0L
+    readyToDisplay = false
+    isCurrentlyBuffering = false
+    status = NitroPlayerStatus.IDLE
+    emitPlaybackState()
+  }
+
   private fun initializePlayer() {
-    if (isReleased) return
+    if (isReleased || !hasActiveSource) return
     cancelPendingTrim()
 
     if (NitroModules.applicationContext == null) {
@@ -268,13 +305,9 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     val mediaSource = hybridSource.createOrGetMediaSource()
 
     // Build the player with the LoadControl
-    player.release()
-    player = createExoPlayer(loadControl)
+    replacePlayerInstance(loadControl, attachPlaybackListeners = true)
 
     loadedWithSource = true
-
-    player.addListener(playerListener)
-    player.addAnalyticsListener(analyticsListener)
     player.setMediaSource(mediaSource)
 
     if (desiredCurrentTimeMs > 0L) {
@@ -293,7 +326,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override fun initialize(): Promise<Unit> {
     return Promise.async {
       runOnMainThreadSync {
-        if (isReleased || loadedWithSource) return@runOnMainThreadSync
+        if (isReleased || loadedWithSource || !hasActiveSource) return@runOnMainThreadSync
         initializePlayer()
         player.prepare()
       }
@@ -305,6 +338,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     this.cachedLoop = false
     this.cachedMuted = false
     this.cachedRate = 1.0
+    this.hasActiveSource = true
 
     runOnMainThread {
       if (isReleased) return@runOnMainThread
@@ -331,6 +365,13 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     runOnMainThread {
       if (isReleased) return@runOnMainThread
       cancelPendingTrim()
+      if (!hasActiveSource) {
+        status = NitroPlayerStatus.IDLE
+        readyToDisplay = false
+        isCurrentlyBuffering = false
+        emitPlaybackState()
+        return@runOnMainThread
+      }
 
       if (!loadedWithSource) {
         initializePlayer()
@@ -375,24 +416,34 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override fun replaceSourceAsync(source: Variant_NullType_HybridNitroPlayerSourceSpec?): Promise<Unit> {
     return Promise.async {
       val source = source?.asSecondOrNull()
+      val oldSource = if (::source.isInitialized) {
+        this.source as? HybridNitroPlayerSource
+      } else {
+        null
+      }
 
       if (source == null) {
-        release()
+        runOnMainThreadSync {
+          if (isReleased) return@runOnMainThreadSync
+          clearCurrentSourceState(oldSource)
+        }
         return@async
       }
 
       val hybridSource = source as? HybridNitroPlayerSource ?: throw PlayerError.InvalidSource
 
-      val oldSource = this.source as? HybridNitroPlayerSource
       oldSource?.sourceLoader?.cancel()
+      oldSource?.trimToCold()
 
       runOnMainThreadSync {
         if (isReleased) return@runOnMainThreadSync
         // Update source
         this.source = source
+        hasActiveSource = true
         desiredCurrentTimeMs = 0L
         status = NitroPlayerStatus.LOADING
         readyToDisplay = false
+        isCurrentlyBuffering = false
 
         if (!loadedWithSource) {
           initializePlayer()
@@ -411,6 +462,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     return Promise.async {
       val level = runOnMainThreadSync {
         if (isReleased) return@runOnMainThreadSync PreloadLevel.NONE
+        if (!hasActiveSource) return@runOnMainThreadSync PreloadLevel.NONE
         cancelPendingTrim()
         resolvedPreloadLevel()
       }
@@ -448,16 +500,22 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
         stopProgressUpdates()
         cancelPendingTrim()
         loadedWithSource = false
+        hasActiveSource = false
 
         eventEmitter.clearAllListeners()
 
         player.removeListener(playerListener)
         player.removeAnalyticsListener(analyticsListener)
+        currentPlayerView?.get()?.player = null
+        currentPlayerView = null
 
         status = NitroPlayerStatus.IDLE
         readyToDisplay = false
+        isCurrentlyBuffering = false
         allocator = null
-        (source as? HybridNitroPlayerSource)?.trimToCold()
+        if (::source.isInitialized) {
+          (source as? HybridNitroPlayerSource)?.trimToCold()
+        }
       } finally {
         player.release()
       }
@@ -538,7 +596,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       isAttachedToView = false, isPlaying = false
     )
     val playerBytes = memorySize.toDouble()
-    val sourceBytes = source.memorySize.toDouble()
+    val sourceBytes = if (hasActiveSource) source.memorySize.toDouble() else 0.0
 
     return MemorySnapshot(
       playerBytes = playerBytes,
@@ -563,10 +621,16 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   private fun resolvedPreloadLevel(): PreloadLevel {
+    if (!hasActiveSource) {
+      return PreloadLevel.NONE
+    }
     return source.config.memoryConfig?.preloadLevel ?: PreloadLevel.BUFFERED
   }
 
   private fun resolvedOffscreenRetention(): OffscreenRetention {
+    if (!hasActiveSource) {
+      return OffscreenRetention.HOT
+    }
     return source.config.memoryConfig?.offscreenRetention ?: OffscreenRetention.HOT
   }
 
@@ -580,6 +644,9 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   private fun currentRetentionState(): MemoryRetentionState {
+    if (!hasActiveSource) {
+      return MemoryRetentionState.COLD
+    }
     return (source as? HybridNitroPlayerSource)?.retentionState
       ?: MemoryRetentionState.COLD
   }
@@ -603,6 +670,9 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   internal fun isFeedProfile(): Boolean {
+    if (!hasActiveSource) {
+      return false
+    }
     return source.config.memoryConfig?.profile == MemoryProfile.FEED
   }
 
@@ -669,16 +739,12 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   private fun trimToMetadataRetention() {
-    if (isReleased) return
+    if (isReleased || !hasActiveSource) return
     val hybridSource = source as? HybridNitroPlayerSource ?: return
 
     if (loadedWithSource) {
       desiredCurrentTimeMs = player.currentPosition
-      stopProgressUpdates()
-      player.removeListener(playerListener)
-      player.removeAnalyticsListener(analyticsListener)
-      player.release()
-      player = createExoPlayer(DefaultLoadControl.Builder().build())
+      replacePlayerInstance(DefaultLoadControl.Builder().build(), attachPlaybackListeners = false)
       allocator = null
       loadedWithSource = false
     }

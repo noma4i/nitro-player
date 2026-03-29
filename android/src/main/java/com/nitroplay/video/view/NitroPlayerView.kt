@@ -74,15 +74,19 @@ class NitroPlayerView @JvmOverloads constructor(
 
       runOnMainThread {
         val shouldKeepScreenAwake = playerView.keepScreenOn
-        val nextPlayer = hybridPlayer?.player
+        val previousPlayerView = playerView
+        globalLayoutListener?.let {
+          previousPlayerView.viewTreeObserver.removeOnGlobalLayoutListener(it)
+        }
+        globalLayoutListener = null
         removeView(playerView)
-        playerView.player = null
+        previousPlayerView.player = null
         playerView = createPlayerView()
         playerView.useController = useController
         playerView.keepScreenOn = shouldKeepScreenAwake
         applyResizeMode()
         addView(playerView)
-        playerView.player = nextPlayer
+        hybridPlayer?.movePlayerToNitroPlayerView(this)
         setupFullscreenButton()
       }
     }
@@ -249,7 +253,7 @@ class NitroPlayerView @JvmOverloads constructor(
         fullscreenDialog?.dismiss()
         fullscreenDialog = null
       }
-      globalLayoutListener?.let { viewTreeObserver.removeOnGlobalLayoutListener(it) }
+      globalLayoutListener?.let { playerView.viewTreeObserver.removeOnGlobalLayoutListener(it) }
       globalLayoutListener = null
       removeCallbacks(layoutRunnable)
       hybridPlayer?.notifyViewDetached()
@@ -277,7 +281,7 @@ class NitroPlayerView @JvmOverloads constructor(
     val listener = ViewTreeObserver.OnGlobalLayoutListener {
       SmallVideoPlayerOptimizer.applyOptimizations(this, context, isFullscreen = false)
     }
-    globalLayoutListener?.let { viewTreeObserver.removeOnGlobalLayoutListener(it) }
+    globalLayoutListener?.let { this.viewTreeObserver.removeOnGlobalLayoutListener(it) }
     globalLayoutListener = listener
     viewTreeObserver.addOnGlobalLayoutListener(listener)
   }

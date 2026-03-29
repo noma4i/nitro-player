@@ -2,6 +2,8 @@
 
 NitroPlay has a built-in memory lifecycle system for managing native player resources, especially useful for feed/scroll scenarios with many videos.
 
+`NitroPlayerView` uses the `balanced` profile by default. Use `profile: 'feed'` only when you explicitly want metadata-oriented retention for scrolling lists.
+
 ## MemoryConfig
 
 Pass via `source.memoryConfig`:
@@ -13,7 +15,7 @@ Pass via `source.memoryConfig`:
     profile: 'feed',
     preloadLevel: 'metadata',
     offscreenRetention: 'metadata',
-    pauseTrimDelayMs: 10000,
+    pauseTrimDelayMs: 3000,
   },
 }} />
 ```
