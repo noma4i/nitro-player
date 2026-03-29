@@ -25,6 +25,10 @@ namespace margelo::nitro::video { class HybridNitroPlayerSourceSpec; }
 namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `NitroPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerStatus; }
+// Forward declaration of `PlaybackError` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackError; }
+// Forward declaration of `NitroPlayerErrorCode` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroPlayerErrorCode; }
 // Forward declaration of `onVolumeChangeData` to properly resolve imports.
 namespace margelo::nitro::video { struct onVolumeChangeData; }
 
@@ -55,6 +59,15 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "JPlaybackState.hpp"
 #include "NitroPlayerStatus.hpp"
 #include "JNitroPlayerStatus.hpp"
+#include <NitroModules/Null.hpp>
+#include "PlaybackError.hpp"
+#include <variant>
+#include "JVariant_NullType_PlaybackError.hpp"
+#include <NitroModules/JNull.hpp>
+#include "JPlaybackError.hpp"
+#include "NitroPlayerErrorCode.hpp"
+#include "JNitroPlayerErrorCode.hpp"
+#include <string>
 #include "onVolumeChangeData.hpp"
 #include "JFunc_void_onVolumeChangeData.hpp"
 #include "JonVolumeChangeData.hpp"

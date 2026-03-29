@@ -38,12 +38,11 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
   override fun fromUri(uri: String): HybridNitroPlayerSourceSpec {
     val config = NativeNitroPlayerConfig(
       uri = normalizeUri(uri),
-      useHlsProxy = false,
       headers = null,
-      bufferConfig = null,
-      memoryConfig = null,
       metadata = null,
-      initializeOnCreation = true
+      lifecycle = MemoryProfile.BALANCED,
+      initialization = NitroSourceInitialization.EAGER,
+      advanced = null
     )
 
     return HybridNitroPlayerSource(config)

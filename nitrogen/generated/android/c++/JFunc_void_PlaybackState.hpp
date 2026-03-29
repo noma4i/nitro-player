@@ -16,6 +16,16 @@
 #include "JPlaybackState.hpp"
 #include "NitroPlayerStatus.hpp"
 #include "JNitroPlayerStatus.hpp"
+#include <NitroModules/Null.hpp>
+#include "PlaybackError.hpp"
+#include <variant>
+#include <optional>
+#include "JVariant_NullType_PlaybackError.hpp"
+#include <NitroModules/JNull.hpp>
+#include "JPlaybackError.hpp"
+#include "NitroPlayerErrorCode.hpp"
+#include "JNitroPlayerErrorCode.hpp"
+#include <string>
 
 namespace margelo::nitro::video {
 

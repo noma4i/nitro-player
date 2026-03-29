@@ -11,22 +11,28 @@
 namespace margelo::nitro::video { class HybridNitroPlayerSourceSpec; }
 // Forward declaration of `NativeNitroPlayerConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct NativeNitroPlayerConfig; }
-// Forward declaration of `MemoryConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct MemoryConfig; }
+// Forward declaration of `NitroSourceMetadata` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroSourceMetadata; }
 // Forward declaration of `MemoryProfile` to properly resolve imports.
 namespace margelo::nitro::video { enum class MemoryProfile; }
-// Forward declaration of `PreloadLevel` to properly resolve imports.
-namespace margelo::nitro::video { enum class PreloadLevel; }
-// Forward declaration of `OffscreenRetention` to properly resolve imports.
-namespace margelo::nitro::video { enum class OffscreenRetention; }
+// Forward declaration of `NitroSourceInitialization` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroSourceInitialization; }
+// Forward declaration of `NitroSourceAdvancedConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroSourceAdvancedConfig; }
 // Forward declaration of `BufferConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct BufferConfig; }
 // Forward declaration of `LivePlaybackParams` to properly resolve imports.
 namespace margelo::nitro::video { struct LivePlaybackParams; }
 // Forward declaration of `Resolution` to properly resolve imports.
 namespace margelo::nitro::video { struct Resolution; }
-// Forward declaration of `CustomVideoMetadata` to properly resolve imports.
-namespace margelo::nitro::video { struct CustomVideoMetadata; }
+// Forward declaration of `NitroSourceAdvancedLifecycleConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroSourceAdvancedLifecycleConfig; }
+// Forward declaration of `PreloadLevel` to properly resolve imports.
+namespace margelo::nitro::video { enum class PreloadLevel; }
+// Forward declaration of `OffscreenRetention` to properly resolve imports.
+namespace margelo::nitro::video { enum class OffscreenRetention; }
+// Forward declaration of `NitroSourceAdvancedTransportConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroSourceAdvancedTransportConfig; }
 
 #include <memory>
 #include "HybridNitroPlayerSourceSpec.hpp"
@@ -34,24 +40,30 @@ namespace margelo::nitro::video { struct CustomVideoMetadata; }
 #include <string>
 #include "NativeNitroPlayerConfig.hpp"
 #include "JNativeNitroPlayerConfig.hpp"
-#include "MemoryConfig.hpp"
+#include <unordered_map>
 #include <optional>
-#include "JMemoryConfig.hpp"
+#include "NitroSourceMetadata.hpp"
+#include "JNitroSourceMetadata.hpp"
 #include "MemoryProfile.hpp"
 #include "JMemoryProfile.hpp"
-#include "PreloadLevel.hpp"
-#include "JPreloadLevel.hpp"
-#include "OffscreenRetention.hpp"
-#include "JOffscreenRetention.hpp"
-#include <unordered_map>
+#include "NitroSourceInitialization.hpp"
+#include "JNitroSourceInitialization.hpp"
+#include "NitroSourceAdvancedConfig.hpp"
+#include "JNitroSourceAdvancedConfig.hpp"
 #include "BufferConfig.hpp"
 #include "JBufferConfig.hpp"
 #include "LivePlaybackParams.hpp"
 #include "JLivePlaybackParams.hpp"
 #include "Resolution.hpp"
 #include "JResolution.hpp"
-#include "CustomVideoMetadata.hpp"
-#include "JCustomVideoMetadata.hpp"
+#include "NitroSourceAdvancedLifecycleConfig.hpp"
+#include "JNitroSourceAdvancedLifecycleConfig.hpp"
+#include "PreloadLevel.hpp"
+#include "JPreloadLevel.hpp"
+#include "OffscreenRetention.hpp"
+#include "JOffscreenRetention.hpp"
+#include "NitroSourceAdvancedTransportConfig.hpp"
+#include "JNitroSourceAdvancedTransportConfig.hpp"
 
 namespace margelo::nitro::video {
 

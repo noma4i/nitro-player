@@ -1,5 +1,5 @@
 //
-//  AVMetadataItem+make.swift
+//  AVMetadataItemFactory.swift
 //  NitroPlay
 //
 //  Created by Kamil Moskała on 06/02/2026.

@@ -6,8 +6,7 @@ import type { IgnoreSilentSwitchMode } from './types/IgnoreSilentSwitchMode';
 import type { MemorySnapshot } from './types/MemorySnapshot';
 import type { MixAudioMode } from './types/MixAudioMode';
 import type { PlaybackState } from './types/PlaybackState';
-import type { NoAutocomplete } from './types/Utils';
-import type { NitroPlayerConfig, NitroPlayerSource as NitroPlayerSourceType } from './types/NitroPlayerConfig';
+import type { NitroSourceConfig } from './types/NitroPlayerConfig';
 import {
   tryParseNativeNitroPlayerError,
   NitroPlayerRuntimeError,
@@ -15,12 +14,11 @@ import {
 import type { NitroPlayerBase } from './types/NitroPlayerBase';
 import type { NitroPlayerStatus } from './types/NitroPlayerStatus';
 import { createPlayer } from './utils/playerFactory';
-import { createSource } from './utils/sourceFactory';
+import { createNitroSource } from './utils/sourceFactory';
 import { NitroPlayerEvents } from './NitroPlayerEvents';
 
 class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
   private _player: NitroPlayerImpl | undefined;
-  private readonly defaultMemoryProfile: import('./types/MemoryConfig').MemoryProfile;
 
   protected get player(): NitroPlayerImpl {
     if (this._player === undefined) {
@@ -33,22 +31,12 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     return this._player;
   }
 
-  constructor(
-    source: NitroPlayerSourceType | NitroPlayerConfig | NitroPlayerSource,
-    options: {
-      defaultMemoryProfile?: import('./types/MemoryConfig').MemoryProfile;
-    } = {}
-  ) {
-    const defaultMemoryProfile = options.defaultMemoryProfile ?? 'balanced';
-    const hybridSource = createSource(
-      source,
-      defaultMemoryProfile
-    );
+  constructor(source: NitroSourceConfig | NitroPlayerSource) {
+    const hybridSource = createNitroSource(source);
     const player = createPlayer(hybridSource);
 
     // Initialize events
     super(player.eventEmitter);
-    this.defaultMemoryProfile = defaultMemoryProfile;
     this._player = player;
   }
 
@@ -89,22 +77,8 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     return this.player;
   }
 
-  /**
-   * Handles parsing native errors to NitroPlayerRuntimeError and calling onError if provided
-   * @internal
-   */
   private throwError(error: unknown) {
-    const parsedError = tryParseNativeNitroPlayerError(error);
-
-    if (
-      parsedError instanceof NitroPlayerRuntimeError &&
-      this.triggerJSEvent('onError', parsedError as NitroPlayerRuntimeError)
-    ) {
-      // We don't throw errors if onError is provided
-      return;
-    }
-
-    throw parsedError;
+    throw tryParseNativeNitroPlayerError(error);
   }
 
   /**
@@ -275,7 +249,7 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
    * Releases the player's native resources and releases native state.
    * After calling this method, the player is no longer usable.
    * Accessing any properties or methods of the player after calling this method will throw an error.
-   * If you want to clean player resource use `replaceSourceAsync` with `null` instead.
+   * If you want to clear the current source and keep the player reusable, use `clearSourceAsync()`.
    */
   release(): void {
     this.__destroy();
@@ -314,16 +288,22 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
   }
 
   async replaceSourceAsync(
-    source: NitroPlayerSourceType | NitroPlayerConfig | NoAutocomplete<NitroPlayerSource> | null
+    source: NitroSourceConfig | NitroPlayerSource
   ): Promise<void> {
     this.updateMemorySize();
 
     await this.wrapPromise(
       this.player.replaceSourceAsync(
-        source === null ? null : createSource(source, this.defaultMemoryProfile)
+        createNitroSource(source)
       )
     );
 
+    this.updateMemorySize();
+  }
+
+  async clearSourceAsync(): Promise<void> {
+    this.updateMemorySize();
+    await this.wrapPromise(this.player.clearSourceAsync());
     this.updateMemorySize();
   }
 

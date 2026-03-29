@@ -11,7 +11,6 @@ import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.core.Promise
-import com.margelo.nitro.core.NullType
 import com.margelo.nitro.core.HybridObject
 
 /**
@@ -128,7 +127,11 @@ abstract class HybridNitroPlayerSpec: HybridObject() {
   // Methods
   @DoNotStrip
   @Keep
-  abstract fun replaceSourceAsync(source: Variant_NullType_HybridNitroPlayerSourceSpec?): Promise<Unit>
+  abstract fun replaceSourceAsync(source: HybridNitroPlayerSourceSpec): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun clearSourceAsync(): Promise<Unit>
   
   @DoNotStrip
   @Keep

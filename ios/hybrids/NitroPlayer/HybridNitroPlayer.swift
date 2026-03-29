@@ -28,7 +28,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
 
   var playerItem: AVPlayerItem? {
     didSet {
-      if let bufferConfig = source.config.bufferConfig {
+      if let bufferConfig = currentSourceConfig()?.advanced?.buffer {
         playerItem?.setBufferConfig(config: bufferConfig)
       }
     }
@@ -39,6 +39,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   private var initTask: Task<Void, Never>?
   private var isReleased = false
   private var hasActiveSource = true
+  private var lastError: PlaybackError?
   var readyToDisplay = false
   private var resumePositionSeconds: Double = 0
   private var isAttachedToVideoView = false
@@ -72,7 +73,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
 
     initTask = Task { [weak self] in
       guard let self else { return }
-      if source.config.initializeOnCreation == true {
+      if self.resolvedInitialization() == .eager {
         switch self.resolvedPreloadLevel() {
         case .buffered:
           do {
@@ -243,6 +244,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
         isPlaying: false,
         isBuffering: false,
         isReadyToDisplay: false,
+        error: nil,
         nativeTimestampMs: Date().timeIntervalSince1970 * 1000
       )
     }
@@ -257,6 +259,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
       isPlaying: isPlaying,
       isBuffering: isBuffering,
       isReadyToDisplay: readyToDisplay,
+      error: lastError.map { .second($0) },
       nativeTimestampMs: Date().timeIntervalSince1970 * 1000
     )
   }
@@ -292,6 +295,22 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     _eventEmitter?.onPlaybackState(playbackState)
   }
 
+  func currentSourceConfig() -> NativeNitroPlayerConfig? {
+    (source as? HybridNitroPlayerSource)?.config
+  }
+
+  func resolvedInitialization() -> NitroSourceInitialization {
+    currentSourceConfig()?.initialization ?? .eager
+  }
+
+  func resetPlaybackError() {
+    lastError = nil
+  }
+
+  func setPlaybackError(code: NitroPlayerErrorCode, message: String) {
+    lastError = PlaybackError(code: code, message: message)
+  }
+
   func markReadyToDisplay() {
     readyToDisplay = true
     emitPlaybackState()
@@ -324,6 +343,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     if isReleased { return }
     isReleased = true
     hasActiveSource = false
+    lastError = nil
 
     cancelPendingTrim()
     sourceLoader.cancelSync()
@@ -415,6 +435,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
       status = .idle
       readyToDisplay = false
       isCurrentlyBuffering = false
+      resetPlaybackError()
       emitPlaybackState()
       return
     }
@@ -429,6 +450,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
 
     status = .loading
     readyToDisplay = false
+    resetPlaybackError()
     emitPlaybackState()
 
     Task.detached(priority: .userInitiated) { [weak self] in
@@ -444,6 +466,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
         DispatchQueue.main.async { [weak self] in
           guard let self, !self.isReleased else { return }
           self.status = .error
+          self.setPlaybackError(code: .unknownUnknown, message: error.localizedDescription)
           self.emitPlaybackState()
         }
       }
@@ -487,71 +510,51 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     currentTime = time
   }
 
-  func replaceSourceAsync(
-    source: Variant_NullType__any_HybridNitroPlayerSourceSpec_?
-  ) throws
-    -> Promise<Void>
-  {
+  func replaceSourceAsync(source: any HybridNitroPlayerSourceSpec) throws -> Promise<Void> {
     let promise = Promise<Void>()
+    Task.detached(priority: .userInitiated) { [weak self] in
+      guard let self else {
+        promise.reject(
+          withError: LibraryError.deallocated(objectName: "HybridNitroPlayer")
+            .error()
+        )
+        return
+      }
 
-    /**
-     @frozen
-     public indirect enum Variant_NullType__any_HybridNitroPlayerSourceSpec_ {
-       case first(NullType)
-       case second((any HybridNitroPlayerSourceSpec))
-     }
-     */
+      await self.sourceLoader.cancel()
 
-    // if source is nil, clear current source
-    // if source is not NullType, set source
-    guard let source else {
-      clearCurrentSource()
-      promise.resolve(withResult: ())
-      return promise
-    }
+      if let oldSource = self.source as? HybridNitroPlayerSource {
+        oldSource.trimToCold()
+      }
 
-    switch source {
-    case .first(_):
-      clearCurrentSource()
-      promise.resolve(withResult: ())
-      return promise
-    case .second(let newSource):
-      Task.detached(priority: .userInitiated) { [weak self] in
-        guard let self else {
-          promise.reject(
-            withError: LibraryError.deallocated(objectName: "HybridNitroPlayer")
-              .error()
-          )
-          return
-        }
+      self.initTask?.cancel()
+      self.initTask = nil
+      self.artworkTask?.cancel()
+      self.artworkTask = nil
+      self.source = source
+      self.hasActiveSource = true
+      self.resumePositionSeconds = 0
+      self.resetPlaybackError()
 
-        await self.sourceLoader.cancel()
-
-        if let oldSource = self.source as? HybridNitroPlayerSource {
-          oldSource.trimToCold()
-        }
-
-        self.initTask?.cancel()
-        self.initTask = nil
-        self.artworkTask?.cancel()
-        self.artworkTask = nil
-        self.source = newSource
-        self.hasActiveSource = true
-        self.resumePositionSeconds = 0
-
-        do {
-          try await self.prepareBufferedState()
-          promise.resolve(withResult: ())
-        } catch {
-          if error is CancellationError {
-            promise.reject(withError: PlayerError.cancelled.error())
-          } else {
-            promise.reject(withError: error)
-          }
+      do {
+        try await self.prepareBufferedState()
+        promise.resolve(withResult: ())
+      } catch {
+        if error is CancellationError {
+          promise.reject(withError: PlayerError.cancelled.error())
+        } else {
+          promise.reject(withError: error)
         }
       }
     }
 
+    return promise
+  }
+
+  func clearSourceAsync() throws -> Promise<Void> {
+    let promise = Promise<Void>()
+    clearCurrentSource()
+    promise.resolve(withResult: ())
     return promise
   }
 
@@ -576,7 +579,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     let playerItem = AVPlayerItem(asset: asset)
     _source.retentionState = .hot
 
-    if let metadata = source.config.metadata {
+    if let metadata = currentSourceConfig()?.metadata {
       let title = metadata.title
       let artist = metadata.artist
       let imageUri = metadata.imageUri
@@ -637,18 +640,41 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     guard hasActiveSource else {
       return .none
     }
-    source.config.memoryConfig?.preloadLevel ?? .buffered
+    currentSourceConfig()?.advanced?.lifecycle?.preloadLevel ?? {
+      switch currentSourceConfig()?.lifecycle ?? .balanced {
+      case .feed:
+        return .metadata
+      case .balanced, .immersive:
+        return .buffered
+      }
+    }()
   }
 
   private func resolvedOffscreenRetention() -> OffscreenRetention {
     guard hasActiveSource else {
       return .hot
     }
-    source.config.memoryConfig?.offscreenRetention ?? .hot
+    currentSourceConfig()?.advanced?.lifecycle?.offscreenRetention ?? {
+      switch currentSourceConfig()?.lifecycle ?? .balanced {
+      case .feed:
+        return .metadata
+      case .balanced, .immersive:
+        return .hot
+      }
+    }()
   }
 
   private func resolvedPauseTrimDelayMs() -> Double? {
-    let delayMs = source.config.memoryConfig?.pauseTrimDelayMs ?? 10000
+    let delayMs = currentSourceConfig()?.advanced?.lifecycle?.trimDelayMs ?? {
+      switch currentSourceConfig()?.lifecycle ?? .balanced {
+      case .feed:
+        return 3000.0
+      case .balanced:
+        return 10000.0
+      case .immersive:
+        return Double.infinity
+      }
+    }()
     if delayMs.isInfinite {
       return nil
     }
@@ -682,6 +708,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     playerItem = nil
     readyToDisplay = false
     isCurrentlyBuffering = false
+    resetPlaybackError()
     replaceCurrentItem(nil)
     status = .idle
     emitPlaybackState()
@@ -695,6 +722,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     let activeSource = source
     status = .loading
     readyToDisplay = false
+    resetPlaybackError()
     emitPlaybackState()
     let playerItem = try await self.sourceLoader.load {
       try await self.initializePlayerItem()
@@ -761,6 +789,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     replaceCurrentItem(nil)
     status = .idle
     (source as? HybridNitroPlayerSource)?.trimToMetadata()
+    resetPlaybackError()
     emitPlaybackState()
   }
 
@@ -773,7 +802,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     guard hasActiveSource else {
       return false
     }
-    source.config.memoryConfig?.profile == .feed
+    currentSourceConfig()?.lifecycle == .feed
   }
 
   func shouldStayHotInFeedPool() -> Bool {

@@ -9,7 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
-
+import com.margelo.nitro.core.NullType
 
 /**
  * Represents the JavaScript object/struct "PlaybackState".
@@ -46,6 +46,9 @@ data class PlaybackState(
   val isReadyToDisplay: Boolean,
   @DoNotStrip
   @Keep
+  val error: Variant_NullType_PlaybackError?,
+  @DoNotStrip
+  @Keep
   val nativeTimestampMs: Double
 ) {
   /* primary constructor */
@@ -58,8 +61,8 @@ data class PlaybackState(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(status: NitroPlayerStatus, currentTime: Double, duration: Double, bufferDuration: Double, bufferedPosition: Double, rate: Double, isPlaying: Boolean, isBuffering: Boolean, isReadyToDisplay: Boolean, nativeTimestampMs: Double): PlaybackState {
-      return PlaybackState(status, currentTime, duration, bufferDuration, bufferedPosition, rate, isPlaying, isBuffering, isReadyToDisplay, nativeTimestampMs)
+    private fun fromCpp(status: NitroPlayerStatus, currentTime: Double, duration: Double, bufferDuration: Double, bufferedPosition: Double, rate: Double, isPlaying: Boolean, isBuffering: Boolean, isReadyToDisplay: Boolean, error: Variant_NullType_PlaybackError?, nativeTimestampMs: Double): PlaybackState {
+      return PlaybackState(status, currentTime, duration, bufferDuration, bufferedPosition, rate, isPlaying, isBuffering, isReadyToDisplay, error, nativeTimestampMs)
     }
   }
 }

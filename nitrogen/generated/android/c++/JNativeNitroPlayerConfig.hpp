@@ -11,18 +11,24 @@
 #include "NativeNitroPlayerConfig.hpp"
 
 #include "BufferConfig.hpp"
-#include "CustomVideoMetadata.hpp"
 #include "JBufferConfig.hpp"
-#include "JCustomVideoMetadata.hpp"
 #include "JLivePlaybackParams.hpp"
-#include "JMemoryConfig.hpp"
 #include "JMemoryProfile.hpp"
+#include "JNitroSourceAdvancedConfig.hpp"
+#include "JNitroSourceAdvancedLifecycleConfig.hpp"
+#include "JNitroSourceAdvancedTransportConfig.hpp"
+#include "JNitroSourceInitialization.hpp"
+#include "JNitroSourceMetadata.hpp"
 #include "JOffscreenRetention.hpp"
 #include "JPreloadLevel.hpp"
 #include "JResolution.hpp"
 #include "LivePlaybackParams.hpp"
-#include "MemoryConfig.hpp"
 #include "MemoryProfile.hpp"
+#include "NitroSourceAdvancedConfig.hpp"
+#include "NitroSourceAdvancedLifecycleConfig.hpp"
+#include "NitroSourceAdvancedTransportConfig.hpp"
+#include "NitroSourceInitialization.hpp"
+#include "NitroSourceMetadata.hpp"
 #include "OffscreenRetention.hpp"
 #include "PreloadLevel.hpp"
 #include "Resolution.hpp"
@@ -51,21 +57,18 @@ namespace margelo::nitro::video {
       static const auto clazz = javaClassStatic();
       static const auto fieldUri = clazz->getField<jni::JString>("uri");
       jni::local_ref<jni::JString> uri = this->getFieldValue(fieldUri);
-      static const auto fieldMemoryConfig = clazz->getField<JMemoryConfig>("memoryConfig");
-      jni::local_ref<JMemoryConfig> memoryConfig = this->getFieldValue(fieldMemoryConfig);
       static const auto fieldHeaders = clazz->getField<jni::JMap<jni::JString, jni::JString>>("headers");
       jni::local_ref<jni::JMap<jni::JString, jni::JString>> headers = this->getFieldValue(fieldHeaders);
-      static const auto fieldBufferConfig = clazz->getField<JBufferConfig>("bufferConfig");
-      jni::local_ref<JBufferConfig> bufferConfig = this->getFieldValue(fieldBufferConfig);
-      static const auto fieldMetadata = clazz->getField<JCustomVideoMetadata>("metadata");
-      jni::local_ref<JCustomVideoMetadata> metadata = this->getFieldValue(fieldMetadata);
-      static const auto fieldInitializeOnCreation = clazz->getField<jni::JBoolean>("initializeOnCreation");
-      jni::local_ref<jni::JBoolean> initializeOnCreation = this->getFieldValue(fieldInitializeOnCreation);
-      static const auto fieldUseHlsProxy = clazz->getField<jni::JBoolean>("useHlsProxy");
-      jni::local_ref<jni::JBoolean> useHlsProxy = this->getFieldValue(fieldUseHlsProxy);
+      static const auto fieldMetadata = clazz->getField<JNitroSourceMetadata>("metadata");
+      jni::local_ref<JNitroSourceMetadata> metadata = this->getFieldValue(fieldMetadata);
+      static const auto fieldLifecycle = clazz->getField<JMemoryProfile>("lifecycle");
+      jni::local_ref<JMemoryProfile> lifecycle = this->getFieldValue(fieldLifecycle);
+      static const auto fieldInitialization = clazz->getField<JNitroSourceInitialization>("initialization");
+      jni::local_ref<JNitroSourceInitialization> initialization = this->getFieldValue(fieldInitialization);
+      static const auto fieldAdvanced = clazz->getField<JNitroSourceAdvancedConfig>("advanced");
+      jni::local_ref<JNitroSourceAdvancedConfig> advanced = this->getFieldValue(fieldAdvanced);
       return NativeNitroPlayerConfig(
         uri->toStdString(),
-        memoryConfig != nullptr ? std::make_optional(memoryConfig->toCpp()) : std::nullopt,
         headers != nullptr ? std::make_optional([&]() {
           std::unordered_map<std::string, std::string> __map;
           __map.reserve(headers->size());
@@ -74,10 +77,10 @@ namespace margelo::nitro::video {
           }
           return __map;
         }()) : std::nullopt,
-        bufferConfig != nullptr ? std::make_optional(bufferConfig->toCpp()) : std::nullopt,
         metadata != nullptr ? std::make_optional(metadata->toCpp()) : std::nullopt,
-        initializeOnCreation != nullptr ? std::make_optional(static_cast<bool>(initializeOnCreation->value())) : std::nullopt,
-        useHlsProxy != nullptr ? std::make_optional(static_cast<bool>(useHlsProxy->value())) : std::nullopt
+        lifecycle != nullptr ? std::make_optional(lifecycle->toCpp()) : std::nullopt,
+        initialization != nullptr ? std::make_optional(initialization->toCpp()) : std::nullopt,
+        advanced != nullptr ? std::make_optional(advanced->toCpp()) : std::nullopt
       );
     }
 
@@ -87,13 +90,12 @@ namespace margelo::nitro::video {
      */
     [[maybe_unused]]
     static jni::local_ref<JNativeNitroPlayerConfig::javaobject> fromCpp(const NativeNitroPlayerConfig& value) {
-      using JSignature = JNativeNitroPlayerConfig(jni::alias_ref<jni::JString>, jni::alias_ref<JMemoryConfig>, jni::alias_ref<jni::JMap<jni::JString, jni::JString>>, jni::alias_ref<JBufferConfig>, jni::alias_ref<JCustomVideoMetadata>, jni::alias_ref<jni::JBoolean>, jni::alias_ref<jni::JBoolean>);
+      using JSignature = JNativeNitroPlayerConfig(jni::alias_ref<jni::JString>, jni::alias_ref<jni::JMap<jni::JString, jni::JString>>, jni::alias_ref<JNitroSourceMetadata>, jni::alias_ref<JMemoryProfile>, jni::alias_ref<JNitroSourceInitialization>, jni::alias_ref<JNitroSourceAdvancedConfig>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
         clazz,
         jni::make_jstring(value.uri),
-        value.memoryConfig.has_value() ? JMemoryConfig::fromCpp(value.memoryConfig.value()) : nullptr,
         value.headers.has_value() ? [&]() -> jni::local_ref<jni::JMap<jni::JString, jni::JString>> {
           auto __map = jni::JHashMap<jni::JString, jni::JString>::create(value.headers.value().size());
           for (const auto& __entry : value.headers.value()) {
@@ -101,10 +103,10 @@ namespace margelo::nitro::video {
           }
           return __map;
         }() : nullptr,
-        value.bufferConfig.has_value() ? JBufferConfig::fromCpp(value.bufferConfig.value()) : nullptr,
-        value.metadata.has_value() ? JCustomVideoMetadata::fromCpp(value.metadata.value()) : nullptr,
-        value.initializeOnCreation.has_value() ? jni::JBoolean::valueOf(value.initializeOnCreation.value()) : nullptr,
-        value.useHlsProxy.has_value() ? jni::JBoolean::valueOf(value.useHlsProxy.value()) : nullptr
+        value.metadata.has_value() ? JNitroSourceMetadata::fromCpp(value.metadata.value()) : nullptr,
+        value.lifecycle.has_value() ? JMemoryProfile::fromCpp(value.lifecycle.value()) : nullptr,
+        value.initialization.has_value() ? JNitroSourceInitialization::fromCpp(value.initialization.value()) : nullptr,
+        value.advanced.has_value() ? JNitroSourceAdvancedConfig::fromCpp(value.advanced.value()) : nullptr
       );
     }
   };

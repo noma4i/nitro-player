@@ -20,6 +20,10 @@ namespace margelo::nitro::video { class HybridNitroPlayerEventEmitterSpec; }
 namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `NitroPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerStatus; }
+// Forward declaration of `PlaybackError` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackError; }
+// Forward declaration of `NitroPlayerErrorCode` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroPlayerErrorCode; }
 // Forward declaration of `MemorySnapshot` to properly resolve imports.
 namespace margelo::nitro::video { struct MemorySnapshot; }
 // Forward declaration of `PreloadLevel` to properly resolve imports.
@@ -36,15 +40,18 @@ namespace margelo::nitro::video { enum class IgnoreSilentSwitchMode; }
 #include "HybridNitroPlayerEventEmitterSpec.hpp"
 #include "PlaybackState.hpp"
 #include "NitroPlayerStatus.hpp"
+#include <NitroModules/Null.hpp>
+#include "PlaybackError.hpp"
+#include <variant>
+#include <optional>
+#include "NitroPlayerErrorCode.hpp"
+#include <string>
 #include "MemorySnapshot.hpp"
 #include "PreloadLevel.hpp"
 #include "MemoryRetentionState.hpp"
 #include "MixAudioMode.hpp"
 #include "IgnoreSilentSwitchMode.hpp"
 #include <NitroModules/Promise.hpp>
-#include <NitroModules/Null.hpp>
-#include <variant>
-#include <optional>
 
 #include "NitroPlay-Swift-Cxx-Umbrella.hpp"
 
@@ -187,8 +194,16 @@ namespace margelo::nitro::video {
 
   public:
     // Methods
-    inline std::shared_ptr<Promise<void>> replaceSourceAsync(const std::optional<std::variant<nitro::NullType, std::shared_ptr<HybridNitroPlayerSourceSpec>>>& source) override {
+    inline std::shared_ptr<Promise<void>> replaceSourceAsync(const std::shared_ptr<HybridNitroPlayerSourceSpec>& source) override {
       auto __result = _swiftPart.replaceSourceAsync(source);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> clearSourceAsync() override {
+      auto __result = _swiftPart.clearSourceAsync();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

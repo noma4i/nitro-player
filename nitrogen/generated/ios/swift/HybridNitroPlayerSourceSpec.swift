@@ -11,7 +11,6 @@ import NitroModules
 public protocol HybridNitroPlayerSourceSpec_protocol: HybridObject {
   // Properties
   var uri: String { get }
-  var config: NativeNitroPlayerConfig { get }
 
   // Methods
   func getAssetInformationAsync() throws -> Promise<NitroPlayerInformation>

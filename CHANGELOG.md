@@ -1,5 +1,37 @@
 # Changelog
 
+## 1.0.0-beta.1
+
+### Breaking
+
+- Public source DSL is now object-only: `NitroSourceConfig` or `NitroPlayerSource`
+- Removed `setup` from `NitroPlayerView`; use `playerDefaults`
+- Removed `replaceSourceAsync(null)`; use `clearSourceAsync()`
+- Removed standalone `onError` event; playback failures now surface through `PlaybackState.status` and `PlaybackState.error`
+- Replaced public `memoryConfig` / top-level `bufferConfig` / top-level `useHlsProxy` with `lifecycle` and `advanced.*`
+- Package runtime entrypoints now target built `lib/*` artifacts instead of `src/*`
+
+### Added
+
+- Added `createNitroSource(config)` as the canonical public source factory
+- Added `NitroPlayer.clearSourceAsync()`
+- Added `NitroPlayerView.playerDefaults`
+- Added `PlaybackError` and `PlaybackState.error`
+- Added `docs/migration-1.0.md`
+
+### Changed
+
+- `NitroPlayerView` now defaults to the `balanced` lifecycle preset
+- `feed` lifecycle now means metadata preload, metadata retention, and 3000 ms trim delay
+- Declarative source identity now tracks the full normalized source configuration
+- Local example package consumption now uses a single repo-level symlink instead of a stale tree of per-file symlinks
+
+### Fixed
+
+- Android: aligned player source parsing with the new source DSL in `DataSourceFactoryUtils`, `MediaItemUtils`, and `HybridNitroPlayer`
+- iOS + Android: kept clear-source semantics reusable instead of terminal release behavior
+- TS: removed JS-only error event plumbing and updated tests to the new API contracts
+
 ## 0.3.2
 
 ### Fixed

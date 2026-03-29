@@ -7,50 +7,12 @@
 
 #include "JHybridNitroPlayerSourceSpec.hpp"
 
-// Forward declaration of `NativeNitroPlayerConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct NativeNitroPlayerConfig; }
-// Forward declaration of `MemoryConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct MemoryConfig; }
-// Forward declaration of `MemoryProfile` to properly resolve imports.
-namespace margelo::nitro::video { enum class MemoryProfile; }
-// Forward declaration of `PreloadLevel` to properly resolve imports.
-namespace margelo::nitro::video { enum class PreloadLevel; }
-// Forward declaration of `OffscreenRetention` to properly resolve imports.
-namespace margelo::nitro::video { enum class OffscreenRetention; }
-// Forward declaration of `BufferConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct BufferConfig; }
-// Forward declaration of `LivePlaybackParams` to properly resolve imports.
-namespace margelo::nitro::video { struct LivePlaybackParams; }
-// Forward declaration of `Resolution` to properly resolve imports.
-namespace margelo::nitro::video { struct Resolution; }
-// Forward declaration of `CustomVideoMetadata` to properly resolve imports.
-namespace margelo::nitro::video { struct CustomVideoMetadata; }
 // Forward declaration of `NitroPlayerInformation` to properly resolve imports.
 namespace margelo::nitro::video { struct NitroPlayerInformation; }
 // Forward declaration of `NitroPlayerOrientation` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerOrientation; }
 
 #include <string>
-#include "NativeNitroPlayerConfig.hpp"
-#include "JNativeNitroPlayerConfig.hpp"
-#include "MemoryConfig.hpp"
-#include <optional>
-#include "JMemoryConfig.hpp"
-#include "MemoryProfile.hpp"
-#include "JMemoryProfile.hpp"
-#include "PreloadLevel.hpp"
-#include "JPreloadLevel.hpp"
-#include "OffscreenRetention.hpp"
-#include "JOffscreenRetention.hpp"
-#include <unordered_map>
-#include "BufferConfig.hpp"
-#include "JBufferConfig.hpp"
-#include "LivePlaybackParams.hpp"
-#include "JLivePlaybackParams.hpp"
-#include "Resolution.hpp"
-#include "JResolution.hpp"
-#include "CustomVideoMetadata.hpp"
-#include "JCustomVideoMetadata.hpp"
 #include "NitroPlayerInformation.hpp"
 #include <NitroModules/Promise.hpp>
 #include <NitroModules/JPromise.hpp>
@@ -92,11 +54,6 @@ namespace margelo::nitro::video {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<jni::JString>()>("getUri");
     auto __result = method(_javaPart);
     return __result->toStdString();
-  }
-  NativeNitroPlayerConfig JHybridNitroPlayerSourceSpec::getConfig() {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JNativeNitroPlayerConfig>()>("getConfig");
-    auto __result = method(_javaPart);
-    return __result->toCpp();
   }
 
   // Methods

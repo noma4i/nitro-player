@@ -1,5 +1,5 @@
 //
-//  HybridNitroPlayer+Events.swift
+//  HybridNitroPlayerEvents.swift
 //  NitroPlay
 //
 //  Created by Krzysztof Moch on 02/05/2025.
@@ -13,6 +13,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
   func onPlayedToEnd(player: AVPlayer) {
     status = .ended
+    resetPlaybackError()
     emitPlaybackState()
 
     if loop {
@@ -45,6 +46,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
   func onPlaybackLikelyToKeepUp() {
     isCurrentlyBuffering = false
+    resetPlaybackError()
     if player.timeControlStatus != .waitingToPlayAtSpecifiedRate {
       status = player.rate > 0 ? .playing : .paused
     }
@@ -56,6 +58,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       self.status = .error
       isCurrentlyBuffering = false
       readyToDisplay = false
+      setPlaybackError(code: .unknownUnknown, message: player.error?.localizedDescription ?? playerItem?.error?.localizedDescription ?? "Unknown playback error")
       emitPlaybackState()
       return
     }
@@ -67,11 +70,13 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
     case .playing:
       isCurrentlyBuffering = false
+      resetPlaybackError()
       self.status = .playing
       break
 
     case .paused:
       isCurrentlyBuffering = false
+      resetPlaybackError()
       if self.status != .ended && self.status != .idle {
         self.status = .paused
       }
@@ -89,6 +94,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       self.status = .error
       isCurrentlyBuffering = false
       readyToDisplay = false
+      setPlaybackError(code: .unknownUnknown, message: player.error?.localizedDescription ?? playerItem?.error?.localizedDescription ?? "Unknown playback error")
       updateAndEmitPlaybackState()
     }
   }
@@ -97,6 +103,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
     if status == .failed {
       self.status = .error
       isCurrentlyBuffering = false
+      setPlaybackError(code: .unknownUnknown, message: playerItem?.error?.localizedDescription ?? "Unknown playback error")
       updateAndEmitPlaybackState()
       return
     }
@@ -116,6 +123,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
     case .readyToPlay:
       guard let playerItem else { return }
+      resetPlaybackError()
 
       let height = playerItem.presentationSize.height
       let width = playerItem.presentationSize.width
@@ -138,6 +146,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       self.status = .error
       isCurrentlyBuffering = false
       readyToDisplay = false
+      setPlaybackError(code: .unknownUnknown, message: playerItem?.error?.localizedDescription ?? "Unknown playback error")
 
     @unknown default:
       break
@@ -158,12 +167,14 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       isCurrentlyBuffering = true
       status = .loading
       readyToDisplay = false
+      resetPlaybackError()
       updateAndEmitPlaybackState()
     } else {
       // Clean up state when playerItem is cleared
       isCurrentlyBuffering = false
       readyToDisplay = false
       status = .idle
+      resetPlaybackError()
       updateAndEmitPlaybackState()
     }
   }

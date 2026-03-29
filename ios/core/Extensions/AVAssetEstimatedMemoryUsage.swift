@@ -1,5 +1,5 @@
 //
-//  AVAsset+estimatedMemoryUsage.swift
+//  AVAssetEstimatedMemoryUsage.swift
 //  NitroPlay
 //
 //  Created by Krzysztof Moch on 23/01/2025.

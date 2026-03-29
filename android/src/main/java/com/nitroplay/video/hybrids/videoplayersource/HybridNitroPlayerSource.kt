@@ -12,7 +12,7 @@ import com.nitroplay.video.core.utils.NitroPlayerInformationUtils
 
 class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
   override lateinit var uri: String
-  override lateinit var config: NativeNitroPlayerConfig
+  lateinit var config: NativeNitroPlayerConfig
 
   private var mediaItem: MediaItem? = null
   private var mediaSource: MediaSource? = null

@@ -5,15 +5,16 @@ import type { ListenerSubscription } from '../../spec/nitro/NitroPlayerEventEmit
 import type { SurfaceType, NitroPlayerViewManager, NitroPlayerViewManagerFactory } from '../../spec/nitro/NitroPlayerViewManager.nitro';
 import { type NitroPlayerViewEvents } from '../types/Events';
 import type { ResizeMode } from '../types/ResizeMode';
-import type { NitroPlayerConfig, NitroPlayerSource } from '../types/NitroPlayerConfig';
+import type { NitroSourceConfig } from '../types/NitroPlayerConfig';
+import type { NitroPlayerDefaults } from '../types/NitroPlayerDefaults';
 import { tryParseNativeNitroPlayerError, NitroPlayerComponentError, NitroPlayerError } from '../types/NitroPlayerError';
 import { NitroPlayer } from '../NitroPlayer';
 import { useNitroPlayer } from '../hooks/useNitroPlayer';
 import { NativeNitroPlayerView } from './NativeNitroPlayerView';
 
 export interface NitroPlayerViewProps extends Partial<NitroPlayerViewEvents>, ViewProps {
-  source: NitroPlayerConfig | NitroPlayerSource;
-  setup?: (player: NitroPlayer) => void;
+  source: NitroSourceConfig;
+  playerDefaults?: NitroPlayerDefaults;
   style?: ViewStyle;
   controls?: boolean;
   resizeMode?: ResizeMode;
@@ -43,7 +44,7 @@ const wrapNativeViewManagerFunction = <T,>(manager: NitroPlayerViewManager | nul
   }
 };
 
-const updateNativeProps = (manager: NitroPlayerViewManager, player: NitroPlayer, props: Omit<NitroPlayerViewProps, 'source' | 'setup'>) => {
+const updateNativeProps = (manager: NitroPlayerViewManager, player: NitroPlayer, props: Omit<NitroPlayerViewProps, 'source' | 'playerDefaults'>) => {
   manager.surfaceType = props.surfaceType ?? 'surface';
   manager.controls = props.controls ?? false;
   manager.resizeMode = props.resizeMode ?? 'none';
@@ -55,7 +56,7 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
   (
     {
       source,
-      setup,
+      playerDefaults,
       controls = false,
       resizeMode = 'none',
       keepScreenAwake = true,
@@ -69,9 +70,7 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
     },
     ref
   ) => {
-    const player = useNitroPlayer(source, setup, {
-      defaultMemoryProfile: 'balanced'
-    });
+    const player = useNitroPlayer(source, playerDefaults);
     const nitroId = React.useMemo(() => nitroIdCounter++, []);
     const nitroViewManager = React.useRef<NitroPlayerViewManager | null>(null);
     const [isManagerReady, setIsManagerReady] = React.useState(false);

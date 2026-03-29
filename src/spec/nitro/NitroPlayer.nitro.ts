@@ -13,7 +13,8 @@ export interface NitroPlayer
   readonly playbackState: PlaybackState;
   readonly memorySnapshot: MemorySnapshot;
 
-  replaceSourceAsync(source: NitroPlayerSource | null): Promise<void>;
+  replaceSourceAsync(source: NitroPlayerSource): Promise<void>;
+  clearSourceAsync(): Promise<void>;
   release(): void;
 }
 

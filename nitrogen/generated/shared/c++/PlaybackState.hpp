@@ -30,8 +30,14 @@
 
 // Forward declaration of `NitroPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerStatus; }
+// Forward declaration of `PlaybackError` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackError; }
 
 #include "NitroPlayerStatus.hpp"
+#include <NitroModules/Null.hpp>
+#include "PlaybackError.hpp"
+#include <variant>
+#include <optional>
 
 namespace margelo::nitro::video {
 
@@ -49,11 +55,12 @@ namespace margelo::nitro::video {
     bool isPlaying     SWIFT_PRIVATE;
     bool isBuffering     SWIFT_PRIVATE;
     bool isReadyToDisplay     SWIFT_PRIVATE;
+    std::optional<std::variant<nitro::NullType, PlaybackError>> error     SWIFT_PRIVATE;
     double nativeTimestampMs     SWIFT_PRIVATE;
 
   public:
     PlaybackState() = default;
-    explicit PlaybackState(NitroPlayerStatus status, double currentTime, double duration, double bufferDuration, double bufferedPosition, double rate, bool isPlaying, bool isBuffering, bool isReadyToDisplay, double nativeTimestampMs): status(status), currentTime(currentTime), duration(duration), bufferDuration(bufferDuration), bufferedPosition(bufferedPosition), rate(rate), isPlaying(isPlaying), isBuffering(isBuffering), isReadyToDisplay(isReadyToDisplay), nativeTimestampMs(nativeTimestampMs) {}
+    explicit PlaybackState(NitroPlayerStatus status, double currentTime, double duration, double bufferDuration, double bufferedPosition, double rate, bool isPlaying, bool isBuffering, bool isReadyToDisplay, std::optional<std::variant<nitro::NullType, PlaybackError>> error, double nativeTimestampMs): status(status), currentTime(currentTime), duration(duration), bufferDuration(bufferDuration), bufferedPosition(bufferedPosition), rate(rate), isPlaying(isPlaying), isBuffering(isBuffering), isReadyToDisplay(isReadyToDisplay), error(error), nativeTimestampMs(nativeTimestampMs) {}
 
   public:
     friend bool operator==(const PlaybackState& lhs, const PlaybackState& rhs) = default;
@@ -78,6 +85,7 @@ namespace margelo::nitro {
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPlaying"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isBuffering"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isReadyToDisplay"))),
+        JSIConverter<std::optional<std::variant<nitro::NullType, margelo::nitro::video::PlaybackError>>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "error"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "nativeTimestampMs")))
       );
     }
@@ -92,6 +100,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "isPlaying"), JSIConverter<bool>::toJSI(runtime, arg.isPlaying));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "isBuffering"), JSIConverter<bool>::toJSI(runtime, arg.isBuffering));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "isReadyToDisplay"), JSIConverter<bool>::toJSI(runtime, arg.isReadyToDisplay));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "error"), JSIConverter<std::optional<std::variant<nitro::NullType, margelo::nitro::video::PlaybackError>>>::toJSI(runtime, arg.error));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "nativeTimestampMs"), JSIConverter<double>::toJSI(runtime, arg.nativeTimestampMs));
       return obj;
     }
@@ -112,6 +121,7 @@ namespace margelo::nitro {
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPlaying")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isBuffering")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isReadyToDisplay")))) return false;
+      if (!JSIConverter<std::optional<std::variant<nitro::NullType, margelo::nitro::video::PlaybackError>>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "error")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "nativeTimestampMs")))) return false;
       return true;
     }

@@ -12,8 +12,6 @@
 namespace margelo::nitro::video { struct BandwidthData; }
 // Forward declaration of `BufferConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct BufferConfig; }
-// Forward declaration of `CustomVideoMetadata` to properly resolve imports.
-namespace margelo::nitro::video { struct CustomVideoMetadata; }
 // Forward declaration of `HybridNitroPlayerEventEmitterSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridNitroPlayerEventEmitterSpec; }
 // Forward declaration of `HybridNitroPlayerFactorySpec` to properly resolve imports.
@@ -34,8 +32,6 @@ namespace margelo::nitro::video { enum class IgnoreSilentSwitchMode; }
 namespace margelo::nitro::video { struct ListenerSubscription; }
 // Forward declaration of `LivePlaybackParams` to properly resolve imports.
 namespace margelo::nitro::video { struct LivePlaybackParams; }
-// Forward declaration of `MemoryConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct MemoryConfig; }
 // Forward declaration of `MemoryProfile` to properly resolve imports.
 namespace margelo::nitro::video { enum class MemoryProfile; }
 // Forward declaration of `MemoryRetentionState` to properly resolve imports.
@@ -46,14 +42,28 @@ namespace margelo::nitro::video { struct MemorySnapshot; }
 namespace margelo::nitro::video { enum class MixAudioMode; }
 // Forward declaration of `NativeNitroPlayerConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct NativeNitroPlayerConfig; }
+// Forward declaration of `NitroPlayerErrorCode` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroPlayerErrorCode; }
 // Forward declaration of `NitroPlayerInformation` to properly resolve imports.
 namespace margelo::nitro::video { struct NitroPlayerInformation; }
 // Forward declaration of `NitroPlayerOrientation` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerOrientation; }
 // Forward declaration of `NitroPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerStatus; }
+// Forward declaration of `NitroSourceAdvancedConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroSourceAdvancedConfig; }
+// Forward declaration of `NitroSourceAdvancedLifecycleConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroSourceAdvancedLifecycleConfig; }
+// Forward declaration of `NitroSourceAdvancedTransportConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroSourceAdvancedTransportConfig; }
+// Forward declaration of `NitroSourceInitialization` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroSourceInitialization; }
+// Forward declaration of `NitroSourceMetadata` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroSourceMetadata; }
 // Forward declaration of `OffscreenRetention` to properly resolve imports.
 namespace margelo::nitro::video { enum class OffscreenRetention; }
+// Forward declaration of `PlaybackError` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackError; }
 // Forward declaration of `PlaybackState` to properly resolve imports.
 namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `PreloadLevel` to properly resolve imports.
@@ -76,7 +86,6 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 // Include C++ defined types
 #include "BandwidthData.hpp"
 #include "BufferConfig.hpp"
-#include "CustomVideoMetadata.hpp"
 #include "HybridNitroPlayerEventEmitterSpec.hpp"
 #include "HybridNitroPlayerFactorySpec.hpp"
 #include "HybridNitroPlayerSourceFactorySpec.hpp"
@@ -87,16 +96,22 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "IgnoreSilentSwitchMode.hpp"
 #include "ListenerSubscription.hpp"
 #include "LivePlaybackParams.hpp"
-#include "MemoryConfig.hpp"
 #include "MemoryProfile.hpp"
 #include "MemoryRetentionState.hpp"
 #include "MemorySnapshot.hpp"
 #include "MixAudioMode.hpp"
 #include "NativeNitroPlayerConfig.hpp"
+#include "NitroPlayerErrorCode.hpp"
 #include "NitroPlayerInformation.hpp"
 #include "NitroPlayerOrientation.hpp"
 #include "NitroPlayerStatus.hpp"
+#include "NitroSourceAdvancedConfig.hpp"
+#include "NitroSourceAdvancedLifecycleConfig.hpp"
+#include "NitroSourceAdvancedTransportConfig.hpp"
+#include "NitroSourceInitialization.hpp"
+#include "NitroSourceMetadata.hpp"
 #include "OffscreenRetention.hpp"
+#include "PlaybackError.hpp"
 #include "PlaybackState.hpp"
 #include "PreloadLevel.hpp"
 #include "ResizeMode.hpp"

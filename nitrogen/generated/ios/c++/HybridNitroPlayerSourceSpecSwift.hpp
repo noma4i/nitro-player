@@ -12,41 +12,12 @@
 // Forward declaration of `HybridNitroPlayerSourceSpec_cxx` to properly resolve imports.
 namespace NitroPlay { class HybridNitroPlayerSourceSpec_cxx; }
 
-// Forward declaration of `NativeNitroPlayerConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct NativeNitroPlayerConfig; }
-// Forward declaration of `MemoryConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct MemoryConfig; }
-// Forward declaration of `MemoryProfile` to properly resolve imports.
-namespace margelo::nitro::video { enum class MemoryProfile; }
-// Forward declaration of `PreloadLevel` to properly resolve imports.
-namespace margelo::nitro::video { enum class PreloadLevel; }
-// Forward declaration of `OffscreenRetention` to properly resolve imports.
-namespace margelo::nitro::video { enum class OffscreenRetention; }
-// Forward declaration of `BufferConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct BufferConfig; }
-// Forward declaration of `LivePlaybackParams` to properly resolve imports.
-namespace margelo::nitro::video { struct LivePlaybackParams; }
-// Forward declaration of `Resolution` to properly resolve imports.
-namespace margelo::nitro::video { struct Resolution; }
-// Forward declaration of `CustomVideoMetadata` to properly resolve imports.
-namespace margelo::nitro::video { struct CustomVideoMetadata; }
 // Forward declaration of `NitroPlayerInformation` to properly resolve imports.
 namespace margelo::nitro::video { struct NitroPlayerInformation; }
 // Forward declaration of `NitroPlayerOrientation` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerOrientation; }
 
 #include <string>
-#include "NativeNitroPlayerConfig.hpp"
-#include "MemoryConfig.hpp"
-#include <optional>
-#include "MemoryProfile.hpp"
-#include "PreloadLevel.hpp"
-#include "OffscreenRetention.hpp"
-#include <unordered_map>
-#include "BufferConfig.hpp"
-#include "LivePlaybackParams.hpp"
-#include "Resolution.hpp"
-#include "CustomVideoMetadata.hpp"
 #include "NitroPlayerInformation.hpp"
 #include <NitroModules/Promise.hpp>
 #include "NitroPlayerOrientation.hpp"
@@ -100,9 +71,6 @@ namespace margelo::nitro::video {
     inline std::string getUri() noexcept override {
       auto __result = _swiftPart.getUri();
       return __result;
-    }
-    inline NativeNitroPlayerConfig getConfig() noexcept override {
-      return _swiftPart.getConfig();
     }
 
   public:

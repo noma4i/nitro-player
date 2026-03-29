@@ -28,19 +28,22 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-// Forward declaration of `MemoryConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct MemoryConfig; }
-// Forward declaration of `BufferConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct BufferConfig; }
-// Forward declaration of `CustomVideoMetadata` to properly resolve imports.
-namespace margelo::nitro::video { struct CustomVideoMetadata; }
+// Forward declaration of `NitroSourceMetadata` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroSourceMetadata; }
+// Forward declaration of `MemoryProfile` to properly resolve imports.
+namespace margelo::nitro::video { enum class MemoryProfile; }
+// Forward declaration of `NitroSourceInitialization` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroSourceInitialization; }
+// Forward declaration of `NitroSourceAdvancedConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroSourceAdvancedConfig; }
 
 #include <string>
-#include "MemoryConfig.hpp"
-#include <optional>
 #include <unordered_map>
-#include "BufferConfig.hpp"
-#include "CustomVideoMetadata.hpp"
+#include <optional>
+#include "NitroSourceMetadata.hpp"
+#include "MemoryProfile.hpp"
+#include "NitroSourceInitialization.hpp"
+#include "NitroSourceAdvancedConfig.hpp"
 
 namespace margelo::nitro::video {
 
@@ -50,16 +53,15 @@ namespace margelo::nitro::video {
   struct NativeNitroPlayerConfig final {
   public:
     std::string uri     SWIFT_PRIVATE;
-    std::optional<MemoryConfig> memoryConfig     SWIFT_PRIVATE;
     std::optional<std::unordered_map<std::string, std::string>> headers     SWIFT_PRIVATE;
-    std::optional<BufferConfig> bufferConfig     SWIFT_PRIVATE;
-    std::optional<CustomVideoMetadata> metadata     SWIFT_PRIVATE;
-    std::optional<bool> initializeOnCreation     SWIFT_PRIVATE;
-    std::optional<bool> useHlsProxy     SWIFT_PRIVATE;
+    std::optional<NitroSourceMetadata> metadata     SWIFT_PRIVATE;
+    std::optional<MemoryProfile> lifecycle     SWIFT_PRIVATE;
+    std::optional<NitroSourceInitialization> initialization     SWIFT_PRIVATE;
+    std::optional<NitroSourceAdvancedConfig> advanced     SWIFT_PRIVATE;
 
   public:
     NativeNitroPlayerConfig() = default;
-    explicit NativeNitroPlayerConfig(std::string uri, std::optional<MemoryConfig> memoryConfig, std::optional<std::unordered_map<std::string, std::string>> headers, std::optional<BufferConfig> bufferConfig, std::optional<CustomVideoMetadata> metadata, std::optional<bool> initializeOnCreation, std::optional<bool> useHlsProxy): uri(uri), memoryConfig(memoryConfig), headers(headers), bufferConfig(bufferConfig), metadata(metadata), initializeOnCreation(initializeOnCreation), useHlsProxy(useHlsProxy) {}
+    explicit NativeNitroPlayerConfig(std::string uri, std::optional<std::unordered_map<std::string, std::string>> headers, std::optional<NitroSourceMetadata> metadata, std::optional<MemoryProfile> lifecycle, std::optional<NitroSourceInitialization> initialization, std::optional<NitroSourceAdvancedConfig> advanced): uri(uri), headers(headers), metadata(metadata), lifecycle(lifecycle), initialization(initialization), advanced(advanced) {}
 
   public:
     friend bool operator==(const NativeNitroPlayerConfig& lhs, const NativeNitroPlayerConfig& rhs) = default;
@@ -76,23 +78,21 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::video::NativeNitroPlayerConfig(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "uri"))),
-        JSIConverter<std::optional<margelo::nitro::video::MemoryConfig>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "memoryConfig"))),
         JSIConverter<std::optional<std::unordered_map<std::string, std::string>>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "headers"))),
-        JSIConverter<std::optional<margelo::nitro::video::BufferConfig>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bufferConfig"))),
-        JSIConverter<std::optional<margelo::nitro::video::CustomVideoMetadata>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "metadata"))),
-        JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "initializeOnCreation"))),
-        JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "useHlsProxy")))
+        JSIConverter<std::optional<margelo::nitro::video::NitroSourceMetadata>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "metadata"))),
+        JSIConverter<std::optional<margelo::nitro::video::MemoryProfile>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "lifecycle"))),
+        JSIConverter<std::optional<margelo::nitro::video::NitroSourceInitialization>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "initialization"))),
+        JSIConverter<std::optional<margelo::nitro::video::NitroSourceAdvancedConfig>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "advanced")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::video::NativeNitroPlayerConfig& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "uri"), JSIConverter<std::string>::toJSI(runtime, arg.uri));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "memoryConfig"), JSIConverter<std::optional<margelo::nitro::video::MemoryConfig>>::toJSI(runtime, arg.memoryConfig));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "headers"), JSIConverter<std::optional<std::unordered_map<std::string, std::string>>>::toJSI(runtime, arg.headers));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "bufferConfig"), JSIConverter<std::optional<margelo::nitro::video::BufferConfig>>::toJSI(runtime, arg.bufferConfig));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "metadata"), JSIConverter<std::optional<margelo::nitro::video::CustomVideoMetadata>>::toJSI(runtime, arg.metadata));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "initializeOnCreation"), JSIConverter<std::optional<bool>>::toJSI(runtime, arg.initializeOnCreation));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "useHlsProxy"), JSIConverter<std::optional<bool>>::toJSI(runtime, arg.useHlsProxy));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "metadata"), JSIConverter<std::optional<margelo::nitro::video::NitroSourceMetadata>>::toJSI(runtime, arg.metadata));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "lifecycle"), JSIConverter<std::optional<margelo::nitro::video::MemoryProfile>>::toJSI(runtime, arg.lifecycle));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "initialization"), JSIConverter<std::optional<margelo::nitro::video::NitroSourceInitialization>>::toJSI(runtime, arg.initialization));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "advanced"), JSIConverter<std::optional<margelo::nitro::video::NitroSourceAdvancedConfig>>::toJSI(runtime, arg.advanced));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -104,12 +104,11 @@ namespace margelo::nitro {
         return false;
       }
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "uri")))) return false;
-      if (!JSIConverter<std::optional<margelo::nitro::video::MemoryConfig>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "memoryConfig")))) return false;
       if (!JSIConverter<std::optional<std::unordered_map<std::string, std::string>>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "headers")))) return false;
-      if (!JSIConverter<std::optional<margelo::nitro::video::BufferConfig>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bufferConfig")))) return false;
-      if (!JSIConverter<std::optional<margelo::nitro::video::CustomVideoMetadata>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "metadata")))) return false;
-      if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "initializeOnCreation")))) return false;
-      if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "useHlsProxy")))) return false;
+      if (!JSIConverter<std::optional<margelo::nitro::video::NitroSourceMetadata>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "metadata")))) return false;
+      if (!JSIConverter<std::optional<margelo::nitro::video::MemoryProfile>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "lifecycle")))) return false;
+      if (!JSIConverter<std::optional<margelo::nitro::video::NitroSourceInitialization>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "initialization")))) return false;
+      if (!JSIConverter<std::optional<margelo::nitro::video::NitroSourceAdvancedConfig>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "advanced")))) return false;
       return true;
     }
   };

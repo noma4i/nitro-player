@@ -184,23 +184,21 @@ describe('NitroPlayerView attach contract', () => {
     detachedSubscription?.remove();
   });
 
-  it('creates NitroPlayerView players with balanced default memory profile', () => {
+  it('creates NitroPlayerView players through useNitroPlayer with playerDefaults passthrough', () => {
     const { React, act, renderNode, NitroPlayerView, useNitroPlayer } = setupSubject(false);
 
     act(() => {
       renderNode(
         React.createElement(NitroPlayerView, {
-          source: { uri: 'https://cdn.example.com/video.mp4' }
+          source: { uri: 'https://cdn.example.com/video.mp4' },
+          playerDefaults: { loop: true }
         })
       );
     });
 
     expect(useNitroPlayer).toHaveBeenCalledWith(
       { uri: 'https://cdn.example.com/video.mp4' },
-      undefined,
-      expect.objectContaining({
-        defaultMemoryProfile: 'balanced'
-      })
+      { loop: true }
     );
   });
 });

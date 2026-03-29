@@ -1,5 +1,5 @@
 //
-//  AVPlayerItem+BufferDuration.swift
+//  AVPlayerItemBufferDuration.swift
 //  NitroPlay
 //
 //  Created by Krzysztof Moch on 06/05/2025.

@@ -15,6 +15,10 @@ namespace margelo::nitro::video { class HybridNitroPlayerEventEmitterSpec; }
 namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `NitroPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerStatus; }
+// Forward declaration of `PlaybackError` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackError; }
+// Forward declaration of `NitroPlayerErrorCode` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroPlayerErrorCode; }
 // Forward declaration of `MemorySnapshot` to properly resolve imports.
 namespace margelo::nitro::video { struct MemorySnapshot; }
 // Forward declaration of `PreloadLevel` to properly resolve imports.
@@ -35,6 +39,16 @@ namespace margelo::nitro::video { enum class IgnoreSilentSwitchMode; }
 #include "JPlaybackState.hpp"
 #include "NitroPlayerStatus.hpp"
 #include "JNitroPlayerStatus.hpp"
+#include <NitroModules/Null.hpp>
+#include "PlaybackError.hpp"
+#include <variant>
+#include <optional>
+#include "JVariant_NullType_PlaybackError.hpp"
+#include <NitroModules/JNull.hpp>
+#include "JPlaybackError.hpp"
+#include "NitroPlayerErrorCode.hpp"
+#include "JNitroPlayerErrorCode.hpp"
+#include <string>
 #include "MemorySnapshot.hpp"
 #include "JMemorySnapshot.hpp"
 #include "PreloadLevel.hpp"
@@ -48,11 +62,6 @@ namespace margelo::nitro::video { enum class IgnoreSilentSwitchMode; }
 #include <NitroModules/Promise.hpp>
 #include <NitroModules/JPromise.hpp>
 #include <NitroModules/JUnit.hpp>
-#include <NitroModules/Null.hpp>
-#include <variant>
-#include <optional>
-#include "JVariant_NullType_HybridNitroPlayerSourceSpec.hpp"
-#include <NitroModules/JNull.hpp>
 
 namespace margelo::nitro::video {
 
@@ -222,9 +231,24 @@ namespace margelo::nitro::video {
   }
 
   // Methods
-  std::shared_ptr<Promise<void>> JHybridNitroPlayerSpec::replaceSourceAsync(const std::optional<std::variant<nitro::NullType, std::shared_ptr<HybridNitroPlayerSourceSpec>>>& source) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<JVariant_NullType_HybridNitroPlayerSourceSpec> /* source */)>("replaceSourceAsync");
-    auto __result = method(_javaPart, source.has_value() ? JVariant_NullType_HybridNitroPlayerSourceSpec::fromCpp(source.value()) : nullptr);
+  std::shared_ptr<Promise<void>> JHybridNitroPlayerSpec::replaceSourceAsync(const std::shared_ptr<HybridNitroPlayerSourceSpec>& source) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<JHybridNitroPlayerSourceSpec::JavaPart> /* source */)>("replaceSourceAsync");
+    auto __result = method(_javaPart, std::dynamic_pointer_cast<JHybridNitroPlayerSourceSpec>(source)->getJavaPart());
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  std::shared_ptr<Promise<void>> JHybridNitroPlayerSpec::clearSourceAsync() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("clearSourceAsync");
+    auto __result = method(_javaPart);
     return [&]() {
       auto __promise = Promise<void>::create();
       __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {

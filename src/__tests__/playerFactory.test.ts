@@ -29,10 +29,10 @@ describe('playerFactory', () => {
   it('createPlayer with source object calls NitroPlayerFactory.createPlayer', () => {
     const { createPlayer } = require('../core/utils/playerFactory');
 
-    const result = createPlayer('https://cdn.example.com/video.mp4');
+    const result = createPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     expect(nativeCreatePlayer).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ source: { uri: 'https://cdn.example.com/video.mp4' } });
+    expect(result).toEqual({ source: { uri: { uri: 'https://cdn.example.com/video.mp4' } } });
   });
 
   it('createPlayer wraps native errors via tryParseNativeNitroPlayerError', () => {
@@ -42,7 +42,7 @@ describe('playerFactory', () => {
       throw new Error('{%@source/invalid-uri::Bad URI@%}');
     });
 
-    expect(() => createPlayer('bad')).toThrow();
+    expect(() => createPlayer({ uri: 'bad' })).toThrow();
   });
 
   it('createPlayer passes NitroPlayerSource directly if isNitroPlayerSource is true', () => {

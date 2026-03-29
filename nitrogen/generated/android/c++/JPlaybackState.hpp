@@ -10,8 +10,18 @@
 #include <fbjni/fbjni.h>
 #include "PlaybackState.hpp"
 
+#include "JNitroPlayerErrorCode.hpp"
 #include "JNitroPlayerStatus.hpp"
+#include "JPlaybackError.hpp"
+#include "JVariant_NullType_PlaybackError.hpp"
+#include "NitroPlayerErrorCode.hpp"
 #include "NitroPlayerStatus.hpp"
+#include "PlaybackError.hpp"
+#include <NitroModules/JNull.hpp>
+#include <NitroModules/Null.hpp>
+#include <optional>
+#include <string>
+#include <variant>
 
 namespace margelo::nitro::video {
 
@@ -50,6 +60,8 @@ namespace margelo::nitro::video {
       jboolean isBuffering = this->getFieldValue(fieldIsBuffering);
       static const auto fieldIsReadyToDisplay = clazz->getField<jboolean>("isReadyToDisplay");
       jboolean isReadyToDisplay = this->getFieldValue(fieldIsReadyToDisplay);
+      static const auto fieldError = clazz->getField<JVariant_NullType_PlaybackError>("error");
+      jni::local_ref<JVariant_NullType_PlaybackError> error = this->getFieldValue(fieldError);
       static const auto fieldNativeTimestampMs = clazz->getField<double>("nativeTimestampMs");
       double nativeTimestampMs = this->getFieldValue(fieldNativeTimestampMs);
       return PlaybackState(
@@ -62,6 +74,7 @@ namespace margelo::nitro::video {
         static_cast<bool>(isPlaying),
         static_cast<bool>(isBuffering),
         static_cast<bool>(isReadyToDisplay),
+        error != nullptr ? std::make_optional(error->toCpp()) : std::nullopt,
         nativeTimestampMs
       );
     }
@@ -72,7 +85,7 @@ namespace margelo::nitro::video {
      */
     [[maybe_unused]]
     static jni::local_ref<JPlaybackState::javaobject> fromCpp(const PlaybackState& value) {
-      using JSignature = JPlaybackState(jni::alias_ref<JNitroPlayerStatus>, double, double, double, double, double, jboolean, jboolean, jboolean, double);
+      using JSignature = JPlaybackState(jni::alias_ref<JNitroPlayerStatus>, double, double, double, double, double, jboolean, jboolean, jboolean, jni::alias_ref<JVariant_NullType_PlaybackError>, double);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -86,6 +99,7 @@ namespace margelo::nitro::video {
         value.isPlaying,
         value.isBuffering,
         value.isReadyToDisplay,
+        value.error.has_value() ? JVariant_NullType_PlaybackError::fromCpp(value.error.value()) : nullptr,
         value.nativeTimestampMs
       );
     }

@@ -17,12 +17,11 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
   func fromUri(uri: String) throws -> HybridNitroPlayerSourceSpec {
     let config = NativeNitroPlayerConfig(
       uri: uri,
-      memoryConfig: nil,
       headers: nil,
-      bufferConfig: nil,
       metadata: nil,
-      initializeOnCreation: true,
-      useHlsProxy: nil
+      lifecycle: .balanced,
+      initialization: .eager,
+      advanced: nil
     )
     return try HybridNitroPlayerSource(config: config)
   }

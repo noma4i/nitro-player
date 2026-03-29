@@ -1,5 +1,5 @@
 //
-//  NSObject+PerformIfResponds.swift
+//  NSObjectPerformIfResponds.swift
 //  NitroPlay
 //
 //  Created by Krzysztof Moch on 27/04/2025.

@@ -1,6 +1,6 @@
 # HLS Cache Proxy
 
-Localhost HTTP proxy (port 18181) that caches HLS segments to disk. All `.m3u8` URLs routed through `NitroPlayerView` go through the proxy automatically.
+Localhost HTTP proxy (port `18181`) that caches HLS segments to disk. HLS proxying is enabled by default for `.m3u8` sources unless `advanced.transport.useHlsProxy` is set to `false`.
 
 ## Architecture
 
@@ -17,10 +17,6 @@ Manifest responses always fresh (`Cache-Control: no-cache`). Segments cached to 
 
 ## API
 
-```typescript
-import { hlsCacheProxy } from '@noma4i/nitro-play';
-```
-
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `start(port?)` | `void` | Start proxy (default: 18181). Auto-starts on first use |
@@ -33,18 +29,10 @@ import { hlsCacheProxy } from '@noma4i/nitro-play';
 
 ## Types
 
-```typescript
-interface HlsCacheStats {
-  totalSize: number;    // bytes on disk
-  fileCount: number;    // cached segments
-  maxSize: number;      // 5 GB limit
-}
-
-interface HlsStreamCacheStats extends HlsCacheStats {
-  streamSize: number;       // bytes for this stream
-  streamFileCount: number;  // segments for this stream
-}
-```
+| Type | Fields |
+|------|--------|
+| `HlsCacheStats` | `totalSize`, `fileCount`, `maxSize` |
+| `HlsStreamCacheStats` | `streamSize`, `streamFileCount`, plus `HlsCacheStats` fields |
 
 ## Cache Policy
 
@@ -73,9 +61,5 @@ Streams are always removed as a whole unit - no partial cleanup that would leave
 `prefetchFirstSegment()` deduplicates calls within 60 seconds for the same URL. Safe to call on every feed item mount.
 
 ## Disabling the Proxy
-
-```tsx
-<NitroPlayerView source={{ uri: 'https://example.com/live.m3u8', useHlsProxy: false }} />
-```
 
 Non-HLS sources (`.mp4`, etc.) are never proxied regardless of this setting.

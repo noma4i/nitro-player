@@ -1,4 +1,5 @@
 import type { NitroPlayerStatus } from './NitroPlayerStatus';
+import type { PlaybackError } from './PlaybackError';
 
 export interface PlaybackState {
   status: NitroPlayerStatus;
@@ -10,5 +11,6 @@ export interface PlaybackState {
   isPlaying: boolean;
   isBuffering: boolean;
   isReadyToDisplay: boolean;
+  error?: PlaybackError | null;
   nativeTimestampMs: number;
 }

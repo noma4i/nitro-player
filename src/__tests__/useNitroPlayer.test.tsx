@@ -25,16 +25,19 @@ const addEventListener = jest.fn((_event: string, callback: () => void) => ({
 const destroy = jest.fn();
 
 const playerInstance = {
-  source: {
-    config: {
-      initializeOnCreation: false
-    }
-  },
   playbackState: {
     status: 'idle'
   },
   addEventListener,
-  __destroy: destroy
+  __destroy: destroy,
+  loop: false,
+  muted: false,
+  volume: 1,
+  rate: 1,
+  mixAudioMode: 'mixWithOthers',
+  ignoreSilentSwitchMode: 'auto',
+  playInBackground: false,
+  playWhenInactive: false
 };
 
 jest.mock('../core/hooks/useManagedInstance', () => ({
@@ -47,18 +50,32 @@ describe('useNitroPlayer', () => {
     destroy.mockClear();
   });
 
-  it('re-applies setup when callback changes without recreating player', () => {
-    const firstSetup = jest.fn();
-    const secondSetup = jest.fn();
+  it('re-applies playerDefaults when object changes without recreating player', () => {
     const { useNitroPlayer } = require('../core/hooks/useNitroPlayer');
 
-    const { rerender } = renderHook(({ setup }) => useNitroPlayer({ uri: 'https://cdn.example.com/video.mp4' }, setup), { initialProps: { setup: firstSetup } });
+    const { rerender } = renderHook(
+      ({ defaults }: { defaults: any }) => useNitroPlayer({ uri: 'https://cdn.example.com/video.mp4' }, defaults),
+      {
+        initialProps: {
+          defaults: {
+            loop: true,
+            volume: 0.5
+          }
+        }
+      }
+    );
 
-    expect(firstSetup).toHaveBeenCalledWith(playerInstance);
+    expect(playerInstance.loop).toBe(true);
+    expect(playerInstance.volume).toBe(0.5);
 
-    rerender({ setup: secondSetup });
+    rerender({
+      defaults: {
+        loop: false,
+        muted: true
+      }
+    } as any);
 
-    expect(secondSetup).toHaveBeenCalledWith(playerInstance);
-    expect(firstSetup).toHaveBeenCalledTimes(1);
+    expect(playerInstance.loop).toBe(false);
+    expect(playerInstance.muted).toBe(true);
   });
 });

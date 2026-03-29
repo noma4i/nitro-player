@@ -18,14 +18,8 @@ public extension NativeNitroPlayerConfig {
   /**
    * Create a new instance of `NativeNitroPlayerConfig`.
    */
-  init(uri: String, memoryConfig: MemoryConfig?, headers: Dictionary<String, String>?, bufferConfig: BufferConfig?, metadata: CustomVideoMetadata?, initializeOnCreation: Bool?, useHlsProxy: Bool?) {
-    self.init(std.string(uri), { () -> bridge.std__optional_MemoryConfig_ in
-      if let __unwrappedValue = memoryConfig {
-        return bridge.create_std__optional_MemoryConfig_(__unwrappedValue)
-      } else {
-        return .init()
-      }
-    }(), { () -> bridge.std__optional_std__unordered_map_std__string__std__string__ in
+  init(uri: String, headers: Dictionary<String, String>?, metadata: NitroSourceMetadata?, lifecycle: MemoryProfile?, initialization: NitroSourceInitialization?, advanced: NitroSourceAdvancedConfig?) {
+    self.init(std.string(uri), { () -> bridge.std__optional_std__unordered_map_std__string__std__string__ in
       if let __unwrappedValue = headers {
         return bridge.create_std__optional_std__unordered_map_std__string__std__string__({ () -> bridge.std__unordered_map_std__string__std__string_ in
           var __map = bridge.create_std__unordered_map_std__string__std__string_(__unwrappedValue.count)
@@ -37,27 +31,27 @@ public extension NativeNitroPlayerConfig {
       } else {
         return .init()
       }
-    }(), { () -> bridge.std__optional_BufferConfig_ in
-      if let __unwrappedValue = bufferConfig {
-        return bridge.create_std__optional_BufferConfig_(__unwrappedValue)
-      } else {
-        return .init()
-      }
-    }(), { () -> bridge.std__optional_CustomVideoMetadata_ in
+    }(), { () -> bridge.std__optional_NitroSourceMetadata_ in
       if let __unwrappedValue = metadata {
-        return bridge.create_std__optional_CustomVideoMetadata_(__unwrappedValue)
+        return bridge.create_std__optional_NitroSourceMetadata_(__unwrappedValue)
       } else {
         return .init()
       }
-    }(), { () -> bridge.std__optional_bool_ in
-      if let __unwrappedValue = initializeOnCreation {
-        return bridge.create_std__optional_bool_(__unwrappedValue)
+    }(), { () -> bridge.std__optional_MemoryProfile_ in
+      if let __unwrappedValue = lifecycle {
+        return bridge.create_std__optional_MemoryProfile_(__unwrappedValue)
       } else {
         return .init()
       }
-    }(), { () -> bridge.std__optional_bool_ in
-      if let __unwrappedValue = useHlsProxy {
-        return bridge.create_std__optional_bool_(__unwrappedValue)
+    }(), { () -> bridge.std__optional_NitroSourceInitialization_ in
+      if let __unwrappedValue = initialization {
+        return bridge.create_std__optional_NitroSourceInitialization_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_NitroSourceAdvancedConfig_ in
+      if let __unwrappedValue = advanced {
+        return bridge.create_std__optional_NitroSourceAdvancedConfig_(__unwrappedValue)
       } else {
         return .init()
       }
@@ -67,11 +61,6 @@ public extension NativeNitroPlayerConfig {
   @inline(__always)
   var uri: String {
     return String(self.__uri)
-  }
-  
-  @inline(__always)
-  var memoryConfig: MemoryConfig? {
-    return self.__memoryConfig.value
   }
   
   @inline(__always)
@@ -95,36 +84,22 @@ public extension NativeNitroPlayerConfig {
   }
   
   @inline(__always)
-  var bufferConfig: BufferConfig? {
-    return self.__bufferConfig.value
-  }
-  
-  @inline(__always)
-  var metadata: CustomVideoMetadata? {
+  var metadata: NitroSourceMetadata? {
     return self.__metadata.value
   }
   
   @inline(__always)
-  var initializeOnCreation: Bool? {
-    return { () -> Bool? in
-      if bridge.has_value_std__optional_bool_(self.__initializeOnCreation) {
-        let __unwrapped = bridge.get_std__optional_bool_(self.__initializeOnCreation)
-        return __unwrapped
-      } else {
-        return nil
-      }
-    }()
+  var lifecycle: MemoryProfile? {
+    return self.__lifecycle.value
   }
   
   @inline(__always)
-  var useHlsProxy: Bool? {
-    return { () -> Bool? in
-      if bridge.has_value_std__optional_bool_(self.__useHlsProxy) {
-        let __unwrapped = bridge.get_std__optional_bool_(self.__useHlsProxy)
-        return __unwrapped
-      } else {
-        return nil
-      }
-    }()
+  var initialization: NitroSourceInitialization? {
+    return self.__initialization.value
+  }
+  
+  @inline(__always)
+  var advanced: NitroSourceAdvancedConfig? {
+    return self.__advanced.value
   }
 }

@@ -8,11 +8,6 @@ export interface NitroPlayerSourceBase {
   readonly uri: string;
 
   /**
-   * The config of the asset.
-   */
-  readonly config: NativeNitroPlayerConfig;
-
-  /**
    * Get the information about the asset.
    */
   getAssetInformationAsync(): Promise<NitroPlayerInformation>;

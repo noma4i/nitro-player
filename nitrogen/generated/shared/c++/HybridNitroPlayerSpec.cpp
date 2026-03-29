@@ -44,6 +44,7 @@ namespace margelo::nitro::video {
       prototype.registerHybridGetter("isBuffering", &HybridNitroPlayerSpec::getIsBuffering);
       prototype.registerHybridGetter("isReadyToDisplay", &HybridNitroPlayerSpec::getIsReadyToDisplay);
       prototype.registerHybridMethod("replaceSourceAsync", &HybridNitroPlayerSpec::replaceSourceAsync);
+      prototype.registerHybridMethod("clearSourceAsync", &HybridNitroPlayerSpec::clearSourceAsync);
       prototype.registerHybridMethod("release", &HybridNitroPlayerSpec::release);
       prototype.registerHybridMethod("initialize", &HybridNitroPlayerSpec::initialize);
       prototype.registerHybridMethod("preload", &HybridNitroPlayerSpec::preload);

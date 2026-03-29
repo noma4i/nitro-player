@@ -42,7 +42,7 @@ target_sources(
   ../nitrogen/generated/shared/c++/HybridNitroPlayerViewManagerFactorySpec.cpp
   # Android-specific Nitrogen C++ sources
   ../nitrogen/generated/android/c++/JHybridNitroPlayerSpec.cpp
-  ../nitrogen/generated/android/c++/JVariant_NullType_HybridNitroPlayerSourceSpec.cpp
+  ../nitrogen/generated/android/c++/JVariant_NullType_PlaybackError.cpp
   ../nitrogen/generated/android/c++/JHybridNitroPlayerFactorySpec.cpp
   ../nitrogen/generated/android/c++/JHybridNitroPlayerEventEmitterSpec.cpp
   ../nitrogen/generated/android/c++/JHybridNitroPlayerSourceSpec.cpp

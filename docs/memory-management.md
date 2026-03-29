@@ -1,83 +1,50 @@
 # Memory Management
 
-NitroPlay has a built-in memory lifecycle system for managing native player resources, especially useful for feed/scroll scenarios with many videos.
+NitroPlay uses lifecycle presets instead of the old public `memoryConfig` DSL.
 
-`NitroPlayerView` uses the `balanced` profile by default. Use `profile: 'feed'` only when you explicitly want metadata-oriented retention for scrolling lists.
+## Public lifecycle contract
 
-## MemoryConfig
+| Field | Location | Purpose |
+|------|----------|---------|
+| `lifecycle` | `NitroSourceConfig.lifecycle` | High-level preset |
+| `advanced.lifecycle.preloadLevel` | `NitroSourceConfig.advanced.lifecycle` | Explicit preload override |
+| `advanced.lifecycle.offscreenRetention` | `NitroSourceConfig.advanced.lifecycle` | Explicit retention override |
+| `advanced.lifecycle.trimDelayMs` | `NitroSourceConfig.advanced.lifecycle` | Explicit trim delay override |
 
-Pass via `source.memoryConfig`:
+`NitroPlayerView` uses `balanced` when no lifecycle is provided.
 
-```tsx
-<NitroPlayerView source={{
-  uri: 'https://example.com/video.mp4',
-  memoryConfig: {
-    profile: 'feed',
-    preloadLevel: 'metadata',
-    offscreenRetention: 'metadata',
-    pauseTrimDelayMs: 3000,
-  },
-}} />
-```
+## Presets
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `profile` | `MemoryProfile` | `'balanced'` | High-level preset (overridable by fields below) |
-| `preloadLevel` | `PreloadLevel` | `'buffered'` | How much to preload on creation |
-| `offscreenRetention` | `OffscreenRetention` | `'hot'` | What to keep when view goes offscreen |
-| `pauseTrimDelayMs` | `number` | `10000` | Delay before trimming paused offscreen player. `Infinity` disables |
+| Lifecycle | Preload | Offscreen retention | Trim delay | Use case |
+|-----------|---------|---------------------|-----------|----------|
+| `balanced` | `buffered` | `hot` | `10000` ms | Default single-player usage |
+| `feed` | `metadata` | `metadata` | `3000` ms | Scrolling feeds |
+| `immersive` | `buffered` | `hot` | `Infinity` | Long-lived fullscreen playback |
 
-### MemoryProfile
+## Retention states
 
-| Profile | preloadLevel | offscreenRetention | Use case |
-|---------|-------------|-------------------|----------|
-| `'feed'` | `'metadata'` | `'metadata'` | Scrolling feed with many videos |
-| `'balanced'` | `'buffered'` | `'hot'` | Default, single video |
-| `'immersive'` | `'buffered'` | `'hot'` | Full-screen player |
+| State | Meaning |
+|------|---------|
+| `cold` | No active native player resources |
+| `metadata` | Metadata retained, player/buffers trimmed |
+| `hot` | Player and buffers retained |
 
-### PreloadLevel
+## Feed hot pool
 
-| Level | Behavior |
-|-------|----------|
-| `'none'` | No preloading, initialize on play |
-| `'metadata'` | Fetch asset metadata (duration, dimensions) |
-| `'buffered'` | Full player init + buffer fill |
+| Rule | Behavior |
+|------|----------|
+| Pool size | Maximum 2 hot feed players |
+| Eligibility | Attached or playing players are protected |
+| Eviction | Least-recent feed candidate trims back to `metadata` |
 
-### OffscreenRetention
+## `MemorySnapshot`
 
-| Level | Behavior |
-|-------|----------|
-| `'cold'` | Release everything when offscreen |
-| `'metadata'` | Keep metadata, release player/buffers |
-| `'hot'` | Keep everything (instant resume) |
-
-## Retention States
-
-Native player moves through states: `COLD` -> `METADATA` -> `HOT`
-
-- **COLD**: No native resources allocated
-- **METADATA**: Asset info loaded (MediaItem on Android, AVPlayerItem metadata on iOS)
-- **HOT**: Full player with buffers, ready to play instantly
-
-## Feed Hot Pool
-
-For `profile: 'feed'`, the system maintains a hot pool of max 2 players. When a new video scrolls into view:
-1. It becomes a hot candidate
-2. If pool is full, the least recently used feed player is trimmed to `METADATA`
-3. Players attached to visible views or currently playing are never trimmed
-
-## MemorySnapshot
-
-Read via `player.memorySnapshot`:
-
-```typescript
-interface MemorySnapshot {
-  playerBytes: number;       // ExoPlayer/AVPlayer buffer memory
-  sourceBytes: number;       // MediaItem/config memory
-  totalBytes: number;        // playerBytes + sourceBytes
-  preloadLevel: PreloadLevel;
-  retentionState: MemoryRetentionState;
-  isAttachedToView: boolean;
-  isPlaying: boolean;
-}
-```
+| Field | Purpose |
+|------|---------|
+| `playerBytes` | Native player and buffer footprint |
+| `sourceBytes` | Source-side memory footprint |
+| `totalBytes` | Combined native footprint |
+| `preloadLevel` | Effective preload level |
+| `retentionState` | Current retention state |
+| `isAttachedToView` | Bound to a native view |
+| `isPlaying` | Currently playing |

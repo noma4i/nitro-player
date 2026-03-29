@@ -305,32 +305,32 @@ open class HybridNitroPlayerSpec_cxx {
 
   // Methods
   @inline(__always)
-  public final func replaceSourceAsync(source: bridge.std__optional_std__variant_nitro__NullType__std__shared_ptr_HybridNitroPlayerSourceSpec___) -> bridge.Result_std__shared_ptr_Promise_void___ {
+  public final func replaceSourceAsync(source: bridge.std__shared_ptr_HybridNitroPlayerSourceSpec_) -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
-      let __result = try self.__implementation.replaceSourceAsync(source: { () -> Variant_NullType__any_HybridNitroPlayerSourceSpec_? in
-        if bridge.has_value_std__optional_std__variant_nitro__NullType__std__shared_ptr_HybridNitroPlayerSourceSpec___(source) {
-          let __unwrapped = bridge.get_std__optional_std__variant_nitro__NullType__std__shared_ptr_HybridNitroPlayerSourceSpec___(source)
-          return { () -> Variant_NullType__any_HybridNitroPlayerSourceSpec_ in
-            let __variant = bridge.std__variant_nitro__NullType__std__shared_ptr_HybridNitroPlayerSourceSpec__(__unwrapped)
-            switch __variant.index() {
-              case 0:
-                let __actual = __variant.get_0()
-                return .first(NullType.null)
-              case 1:
-                let __actual = __variant.get_1()
-                return .second({ () -> any HybridNitroPlayerSourceSpec in
-                  let __unsafePointer = bridge.get_std__shared_ptr_HybridNitroPlayerSourceSpec_(__actual)
-                  let __instance = HybridNitroPlayerSourceSpec_cxx.fromUnsafe(__unsafePointer)
-                  return __instance.getHybridNitroPlayerSourceSpec()
-                }())
-              default:
-                fatalError("Variant can never have index \(__variant.index())!")
-            }
-          }()
-        } else {
-          return nil
-        }
+      let __result = try self.__implementation.replaceSourceAsync(source: { () -> any HybridNitroPlayerSourceSpec in
+        let __unsafePointer = bridge.get_std__shared_ptr_HybridNitroPlayerSourceSpec_(source)
+        let __instance = HybridNitroPlayerSourceSpec_cxx.fromUnsafe(__unsafePointer)
+        return __instance.getHybridNitroPlayerSourceSpec()
       }())
+      let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
+        let __promise = bridge.create_std__shared_ptr_Promise_void__()
+        let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)
+        __result
+          .then({ __result in __promiseHolder.resolve() })
+          .catch({ __error in __promiseHolder.reject(__error.toCpp()) })
+        return __promise
+      }()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__resultCpp)
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func clearSourceAsync() -> bridge.Result_std__shared_ptr_Promise_void___ {
+    do {
+      let __result = try self.__implementation.clearSourceAsync()
       let __resultCpp = { () -> bridge.std__shared_ptr_Promise_void__ in
         let __promise = bridge.create_std__shared_ptr_Promise_void__()
         let __promiseHolder = bridge.wrap_std__shared_ptr_Promise_void__(__promise)

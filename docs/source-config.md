@@ -1,51 +1,44 @@
 # Source Configuration
 
-## NitroPlayerConfig
+## `NitroSourceConfig`
 
-```typescript
-interface NitroPlayerConfig {
-  uri: string | number;              // URL string or require() asset
-  headers?: Record<string, string>;  // HTTP headers for requests
-  bufferConfig?: BufferConfig;       // Platform-specific buffer settings
-  memoryConfig?: MemoryConfig;       // Memory lifecycle policy
-  metadata?: CustomVideoMetadata;    // Custom metadata for the video
-  initializeOnCreation?: boolean;    // Init native player immediately (default: true)
-  useHlsProxy?: boolean;            // Route through HLS cache proxy (default: true for .m3u8)
-}
-```
+| Field | Type | Default | Purpose |
+|------|------|---------|---------|
+| `uri` | `string \| number` | required | Network URL or React Native asset reference |
+| `headers` | `Record<string, string>` | none | Request headers |
+| `metadata` | `NitroSourceMetadata` | none | Player-facing media metadata |
+| `initialization` | `'eager' \| 'lazy'` | `'eager'` | Initialization strategy |
+| `lifecycle` | `MemoryProfile` | `'balanced'` | High-level retention preset |
+| `advanced.buffer` | `BufferConfig` | none | Low-level buffering controls |
+| `advanced.lifecycle` | `NitroSourceAdvancedLifecycleConfig` | none | Explicit lifecycle overrides |
+| `advanced.transport.useHlsProxy` | `boolean` | `true` for HLS | HLS proxy opt-out |
 
-## Source Formats
+Public DSL accepts only `NitroSourceConfig` or a pre-created `NitroPlayerSource`. Public string and number source shorthands were removed in `1.0.0`.
 
-```tsx
-// String URL
-<NitroPlayerView source="https://example.com/video.mp4" />
+## `NitroSourceMetadata`
 
-// require() asset
-<NitroPlayerView source={require('./assets/intro.mp4')} />
+| Field | Type |
+|------|------|
+| `title` | `string` |
+| `subtitle` | `string` |
+| `description` | `string` |
+| `artist` | `string` |
+| `imageUri` | `string` |
 
-// Config object
-<NitroPlayerView source={{
-  uri: 'https://example.com/video.mp4',
-  headers: { Authorization: 'Bearer token' },
-}} />
-```
+## Lifecycle presets
 
-## BufferConfig
+| Lifecycle | Preload | Offscreen retention | Trim delay |
+|-----------|---------|---------------------|-----------|
+| `balanced` | `buffered` | `hot` | `10000` ms |
+| `feed` | `metadata` | `metadata` | `3000` ms |
+| `immersive` | `buffered` | `hot` | `Infinity` |
 
-Platform-specific buffer tuning. See [buffer-config.md](./buffer-config.md) for details.
+## `NitroPlayerSource`
 
-## CustomVideoMetadata
+| API | Purpose |
+|-----|---------|
+| `createNitroSource(config)` | Canonical factory for reusable source objects |
+| `player.source` | Native source currently bound to the player |
+| `replaceSourceAsync(source)` | Accepts `NitroSourceConfig` or `NitroPlayerSource` |
 
-Optional metadata attached to the source:
-
-```typescript
-interface CustomVideoMetadata {
-  title?: string;
-  subtitle?: string;
-  description?: string;
-  artist?: string;
-  imageUri?: string;
-}
-```
-
-Used for `MediaMetadata` on Android (`MediaItem.Builder`) and potential future Now Playing integration.
+Use source objects when identity and reuse matter across renders or player instances.

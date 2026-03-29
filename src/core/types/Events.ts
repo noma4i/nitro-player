@@ -1,6 +1,5 @@
 import type { PlaybackState } from './PlaybackState';
 import type { NitroPlayerSource } from '../../spec/nitro/NitroPlayerSource.nitro';
-import type { NitroPlayerRuntimeError } from './NitroPlayerError';
 import type { NitroPlayerOrientation } from './NitroPlayerOrientation';
 import type { NitroPlayer } from '../NitroPlayer';
 
@@ -29,11 +28,7 @@ export interface NitroPlayerEvents {
   onVolumeChange: (data: onVolumeChangeData) => void;
 }
 
-export interface JSNitroPlayerEvents {
-  onError: (error: NitroPlayerRuntimeError) => void;
-}
-
-export type AllNitroPlayerEvents = NitroPlayerEvents & JSNitroPlayerEvents;
+export type AllNitroPlayerEvents = NitroPlayerEvents;
 
 export interface NitroPlayerViewEvents {
   /**
@@ -112,7 +107,6 @@ function allKeysOf<T>() {
 export const ALL_PLAYER_EVENTS: (keyof AllNitroPlayerEvents)[] =
   allKeysOf<AllNitroPlayerEvents>()(
     'onBandwidthUpdate',
-    'onError',
     'onLoad',
     'onLoadStart',
     'onPlaybackState',

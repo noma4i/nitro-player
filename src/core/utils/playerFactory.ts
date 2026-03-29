@@ -4,7 +4,7 @@ import type {
   NitroPlayerFactory,
 } from '../../spec/nitro/NitroPlayer.nitro';
 import type { NitroPlayerSource } from '../../spec/nitro/NitroPlayerSource.nitro';
-import type { NitroPlayerConfig, NitroPlayerSource as NitroPlayerSourceType } from '../types/NitroPlayerConfig';
+import type { NitroSourceConfig } from '../types/NitroPlayerConfig';
 import { createSource, isNitroPlayerSource } from './sourceFactory';
 import { tryParseNativeNitroPlayerError } from '../types/NitroPlayerError';
 
@@ -19,7 +19,7 @@ const NitroPlayerFactory =
  * @returns The Native NitroPlayer instance
  */
 export const createPlayer = (
-  source: NitroPlayerSourceType | NitroPlayerConfig | NitroPlayerSource
+  source: NitroSourceConfig | NitroPlayerSource
 ): NitroPlayer => {
   try {
     if (isNitroPlayerSource(source)) {

@@ -1,85 +1,78 @@
 import { useEffect, useRef } from 'react';
 import type { NitroPlayerSource } from '../../spec/nitro/NitroPlayerSource.nitro';
-import type { NoAutocomplete } from '../types/Utils';
-import type { MemoryProfile } from '../types/MemoryConfig';
-import type { NitroPlayerConfig, NitroPlayerSource as NitroPlayerSourceType } from '../types/NitroPlayerConfig';
+import type { NitroSourceConfig } from '../types/NitroPlayerConfig';
+import type { NitroPlayerDefaults } from '../types/NitroPlayerDefaults';
 import { NitroPlayer } from '../NitroPlayer';
 import { useManagedInstance } from './useManagedInstance';
 import { getSourceIdentityKey } from '../utils/sourceFactory';
 
 /**
  * Creates a `NitroPlayer` instance and manages its lifecycle.
- *
- * if `initializeOnCreation` is true (default), the `setup` function will be called when the player is started loading source.
- * if `initializeOnCreation` is false, the `setup` function will be called when the player is created. changes made to player made before initializing will be overwritten when initializing.
- *
  * @param source - The source of the video to play
- * @param setup - A function to setup the player
+ * @param defaults - Declarative defaults that are applied to the player instance
  * @returns The `NitroPlayer` instance
  */
 export const useNitroPlayer = (
-  source: NitroPlayerConfig | NitroPlayerSourceType | NoAutocomplete<NitroPlayerSource>,
-  setup?: (player: NitroPlayer) => void,
-  options: {
-    defaultMemoryProfile?: MemoryProfile;
-  } = {}
+  source: NitroSourceConfig | NitroPlayerSource,
+  defaults?: NitroPlayerDefaults
 ) => {
-  const { defaultMemoryProfile } = options;
   const player = useManagedInstance(
     {
       factory: () => {
-        return new NitroPlayer(source, { defaultMemoryProfile });
+        return new NitroPlayer(source);
       },
       cleanup: player => {
         player.__destroy();
       }
     },
-    [getSourceIdentityKey(source), defaultMemoryProfile]
+    [getSourceIdentityKey(source)]
   );
 
-  const appliedSetupRef = useRef<{
+  const appliedDefaultsRef = useRef<{
     player: NitroPlayer | null;
-    setup?: ((player: NitroPlayer) => void) | undefined;
+    defaults?: NitroPlayerDefaults | undefined;
   }>({
     player: null,
-    setup: undefined
+    defaults: undefined
   });
 
   useEffect(() => {
-    if (setup === undefined) {
-      appliedSetupRef.current = { player, setup: undefined };
+    if (defaults === undefined) {
+      appliedDefaultsRef.current = { player, defaults: undefined };
       return;
     }
 
-    const hasAppliedCurrentSetup = appliedSetupRef.current.player === player && appliedSetupRef.current.setup === setup;
-
-    const applySetup = () => {
-      if (appliedSetupRef.current.player === player && appliedSetupRef.current.setup === setup) {
-        return;
-      }
-
-      setup(player);
-      appliedSetupRef.current = { player, setup };
-    };
-
-    if (player.source.config.initializeOnCreation === false) {
-      applySetup();
+    if (appliedDefaultsRef.current.player === player && appliedDefaultsRef.current.defaults === defaults) {
       return;
     }
 
-    if (hasAppliedCurrentSetup || player.playbackState.status !== 'idle') {
-      applySetup();
-      return;
+    if (defaults.loop !== undefined) {
+      player.loop = defaults.loop;
+    }
+    if (defaults.muted !== undefined) {
+      player.muted = defaults.muted;
+    }
+    if (defaults.volume !== undefined) {
+      player.volume = defaults.volume;
+    }
+    if (defaults.rate !== undefined) {
+      player.rate = defaults.rate;
+    }
+    if (defaults.mixAudioMode !== undefined) {
+      player.mixAudioMode = defaults.mixAudioMode;
+    }
+    if (defaults.ignoreSilentSwitchMode !== undefined) {
+      player.ignoreSilentSwitchMode = defaults.ignoreSilentSwitchMode;
+    }
+    if (defaults.playInBackground !== undefined) {
+      player.playInBackground = defaults.playInBackground;
+    }
+    if (defaults.playWhenInactive !== undefined) {
+      player.playWhenInactive = defaults.playWhenInactive;
     }
 
-    const loadStartSubscription = player.addEventListener('onLoadStart', applySetup);
-    const playbackStateSubscription = player.addEventListener('onPlaybackState', applySetup);
-
-    return () => {
-      loadStartSubscription.remove();
-      playbackStateSubscription.remove();
-    };
-  }, [player, setup]);
+    appliedDefaultsRef.current = { player, defaults };
+  }, [defaults, player]);
 
   return player;
 };

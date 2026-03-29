@@ -10,6 +10,7 @@ import com.facebook.react.bridge.ReactContext
 import com.facebook.react.modules.network.CookieJarContainer
 import com.facebook.react.modules.network.ForwardingCookieHandler
 import com.facebook.react.modules.network.OkHttpClientProvider
+import com.margelo.nitro.video.HybridNitroPlayerSource
 import com.margelo.nitro.video.HybridNitroPlayerSourceSpec
 import okhttp3.JavaNetCookieJar
 
@@ -34,7 +35,7 @@ fun buildHttpDataSourceFactory(context: Context, source: HybridNitroPlayerSource
 
   val factory = OkHttpDataSource.Factory(client)
 
-  val headers: Map<String, String>? = source.config.headers
+  val headers: Map<String, String>? = (source as? HybridNitroPlayerSource)?.config?.headers
 
   if (headers != null) {
     factory.setDefaultRequestProperties(headers)

@@ -13,13 +13,10 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-// Forward declaration of `NativeNitroPlayerConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct NativeNitroPlayerConfig; }
 // Forward declaration of `NitroPlayerInformation` to properly resolve imports.
 namespace margelo::nitro::video { struct NitroPlayerInformation; }
 
 #include <string>
-#include "NativeNitroPlayerConfig.hpp"
 #include "NitroPlayerInformation.hpp"
 #include <NitroModules/Promise.hpp>
 
@@ -51,7 +48,6 @@ namespace margelo::nitro::video {
     public:
       // Properties
       virtual std::string getUri() = 0;
-      virtual NativeNitroPlayerConfig getConfig() = 0;
 
     public:
       // Methods

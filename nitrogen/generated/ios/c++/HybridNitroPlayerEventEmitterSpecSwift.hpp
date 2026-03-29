@@ -30,6 +30,10 @@ namespace margelo::nitro::video { class HybridNitroPlayerSourceSpec; }
 namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `NitroPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerStatus; }
+// Forward declaration of `PlaybackError` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackError; }
+// Forward declaration of `NitroPlayerErrorCode` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroPlayerErrorCode; }
 // Forward declaration of `onVolumeChangeData` to properly resolve imports.
 namespace margelo::nitro::video { struct onVolumeChangeData; }
 
@@ -45,6 +49,11 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "HybridNitroPlayerSourceSpec.hpp"
 #include "PlaybackState.hpp"
 #include "NitroPlayerStatus.hpp"
+#include <NitroModules/Null.hpp>
+#include "PlaybackError.hpp"
+#include <variant>
+#include "NitroPlayerErrorCode.hpp"
+#include <string>
 #include "onVolumeChangeData.hpp"
 
 #include "NitroPlay-Swift-Cxx-Umbrella.hpp"

@@ -51,7 +51,6 @@ namespace margelo::nitro::video {
   public:
     // Properties
     std::string getUri() override;
-    NativeNitroPlayerConfig getConfig() override;
 
   public:
     // Methods

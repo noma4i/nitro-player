@@ -73,7 +73,6 @@ describe('NitroPlayerEvents', () => {
 
     events.addEventListener('onPlaybackState', jest.fn());
     events.addEventListener('onLoad', jest.fn());
-    events.addEventListener('onError', jest.fn());
 
     events.clearAllEvents();
 
@@ -98,20 +97,6 @@ describe('NitroPlayerEvents', () => {
     expect(typeof sub2.remove).toBe('function');
   });
 
-  it('onError event is handled as JS-only event', () => {
-    const emitter = makeMockEventEmitter();
-    const events = new NitroPlayerEvents(emitter);
-    const callback = jest.fn();
-
-    const subscription = events.addEventListener('onError', callback);
-
-    expect(subscription).toBeDefined();
-    // onError is JS-only, should not call native emitter methods
-    expect(emitter.addOnBandwidthUpdateListener).not.toHaveBeenCalled();
-    expect(emitter.addOnLoadListener).not.toHaveBeenCalled();
-    expect(emitter.addOnPlaybackStateListener).not.toHaveBeenCalled();
-  });
-
   it('throws for unsupported event', () => {
     const emitter = makeMockEventEmitter();
     const events = new NitroPlayerEvents(emitter);
@@ -122,36 +107,4 @@ describe('NitroPlayerEvents', () => {
     }).toThrow(/Unsupported event/);
   });
 
-  it('triggerJSEvent calls registered onError listeners', () => {
-    const emitter = makeMockEventEmitter();
-    const events = new NitroPlayerEvents(emitter);
-    const errorCallback = jest.fn();
-
-    events.addEventListener('onError', errorCallback);
-
-    // triggerJSEvent is protected, so we access it via subclass or cast
-    const triggered = (events as unknown as { triggerJSEvent: (event: string, ...params: unknown[]) => boolean }).triggerJSEvent('onError', new Error('test error'));
-
-    expect(triggered).toBe(true);
-    expect(errorCallback).toHaveBeenCalledTimes(1);
-    expect(errorCallback).toHaveBeenCalledWith(expect.any(Error));
-  });
-
-  it('multiple listeners on same event are all called', () => {
-    const emitter = makeMockEventEmitter();
-    const events = new NitroPlayerEvents(emitter);
-    const cb1 = jest.fn();
-    const cb2 = jest.fn();
-    const cb3 = jest.fn();
-
-    events.addEventListener('onError', cb1);
-    events.addEventListener('onError', cb2);
-    events.addEventListener('onError', cb3);
-
-    (events as unknown as { triggerJSEvent: (event: string, ...params: unknown[]) => boolean }).triggerJSEvent('onError', new Error('multi'));
-
-    expect(cb1).toHaveBeenCalledTimes(1);
-    expect(cb2).toHaveBeenCalledTimes(1);
-    expect(cb3).toHaveBeenCalledTimes(1);
-  });
 });

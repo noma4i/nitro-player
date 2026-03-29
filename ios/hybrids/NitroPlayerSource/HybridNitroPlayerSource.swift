@@ -25,7 +25,7 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
   }
 
   var uri: String
-  var config: NativeNitroPlayerConfig
+  let config: NativeNitroPlayerConfig
 
   let url: URL
   private let sourceLoader = SourceLoader()

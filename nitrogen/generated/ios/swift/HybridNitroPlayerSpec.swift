@@ -32,7 +32,8 @@ public protocol HybridNitroPlayerSpec_protocol: HybridObject {
   var isReadyToDisplay: Bool { get }
 
   // Methods
-  func replaceSourceAsync(source: Variant_NullType__any_HybridNitroPlayerSourceSpec_?) throws -> Promise<Void>
+  func replaceSourceAsync(source: (any HybridNitroPlayerSourceSpec)) throws -> Promise<Void>
+  func clearSourceAsync() throws -> Promise<Void>
   func release() throws -> Void
   func initialize() throws -> Promise<Void>
   func preload() throws -> Promise<Void>

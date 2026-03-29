@@ -1,119 +1,73 @@
 # NitroPlay
 
-Lightweight video player (native + JS) + HLS caching proxy for React Native.
+Lightweight native-first video player and HLS cache proxy for React Native.
 
-```bash
-yarn add https://github.com/noma4i/nitro-player.git#v0.3.2
-```
-
-## Quick Start
-
-```tsx
-import { NitroPlayerView } from '@noma4i/nitro-play';
-
-<NitroPlayerView
-  source={{ uri: 'https://cdn.example.com/video.m3u8' }}
-  style={{ flex: 1 }}
-/>;
-```
-
-The player creates itself. HLS segments are cached to disk automatically. Everything cleans up on unmount.
-
-## Documentation
-
-| Topic                                          | Description                                   |
-| ---------------------------------------------- | --------------------------------------------- |
-| [Player API](docs/player-api.md)               | Properties, methods, events, hooks            |
-| [Source Config](docs/source-config.md)         | NitroPlayerConfig, source formats             |
-| [Buffer Config](docs/buffer-config.md)         | Platform-specific buffer tuning               |
-| [Memory Management](docs/memory-management.md) | Feed optimization, retention states, hot pool |
-| [HLS Cache Proxy](docs/hls-cache-proxy.md)     | Cache policy, eviction, prefetch              |
+Current prerelease: `1.0.0-beta.1`
 
 ## Installation
 
-```bash
-yarn add https://github.com/noma4i/nitro-player.git#v0.3.2
-yarn add react-native-nitro-modules
+Install from GitHub tag `v1.0.0-beta.1`.
 
-# iOS
-cd ios && pod install
-```
+Peer dependency: `react-native-nitro-modules >= 0.35.0`
 
-Android - no extra steps. ExoPlayer and NanoHTTPD are bundled.
+## What Changed In 1.0
 
-## NitroPlayerView
+- `source` is now object-only. String and number shorthands are removed from the public DSL.
+- `setup` is removed. Use `playerDefaults` for declarative startup state.
+- `replaceSourceAsync(null)` is removed. Use `clearSourceAsync()`.
+- Playback failures are surfaced through `PlaybackState.status === 'error'` and `PlaybackState.error`.
+- Source tuning moved to `lifecycle` and `advanced.*`.
+- Package runtime entrypoints now resolve to built `lib/*` artifacts.
 
-```tsx
-<NitroPlayerView
-  source={{ uri: 'https://cdn.example.com/video.m3u8' }}
-  setup={p => {
-    p.loop = true;
-    p.volume = 0.5;
-  }}
-  controls
-  resizeMode="cover"
-  style={{ flex: 1 }}
-/>
-```
+## Documentation
 
-| Prop              | Type                                          | Default      | Description                   |
-| ----------------- | --------------------------------------------- | ------------ | ----------------------------- |
-| `source`          | `NitroPlayerConfig \| string \| number`       | **required** | URL, asset, or config object  |
-| `setup`           | `(player: NitroPlayer) => void`               | -            | Configure player on creation  |
-| `controls`        | `boolean`                                     | `false`      | Show native playback controls |
-| `resizeMode`      | `'none' \| 'contain' \| 'cover' \| 'stretch'` | `'none'`     | How video fills the view      |
-| `keepScreenAwake` | `boolean`                                     | `true`       | Prevent screen from sleeping  |
-| `surfaceType`     | `'surface' \| 'texture'`                      | `'surface'`  | Android only                  |
+| File | Purpose |
+|------|---------|
+| [docs/player-api.md](docs/player-api.md) | Public player, view, events, hooks |
+| [docs/source-config.md](docs/source-config.md) | `NitroSourceConfig`, `NitroSource`, lifecycle DSL |
+| [docs/buffer-config.md](docs/buffer-config.md) | `advanced.buffer` reference |
+| [docs/memory-management.md](docs/memory-management.md) | Lifecycle presets and retention behavior |
+| [docs/hls-cache-proxy.md](docs/hls-cache-proxy.md) | Built-in HLS proxy and cache policy |
+| [docs/migration-1.0.md](docs/migration-1.0.md) | Breaking migration guide from `0.x` |
 
-### Ref
+## Core API
 
-```tsx
-const ref = useRef<NitroPlayerViewRef>(null);
-if (ref.current?.isAttached) {
-  ref.current.player.play();
-}
-ref.current?.enterFullscreen();
-```
+| Surface | Status |
+|---------|--------|
+| `NitroPlayerView` | Convenience component with native controls and fullscreen bridge |
+| `NitroPlayer` | Imperative player object |
+| `createNitroSource(config)` | Canonical source factory |
+| `usePlaybackState(player)` | Interpolated playback snapshot |
+| `useEvent(target, event, listener)` | Event subscription hook |
 
-### View Events
+## Source DSL
 
-| Event                 | Payload                   | When                      |
-| --------------------- | ------------------------- | ------------------------- |
-| `onAttached`          | `NitroPlayer`             | Native video view attached |
-| `onDetached`          | -                         | Native video view detached |
-| `onFullscreenChange`  | `boolean`                 | Fullscreen state changed  |
-| `willEnterFullscreen` | -                         | About to enter fullscreen |
-| `willExitFullscreen`  | -                         | About to exit fullscreen  |
+| Field | Purpose |
+|------|---------|
+| `uri` | Network URL or React Native asset reference |
+| `headers` | Request headers |
+| `metadata` | Title, subtitle, description, artist, artwork URI |
+| `initialization` | `'eager'` or `'lazy'` |
+| `lifecycle` | `'balanced'`, `'feed'`, `'immersive'` |
+| `advanced.buffer` | Low-level buffer tuning |
+| `advanced.lifecycle` | Explicit preload, offscreen retention, trim delay overrides |
+| `advanced.transport.useHlsProxy` | Opt out of HLS proxying |
 
-See [Player API](docs/player-api.md) for player properties, methods, and events.
+## Defaults
 
-## HLS Cache Proxy
-
-Built-in localhost proxy that caches HLS segments. Auto-starts on first HLS use.
-
-```typescript
-import { hlsCacheProxy } from '@noma4i/nitro-play';
-
-hlsCacheProxy.prefetchFirstSegment('https://cdn.example.com/video.m3u8');
-const stats = await hlsCacheProxy.getCacheStats();
-```
-
-5 GB max, 7d TTL, stream-based LRU eviction at 80% capacity. See [HLS Cache Proxy](docs/hls-cache-proxy.md) for details.
+| Area | Default |
+|------|---------|
+| `NitroPlayerView` lifecycle | `balanced` |
+| `feed` lifecycle | metadata preload, metadata retention, 3000 ms trim |
+| HLS proxy | enabled for `.m3u8` unless explicitly disabled |
+| `initialization` | `eager` |
 
 ## Requirements
 
-| Dependency                 | Version   |
-| -------------------------- | --------- |
-| React Native               | >= 0.77.0 |
-| react-native-nitro-modules | >= 0.35.0 |
-
-### Native Dependencies (bundled)
-
-| Dependency         | Platform | Version |
-| ------------------ | -------- | ------- |
-| ExoPlayer (Media3) | Android  | 1.9.3   |
-| GCDWebServer       | iOS      | ~> 3.5  |
-| NanoHTTPD          | Android  | 2.3.1   |
+| Dependency | Version |
+|-----------|---------|
+| React Native | `>= 0.77.0` |
+| react-native-nitro-modules | `>= 0.35.0` |
 
 ## License
 

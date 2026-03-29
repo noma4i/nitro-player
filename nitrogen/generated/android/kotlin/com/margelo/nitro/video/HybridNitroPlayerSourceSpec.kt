@@ -29,10 +29,6 @@ abstract class HybridNitroPlayerSourceSpec: HybridObject() {
   @get:DoNotStrip
   @get:Keep
   abstract val uri: String
-  
-  @get:DoNotStrip
-  @get:Keep
-  abstract val config: NativeNitroPlayerConfig
 
   // Methods
   @DoNotStrip
