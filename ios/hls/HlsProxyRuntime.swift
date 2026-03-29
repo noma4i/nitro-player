@@ -22,7 +22,9 @@ final class HlsProxyRuntime {
       self.isExplicitlyStopped = false
       self.didAutoStart = true
     }
-    controller.start(port: resolvedPort)
+    runOnMainSync {
+      controller.start(port: resolvedPort)
+    }
   }
 
   func stop() {
@@ -30,12 +32,16 @@ final class HlsProxyRuntime {
       isExplicitlyStopped = true
       didAutoStart = false
     }
-    controller.stop()
+    runOnMainSync {
+      controller.stop()
+    }
   }
 
   func getProxiedUrl(url: String, headers: [String: String]?) -> String {
     ensureStarted()
-    return controller.proxiedManifestUrl(for: url, headers: headers) ?? url
+    return runOnMainSync {
+      controller.proxiedManifestUrl(for: url, headers: headers) ?? url
+    }
   }
 
   func prefetchFirstSegment(url: String, headers: [String: String]?) async throws {
@@ -62,16 +68,22 @@ final class HlsProxyRuntime {
 
   func getCacheStats() -> [String: Any] {
     ensureStarted()
-    return controller.getCacheStats()
+    return runOnMainSync {
+      controller.getCacheStats()
+    }
   }
 
   func getStreamCacheStats(url: String) -> [String: Any] {
     ensureStarted()
-    return controller.getCacheStats(streamKey: url)
+    return runOnMainSync {
+      controller.getCacheStats(streamKey: url)
+    }
   }
 
   func clearCache() {
-    controller.clearCache()
+    runOnMainSync {
+      controller.clearCache()
+    }
   }
 
   private func ensureStarted() {
@@ -87,7 +99,16 @@ final class HlsProxyRuntime {
     }
 
     if shouldStart {
-      controller.start(port: port)
+      runOnMainSync {
+        controller.start(port: port)
+      }
     }
+  }
+
+  private func runOnMainSync<T>(_ work: () -> T) -> T {
+    if Thread.isMainThread {
+      return work()
+    }
+    return DispatchQueue.main.sync(execute: work)
   }
 }

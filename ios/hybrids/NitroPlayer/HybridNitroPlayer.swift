@@ -640,7 +640,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     guard hasActiveSource else {
       return .none
     }
-    currentSourceConfig()?.advanced?.lifecycle?.preloadLevel ?? {
+    return currentSourceConfig()?.advanced?.lifecycle?.preloadLevel ?? {
       switch currentSourceConfig()?.lifecycle ?? .balanced {
       case .feed:
         return .metadata
@@ -654,7 +654,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     guard hasActiveSource else {
       return .hot
     }
-    currentSourceConfig()?.advanced?.lifecycle?.offscreenRetention ?? {
+    return currentSourceConfig()?.advanced?.lifecycle?.offscreenRetention ?? {
       switch currentSourceConfig()?.lifecycle ?? .balanced {
       case .feed:
         return .metadata
@@ -685,7 +685,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     guard hasActiveSource else {
       return .cold
     }
-    (source as? HybridNitroPlayerSource)?.retentionState ?? .cold
+    return (source as? HybridNitroPlayerSource)?.retentionState ?? .cold
   }
 
   private func clearCurrentSource() {
@@ -802,7 +802,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     guard hasActiveSource else {
       return false
     }
-    currentSourceConfig()?.lifecycle == .feed
+    return currentSourceConfig()?.lifecycle == .feed
   }
 
   func shouldStayHotInFeedPool() -> Bool {

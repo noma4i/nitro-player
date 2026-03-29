@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.0-beta.3
+
+### Changed
+
+- Example app now ships direct `yarn` device scripts for iOS and Android, patch-package support, and a `portal:..` dependency path for local package consumption
+- Documented the native HLS proxy as a singleton runtime that auto-starts for playback-facing operations and remains owned by the native runtime on both platforms
+- Clarified prerelease installation and runtime ownership in the README and HLS proxy docs for the current beta line
+
+### Fixed
+
+- iOS: forced HLS proxy controller startup, stop, URL generation, and cache access onto the main thread to prevent device-startup crashes triggered from the TurboModule queue
+- iOS: fixed Swift return-path compile errors in `HybridNitroPlayer`
+- Example iOS app: restored Hermes debug framework embedding, rewrote broken Hermes CLI paths after `pod install`, and repaired framework linkage for device builds
+- Synced release documentation and package metadata with the native-first runtime that ships in this beta
+
 ## 1.0.0-beta.2
 
 ### Changed

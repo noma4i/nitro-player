@@ -3,7 +3,7 @@ PODS:
   - DoubleConversion (1.1.6)
   - fast_float (8.0.0)
   - FBLazyVector (0.83.4)
-  - fmt (11.0.2)
+  - fmt (12.1.0)
   - GCDWebServer (3.5.4):
     - GCDWebServer/Core (= 3.5.4)
   - GCDWebServer/Core (3.5.4)
@@ -40,7 +40,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - NitroPlay (0.2.0):
+  - NitroPlay (1.0.0-beta.3):
     - boost
     - DoubleConversion
     - fast_float
@@ -74,20 +74,20 @@ PODS:
     - boost
     - DoubleConversion
     - fast_float (= 8.0.0)
-    - fmt (= 11.0.2)
+    - fmt (= 12.1.0)
     - glog
     - RCT-Folly/Default (= 2024.11.18.00)
   - RCT-Folly/Default (2024.11.18.00):
     - boost
     - DoubleConversion
     - fast_float (= 8.0.0)
-    - fmt (= 11.0.2)
+    - fmt (= 12.1.0)
     - glog
   - RCT-Folly/Fabric (2024.11.18.00):
     - boost
     - DoubleConversion
     - fast_float (= 8.0.0)
-    - fmt (= 11.0.2)
+    - fmt (= 12.1.0)
     - glog
   - RCTDeprecation (0.83.4)
   - RCTRequired (0.83.4)
@@ -2859,13 +2859,13 @@ SPEC CHECKSUMS:
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
   fast_float: b32c788ed9c6a8c584d114d0047beda9664e7cc6
   FBLazyVector: 82d1d7996af4c5850242966eb81e73f9a6dfab1e
-  fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
+  fmt: 530618a01105dae0fa3a2f27c81ae11fa8f67eac
   GCDWebServer: 2c156a56c8226e2d5c0c3f208a3621ccffbe3ce4
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: c299039cef32b85f1d6f3a5ec97a2f546d2dd049
   NitroModules: 17f56ebb3581e74931c870a789834582ce75470c
-  NitroPlay: 90f68d845c42044af9a3efba3900c4353e002709
-  RCT-Folly: 846fda9475e61ec7bcbf8a3fe81edfcaeb090669
+  NitroPlay: 83fbd512ea4c08e05c3d13896c461eb955274430
+  RCT-Folly: b29feb752b08042c62badaef7d453f3bb5e6ae23
   RCTDeprecation: 9da1d0cf93db23ca8b41e8efe9ae558fd9c0077f
   RCTRequired: 92a63c7041031a131fa5206eb082d53f95729b79
   RCTSwiftUI: 395b65655229fa2006415207adcfcb6e35dc78ed
@@ -2938,6 +2938,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: b669e79fa0f8d3f6f5e35372345f54b99e06b13c
 
-PODFILE CHECKSUM: 5cdb2c32901c0e60fb0647a45b962cf2ee20686f
+PODFILE CHECKSUM: 4963e64f86dde3caef84a22a7634cfd99f89acb8
 
 COCOAPODS: 1.16.2

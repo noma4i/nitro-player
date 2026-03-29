@@ -8,6 +8,116 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
+def ensure_debug_hermes_framework!(installation_root)
+  hermes_dir = File.join(installation_root, 'Pods', 'hermes-engine')
+  framework_dir = File.join(
+    hermes_dir,
+    'destroot',
+    'Library',
+    'Frameworks',
+    'universal',
+    'hermesvm.xcframework'
+  )
+
+  return if File.directory?(framework_dir)
+
+  debug_tarball = Dir.glob(
+    File.join(installation_root, 'Pods', 'hermes-engine-artifacts', 'hermes-ios-*-debug.tar.gz')
+  ).first
+
+  return if debug_tarball.nil? || debug_tarball.empty?
+
+  Pod::UI.puts "[NitroPlayExample] Restoring Debug Hermes framework from #{File.basename(debug_tarball)}".green
+  FileUtils.rm_rf(hermes_dir)
+  FileUtils.mkdir_p(hermes_dir)
+  system('tar', '-xf', debug_tarball, '-C', hermes_dir) || raise('Failed to restore debug Hermes framework')
+end
+
+def ensure_hermes_linkage!(installer)
+  installer.aggregate_targets.each do |aggregate_target|
+    aggregate_name = aggregate_target.name
+    script_path = "\"${PODS_ROOT}/Target Support Files/#{aggregate_name}/#{aggregate_name}-frameworks.sh\""
+    input_list = "${PODS_ROOT}/Target Support Files/#{aggregate_name}/#{aggregate_name}-frameworks-${CONFIGURATION}-input-files.xcfilelist"
+    output_list = "${PODS_ROOT}/Target Support Files/#{aggregate_name}/#{aggregate_name}-frameworks-${CONFIGURATION}-output-files.xcfilelist"
+
+    aggregate_target.user_targets.each do |target|
+      phase = target.shell_script_build_phases.find { |item| item.name == '[CP] Embed Pods Frameworks' }
+      unless phase
+        phase = target.new_shell_script_build_phase('[CP] Embed Pods Frameworks')
+      end
+      phase.shell_path = '/bin/sh'
+      phase.shell_script = "#{script_path}\n"
+      phase.input_file_list_paths = [input_list]
+      phase.output_file_list_paths = [output_list]
+      phase.show_env_vars_in_log = '0'
+
+      target.build_configurations.each do |config|
+        framework_search_paths = Array(config.build_settings['FRAMEWORK_SEARCH_PATHS'] || '$(inherited)')
+        hermes_search_path = '"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built"'
+        unless framework_search_paths.include?(hermes_search_path)
+          framework_search_paths << hermes_search_path
+        end
+        config.build_settings['FRAMEWORK_SEARCH_PATHS'] = framework_search_paths
+
+        other_ldflags = Array(config.build_settings['OTHER_LDFLAGS'] || '$(inherited)')
+        unless other_ldflags.include?('-framework') && other_ldflags.include?('hermesvm')
+          other_ldflags += ['-framework', 'hermesvm']
+        end
+        config.build_settings['OTHER_LDFLAGS'] = other_ldflags
+      end
+    end
+
+    aggregate_target.user_project.save
+  end
+end
+
+def rewrite_hermes_cli_path!(installation_root)
+  hermes_cli_path = File.expand_path('../node_modules/hermes-compiler/hermesc/osx-bin/hermesc', installation_root)
+  return unless File.exist?(hermes_cli_path)
+
+  support_dir = File.join(
+    installation_root,
+    'Pods',
+    'Target Support Files',
+    'Pods-NitroPlayExample'
+  )
+  xcconfig_paths = Dir.glob(File.join(support_dir, 'Pods-NitroPlayExample.*.xcconfig'))
+  local_podspec_path = File.join(
+    installation_root,
+    'Pods',
+    'Local Podspecs',
+    'hermes-engine.podspec.json'
+  )
+
+  xcconfig_paths.each do |path|
+    next unless File.exist?(path)
+
+    contents = File.read(path)
+    updated = contents.gsub(
+      %r{^HERMES_CLI_PATH = .*$},
+      "HERMES_CLI_PATH = #{hermes_cli_path}"
+    )
+
+    next if updated == contents
+
+    File.write(path, updated)
+    Pod::UI.puts "[NitroPlayExample] Rewrote Hermes CLI path in #{File.basename(path)}".green
+  end
+
+  if File.exist?(local_podspec_path)
+    contents = File.read(local_podspec_path)
+    updated = contents.gsub(
+      %r{("HERMES_CLI_PATH"\s*:\s*")[^"]+(")},
+      "\\1#{hermes_cli_path}\\2"
+    )
+
+    if updated != contents
+      File.write(local_podspec_path, updated)
+      Pod::UI.puts "[NitroPlayExample] Rewrote Hermes CLI path in #{File.basename(local_podspec_path)}".green
+    end
+  end
+end
+
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
@@ -32,6 +142,10 @@ target 'NitroPlayExample' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    ensure_debug_hermes_framework!(Pod::Config.instance.installation_root)
+    ensure_hermes_linkage!(installer)
+    rewrite_hermes_cli_path!(Pod::Config.instance.installation_root)
 
     # Xcode 26.3 sets _LIBCPP_HARDENING_MODE_DEBUG which breaks Swift-C++ interop
     installer.pods_project.targets.each do |target|

@@ -12,7 +12,9 @@ App -> NitroPlayerView -> localhost:18181 -> CDN
 
 - iOS: GCDWebServer + `~/Library/Caches/hls-cache/`
 - Android: NanoHTTPD + `context.cacheDir/hls-cache/`
-- Auto-start, explicit stop state, and prefetch deduplication are managed natively on both platforms
+- One native singleton runtime per app process owns proxy startup, shutdown, and prefetch deduplication on both platforms
+- The proxy auto-starts when playback needs it, such as `getProxiedUrl()` or `prefetchFirstSegment()`
+- Read-only maintenance methods should not be treated as startup triggers
 
 Manifest responses always fresh (`Cache-Control: no-cache`). Segments cached to disk with SHA-256 filename.
 
@@ -21,12 +23,12 @@ Manifest responses always fresh (`Cache-Control: no-cache`). Segments cached to 
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `start(port?)` | `void` | Start proxy (default: 18181) |
-| `stop()` | `void` | Stop proxy. Requires explicit `start()` to resume |
-| `getProxiedUrl(url, headers?)` | `string` | Get proxied URL for HLS stream |
-| `prefetchFirstSegment(url, headers?)` | `Promise<void>` | Pre-download init + first segment |
+| `stop()` | `void` | Stop proxy singleton instance |
+| `getProxiedUrl(url, headers?)` | `string` | Get proxied URL for HLS stream and auto-start proxy if needed |
+| `prefetchFirstSegment(url, headers?)` | `Promise<void>` | Pre-download init + first segment, auto-starting proxy if needed |
 | `getCacheStats()` | `Promise<HlsCacheStats>` | Total cache stats |
 | `getStreamCacheStats(url)` | `Promise<HlsStreamCacheStats>` | Per-stream cache stats |
-| `clearCache()` | `Promise<boolean>` | Delete all cached segments |
+| `clearCache()` | `Promise<boolean>` | Delete all cached segments from the current cache store |
 
 ## Types
 
