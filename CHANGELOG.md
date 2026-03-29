@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.0-beta.7
+
+### Changed
+
+- iOS + Android: extracted shared `ListenerRegistry` for thread-safe event listener management, eliminating duplication between EventEmitter and ViewManager on both platforms. iOS ViewManager now has proper NSLock thread safety
+- iOS: split `HybridNitroPlayer` (865 LOC) into core (444), lifecycle extension (433), and events extension (198)
+- Android: split `HybridNitroPlayer` (962 LOC) into core (582), `NitroPlayerListenerBridge` (174), and `NitroPlayerLifecycle` (247)
+- Android: extracted `FullscreenDialogManager` from `NitroPlayerView` for cleaner separation
+- Android: simplified `SmallVideoPlayerOptimizer` (157 -> 97 LOC), removed recursive ViewGroup traversal
+- iOS: simplified `NitroPlayerObserver` buffer observers with generic `observeBoolProperty` helper
+- TS: added barrel re-export `src/core/types/index.ts`, removed unused `Utils.ts`
+
 ## 1.0.0-beta.6
 
 ### Fixed
