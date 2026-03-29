@@ -90,27 +90,20 @@ beforeEach(() => {
 describe('source factory: lifecycle config passthrough', () => {
   const LIFECYCLE_VALUES = ['feed', 'balanced', 'immersive'] as const;
 
-  it.each(LIFECYCLE_VALUES)(
-    'passes lifecycle=%s directly to native without JS-side resolution',
-    (lifecycle) => {
-      const { createNitroSource } = require('../core/utils/sourceFactory');
+  it.each(LIFECYCLE_VALUES)('passes lifecycle=%s directly to native without JS-side resolution', lifecycle => {
+    const { createNitroSource } = require('../core/utils/sourceFactory');
 
-      createNitroSource({ uri: 'https://cdn.example.com/stream.m3u8', lifecycle });
+    createNitroSource({ uri: 'https://cdn.example.com/stream.m3u8', lifecycle });
 
-      expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ lifecycle })
-      );
-    }
-  );
+    expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(expect.objectContaining({ lifecycle }));
+  });
 
   it('passes initialization field to native', () => {
     const { createNitroSource } = require('../core/utils/sourceFactory');
 
     createNitroSource({ uri: 'https://cdn.example.com/v.mp4', initialization: 'lazy' });
 
-    expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(
-      expect.objectContaining({ initialization: 'lazy' })
-    );
+    expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(expect.objectContaining({ initialization: 'lazy' }));
   });
 
   it('passes advanced.transport.useHlsProxy to native', () => {
@@ -144,12 +137,11 @@ describe('source factory: lifecycle config passthrough', () => {
   });
 });
 
-describe('consumer contract: feed lifecycle requires explicit preload for readiness', () => {
+describe('consumer contract: feed lifecycle metadata-only preload', () => {
   /**
-   * This test documents the critical contract:
    * With lifecycle='feed', native only loads metadata on creation.
-   * The consumer MUST call preload() or initialize() before expecting onLoad.
-   * Without this, the player never becomes ready -> deadlock.
+   * play() handles full initialization automatically via async path.
+   * Consumer does NOT need to call initialize() before play().
    */
   it('feed lifecycle: config passed to native has lifecycle=feed', () => {
     const { createNitroSource } = require('../core/utils/sourceFactory');
@@ -160,11 +152,8 @@ describe('consumer contract: feed lifecycle requires explicit preload for readin
     });
 
     // Native resolves feed -> preloadLevel=metadata (NOT buffered)
-    // Consumer MUST call preload() after attach to trigger full init
-    // Without preload(), onLoad never fires -> deadlock
-    expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(
-      expect.objectContaining({ lifecycle: 'feed' })
-    );
+    // play() triggers full init automatically if playerItem is nil
+    expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(expect.objectContaining({ lifecycle: 'feed' }));
   });
 });
 

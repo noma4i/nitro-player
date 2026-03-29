@@ -8,48 +8,48 @@ Guide for migrating from `0.x` to `1.0.0-beta`.
 
 String and number shorthands are removed. All sources must be objects.
 
-| 0.x | 1.0 |
-|-----|-----|
+| 0.x                                       | 1.0                                                  |
+| ----------------------------------------- | ---------------------------------------------------- |
 | `source="https://example.com/video.m3u8"` | `source={{ uri: 'https://example.com/video.m3u8' }}` |
-| `source={require('./local.mp4')}` | `source={{ uri: require('./local.mp4') }}` |
+| `source={require('./local.mp4')}`         | `source={{ uri: require('./local.mp4') }}`           |
 
 ### View setup
 
 `setup` callback is removed. Use declarative `playerDefaults`.
 
-| 0.x | 1.0 |
-|-----|-----|
+| 0.x                                                 | 1.0                                            |
+| --------------------------------------------------- | ---------------------------------------------- |
 | `setup={(p) => { p.muted = true; p.loop = true; }}` | `playerDefaults={{ muted: true, loop: true }}` |
 
 `playerDefaults` is applied by the native view manager at player creation. Available fields: `muted`, `volume`, `loop`, `rate`, `playInBackground`, `playWhenInactive`, `mixAudioMode`, `ignoreSilentSwitchMode`.
 
 ### Source clearing
 
-| 0.x | 1.0 |
-|-----|-----|
+| 0.x                               | 1.0                         |
+| --------------------------------- | --------------------------- |
 | `player.replaceSourceAsync(null)` | `player.clearSourceAsync()` |
 
 ### Memory / lifecycle config
 
 Flat `memoryConfig` is replaced by `lifecycle` presets + `advanced.*` overrides.
 
-| 0.x | 1.0 |
-|-----|-----|
-| `memoryConfig.profile` | `lifecycle` |
-| `memoryConfig.preloadLevel` | `advanced.lifecycle.preloadLevel` |
+| 0.x                               | 1.0                                     |
+| --------------------------------- | --------------------------------------- |
+| `memoryConfig.profile`            | `lifecycle`                             |
+| `memoryConfig.preloadLevel`       | `advanced.lifecycle.preloadLevel`       |
 | `memoryConfig.offscreenRetention` | `advanced.lifecycle.offscreenRetention` |
-| `memoryConfig.pauseTrimDelayMs` | `advanced.lifecycle.trimDelayMs` |
-| `bufferConfig` (top-level) | `advanced.buffer` |
-| `useHlsProxy` (top-level) | `advanced.transport.useHlsProxy` |
+| `memoryConfig.pauseTrimDelayMs`   | `advanced.lifecycle.trimDelayMs`        |
+| `bufferConfig` (top-level)        | `advanced.buffer`                       |
+| `useHlsProxy` (top-level)         | `advanced.transport.useHlsProxy`        |
 
 ### Error handling
 
 Standalone `onError` event is removed. Playback errors come through `onPlaybackState`.
 
-| 0.x | 1.0 |
-|-----|-----|
+| 0.x                                           | 1.0                                                                                                |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | `player.addEventListener('onError', handler)` | `player.addEventListener('onPlaybackState', (state) => { if (state.status === 'error') { ... } })` |
-| `useEvent(player, 'onError', handler)` | Check `playbackState.error` via `usePlaybackState(player)` |
+| `useEvent(player, 'onError', handler)`        | Check `playbackState.error` via `usePlaybackState(player)`                                         |
 
 `PlaybackState.error` contains a `PlaybackError` with `code` and `message` fields when `status === 'error'`.
 
@@ -59,24 +59,24 @@ Runtime entrypoints now point to built `lib/*` artifacts instead of `src/*`.
 
 ## Behavioral changes
 
-| Area | New behavior |
-|------|-------------|
-| Default lifecycle | `NitroPlayerView` uses `balanced` when no `lifecycle` is provided |
-| `feed` lifecycle | Metadata-only preload; playerItem is not created during eager init |
-| Source updates | Player instance is reused; `replaceSourceAsync()` updates source without recreating the player |
-| HLS proxy | Starts eagerly on native module registration; requests only self-heal an already registered runtime |
+| Area              | New behavior                                                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------------- |
+| Default lifecycle | `NitroPlayerView` uses `balanced` when no `lifecycle` is provided                                   |
+| `feed` lifecycle  | Metadata-only preload; playerItem is not created during eager init                                  |
+| Source updates    | Player instance is reused; `replaceSourceAsync()` updates source without recreating the player      |
+| HLS proxy         | Starts eagerly on native module registration; requests only self-heal an already registered runtime |
 
 ## Lifecycle presets
 
 The new lifecycle system replaces manual memory configuration. See [lifecycle-guide.md](lifecycle-guide.md) for details.
 
-| Lifecycle | Preload | Retention | Trim delay | Use case |
-|-----------|---------|-----------|------------|----------|
-| `feed` | metadata | metadata | 3 s | Feeds with dozens of videos |
-| `balanced` | buffered | hot | 10 s | Single player (default) |
-| `immersive` | buffered | hot | never | Fullscreen playback |
+| Lifecycle   | Preload  | Retention | Trim delay | Use case                    |
+| ----------- | -------- | --------- | ---------- | --------------------------- |
+| `feed`      | metadata | metadata  | 3 s        | Feeds with dozens of videos |
+| `balanced`  | buffered | hot       | 10 s       | Single player (default)     |
+| `immersive` | buffered | hot       | never      | Fullscreen playback         |
 
-**Important for `feed`**: playerItem is not created during eager init - only metadata. Call `player.initialize()` in the `onAttached` callback so that `play()` works instantly. Without `initialize()` the first `play()` goes through an async path.
+**Important for `feed`**: playerItem is not created during eager init - only metadata. `play()` handles full initialization automatically on first call for all lifecycle presets.
 
 ## Migration steps
 
@@ -84,69 +84,59 @@ The new lifecycle system replaces manual memory configuration. See [lifecycle-gu
 
 Replace all shorthand sources with objects:
 
-| Before | After |
-|--------|-------|
-| `source="url"` | `source={{ uri: "url" }}` |
-| `source={assetRef}` | `source={{ uri: assetRef }}` |
-| `source={{ url: "..." }}` | `source={{ uri: "..." }}` |
+| Before                    | After                        |
+| ------------------------- | ---------------------------- |
+| `source="url"`            | `source={{ uri: "url" }}`    |
+| `source={assetRef}`       | `source={{ uri: assetRef }}` |
+| `source={{ url: "..." }}` | `source={{ uri: "..." }}`    |
 
 Add `lifecycle` if you need a non-default preset:
 
-| Scenario | Config |
-|----------|--------|
-| Video feed | `source={{ uri: "...", lifecycle: 'feed' }}` |
-| Single player | `source={{ uri: "..." }}` (balanced by default) |
-| Fullscreen | `source={{ uri: "...", lifecycle: 'immersive' }}` |
+| Scenario      | Config                                            |
+| ------------- | ------------------------------------------------- |
+| Video feed    | `source={{ uri: "...", lifecycle: 'feed' }}`      |
+| Single player | `source={{ uri: "..." }}` (balanced by default)   |
+| Fullscreen    | `source={{ uri: "...", lifecycle: 'immersive' }}` |
 
 ### 2. View props
 
 Replace `setup` with `playerDefaults`:
 
-| Before | After |
-|--------|-------|
+| Before                              | After                              |
+| ----------------------------------- | ---------------------------------- |
 | `setup={(p) => { p.muted = true }}` | `playerDefaults={{ muted: true }}` |
 
 ### 3. Lifecycle / memory
 
 Replace `memoryConfig` with `lifecycle` + `advanced.lifecycle`:
 
-| Before | After |
-|--------|-------|
-| `memoryConfig={{ profile: 'feed' }}` | `lifecycle: 'feed'` |
+| Before                                        | After                                                   |
+| --------------------------------------------- | ------------------------------------------------------- |
+| `memoryConfig={{ profile: 'feed' }}`          | `lifecycle: 'feed'`                                     |
 | `memoryConfig={{ preloadLevel: 'buffered' }}` | `advanced: { lifecycle: { preloadLevel: 'buffered' } }` |
-| `bufferConfig={{ minBufferMs: 5000 }}` | `advanced: { buffer: { minBufferMs: 5000 } }` |
-| `useHlsProxy: false` | `advanced: { transport: { useHlsProxy: false } }` |
+| `bufferConfig={{ minBufferMs: 5000 }}`        | `advanced: { buffer: { minBufferMs: 5000 } }`           |
+| `useHlsProxy: false`                          | `advanced: { transport: { useHlsProxy: false } }`       |
 
 ### 4. Error handling
 
 Replace `onError` subscriptions with `PlaybackState` checks:
 
-| Before | After |
-|--------|-------|
+| Before                                 | After                                                                        |
+| -------------------------------------- | ---------------------------------------------------------------------------- |
 | `useEvent(player, 'onError', handler)` | `const state = usePlaybackState(player)` + check `state?.status === 'error'` |
 
-### 5. Feed pattern with initialize()
+### 5. Source clearing
 
-If using `feed` lifecycle, add `initialize()` on attach:
-
-| Before (0.x) | After (1.0) |
-|--------------|-------------|
-| `onAttached={() => {}}` | `onAttached={() => { ref.current?.player.initialize().catch(() => {}); }}` |
-
-Without this step, the first `play()` with `feed` lifecycle may not start playback.
-
-### 6. Source clearing
-
-| Before | After |
-|--------|-------|
+| Before                            | After                       |
+| --------------------------------- | --------------------------- |
 | `player.replaceSourceAsync(null)` | `player.clearSourceAsync()` |
 
 ## Post-migration checklist
 
-| What to verify | How |
-|----------------|-----|
-| Play/pause works on first press | Especially with `feed` lifecycle |
-| Errors are surfaced | `usePlaybackState` returns `status: 'error'` + `error` |
-| HLS caching works | `hlsCacheProxy.getStreamCacheStats(url)` returns non-zero `streamSize` |
-| Offscreen trim | Swipe away from video, after `trimDelay` check `memorySnapshot.retentionState` |
-| Loop / muted | `playerDefaults={{ loop: true, muted: true }}` applied at creation |
+| What to verify                  | How                                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| Play/pause works on first press | Especially with `feed` lifecycle                                               |
+| Errors are surfaced             | `usePlaybackState` returns `status: 'error'` + `error`                         |
+| HLS caching works               | `hlsCacheProxy.getStreamCacheStats(url)` returns non-zero `streamSize`         |
+| Offscreen trim                  | Swipe away from video, after `trimDelay` check `memorySnapshot.retentionState` |
+| Loop / muted                    | `playerDefaults={{ loop: true, muted: true }}` applied at creation             |

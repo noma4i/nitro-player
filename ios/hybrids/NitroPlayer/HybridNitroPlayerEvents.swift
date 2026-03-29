@@ -48,13 +48,14 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
     isCurrentlyBuffering = false
     resetPlaybackError()
     if player.timeControlStatus != .waitingToPlayAtSpecifiedRate {
-      status = player.rate > 0 ? .playing : .paused
+      status = resolvePlayPauseStatus()
     }
     updateAndEmitPlaybackState()
   }
 
   func onTimeControlStatusChanged(status: AVPlayer.TimeControlStatus) {
     if player.status == .failed || playerItem?.status == .failed {
+      wantsToPlay = false
       self.status = .error
       isCurrentlyBuffering = false
       readyToDisplay = false
@@ -69,6 +70,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       break
 
     case .playing:
+      wantsToPlay = false
       isCurrentlyBuffering = false
       resetPlaybackError()
       self.status = .playing
@@ -77,7 +79,8 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
     case .paused:
       isCurrentlyBuffering = false
       resetPlaybackError()
-      if self.status != .ended && self.status != .idle {
+      let resolved = resolvePlayPauseStatus()
+      if self.status != .ended && self.status != .idle && resolved == .paused {
         self.status = .paused
       }
       break
@@ -91,6 +94,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
   func onPlayerStatusChanged(status: AVPlayer.Status) {
     if status == .failed || playerItem?.status == .failed {
+      wantsToPlay = false
       self.status = .error
       isCurrentlyBuffering = false
       readyToDisplay = false
@@ -101,6 +105,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
   func onPlayerItemStatusChanged(status: AVPlayerItem.Status) {
     if status == .failed {
+      wantsToPlay = false
       self.status = .error
       isCurrentlyBuffering = false
       setPlaybackError(code: .unknownUnknown, message: playerItem?.error?.localizedDescription ?? "Unknown playback error")
@@ -139,10 +144,11 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
         && !playerItem.isPlaybackBufferEmpty
       {
         isCurrentlyBuffering = false
-        self.status = player.rate > 0 ? .playing : .paused
+        self.status = resolvePlayPauseStatus()
       }
 
     case .failed:
+      wantsToPlay = false
       self.status = .error
       isCurrentlyBuffering = false
       readyToDisplay = false

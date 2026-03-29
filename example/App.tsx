@@ -62,7 +62,6 @@ function App() {
 
   const handleAttached = useCallback(() => {
     setIsAttached(true);
-    videoRef.current?.player.initialize().catch(() => {});
   }, []);
 
   const playbackState = usePlaybackState(player);

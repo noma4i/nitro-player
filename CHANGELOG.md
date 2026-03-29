@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.0.0-beta.6
+
+### Fixed
+
+- iOS + Android: `play()` now works on first call for all lifecycle presets without requiring prior `initialize()`. Added `wantsToPlay` intent flag and centralized `resolvePlayPauseStatus()` helper to prevent native observer callbacks from overriding play intent with `.paused` status during async initialization
+- iOS + Android: feed hot pool and offscreen trim now respect play intent, preventing premature resource release during async warmup
+
+### Changed
+
+- `feed` lifecycle no longer requires explicit `initialize()` before `play()`. The async initialization path is now race-condition-free
+- Updated lifecycle-guide, migration-1.0, README to remove `initialize()` requirement
+
 ## 1.0.0-beta.5
 
 ### Fixed

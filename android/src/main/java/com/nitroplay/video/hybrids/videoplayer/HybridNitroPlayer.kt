@@ -35,6 +35,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override var eventEmitter = HybridNitroPlayerEventEmitter()
 
   private var isReleased = false
+  private var wantsToPlay = false
   private var allocator: DefaultAllocator? = null
   private var context = NitroModules.applicationContext
     ?: run {
@@ -256,6 +257,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   private fun clearCurrentSourceState(sourceToTrim: HybridNitroPlayerSource?) {
+    wantsToPlay = false
     cancelPendingTrim()
     stopProgressUpdates()
     sourceToTrim?.sourceLoader?.cancel()
@@ -395,6 +397,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       }
 
       NitroPlayerManager.touchFeedHotCandidate(this)
+      wantsToPlay = true
       player.play()
       status = NitroPlayerStatus.PLAYING
       emitPlaybackState()
@@ -404,6 +407,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override fun pause() {
     runOnMainThread {
       if (isReleased) return@runOnMainThread
+      wantsToPlay = false
       player.pause()
 
       if (status != NitroPlayerStatus.ENDED && status != NitroPlayerStatus.IDLE) {
@@ -430,6 +434,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   override fun replaceSourceAsync(source: HybridNitroPlayerSourceSpec): Promise<Unit> {
+    wantsToPlay = false
     return Promise.async {
       val hybridSource = source as? HybridNitroPlayerSource ?: throw PlayerError.InvalidSource
       val oldSource = if (::source.isInitialized) {
@@ -637,6 +642,12 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     eventEmitter.onPlaybackState(buildPlaybackState())
   }
 
+  private fun resolvePlayPauseStatus(): NitroPlayerStatus {
+    if (player.isPlaying) return NitroPlayerStatus.PLAYING
+    if (wantsToPlay) return status
+    return NitroPlayerStatus.PAUSED
+  }
+
   private fun enterBuffering() {
     isCurrentlyBuffering = true
     if (status != NitroPlayerStatus.PLAYING && status != NitroPlayerStatus.PAUSED) {
@@ -715,7 +726,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       return false
     }
 
-    if (isPlaying) {
+    if (isPlaying || wantsToPlay) {
       return true
     }
 
@@ -848,11 +859,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
         Player.STATE_READY -> {
           isCurrentlyBuffering = false
           lastError = null
-          status = if (player.isPlaying) {
-            NitroPlayerStatus.PLAYING
-          } else {
-            NitroPlayerStatus.PAUSED
-          }
+          status = resolvePlayPauseStatus()
           readyToDisplay = true
 
           val generalVideoFormat = player.videoFormat
@@ -895,11 +902,8 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       super.onIsPlayingChanged(isPlaying)
       if (isPlaying) isCurrentlyBuffering = false
       if (player.playbackState == Player.STATE_READY) {
-        status = if (isPlaying) {
-          NitroPlayerStatus.PLAYING
-        } else {
-          NitroPlayerStatus.PAUSED
-        }
+        if (isPlaying) wantsToPlay = false
+        status = resolvePlayPauseStatus()
       }
       if (isPlaying) {
         NitroPlayerManager.setLastPlayedPlayer(this@HybridNitroPlayer)
@@ -913,6 +917,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     }
 
     override fun onPlayerError(error: PlaybackException) {
+      wantsToPlay = false
       isCurrentlyBuffering = false
       status = NitroPlayerStatus.ERROR
       readyToDisplay = false
