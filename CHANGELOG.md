@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0-beta.4
+
+### Changed
+
+- HLS proxy runtime is back to a single eager-start contract: registering the native library now starts the proxy on both platforms, while request paths only self-heal an already registered runtime
+- The repo now uses Yarn 4 as the package manager contract in the root package, CI workflows, and local example installation flow, while `example` keeps the live `portal:..` dependency path
+- Release and example docs now describe the eager native HLS runtime ownership and the Yarn-based install/test workflow that matches CI
+
+### Fixed
+
+- iOS + Android: removed the regression where disabling lazy proxy bootstrap left the native HLS proxy stopped and broke all `.m3u8` playback until a manual start path happened
+- iOS + Android: added regression coverage for the runtime state machine so explicit stop, repeated register/start, and request-path behavior stay deterministic across platforms
+- CI: removed the failing `npm install` path for `example`, which could not resolve Yarn `portal:` dependencies on GitHub Actions
+
 ## 1.0.0-beta.3
 
 ### Changed
