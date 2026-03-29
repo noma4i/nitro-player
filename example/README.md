@@ -13,7 +13,7 @@ What `App.tsx` covers:
 
 ```sh
 cd example
-npm install
+yarn install
 cd ios
 pod install
 ```
@@ -22,26 +22,26 @@ pod install
 
 ```sh
 cd example
-npm start
+yarn start
 ```
 
 ```sh
 cd example
-npm run ios:build
+yarn ios:build
 ```
 
 ```sh
 cd example
-npm run ios:device
+yarn ios:device
 ```
 
 ```sh
 cd example
-npm run android:build
+yarn android:build
 ```
 
 ## Important
 
-- `example` consumes the library via `"file:.."` - direct link to the repo root
+- `example` consumes the library via `"portal:.."` so Yarn links the repo root as a live local dependency
 - `metro.config.js` hard-pins single React resolution from `example/node_modules`
 - the HLS smoke path uses the root manifest URL `https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8`; per-stream cache stats are computed relative to that root URL

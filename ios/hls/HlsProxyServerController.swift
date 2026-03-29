@@ -122,6 +122,10 @@ final class HlsProxyServerController: NSObject {
     server?.isRunning == true
   }
 
+  var isRunning: Bool {
+    hasLiveServer
+  }
+
   private func ensureListening(forceRestart: Bool) -> Bool {
     guard shouldBeRunning else {
       return false

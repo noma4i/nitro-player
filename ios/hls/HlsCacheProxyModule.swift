@@ -4,7 +4,12 @@ import React
 @objc(HlsCacheProxy)
 class HlsCacheProxy: NSObject, RCTBridgeModule {
   static func moduleName() -> String! { "HlsCacheProxy" }
-  static func requiresMainQueueSetup() -> Bool { false }
+  static func requiresMainQueueSetup() -> Bool { true }
+
+  override init() {
+    super.init()
+    HlsProxyRuntime.shared.register()
+  }
 
   @objc
   func start(_ port: NSNumber?) {

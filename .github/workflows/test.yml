@@ -15,8 +15,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
-      - run: npm run test:ts
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn test:ts
 
   test-android:
     name: Android
@@ -30,13 +31,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install
-      - run: cd example && npm install
-      - run: npm run test:android
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: cd example && yarn install --immutable
+      - run: yarn test:android
 
   test-ios:
     name: iOS
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npm run test:ios
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: corepack enable
+      - run: yarn install --immutable
+      - run: yarn test:ios

@@ -67,7 +67,7 @@ Peer dependency: `react-native-nitro-modules >= 0.35.0`
 | Area | Owner |
 |------|-------|
 | Playback progress and buffering state | Native snapshot emission |
-| HLS proxy singleton, autostart, and prefetch deduplication | Native runtime |
+| HLS proxy singleton, eager startup on library registration, and prefetch deduplication | Native runtime |
 | HLS manifest routing | Native source factory |
 | Declarative source updates | Long-lived player with native `replaceSourceAsync()` |
 | `playerDefaults` application in `NitroPlayerView` | Native view manager |
