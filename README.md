@@ -26,7 +26,8 @@ Peer dependency: `react-native-nitro-modules >= 0.35.0`
 | [docs/player-api.md](docs/player-api.md) | Public player, view, events, hooks |
 | [docs/source-config.md](docs/source-config.md) | `NitroSourceConfig`, `NitroSource`, lifecycle DSL |
 | [docs/buffer-config.md](docs/buffer-config.md) | `advanced.buffer` reference |
-| [docs/memory-management.md](docs/memory-management.md) | Lifecycle presets and retention behavior |
+| [docs/lifecycle-guide.md](docs/lifecycle-guide.md) | Lifecycle presets: feed, balanced, immersive - выбор, инициализация, hot pool |
+| [docs/memory-management.md](docs/memory-management.md) | Retention states, memory snapshots, advanced overrides |
 | [docs/hls-cache-proxy.md](docs/hls-cache-proxy.md) | Built-in HLS proxy and cache policy |
 | [docs/migration-1.0.md](docs/migration-1.0.md) | Breaking migration guide from `0.x` |
 
@@ -52,6 +53,18 @@ Peer dependency: `react-native-nitro-modules >= 0.35.0`
 | `advanced.buffer` | Low-level buffer tuning |
 | `advanced.lifecycle` | Explicit preload, offscreen retention, trim delay overrides |
 | `advanced.transport.useHlsProxy` | Opt out of HLS proxying |
+
+## Lifecycle Presets
+
+Lifecycle controls how many resources a player allocates before, during, and after playback. See [docs/lifecycle-guide.md](docs/lifecycle-guide.md) for the full guide.
+
+| Lifecycle | Preload | Retention | Trim delay | Use case |
+|-----------|---------|-----------|------------|----------|
+| `feed` | metadata | metadata | 3 s | Scrollable feeds with dozens of videos |
+| `balanced` | buffered | hot | 10 s | Single player (default) |
+| `immersive` | buffered | hot | never | Fullscreen, long-form playback |
+
+**Feed lifecycle**: with `feed` the playerItem is not created during eager init - only metadata. Call `player.initialize()` in `onAttached` so that `play()` starts instantly. The native hot pool keeps a maximum of 2 feed players in hot state.
 
 ## Defaults
 

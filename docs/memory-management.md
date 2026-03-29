@@ -1,6 +1,6 @@
 # Memory Management
 
-NitroPlay uses lifecycle presets instead of the old public `memoryConfig` DSL.
+NitroPlay использует lifecycle presets для управления памятью. Подробное руководство по выбору и использованию preset: [lifecycle-guide.md](lifecycle-guide.md).
 
 ## Public lifecycle contract
 
