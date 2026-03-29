@@ -10,26 +10,36 @@ object HlsProxyRuntime {
   private const val PREFETCH_DEDUP_MS = 60_000L
 
   private val lock = Any()
-  private val runtimeState = HlsProxyRuntimeState(DEFAULT_PORT)
+  private var port: Int = DEFAULT_PORT
+  private var isRegistered = false
+  private var shouldBeRunning = false
+  private var isExplicitlyStopped = false
   private var server: HlsCacheProxyServer? = null
   private var reactContext: ReactApplicationContext? = null
-  private var port: Int = DEFAULT_PORT
   private val prefetchTimestamps = LinkedHashMap<String, Long>()
 
   fun register(reactContext: ReactApplicationContext) {
-    val resolvedPort = synchronized(lock) {
+    val (resolvedPort, needsStart) = synchronized(lock) {
+      val alreadyRunning = isRegistered && shouldBeRunning
       this.reactContext = reactContext
-      port = runtimeState.register()
-      port
+      isRegistered = true
+      shouldBeRunning = true
+      isExplicitlyStopped = false
+      Pair(port, !alreadyRunning)
     }
-    ensureServerRunning(desiredPort = resolvedPort)
+    if (needsStart) {
+      ensureServerRunning(desiredPort = resolvedPort)
+    }
   }
 
   fun start(port: Int?) {
     val (nextPort, shouldRestartForPort) = synchronized(lock) {
       val previousPort = this.port
-      val resolvedPort = runtimeState.start(port)
+      val resolvedPort = if ((port ?: DEFAULT_PORT) > 0) port ?: DEFAULT_PORT else DEFAULT_PORT
       this.port = resolvedPort
+      isRegistered = true
+      shouldBeRunning = true
+      isExplicitlyStopped = false
       Pair(resolvedPort, server?.isAlive == true && previousPort != resolvedPort)
     }
     ensureServerRunning(forceRestart = shouldRestartForPort, desiredPort = nextPort)
@@ -37,13 +47,14 @@ object HlsProxyRuntime {
 
   fun stop() {
     synchronized(lock) {
-      runtimeState.stop()
+      shouldBeRunning = false
+      isExplicitlyStopped = true
     }
     stopServer()
   }
 
   fun onHostResume() {
-    val shouldRun = synchronized(lock) { runtimeState.onHostResume() }
+    val shouldRun = synchronized(lock) { isRegistered && shouldBeRunning && !isExplicitlyStopped }
     if (shouldRun) {
       ensureServerRunning(forceRestart = server?.isAlive != true)
     }
@@ -51,7 +62,7 @@ object HlsProxyRuntime {
 
   fun onHostDestroy() {
     synchronized(lock) {
-      runtimeState.onHostDestroy()
+      shouldBeRunning = false
     }
     stopServer()
   }
@@ -61,10 +72,11 @@ object HlsProxyRuntime {
   }
 
   fun getProxiedUrl(url: String, headers: Map<String, String>?): String {
-    if (!ensureServerAvailableForUse()) {
-      return url
-    }
-    val activeServer = server ?: return url
+    val canUse = synchronized(lock) { isRegistered && shouldBeRunning && !isExplicitlyStopped }
+    if (!canUse) return url
+    if (!ensureServerRunning()) return url
+    val activeServer = synchronized(lock) { server } ?: return url
+    if (!activeServer.isAlive) return url
     val encodedUrl = URLEncoder.encode(url, "UTF-8")
     val encodedHeaders = HlsHeaderCodec.encode(headers)
     val query = StringBuilder("url=").append(encodedUrl)
@@ -75,7 +87,8 @@ object HlsProxyRuntime {
   }
 
   fun prefetchFirstSegment(url: String, headers: ReadableMap?, onComplete: () -> Unit, onError: (Throwable) -> Unit) {
-    if (!ensureServerAvailableForUse()) {
+    val canUse = synchronized(lock) { isRegistered && shouldBeRunning && !isExplicitlyStopped }
+    if (!canUse) {
       onComplete()
       return
     }
@@ -104,7 +117,7 @@ object HlsProxyRuntime {
       return
     }
 
-    val activeServer = server
+    val activeServer = synchronized(lock) { server }
     if (activeServer == null) {
       onComplete()
       return
@@ -133,17 +146,9 @@ object HlsProxyRuntime {
     server?.cacheStore?.clearAll()
   }
 
-  private fun ensureServerAvailableForUse(): Boolean {
-    val shouldRun = synchronized(lock) { runtimeState.shouldEnsureRunningForUse() }
-    if (!shouldRun) {
-      return false
-    }
-    return ensureServerRunning()
-  }
-
   private fun ensureServerRunning(forceRestart: Boolean = false, desiredPort: Int = port): Boolean {
     val context = synchronized(lock) { reactContext } ?: return false
-    val isAlive = server?.isAlive == true
+    val isAlive = synchronized(lock) { server?.isAlive == true }
     if (!forceRestart && isAlive) {
       return true
     }

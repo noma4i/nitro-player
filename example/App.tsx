@@ -2,15 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import {
   NitroPlayerView,
-  NitroPlayer,
   hlsCacheProxy,
   usePlaybackState,
   useEvent,
   type HlsStreamCacheStats,
   type onLoadData,
-  type onLoadStartData,
   type BandwidthData,
-  type NitroPlayerRuntimeError,
   type NitroPlayerViewRef
 } from '@noma4i/nitro-play';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -20,18 +17,15 @@ const SOURCES = {
     label: 'HLS',
     source: {
       uri: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-      useHlsProxy: true,
-      initializeOnCreation: true,
-      memoryConfig: { profile: 'feed' as const }
+      lifecycle: 'feed' as const
     }
   },
   mp4: {
     label: 'MP4',
     source: {
       uri: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-      useHlsProxy: false,
-      initializeOnCreation: true,
-      memoryConfig: { profile: 'feed' as const }
+      lifecycle: 'balanced' as const,
+      advanced: { transport: { useHlsProxy: false } }
     }
   }
 } as const;
@@ -52,13 +46,13 @@ function App() {
   const [isAttached, setIsAttached] = useState(false);
   const [selectedSourceKey, setSelectedSourceKey] = useState<keyof typeof SOURCES>('hls');
   const [lastError, setLastError] = useState<string | null>(null);
-  const [lastLoadStart, setLastLoadStart] = useState<string>('none');
   const [lastLoad, setLastLoad] = useState<string>('none');
   const [streamCacheStats, setStreamCacheStats] = useState<HlsStreamCacheStats>(emptyStreamCacheStats);
   const [showControls, setShowControls] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bandwidth, setBandwidth] = useState<BandwidthData | null>(null);
   const selectedSource = useMemo(() => SOURCES[selectedSourceKey], [selectedSourceKey]);
+  const playerDefaults = useMemo(() => ({ loop: true }), []);
 
   const handleVideoRef = useCallback((instance: NitroPlayerViewRef | null) => {
     videoRef.current = instance;
@@ -133,20 +127,9 @@ function App() {
               key={selectedSourceKey}
               ref={handleVideoRef}
               source={selectedSource.source}
-              setup={useCallback((p: NitroPlayer) => {
-                p.loop = true;
-              }, [])}
+              playerDefaults={playerDefaults}
               onAttached={useCallback(() => setIsAttached(true), [])}
               onDetached={useCallback(() => setIsAttached(false), [])}
-              onLoadStart={useCallback((e: onLoadStartData) => {
-                setLastLoadStart(`${e.sourceType}:${e.source.uri}`);
-              }, [])}
-              onLoad={useCallback((e: onLoadData) => {
-                setLastLoad(`${e.width}x${e.height} duration=${e.duration}`);
-              }, [])}
-              onError={useCallback((e: NitroPlayerRuntimeError) => {
-                setLastError(`${e.code}: ${e.message}`);
-              }, [])}
               onFullscreenChange={useCallback((fs: boolean) => setIsFullscreen(fs), [])}
               resizeMode="contain"
               controls={showControls || isFullscreen}
@@ -210,7 +193,6 @@ function App() {
             bandwidth={bandwidth}
             streamCacheStats={streamCacheStats}
             selectedSourceKey={selectedSourceKey}
-            lastLoadStart={lastLoadStart}
             lastLoad={lastLoad}
             lastError={lastError}
           />
@@ -235,7 +217,6 @@ const PlaybackStats = React.memo(function PlaybackStats({
   bandwidth: BandwidthData | null;
   streamCacheStats: HlsStreamCacheStats;
   selectedSourceKey: string;
-  lastLoadStart: string;
   lastLoad: string;
   lastError: string | null;
 }) {
@@ -278,10 +259,6 @@ const PlaybackStats = React.memo(function PlaybackStats({
       <StateRow
         label="cacheFiles"
         value={selectedSourceKey === 'hls' ? String(streamCacheStats.streamFileCount) : 'n/a'}
-      />
-      <StateRow
-        label="loadStart"
-        value={truncate(lastLoadStart)}
       />
       <StateRow
         label="onLoad"

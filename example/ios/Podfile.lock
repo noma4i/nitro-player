@@ -40,7 +40,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - NitroPlay (1.0.0-beta.3):
+  - NitroPlay (1.0.0-beta.4):
     - boost
     - DoubleConversion
     - fast_float
@@ -2862,9 +2862,9 @@ SPEC CHECKSUMS:
   fmt: 530618a01105dae0fa3a2f27c81ae11fa8f67eac
   GCDWebServer: 2c156a56c8226e2d5c0c3f208a3621ccffbe3ce4
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
-  hermes-engine: c299039cef32b85f1d6f3a5ec97a2f546d2dd049
+  hermes-engine: 4076e3ef71d79020a525eb9e43a012761443dac7
   NitroModules: 17f56ebb3581e74931c870a789834582ce75470c
-  NitroPlay: 83fbd512ea4c08e05c3d13896c461eb955274430
+  NitroPlay: 3998136035ba51101df97f3f83849d4cbda69c8e
   RCT-Folly: b29feb752b08042c62badaef7d453f3bb5e6ae23
   RCTDeprecation: 9da1d0cf93db23ca8b41e8efe9ae558fd9c0077f
   RCTRequired: 92a63c7041031a131fa5206eb082d53f95729b79
@@ -2940,4 +2940,4 @@ SPEC CHECKSUMS:
 
 PODFILE CHECKSUM: 4963e64f86dde3caef84a22a7634cfd99f89acb8
 
-COCOAPODS: 1.16.2
+COCOAPODS: 1.15.2

@@ -12,7 +12,6 @@ final class HlsProxyServerController: NSObject {
   private var port: Int = 18181
   private var server: GCDWebServer?
   private var shouldBeRunning = false
-  private var wasExplicitlyStopped = false
   private var needsRestartOnActive = false
   private var observersRegistered = false
 
@@ -20,31 +19,19 @@ final class HlsProxyServerController: NSObject {
     let resolvedPort = (port ?? defaultPort) > 0 ? (port ?? defaultPort) : defaultPort
     self.port = resolvedPort
     shouldBeRunning = true
-    wasExplicitlyStopped = false
     registerObserversIfNeeded()
     _ = ensureListening(forceRestart: true)
   }
 
   func stop() {
     shouldBeRunning = false
-    wasExplicitlyStopped = true
     needsRestartOnActive = false
     unregisterObservers()
     stopServer()
   }
 
   func proxiedManifestUrl(for url: String, headers: [String: String]?) -> String? {
-    stateQueue.sync {
-      if !shouldBeRunning && !wasExplicitlyStopped {
-        shouldBeRunning = true
-        registerObserversIfNeeded()
-      }
-    }
-
-    guard ensureListening(forceRestart: false) else {
-      return nil
-    }
-
+    guard isRunning else { return nil }
     return manifestRewriter.manifestProxyUrl(url: url, headers: headers, port: port, streamKey: url)
   }
 

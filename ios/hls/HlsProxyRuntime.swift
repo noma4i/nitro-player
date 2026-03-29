@@ -3,36 +3,48 @@ import Foundation
 final class HlsProxyRuntime {
   static let shared = HlsProxyRuntime()
 
+  private let defaultPort: Int = 18181
   private let prefetchDedupMs: TimeInterval = 60
   private let stateQueue = DispatchQueue(label: "com.nitroplay.hls.runtime-state")
   private let controller = HlsProxyServerController()
-  private let runtimeState = HlsProxyRuntimeState()
 
   private var port: Int = 18181
+  private var isRegistered = false
+  private var shouldBeRunning = false
+  private var isExplicitlyStopped = false
   private var prefetchTimestamps: [String: Date] = [:]
 
   private init() {}
 
   func register() {
-    let resolvedPort = stateQueue.sync { () -> Int in
-      self.port = runtimeState.register()
-      return self.port
+    let (resolvedPort, needsStart) = stateQueue.sync { () -> (Int, Bool) in
+      let alreadyRunning = isRegistered && shouldBeRunning
+      isRegistered = true
+      shouldBeRunning = true
+      isExplicitlyStopped = false
+      return (port, !alreadyRunning)
     }
+    guard needsStart else { return }
     _ = ensureControllerRunning(port: resolvedPort)
   }
 
   func start(port: Int?) {
     let (resolvedPort, shouldRestart) = stateQueue.sync { () -> (Int, Bool) in
       let previousPort = self.port
-      self.port = runtimeState.start(port: port)
-      return (self.port, previousPort != self.port)
+      let nextPort = (port ?? defaultPort) > 0 ? (port ?? defaultPort) : defaultPort
+      self.port = nextPort
+      isRegistered = true
+      shouldBeRunning = true
+      isExplicitlyStopped = false
+      return (nextPort, previousPort != nextPort)
     }
     _ = ensureControllerRunning(port: resolvedPort, forceRestart: shouldRestart)
   }
 
   func stop() {
     stateQueue.sync {
-      runtimeState.stop()
+      shouldBeRunning = false
+      isExplicitlyStopped = true
     }
     runOnMainSync {
       controller.stop()
@@ -40,18 +52,18 @@ final class HlsProxyRuntime {
   }
 
   func getProxiedUrl(url: String, headers: [String: String]?) -> String {
-    guard ensureRuntimeAvailableForUse() else {
-      return url
-    }
+    let canUse = stateQueue.sync { isRegistered && shouldBeRunning && !isExplicitlyStopped }
+    guard canUse else { return url }
+    guard ensureControllerRunning(port: stateQueue.sync { port }) else { return url }
     return runOnMainSync {
       controller.proxiedManifestUrl(for: url, headers: headers) ?? url
     }
   }
 
   func prefetchFirstSegment(url: String, headers: [String: String]?) async throws {
-    guard ensureRuntimeAvailableForUse() else {
-      return
-    }
+    let canUse = stateQueue.sync { isRegistered && shouldBeRunning && !isExplicitlyStopped }
+    guard canUse else { return }
+    guard ensureControllerRunning(port: stateQueue.sync { port }) else { return }
 
     let shouldPrefetch = stateQueue.sync { () -> Bool in
       let now = Date()
@@ -65,9 +77,7 @@ final class HlsProxyRuntime {
       return true
     }
 
-    guard shouldPrefetch else {
-      return
-    }
+    guard shouldPrefetch else { return }
 
     try await controller.prefetchFirstSegment(url: url, headers: headers)
   }
@@ -88,14 +98,6 @@ final class HlsProxyRuntime {
     runOnMainSync {
       controller.clearCache()
     }
-  }
-
-  private func ensureRuntimeAvailableForUse() -> Bool {
-    let shouldStart = stateQueue.sync { runtimeState.shouldEnsureRunningForUse() }
-    guard shouldStart else {
-      return false
-    }
-    return ensureControllerRunning(port: stateQueue.sync { port })
   }
 
   @discardableResult
