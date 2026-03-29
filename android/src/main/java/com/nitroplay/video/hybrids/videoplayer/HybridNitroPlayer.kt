@@ -1,17 +1,14 @@
 package com.margelo.nitro.video
 
-import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.media3.common.C
-import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.ui.PlayerView
 import com.facebook.proguard.annotations.DoNotStrip
@@ -23,7 +20,6 @@ import com.nitroplay.video.core.NitroPlayerManager
 import com.nitroplay.video.core.utils.Threading.mainThreadProperty
 import com.nitroplay.video.core.utils.Threading.runOnMainThread
 import com.nitroplay.video.core.utils.Threading.runOnMainThreadSync
-import com.nitroplay.video.core.utils.NitroPlayerOrientationUtils
 import com.nitroplay.video.view.NitroPlayerView
 import java.lang.ref.WeakReference
 import kotlin.math.max
@@ -34,52 +30,41 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override lateinit var source: HybridNitroPlayerSourceSpec
   override var eventEmitter = HybridNitroPlayerEventEmitter()
 
-  private var isReleased = false
-  private var wantsToPlay = false
-  private var allocator: DefaultAllocator? = null
+  internal var isReleased = false
+  internal var wantsToPlay = false
+  internal var allocator: DefaultAllocator? = null
   private var context = NitroModules.applicationContext
     ?: run {
     throw LibraryError.ApplicationContextNotFound
   }
 
   var player: ExoPlayer = runOnMainThreadSync {
-    // Build Temporary player that will be replaced when source is loaded
     return@runOnMainThreadSync ExoPlayer.Builder(context).build()
   }
 
   var loadedWithSource = false
-  private var currentPlayerView: WeakReference<PlayerView>? = null
-  private var readyToDisplay = false
-  private var desiredCurrentTimeMs = 0L
+  internal var currentPlayerView: WeakReference<PlayerView>? = null
+  internal var readyToDisplay = false
+  internal var desiredCurrentTimeMs = 0L
   private var cachedLoop = false
   private var cachedMuted = false
   private var cachedRate = 1.0
-  private var pendingTrimRunnable: Runnable? = null
-  private var hasActiveSource = false
-  private var lastError: PlaybackError? = null
+  internal var pendingTrimRunnable: Runnable? = null
+  internal var hasActiveSource = false
+  internal var lastError: PlaybackError? = null
 
   var wasAutoPaused = false
 
   // Buffer Config
-  private var bufferConfig: BufferConfig? = null
+  internal var bufferConfig: BufferConfig? = null
     get() = currentSourceConfig()?.advanced?.buffer
 
-  // Time updates
-  private val progressHandler = Handler(Looper.getMainLooper())
-  private var progressRunnable: Runnable? = null
-
-  private companion object {
-    const val PROGRESS_UPDATE_INTERVAL_MS = 250L
-    private const val TAG = "HybridNitroPlayer"
-    private const val DEFAULT_MIN_BUFFER_DURATION_MS = 5000
-    private const val DEFAULT_MAX_BUFFER_DURATION_MS = 10000
-    private const val DEFAULT_BUFFER_FOR_PLAYBACK_DURATION_MS = 1000
-    private const val DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_DURATION_MS = 2000
-    private const val DEFAULT_BACK_BUFFER_DURATION_MS = 0
-  }
+  // Delegates
+  internal val listenerBridge = NitroPlayerListenerBridge(this)
+  internal val lifecycle = NitroPlayerLifecycle(this)
 
   override var status: NitroPlayerStatus = NitroPlayerStatus.IDLE
-  private var isCurrentlyBuffering: Boolean = false
+  internal var isCurrentlyBuffering: Boolean = false
 
   override val playbackState: PlaybackState
     get() = runOnMainThreadSync {
@@ -218,7 +203,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     get = { readyToDisplay }
   )
 
-  private fun createExoPlayer(loadControl: DefaultLoadControl): ExoPlayer {
+  internal fun createExoPlayer(loadControl: DefaultLoadControl): ExoPlayer {
     val renderersFactory = DefaultRenderersFactory(context)
       .forceEnableMediaCodecAsynchronousQueueing()
       .setEnableDecoderFallback(true)
@@ -236,45 +221,11 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     return newPlayer
   }
 
-  private fun rebindCurrentPlayerView() {
+  internal fun rebindCurrentPlayerView() {
     currentPlayerView?.get()?.player = player
   }
 
-  private fun replacePlayerInstance(
-    loadControl: DefaultLoadControl,
-    attachPlaybackListeners: Boolean
-  ) {
-    stopProgressUpdates()
-    player.removeListener(playerListener)
-    player.removeAnalyticsListener(analyticsListener)
-    player.release()
-    player = createExoPlayer(loadControl)
-    rebindCurrentPlayerView()
-    if (attachPlaybackListeners) {
-      player.addListener(playerListener)
-      player.addAnalyticsListener(analyticsListener)
-    }
-  }
-
-  private fun clearCurrentSourceState(sourceToTrim: HybridNitroPlayerSource?) {
-    wantsToPlay = false
-    cancelPendingTrim()
-    stopProgressUpdates()
-    sourceToTrim?.sourceLoader?.cancel()
-    sourceToTrim?.trimToCold()
-    replacePlayerInstance(DefaultLoadControl.Builder().build(), attachPlaybackListeners = false)
-    allocator = null
-    loadedWithSource = false
-    hasActiveSource = false
-    desiredCurrentTimeMs = 0L
-    readyToDisplay = false
-    isCurrentlyBuffering = false
-    status = NitroPlayerStatus.IDLE
-    lastError = null
-    emitPlaybackState()
-  }
-
-  private fun currentSourceConfig(): NativeNitroPlayerConfig? {
+  internal fun currentSourceConfig(): NativeNitroPlayerConfig? {
     return (source as? HybridNitroPlayerSource)?.config
   }
 
@@ -282,69 +233,15 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     return currentSourceConfig()?.initialization ?: NitroSourceInitialization.EAGER
   }
 
-  private fun toPlaybackError(code: NitroPlayerErrorCode, message: String): PlaybackError {
+  internal fun toPlaybackError(code: NitroPlayerErrorCode, message: String): PlaybackError {
     return PlaybackError(code = code, message = message)
-  }
-
-  private fun initializePlayer() {
-    if (isReleased || !hasActiveSource) return
-    cancelPendingTrim()
-
-    if (NitroModules.applicationContext == null) {
-      throw LibraryError.ApplicationContextNotFound
-    }
-
-    val hybridSource = source as? HybridNitroPlayerSource ?: throw PlayerError.InvalidSource
-
-    // Initialize the allocator
-    allocator = DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
-
-    // Create a LoadControl with the allocator
-    val currentAllocator = allocator ?: return
-    val loadControl = DefaultLoadControl.Builder()
-      .setAllocator(currentAllocator)
-      .setBufferDurationsMs(
-        bufferConfig?.minBufferMs?.toInt() ?: DEFAULT_MIN_BUFFER_DURATION_MS, // minBufferMs
-        bufferConfig?.maxBufferMs?.toInt() ?: DEFAULT_MAX_BUFFER_DURATION_MS, // maxBufferMs
-        bufferConfig?.bufferForPlaybackMs?.toInt()
-          ?: DEFAULT_BUFFER_FOR_PLAYBACK_DURATION_MS, // bufferForPlaybackMs
-        bufferConfig?.bufferForPlaybackAfterRebufferMs?.toInt()
-          ?: DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_DURATION_MS // bufferForPlaybackAfterRebufferMs
-      )
-      .setBackBuffer(
-        bufferConfig?.backBufferDurationMs?.toInt()
-          ?: DEFAULT_BACK_BUFFER_DURATION_MS, // backBufferDurationMs,
-        false // retainBackBufferFromKeyframe
-      )
-      .build()
-
-    val mediaSource = hybridSource.createOrGetMediaSource()
-
-    // Build the player with the LoadControl
-    replacePlayerInstance(loadControl, attachPlaybackListeners = true)
-
-    loadedWithSource = true
-    player.setMediaSource(mediaSource)
-
-    if (desiredCurrentTimeMs > 0L) {
-      player.seekTo(desiredCurrentTimeMs)
-    }
-
-    // Emit onLoadStart
-    val sourceType = if (hybridSource.uri.startsWith("http")) SourceType.NETWORK else SourceType.LOCAL
-    eventEmitter.onLoadStart(onLoadStartData(sourceType = sourceType, source = hybridSource))
-    status = NitroPlayerStatus.LOADING
-    readyToDisplay = false
-    lastError = null
-    emitPlaybackState()
-    startProgressUpdates()
   }
 
   override fun initialize(): Promise<Unit> {
     return Promise.async {
       runOnMainThreadSync {
         if (isReleased || loadedWithSource || !hasActiveSource) return@runOnMainThreadSync
-        initializePlayer()
+        lifecycle.initializePlayer()
         player.prepare()
       }
     }
@@ -360,9 +257,9 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     runOnMainThread {
       if (isReleased) return@runOnMainThread
       if (resolvedInitialization() == NitroSourceInitialization.EAGER) {
-        when (resolvedPreloadLevel()) {
+        when (lifecycle.resolvedPreloadLevel()) {
           PreloadLevel.BUFFERED -> {
-            initializePlayer()
+            lifecycle.initializePlayer()
             player.prepare()
           }
           PreloadLevel.METADATA -> {
@@ -381,7 +278,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override fun play() {
     runOnMainThread {
       if (isReleased) return@runOnMainThread
-      cancelPendingTrim()
+      lifecycle.cancelPendingTrim()
       if (!hasActiveSource) {
         status = NitroPlayerStatus.IDLE
         readyToDisplay = false
@@ -392,7 +289,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       }
 
       if (!loadedWithSource) {
-        initializePlayer()
+        lifecycle.initializePlayer()
         player.prepare()
       }
 
@@ -418,7 +315,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       NitroPlayerManager.touchFeedHotCandidate(this)
 
       if (!isAttachedToView()) {
-        scheduleOffscreenTrim()
+        lifecycle.scheduleOffscreenTrim()
       }
     }
   }
@@ -448,7 +345,6 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
       runOnMainThreadSync {
         if (isReleased) return@runOnMainThreadSync
-        // Update source
         this.source = source
         hasActiveSource = true
         desiredCurrentTimeMs = 0L
@@ -458,12 +354,11 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
         lastError = null
 
         if (!loadedWithSource) {
-          initializePlayer()
+          lifecycle.initializePlayer()
         } else {
           player.setMediaSource(hybridSource.createOrGetMediaSource())
         }
 
-        // Prepare player
         player.prepare()
         emitPlaybackState()
       }
@@ -480,7 +375,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
       runOnMainThreadSync {
         if (isReleased) return@runOnMainThreadSync
-        clearCurrentSourceState(oldSource)
+        lifecycle.clearCurrentSourceState(oldSource)
       }
     }
   }
@@ -490,8 +385,8 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       val level = runOnMainThreadSync {
         if (isReleased) return@runOnMainThreadSync PreloadLevel.NONE
         if (!hasActiveSource) return@runOnMainThreadSync PreloadLevel.NONE
-        cancelPendingTrim()
-        resolvedPreloadLevel()
+        lifecycle.cancelPendingTrim()
+        lifecycle.resolvedPreloadLevel()
       }
 
       when (level) {
@@ -503,7 +398,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
           runOnMainThreadSync {
             if (isReleased) return@runOnMainThreadSync
             if (!loadedWithSource) {
-              initializePlayer()
+              lifecycle.initializePlayer()
             }
 
             if (player.playbackState != Player.STATE_IDLE) {
@@ -524,15 +419,15 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
       try {
         NitroPlayerManager.unregisterPlayer(this)
-        stopProgressUpdates()
-        cancelPendingTrim()
+        listenerBridge.stopProgressUpdates()
+        lifecycle.cancelPendingTrim()
         loadedWithSource = false
         hasActiveSource = false
 
         eventEmitter.clearAllListeners()
 
-        player.removeListener(playerListener)
-        player.removeAnalyticsListener(analyticsListener)
+        player.removeListener(listenerBridge.playerListener)
+        player.removeAnalyticsListener(listenerBridge.analyticsListener)
         currentPlayerView?.get()?.player = null
         currentPlayerView = null
 
@@ -596,7 +491,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     return max(0.0, calculateBufferedPositionSeconds() - calculateCurrentTimeSeconds())
   }
 
-  private fun buildPlaybackState(): PlaybackState {
+  internal fun buildPlaybackState(): PlaybackState {
     if (isReleased) return PlaybackState(
       status = NitroPlayerStatus.IDLE, currentTime = 0.0, duration = 0.0,
       bufferDuration = 0.0, bufferedPosition = 0.0, rate = 0.0,
@@ -621,7 +516,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   private fun buildMemorySnapshot(): MemorySnapshot {
     if (isReleased) return MemorySnapshot(
       playerBytes = 0.0, sourceBytes = 0.0, totalBytes = 0.0,
-      preloadLevel = resolvedPreloadLevel(), retentionState = currentRetentionState(),
+      preloadLevel = lifecycle.resolvedPreloadLevel(), retentionState = lifecycle.currentRetentionState(),
       isAttachedToView = false, isPlaying = false
     )
     val playerBytes = memorySize.toDouble()
@@ -631,77 +526,36 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       playerBytes = playerBytes,
       sourceBytes = sourceBytes,
       totalBytes = playerBytes + sourceBytes,
-      preloadLevel = resolvedPreloadLevel(),
-      retentionState = currentRetentionState(),
+      preloadLevel = lifecycle.resolvedPreloadLevel(),
+      retentionState = lifecycle.currentRetentionState(),
       isAttachedToView = isAttachedToView(),
       isPlaying = loadedWithSource && player.isPlaying
     )
   }
 
-  private fun emitPlaybackState() {
+  internal fun emitPlaybackState() {
     eventEmitter.onPlaybackState(buildPlaybackState())
   }
 
-  private fun resolvePlayPauseStatus(): NitroPlayerStatus {
+  internal fun resolvePlayPauseStatus(): NitroPlayerStatus {
     if (player.isPlaying) return NitroPlayerStatus.PLAYING
     if (wantsToPlay) return status
     return NitroPlayerStatus.PAUSED
   }
 
-  private fun enterBuffering() {
+  internal fun enterBuffering() {
     isCurrentlyBuffering = true
     if (status != NitroPlayerStatus.PLAYING && status != NitroPlayerStatus.PAUSED) {
       status = NitroPlayerStatus.BUFFERING
     }
   }
 
-  private fun resolvedPreloadLevel(): PreloadLevel {
-    if (!hasActiveSource) {
-      return PreloadLevel.NONE
-    }
-    return currentSourceConfig()?.advanced?.lifecycle?.preloadLevel ?: when (currentSourceConfig()?.lifecycle ?: MemoryProfile.BALANCED) {
-      MemoryProfile.FEED -> PreloadLevel.METADATA
-      MemoryProfile.IMMERSIVE, MemoryProfile.BALANCED -> PreloadLevel.BUFFERED
-    }
-  }
-
-  private fun resolvedOffscreenRetention(): OffscreenRetention {
-    if (!hasActiveSource) {
-      return OffscreenRetention.HOT
-    }
-    return currentSourceConfig()?.advanced?.lifecycle?.offscreenRetention ?: when (currentSourceConfig()?.lifecycle ?: MemoryProfile.BALANCED) {
-      MemoryProfile.FEED -> OffscreenRetention.METADATA
-      MemoryProfile.IMMERSIVE, MemoryProfile.BALANCED -> OffscreenRetention.HOT
-    }
-  }
-
-  private fun resolvedPauseTrimDelayMs(): Long? {
-    val delay = currentSourceConfig()?.advanced?.lifecycle?.trimDelayMs ?: when (currentSourceConfig()?.lifecycle ?: MemoryProfile.BALANCED) {
-      MemoryProfile.FEED -> 3000.0
-      MemoryProfile.IMMERSIVE -> Double.POSITIVE_INFINITY
-      MemoryProfile.BALANCED -> 10000.0
-    }
-    if (delay.isInfinite()) {
-      return null
-    }
-
-    return delay.toLong().coerceAtLeast(0L)
-  }
-
-  private fun currentRetentionState(): MemoryRetentionState {
-    if (!hasActiveSource) {
-      return MemoryRetentionState.COLD
-    }
-    return (source as? HybridNitroPlayerSource)?.retentionState
-      ?: MemoryRetentionState.COLD
-  }
-
-  private fun isAttachedToView(): Boolean {
+  internal fun isAttachedToView(): Boolean {
     return currentPlayerView?.get()?.isAttachedToWindow == true
   }
 
   fun notifyViewAttached() {
-    cancelPendingTrim()
+    lifecycle.cancelPendingTrim()
     NitroPlayerManager.touchFeedHotCandidate(this)
   }
 
@@ -711,252 +565,18 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       return
     }
 
-    scheduleOffscreenTrim()
+    lifecycle.scheduleOffscreenTrim()
   }
 
   internal fun isFeedProfile(): Boolean {
-    if (!hasActiveSource) {
-      return false
-    }
-    return currentSourceConfig()?.lifecycle == MemoryProfile.FEED
+    return lifecycle.isFeedProfile()
   }
 
   internal fun shouldStayHotInFeedPool(): Boolean {
-    if (isReleased) {
-      return false
-    }
-
-    if (isPlaying || wantsToPlay) {
-      return true
-    }
-
-    val currentView = currentPlayerView?.get()
-    return currentView?.isAttachedToWindow == true
+    return lifecycle.shouldStayHotInFeedPool()
   }
 
   internal fun trimForFeedHotPool() {
-    runOnMainThread {
-      if (
-        isReleased ||
-        !isFeedProfile() ||
-        shouldStayHotInFeedPool() ||
-        currentRetentionState() != MemoryRetentionState.HOT
-      ) {
-        return@runOnMainThread
-      }
-
-      trimToMetadataRetention()
-    }
-  }
-
-  private fun scheduleOffscreenTrim() {
-    cancelPendingTrim()
-
-    if (resolvedOffscreenRetention() == OffscreenRetention.HOT) {
-      return
-    }
-
-    val delayMs = resolvedPauseTrimDelayMs() ?: return
-    val runnable = Runnable {
-      trimToConfiguredRetention()
-    }
-    pendingTrimRunnable = runnable
-    progressHandler.postDelayed(runnable, delayMs)
-  }
-
-  private fun cancelPendingTrim() {
-    pendingTrimRunnable?.let { progressHandler.removeCallbacks(it) }
-    pendingTrimRunnable = null
-  }
-
-  private fun trimToConfiguredRetention() {
-    pendingTrimRunnable = null
-
-    if (isReleased || isPlaying || isAttachedToView()) {
-      return
-    }
-
-    when (resolvedOffscreenRetention()) {
-      OffscreenRetention.HOT -> Unit
-      OffscreenRetention.METADATA -> trimToMetadataRetention()
-      OffscreenRetention.COLD -> trimToColdRetention()
-    }
-  }
-
-  private fun trimToMetadataRetention() {
-    if (isReleased || !hasActiveSource) return
-    val hybridSource = source as? HybridNitroPlayerSource ?: return
-
-    if (loadedWithSource) {
-      desiredCurrentTimeMs = player.currentPosition
-      replacePlayerInstance(DefaultLoadControl.Builder().build(), attachPlaybackListeners = false)
-      allocator = null
-      loadedWithSource = false
-    }
-
-    hybridSource.trimToMetadata()
-    status = NitroPlayerStatus.IDLE
-    readyToDisplay = false
-    lastError = null
-    emitPlaybackState()
-  }
-
-  private fun trimToColdRetention() {
-    trimToMetadataRetention()
-    (source as? HybridNitroPlayerSource)?.trimToCold()
-  }
-
-  private fun startProgressUpdates() {
-    stopProgressUpdates() // Ensure no multiple runnables
-    progressRunnable = object : Runnable {
-      override fun run() {
-        if (player.playbackState != Player.STATE_IDLE && player.playbackState != Player.STATE_ENDED) {
-          emitPlaybackState()
-          progressHandler.postDelayed(this, PROGRESS_UPDATE_INTERVAL_MS)
-        }
-      }
-    }
-    progressHandler.post(progressRunnable ?: return)
-  }
-
-  private fun stopProgressUpdates() {
-    progressRunnable?.let { progressHandler.removeCallbacks(it) }
-    progressRunnable = null
-  }
-
-  private val analyticsListener = object: AnalyticsListener {
-    override fun onBandwidthEstimate(
-      eventTime: AnalyticsListener.EventTime,
-      totalLoadTimeMs: Int,
-      totalBytesLoaded: Long,
-      bitrateEstimate: Long
-    ) {
-      if (isReleased) return
-      val videoFormat = player.videoFormat
-      eventEmitter.onBandwidthUpdate(
-        BandwidthData(
-          bitrate = bitrateEstimate.toDouble(),
-          width = if (videoFormat != null) videoFormat.width.toDouble() else null,
-          height = if (videoFormat != null) videoFormat.height.toDouble() else null
-        )
-      )
-    }
-  }
-
-  private val playerListener = object : Player.Listener {
-    override fun onPlaybackStateChanged(playbackState: Int) {
-      if (isReleased) return
-      when (playbackState) {
-        Player.STATE_IDLE -> {
-          isCurrentlyBuffering = false
-          status = NitroPlayerStatus.IDLE
-          readyToDisplay = false
-          lastError = null
-        }
-        Player.STATE_BUFFERING -> {
-          enterBuffering()
-        }
-        Player.STATE_READY -> {
-          isCurrentlyBuffering = false
-          lastError = null
-          status = resolvePlayPauseStatus()
-          readyToDisplay = true
-
-          val generalVideoFormat = player.videoFormat
-          val currentTracks = player.currentTracks
-
-          val selectedVideoTrackGroup = currentTracks.groups.find { group -> group.type == C.TRACK_TYPE_VIDEO && group.isSelected }
-          val selectedVideoTrackFormat = if (selectedVideoTrackGroup != null && selectedVideoTrackGroup.length > 0) {
-            selectedVideoTrackGroup.getTrackFormat(0)
-          } else {
-            null
-          }
-
-          val width = selectedVideoTrackFormat?.width ?: generalVideoFormat?.width ?: 0
-          val height = selectedVideoTrackFormat?.height ?: generalVideoFormat?.height ?: 0
-          val rotationDegrees = selectedVideoTrackFormat?.rotationDegrees ?: generalVideoFormat?.rotationDegrees
-
-          eventEmitter.onLoad(
-            onLoadData(
-              currentTime = player.currentPosition / 1000.0,
-              duration = if (player.duration == C.TIME_UNSET) Double.NaN else player.duration / 1000.0,
-              width = width.toDouble(),
-              height = height.toDouble(),
-              orientation = NitroPlayerOrientationUtils.fromWHR(width, height, rotationDegrees)
-            )
-          )
-          // Progress updates are started in onIsPlayingChanged(true)
-        }
-        Player.STATE_ENDED -> {
-          isCurrentlyBuffering = false
-          status = NitroPlayerStatus.ENDED
-          lastError = null
-          stopProgressUpdates()
-        }
-      }
-
-      emitPlaybackState()
-    }
-
-    override fun onIsPlayingChanged(isPlaying: Boolean) {
-      super.onIsPlayingChanged(isPlaying)
-      if (isPlaying) isCurrentlyBuffering = false
-      if (player.playbackState == Player.STATE_READY) {
-        if (isPlaying) wantsToPlay = false
-        status = resolvePlayPauseStatus()
-      }
-      if (isPlaying) {
-        NitroPlayerManager.setLastPlayedPlayer(this@HybridNitroPlayer)
-        startProgressUpdates()
-      } else {
-        if (player.playbackState == Player.STATE_ENDED || player.playbackState == Player.STATE_IDLE) {
-          stopProgressUpdates()
-        }
-      }
-      emitPlaybackState()
-    }
-
-    override fun onPlayerError(error: PlaybackException) {
-      wantsToPlay = false
-      isCurrentlyBuffering = false
-      status = NitroPlayerStatus.ERROR
-      readyToDisplay = false
-      lastError = toPlaybackError(NitroPlayerErrorCode.UNKNOWN_UNKNOWN, error.message ?: "Unknown playback error")
-      stopProgressUpdates()
-      emitPlaybackState()
-    }
-
-    override fun onPositionDiscontinuity(
-      oldPosition: Player.PositionInfo,
-      newPosition: Player.PositionInfo,
-      reason: Int
-    ) {
-      if (
-        (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) &&
-        status == NitroPlayerStatus.ENDED
-      ) {
-        status = NitroPlayerStatus.PAUSED
-      }
-      emitPlaybackState()
-    }
-
-    override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
-      emitPlaybackState()
-    }
-
-    override fun onVolumeChanged(volume: Float) {
-      // Sync userVolume only for real user/system changes,
-      // not transient duck/unduck volume adjustments
-      if (!muted && !NitroPlayerManager.audioFocusManager.isDucking()) {
-        this@HybridNitroPlayer.volume = volume.toDouble()
-      }
-
-      NitroPlayerManager.audioFocusManager.requestAudioFocusUpdate()
-      eventEmitter.onVolumeChange(onVolumeChangeData(
-        volume = volume.toDouble(),
-        muted = muted
-      ))
-    }
-
+    lifecycle.trimForFeedHotPool()
   }
 }
