@@ -6,21 +6,14 @@ import com.facebook.proguard.annotations.DoNotStrip
 import com.nitroplay.video.core.NitroPlayerManager
 import com.nitroplay.video.core.NitroPlayerViewError
 import com.nitroplay.video.core.utils.Threading
-import java.util.UUID
-
-data class ViewListenerPair(
-  val id: UUID,
-  val eventName: String,
-  val callback: Any
-)
+import com.nitroplay.video.core.ListenerRegistry
 
 @DoNotStrip
 @OptIn(UnstableApi::class)
 class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSpec(), NitroPlayerViewEventsEmitter {
   private var videoView =
     NitroPlayerManager.getNitroPlayerViewWeakReferenceByNitroId(nitroId) ?: throw NitroPlayerViewError.ViewNotFound(nitroId)
-  private val listeners = mutableListOf<ViewListenerPair>()
-  private val listenersLock = Any()
+  private val registry = ListenerRegistry()
   private var playerDefaults: NitroPlayerDefaults? = null
 
   init {
@@ -98,79 +91,43 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
     playerDefaults = null
   }
 
-  // MARK: - Private helpers
-
-  private fun <T> addListener(eventName: String, listener: T): ListenerSubscription {
-    val id = UUID.randomUUID()
-    synchronized(listenersLock) {
-      listeners.add(ViewListenerPair(id, eventName, listener as Any))
-    }
-    return ListenerSubscription {
-      synchronized(listenersLock) { listeners.removeAll { it.id == id } }
-    }
-  }
-
-  @Suppress("UNCHECKED_CAST")
-  private fun <T> emitEvent(eventName: String, invoke: (T) -> Unit) {
-    val snapshot = synchronized(listenersLock) {
-      listeners.filter { it.eventName == eventName }.toList()
-    }
-    snapshot.forEach { pair ->
-      try {
-        invoke(pair.callback as T)
-      } catch (e: Exception) {
-        println("[NitroPlay] Error calling $eventName listener: $e")
-      }
-    }
-  }
-
   // MARK: - Listener registration methods
 
-  override fun addOnFullscreenChangeListener(listener: (Boolean) -> Unit): ListenerSubscription {
-    return addListener("onFullscreenChange", listener)
-  }
+  override fun addOnFullscreenChangeListener(listener: (Boolean) -> Unit) =
+    registry.add("onFullscreenChange", listener)
 
-  override fun addOnAttachedListener(listener: () -> Unit): ListenerSubscription {
-    return addListener("onAttached", listener)
-  }
+  override fun addOnAttachedListener(listener: () -> Unit) =
+    registry.add("onAttached", listener)
 
-  override fun addOnDetachedListener(listener: () -> Unit): ListenerSubscription {
-    return addListener("onDetached", listener)
-  }
+  override fun addOnDetachedListener(listener: () -> Unit) =
+    registry.add("onDetached", listener)
 
-  override fun addWillEnterFullscreenListener(listener: () -> Unit): ListenerSubscription {
-    return addListener("willEnterFullscreen", listener)
-  }
+  override fun addWillEnterFullscreenListener(listener: () -> Unit) =
+    registry.add("willEnterFullscreen", listener)
 
-  override fun addWillExitFullscreenListener(listener: () -> Unit): ListenerSubscription {
-    return addListener("willExitFullscreen", listener)
-  }
+  override fun addWillExitFullscreenListener(listener: () -> Unit) =
+    registry.add("willExitFullscreen", listener)
 
   override fun clearAllListeners() {
-    synchronized(listenersLock) { listeners.clear() }
+    registry.clearAll()
   }
 
   // MARK: - Event emission methods (called by NitroPlayerView)
 
-  override fun onFullscreenChange(isActive: Boolean) {
-    emitEvent<(Boolean) -> Unit>("onFullscreenChange") { it(isActive) }
-  }
+  override fun onFullscreenChange(isActive: Boolean) =
+    registry.emit<(Boolean) -> Unit>("onFullscreenChange") { it(isActive) }
 
-  override fun onAttached() {
-    emitEvent<() -> Unit>("onAttached") { it() }
-  }
+  override fun onAttached() =
+    registry.emit<() -> Unit>("onAttached") { it() }
 
-  override fun onDetached() {
-    emitEvent<() -> Unit>("onDetached") { it() }
-  }
+  override fun onDetached() =
+    registry.emit<() -> Unit>("onDetached") { it() }
 
-  override fun willEnterFullscreen() {
-    emitEvent<() -> Unit>("willEnterFullscreen") { it() }
-  }
+  override fun willEnterFullscreen() =
+    registry.emit<() -> Unit>("willEnterFullscreen") { it() }
 
-  override fun willExitFullscreen() {
-    emitEvent<() -> Unit>("willExitFullscreen") { it() }
-  }
+  override fun willExitFullscreen() =
+    registry.emit<() -> Unit>("willExitFullscreen") { it() }
 
   override val memorySize: Long
     get() = 0
