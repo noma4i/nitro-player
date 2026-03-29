@@ -1,7 +1,6 @@
 package com.nitroplay.video.view
 
 import android.app.Activity
-import android.app.Dialog
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.ContextWrapper
@@ -108,19 +107,15 @@ class NitroPlayerView @JvmOverloads constructor(
     }
 
   private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
-  private var fullscreenDialog: Dialog? = null
+  private val fullscreenManager = FullscreenDialogManager(this)
 
   var eventsEmitter: NitroPlayerViewEventsEmitter? = null
 
   var onNitroIdChange: ((Int?) -> Unit)? = null
   var playerView = createPlayerView()
-  var isInFullscreen: Boolean = false
-    set(value) {
-      if (value != field) {
-        eventsEmitter?.onFullscreenChange(value)
-      }
-      field = value
-    }
+  var isInFullscreen: Boolean
+    get() = fullscreenManager.isActive
+    set(value) { fullscreenManager.isActive = value }
   val applicationContent: ReactApplicationContext
     get() {
       return NitroModules.applicationContext ?: throw LibraryError.ApplicationContextNotFound
@@ -186,73 +181,26 @@ class NitroPlayerView @JvmOverloads constructor(
 
   fun enterFullscreen() {
     runOnMainThread {
-      if (isInFullscreen) return@runOnMainThread
-
       val activity = resolveActivity() ?: return@runOnMainThread
-      if (activity.isFinishing || activity.isDestroyed) return@runOnMainThread
-      val currentParent = playerView.parent as? ViewGroup ?: return@runOnMainThread
-
-      eventsEmitter?.willEnterFullscreen()
-
-      currentParent.removeView(playerView)
-
-      val dialog = Dialog(
-        activity,
-        android.R.style.Theme_Black_NoTitleBar_Fullscreen
-      )
-      val fullscreenContainer = FrameLayout(activity).apply {
-        layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-        setBackgroundColor(Color.BLACK)
-      }
-
-      fullscreenContainer.addView(
-        playerView,
-        FrameLayout.LayoutParams(
-          LayoutParams.MATCH_PARENT,
-          LayoutParams.MATCH_PARENT
-        )
-      )
-
-      dialog.setContentView(fullscreenContainer)
-      dialog.setCancelable(true)
-      dialog.setOnDismissListener {
-        if (isInFullscreen) {
-          restoreFromFullscreen()
-        }
-      }
-
-      fullscreenDialog = dialog
-      dialog.show()
-
-      isInFullscreen = true
+      fullscreenManager.enter(activity)
       updateFullscreenButtonIcon()
-      SmallVideoPlayerOptimizer.applyOptimizations(
-        playerView,
-        context,
-        isFullscreen = true
-      )
     }
   }
 
   fun exitFullscreen() {
     runOnMainThread {
       if (!isInFullscreen) return@runOnMainThread
-
       eventsEmitter?.willExitFullscreen()
-      restoreFromFullscreen()
-      fullscreenDialog?.dismiss()
-      fullscreenDialog = null
+      fullscreenManager.dismiss()
+      updateFullscreenButtonIcon()
+      applySmallPlayerLayoutFixes()
     }
   }
 
   // -------- View Lifecycle Methods --------
   override fun onDetachedFromWindow() {
     try {
-      if (isInFullscreen) {
-        restoreFromFullscreen()
-        fullscreenDialog?.dismiss()
-        fullscreenDialog = null
-      }
+      fullscreenManager.dismiss()
       globalLayoutListener?.let { playerView.viewTreeObserver.removeOnGlobalLayoutListener(it) }
       globalLayoutListener = null
       removeCallbacks(layoutRunnable)
@@ -299,16 +247,6 @@ class NitroPlayerView @JvmOverloads constructor(
       currentContext = currentContext.baseContext
     }
     return null
-  }
-
-  private fun restoreFromFullscreen() {
-    val dialogContent = fullscreenDialog?.findViewById<FrameLayout>(android.R.id.content)
-    (playerView.parent as? ViewGroup)?.removeView(playerView)
-    dialogContent?.removeView(playerView)
-    addView(playerView)
-    isInFullscreen = false
-    updateFullscreenButtonIcon()
-    applySmallPlayerLayoutFixes()
   }
 
   @SuppressLint("PrivateResource")

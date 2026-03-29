@@ -213,33 +213,24 @@ class NitroPlayerObserver: NSObject {
   }
   
   // MARK: - Buffer State Management
-  
+
+  private func observeBoolProperty(
+    _ playerItem: AVPlayerItem,
+    keyPath: KeyPath<AVPlayerItem, Bool>,
+    handler: @escaping () -> Void
+  ) -> NSKeyValueObservation {
+    playerItem.observe(keyPath, options: [.new, .initial]) { item, change in
+      if change.newValue ?? item[keyPath: keyPath] {
+        handler()
+      }
+    }
+  }
+
   func setupBufferObservers(for playerItem: AVPlayerItem) {
     clearBufferObservers()
-    
-    // Observe buffer empty - this indicates definite buffering
-    playbackBufferEmptyObserver = playerItem.observe(\.isPlaybackBufferEmpty, options: [.new, .initial]) { [weak self] playerItem, change in
-      let isEmpty = change.newValue ?? playerItem.isPlaybackBufferEmpty
-      if isEmpty {
-        self?.delegate?.onPlaybackBufferEmpty()
-      }
-    }
-    
-    // Observe likely to keep up - this indicates that buffering has finished
-    playbackLikelyToKeepUpObserver = playerItem.observe(\.isPlaybackLikelyToKeepUp, options: [.new, .initial]) { [weak self] playerItem, change in
-      let isLikelyToKeepUp = change.newValue ?? playerItem.isPlaybackLikelyToKeepUp
-      if isLikelyToKeepUp {
-        self?.delegate?.onPlaybackLikelyToKeepUp()
-      }
-    }
-    
-    // Observe buffer full as an additional signal
-    playbackBufferFullObserver = playerItem.observe(\.isPlaybackBufferFull, options: [.new, .initial]) { [weak self] playerItem, change in
-      let isFull = change.newValue ?? playerItem.isPlaybackBufferFull
-      if isFull {
-        self?.delegate?.onPlaybackLikelyToKeepUp()
-      }
-    }
+    playbackBufferEmptyObserver = observeBoolProperty(playerItem, keyPath: \.isPlaybackBufferEmpty) { [weak self] in self?.delegate?.onPlaybackBufferEmpty() }
+    playbackLikelyToKeepUpObserver = observeBoolProperty(playerItem, keyPath: \.isPlaybackLikelyToKeepUp) { [weak self] in self?.delegate?.onPlaybackLikelyToKeepUp() }
+    playbackBufferFullObserver = observeBoolProperty(playerItem, keyPath: \.isPlaybackBufferFull) { [weak self] in self?.delegate?.onPlaybackLikelyToKeepUp() }
   }
   
   func clearBufferObservers() {
