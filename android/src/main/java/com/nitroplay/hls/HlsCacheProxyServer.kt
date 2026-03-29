@@ -20,6 +20,8 @@ class HlsCacheProxyServer(
     val cacheStore = HlsCacheStore(context)
     private val executor = Executors.newSingleThreadExecutor()
 
+    fun listeningPort(): Int = port
+
     override fun stop() {
         super.stop()
         executor.shutdownNow()

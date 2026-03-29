@@ -35,32 +35,24 @@ describe('hlsCacheProxy', () => {
     nativeGetProxiedUrl.mockImplementation((url: string) => `proxied:${url}`);
   });
 
-  it('auto-starts the native proxy before the first proxied URL lookup', () => {
+  it('delegates getProxiedUrl directly to native', () => {
     const { hlsCacheProxy } = require('../hls/hlsCacheProxy');
 
     const proxiedUrl = hlsCacheProxy.getProxiedUrl('https://cdn.example.com/live.m3u8');
 
-    expect(nativeStart).toHaveBeenCalledTimes(1);
-    expect(nativeStart).toHaveBeenCalledWith(18181);
     expect(nativeGetProxiedUrl).toHaveBeenCalledWith('https://cdn.example.com/live.m3u8', undefined);
     expect(proxiedUrl).toBe('proxied:https://cdn.example.com/live.m3u8');
   });
 
-  it('respects an explicit stop until start() is called again', () => {
+  it('delegates start and stop to native without JS-side orchestration', () => {
     const { hlsCacheProxy } = require('../hls/hlsCacheProxy');
 
-    hlsCacheProxy.stop();
-    hlsCacheProxy.getProxiedUrl('https://cdn.example.com/live.m3u8');
-
-    expect(nativeStop).toHaveBeenCalledTimes(1);
-    expect(nativeStart).not.toHaveBeenCalled();
-
     hlsCacheProxy.start();
-    hlsCacheProxy.getProxiedUrl('https://cdn.example.com/live-2.m3u8');
+    hlsCacheProxy.stop();
 
     expect(nativeStart).toHaveBeenCalledTimes(1);
-    expect(nativeStart).toHaveBeenCalledWith(18181);
-    expect(nativeGetProxiedUrl).toHaveBeenLastCalledWith('https://cdn.example.com/live-2.m3u8', undefined);
+    expect(nativeStart).toHaveBeenCalledWith(undefined);
+    expect(nativeStop).toHaveBeenCalledTimes(1);
   });
 
   it('prefetchFirstSegment delegates to native prefetchFirstSegment', async () => {
@@ -131,7 +123,7 @@ describe('hlsCacheProxy', () => {
     });
   });
 
-  it('prefetchFirstSegment deduplicates within 60s window', async () => {
+  it('prefetchFirstSegment delegates every call to native', async () => {
     const { hlsCacheProxy } = require('../hls/hlsCacheProxy');
     const { NativeModules } = require('react-native');
     const nativePrefetch = NativeModules.HlsCacheProxy.prefetchFirstSegment;
@@ -142,6 +134,6 @@ describe('hlsCacheProxy', () => {
     await hlsCacheProxy.prefetchFirstSegment(url);
     await hlsCacheProxy.prefetchFirstSegment(url);
 
-    expect(nativePrefetch).toHaveBeenCalledTimes(1);
+    expect(nativePrefetch).toHaveBeenCalledTimes(3);
   });
 });

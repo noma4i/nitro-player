@@ -1,0 +1,2 @@
+export type NitroPlayerOrientation = 'portrait' | 'landscape' | 'portrait-upside-down' | 'landscape-left' | 'landscape-right' | 'square' | 'unknown';
+//# sourceMappingURL=NitroPlayerOrientation.d.ts.map

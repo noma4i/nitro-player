@@ -19,6 +19,8 @@ namespace margelo::nitro::video { class HybridNitroPlayerSpec; }
 namespace margelo::nitro::video { enum class ResizeMode; }
 // Forward declaration of `SurfaceType` to properly resolve imports.
 namespace margelo::nitro::video { enum class SurfaceType; }
+// Forward declaration of `NitroPlayerDefaults` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroPlayerDefaults; }
 // Forward declaration of `ListenerSubscription` to properly resolve imports.
 namespace margelo::nitro::video { struct ListenerSubscription; }
 
@@ -27,6 +29,7 @@ namespace margelo::nitro::video { struct ListenerSubscription; }
 #include <optional>
 #include "ResizeMode.hpp"
 #include "SurfaceType.hpp"
+#include "NitroPlayerDefaults.hpp"
 #include "ListenerSubscription.hpp"
 #include <functional>
 
@@ -74,6 +77,8 @@ namespace margelo::nitro::video {
       // Methods
       virtual void enterFullscreen() = 0;
       virtual void exitFullscreen() = 0;
+      virtual void setPlayerDefaults(const NitroPlayerDefaults& defaults) = 0;
+      virtual void clearPlayerDefaults() = 0;
       virtual ListenerSubscription addOnAttachedListener(const std::function<void()>& listener) = 0;
       virtual ListenerSubscription addOnDetachedListener(const std::function<void()>& listener) = 0;
       virtual ListenerSubscription addOnFullscreenChangeListener(const std::function<void(bool /* fullscreen */)>& listener) = 0;

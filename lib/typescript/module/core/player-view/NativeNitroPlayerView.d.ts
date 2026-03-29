@@ -1,0 +1,2 @@
+export declare const NativeNitroPlayerView: import("react-native").HostComponent<import("../../spec/fabric/NitroPlayerViewNativeComponent").ViewViewNativeProps> | (() => never);
+//# sourceMappingURL=NativeNitroPlayerView.d.ts.map

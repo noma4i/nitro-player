@@ -1,4 +1,5 @@
 import { renderHook } from '@testing-library/react';
+import { act } from 'react';
 
 jest.mock('react-native', () => ({
   Image: {
@@ -18,26 +19,14 @@ jest.mock('react-native-nitro-modules', () => ({
   }
 }));
 
-const addEventListener = jest.fn((_event: string, callback: () => void) => ({
-  remove: jest.fn(() => callback)
-}));
-
 const destroy = jest.fn();
 
 const playerInstance = {
   playbackState: {
     status: 'idle'
   },
-  addEventListener,
+  replaceSourceAsync: jest.fn(() => Promise.resolve()),
   __destroy: destroy,
-  loop: false,
-  muted: false,
-  volume: 1,
-  rate: 1,
-  mixAudioMode: 'mixWithOthers',
-  ignoreSilentSwitchMode: 'auto',
-  playInBackground: false,
-  playWhenInactive: false
 };
 
 jest.mock('../core/hooks/useManagedInstance', () => ({
@@ -46,36 +35,42 @@ jest.mock('../core/hooks/useManagedInstance', () => ({
 
 describe('useNitroPlayer', () => {
   beforeEach(() => {
-    addEventListener.mockClear();
     destroy.mockClear();
+    playerInstance.replaceSourceAsync.mockClear();
   });
 
-  it('re-applies playerDefaults when object changes without recreating player', () => {
+  it('creates a managed player once and keeps it stable across source updates', async () => {
     const { useNitroPlayer } = require('../core/hooks/useNitroPlayer');
+    const { useManagedInstance } = require('../core/hooks/useManagedInstance');
 
-    const { rerender } = renderHook(
-      ({ defaults }: { defaults: any }) => useNitroPlayer({ uri: 'https://cdn.example.com/video.mp4' }, defaults),
+    const initialSource = { uri: 'https://cdn.example.com/video.mp4' };
+    const nextSource = { uri: 'https://cdn.example.com/video-2.mp4' };
+
+    const { result, rerender } = renderHook(
+      ({ source }: { source: { uri: string } }) => useNitroPlayer(source),
       {
         initialProps: {
-          defaults: {
-            loop: true,
-            volume: 0.5
-          }
+          source: initialSource
         }
       }
     );
 
-    expect(playerInstance.loop).toBe(true);
-    expect(playerInstance.volume).toBe(0.5);
+    expect(result.current).toBe(playerInstance);
+    expect(useManagedInstance).toHaveBeenCalledWith(
+      expect.objectContaining({
+        factory: expect.any(Function),
+        cleanup: expect.any(Function)
+      }),
+      []
+    );
 
-    rerender({
-      defaults: {
-        loop: false,
-        muted: true
-      }
-    } as any);
+    expect(playerInstance.replaceSourceAsync).not.toHaveBeenCalled();
 
-    expect(playerInstance.loop).toBe(false);
-    expect(playerInstance.muted).toBe(true);
+    await act(async () => {
+      rerender({ source: nextSource });
+    });
+
+    expect(result.current).toBe(playerInstance);
+    expect(playerInstance.replaceSourceAsync).toHaveBeenCalledWith(nextSource);
   });
 });

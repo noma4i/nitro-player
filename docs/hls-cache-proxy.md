@@ -12,6 +12,7 @@ App -> NitroPlayerView -> localhost:18181 -> CDN
 
 - iOS: GCDWebServer + `~/Library/Caches/hls-cache/`
 - Android: NanoHTTPD + `context.cacheDir/hls-cache/`
+- Auto-start, explicit stop state, and prefetch deduplication are managed natively on both platforms
 
 Manifest responses always fresh (`Cache-Control: no-cache`). Segments cached to disk with SHA-256 filename.
 
@@ -19,7 +20,7 @@ Manifest responses always fresh (`Cache-Control: no-cache`). Segments cached to 
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `start(port?)` | `void` | Start proxy (default: 18181). Auto-starts on first use |
+| `start(port?)` | `void` | Start proxy (default: 18181) |
 | `stop()` | `void` | Stop proxy. Requires explicit `start()` to resume |
 | `getProxiedUrl(url, headers?)` | `string` | Get proxied URL for HLS stream |
 | `prefetchFirstSegment(url, headers?)` | `Promise<void>` | Pre-download init + first segment |
@@ -58,7 +59,7 @@ Streams are always removed as a whole unit - no partial cleanup that would leave
 
 ## Prefetch Deduplication
 
-`prefetchFirstSegment()` deduplicates calls within 60 seconds for the same URL. Safe to call on every feed item mount.
+`prefetchFirstSegment()` deduplicates calls within 60 seconds for the same URL inside the native runtime. Safe to call on every feed item mount.
 
 ## Disabling the Proxy
 

@@ -21,6 +21,7 @@ private let vmLogger = Logger(subsystem: "com.nitroplay.video", category: "ViewM
 class HybridNitroPlayerViewManager: HybridNitroPlayerViewManagerSpec {
   weak var view: NitroPlayerComponentView?
   var listeners: [ViewListenerPair] = []
+  private var playerDefaults: NitroPlayerDefaults?
 
   let DEALOCATED_WARNING = "NitroPlay: NitroPlayerComponentView is no longer available. It is likely that the view was deallocated."
 
@@ -58,6 +59,37 @@ class HybridNitroPlayerViewManager: HybridNitroPlayerViewManagerSpec {
     }
   }
 
+  private func applyDefaults(to player: HybridNitroPlayer?) {
+    guard let player, let defaults = playerDefaults else {
+      return
+    }
+
+    if let loop = defaults.loop {
+      player.loop = loop
+    }
+    if let muted = defaults.muted {
+      player.muted = muted
+    }
+    if let volume = defaults.volume {
+      player.volume = volume
+    }
+    if let rate = defaults.rate {
+      player.rate = rate
+    }
+    if let mixAudioMode = defaults.mixAudioMode {
+      player.mixAudioMode = mixAudioMode
+    }
+    if let ignoreSilentSwitchMode = defaults.ignoreSilentSwitchMode {
+      player.ignoreSilentSwitchMode = ignoreSilentSwitchMode
+    }
+    if let playInBackground = defaults.playInBackground {
+      player.playInBackground = playInBackground
+    }
+    if let playWhenInactive = defaults.playWhenInactive {
+      player.playWhenInactive = playWhenInactive
+    }
+  }
+
   // MARK: - Properties
 
   weak var player: (any HybridNitroPlayerSpec)? {
@@ -74,6 +106,7 @@ class HybridNitroPlayerViewManager: HybridNitroPlayerViewManagerSpec {
         return
       }
       view.player = newValue
+      applyDefaults(to: newValue as? HybridNitroPlayer)
     }
   }
 
@@ -150,6 +183,15 @@ class HybridNitroPlayerViewManager: HybridNitroPlayerViewManagerSpec {
 
   // Android only - no-op on iOS
   var surfaceType: SurfaceType = .surface
+
+  func setPlayerDefaults(defaults: NitroPlayerDefaults) throws {
+    playerDefaults = defaults
+    applyDefaults(to: player as? HybridNitroPlayer)
+  }
+
+  func clearPlayerDefaults() throws {
+    playerDefaults = nil
+  }
 
   func enterFullscreen() throws {
     guard let view else {

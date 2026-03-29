@@ -15,6 +15,12 @@ namespace margelo::nitro::video { enum class ResizeMode; }
 namespace margelo::nitro::video { enum class SurfaceType; }
 // Forward declaration of `ListenerSubscription` to properly resolve imports.
 namespace margelo::nitro::video { struct ListenerSubscription; }
+// Forward declaration of `NitroPlayerDefaults` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroPlayerDefaults; }
+// Forward declaration of `MixAudioMode` to properly resolve imports.
+namespace margelo::nitro::video { enum class MixAudioMode; }
+// Forward declaration of `IgnoreSilentSwitchMode` to properly resolve imports.
+namespace margelo::nitro::video { enum class IgnoreSilentSwitchMode; }
 
 #include <memory>
 #include "HybridNitroPlayerSpec.hpp"
@@ -29,6 +35,12 @@ namespace margelo::nitro::video { struct ListenerSubscription; }
 #include <functional>
 #include "JFunc_void.hpp"
 #include <NitroModules/JNICallable.hpp>
+#include "NitroPlayerDefaults.hpp"
+#include "JNitroPlayerDefaults.hpp"
+#include "MixAudioMode.hpp"
+#include "JMixAudioMode.hpp"
+#include "IgnoreSilentSwitchMode.hpp"
+#include "JIgnoreSilentSwitchMode.hpp"
 #include "JFunc_void_bool.hpp"
 
 namespace margelo::nitro::video {
@@ -123,6 +135,14 @@ namespace margelo::nitro::video {
   }
   void JHybridNitroPlayerViewManagerSpec::exitFullscreen() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void()>("exitFullscreen");
+    method(_javaPart);
+  }
+  void JHybridNitroPlayerViewManagerSpec::setPlayerDefaults(const NitroPlayerDefaults& defaults) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JNitroPlayerDefaults> /* defaults */)>("setPlayerDefaults");
+    method(_javaPart, JNitroPlayerDefaults::fromCpp(defaults));
+  }
+  void JHybridNitroPlayerViewManagerSpec::clearPlayerDefaults() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void()>("clearPlayerDefaults");
     method(_javaPart);
   }
   ListenerSubscription JHybridNitroPlayerViewManagerSpec::addOnAttachedListener(const std::function<void()>& listener) {

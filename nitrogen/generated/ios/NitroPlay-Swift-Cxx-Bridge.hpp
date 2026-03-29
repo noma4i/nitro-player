@@ -26,12 +26,16 @@ namespace margelo::nitro::video { class HybridNitroPlayerSpec; }
 namespace margelo::nitro::video { class HybridNitroPlayerViewManagerFactorySpec; }
 // Forward declaration of `HybridNitroPlayerViewManagerSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridNitroPlayerViewManagerSpec; }
+// Forward declaration of `IgnoreSilentSwitchMode` to properly resolve imports.
+namespace margelo::nitro::video { enum class IgnoreSilentSwitchMode; }
 // Forward declaration of `ListenerSubscription` to properly resolve imports.
 namespace margelo::nitro::video { struct ListenerSubscription; }
 // Forward declaration of `LivePlaybackParams` to properly resolve imports.
 namespace margelo::nitro::video { struct LivePlaybackParams; }
 // Forward declaration of `MemoryProfile` to properly resolve imports.
 namespace margelo::nitro::video { enum class MemoryProfile; }
+// Forward declaration of `MixAudioMode` to properly resolve imports.
+namespace margelo::nitro::video { enum class MixAudioMode; }
 // Forward declaration of `NitroPlayerErrorCode` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerErrorCode; }
 // Forward declaration of `NitroPlayerInformation` to properly resolve imports.
@@ -95,9 +99,11 @@ namespace NitroPlay { class HybridNitroPlayerViewManagerSpec_cxx; }
 #include "HybridNitroPlayerSpec.hpp"
 #include "HybridNitroPlayerViewManagerFactorySpec.hpp"
 #include "HybridNitroPlayerViewManagerSpec.hpp"
+#include "IgnoreSilentSwitchMode.hpp"
 #include "ListenerSubscription.hpp"
 #include "LivePlaybackParams.hpp"
 #include "MemoryProfile.hpp"
+#include "MixAudioMode.hpp"
 #include "NitroPlayerErrorCode.hpp"
 #include "NitroPlayerInformation.hpp"
 #include "NitroPlayerOrientation.hpp"
@@ -754,6 +760,36 @@ namespace margelo::nitro::video::bridge::swift {
     return optional.has_value();
   }
   inline std::shared_ptr<HybridNitroPlayerSpec> get_std__optional_std__shared_ptr_HybridNitroPlayerSpec__(const std::optional<std::shared_ptr<HybridNitroPlayerSpec>>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<MixAudioMode>
+  /**
+   * Specialized version of `std::optional<MixAudioMode>`.
+   */
+  using std__optional_MixAudioMode_ = std::optional<MixAudioMode>;
+  inline std::optional<MixAudioMode> create_std__optional_MixAudioMode_(const MixAudioMode& value) noexcept {
+    return std::optional<MixAudioMode>(value);
+  }
+  inline bool has_value_std__optional_MixAudioMode_(const std::optional<MixAudioMode>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline MixAudioMode get_std__optional_MixAudioMode_(const std::optional<MixAudioMode>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<IgnoreSilentSwitchMode>
+  /**
+   * Specialized version of `std::optional<IgnoreSilentSwitchMode>`.
+   */
+  using std__optional_IgnoreSilentSwitchMode_ = std::optional<IgnoreSilentSwitchMode>;
+  inline std::optional<IgnoreSilentSwitchMode> create_std__optional_IgnoreSilentSwitchMode_(const IgnoreSilentSwitchMode& value) noexcept {
+    return std::optional<IgnoreSilentSwitchMode>(value);
+  }
+  inline bool has_value_std__optional_IgnoreSilentSwitchMode_(const std::optional<IgnoreSilentSwitchMode>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline IgnoreSilentSwitchMode get_std__optional_IgnoreSilentSwitchMode_(const std::optional<IgnoreSilentSwitchMode>& optional) noexcept {
     return optional.value();
   }
   

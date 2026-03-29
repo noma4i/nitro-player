@@ -6,45 +6,26 @@ class HlsCacheProxy: NSObject, RCTBridgeModule {
   static func moduleName() -> String! { "HlsCacheProxy" }
   static func requiresMainQueueSetup() -> Bool { false }
 
-  private let controller = HlsProxyServerController()
-
-  override init() {
-    super.init()
-    performOnMainThread {
-      self.controller.start(port: nil)
-    }
-  }
-
   @objc
   func start(_ port: NSNumber?) {
-    performOnMainThread {
-      self.controller.start(port: port?.intValue)
-    }
+    HlsProxyRuntime.shared.start(port: port?.intValue)
   }
 
   @objc
   func stop() {
-    performOnMainThread {
-      self.controller.stop()
-    }
+    HlsProxyRuntime.shared.stop()
   }
 
   @objc(getProxiedUrl:headers:)
   func getProxiedUrl(_ url: String, headers: NSDictionary?) -> String {
-    let headerMap = headers as? [String: String]
-    var proxiedUrl: String?
-    performOnMainThread(waitUntilDone: true) {
-      proxiedUrl = self.controller.proxiedManifestUrl(for: url, headers: headerMap)
-    }
-    return proxiedUrl ?? url
+    HlsProxyRuntime.shared.getProxiedUrl(url: url, headers: headers as? [String: String])
   }
 
   @objc
   func prefetchFirstSegment(_ url: String, headers: NSDictionary?, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
-    let headerMap = headers as? [String: String]
-    Task.detached { [controller] in
+    Task.detached {
       do {
-        try await controller.prefetchFirstSegment(url: url, headers: headerMap)
+        try await HlsProxyRuntime.shared.prefetchFirstSegment(url: url, headers: headers as? [String: String])
         resolver(true)
       } catch {
         rejecter("prefetch_error", error.localizedDescription, error)
@@ -54,31 +35,17 @@ class HlsCacheProxy: NSObject, RCTBridgeModule {
 
   @objc
   func getCacheStats(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
-    resolver(controller.getCacheStats())
+    resolver(HlsProxyRuntime.shared.getCacheStats())
   }
 
   @objc
   func getStreamCacheStats(_ url: String, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
-    resolver(controller.getCacheStats(streamKey: url))
+    resolver(HlsProxyRuntime.shared.getStreamCacheStats(url: url))
   }
 
   @objc
   func clearCache(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
-    controller.clearCache()
+    HlsProxyRuntime.shared.clearCache()
     resolver(true)
-  }
-
-  private func performOnMainThread(waitUntilDone: Bool = false, _ work: @escaping () -> Void) {
-    if Thread.isMainThread {
-      work()
-      return
-    }
-
-    if waitUntilDone {
-      DispatchQueue.main.sync(execute: work)
-      return
-    }
-
-    DispatchQueue.main.async(execute: work)
   }
 }

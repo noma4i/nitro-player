@@ -36,6 +36,8 @@ const setupSubject = (initiallyAttached = false) => {
     resizeMode: 'none',
     keepScreenAwake: true,
     surfaceType: 'surface',
+    setPlayerDefaults: jest.fn(),
+    clearPlayerDefaults: jest.fn(),
     enterFullscreen: jest.fn(),
     exitFullscreen: jest.fn(),
     addOnAttachedListener: jest.fn((callback: () => void) => createSubscription(listeners.onAttached, callback)),
@@ -184,7 +186,7 @@ describe('NitroPlayerView attach contract', () => {
     detachedSubscription?.remove();
   });
 
-  it('creates NitroPlayerView players through useNitroPlayer with playerDefaults passthrough', () => {
+  it('applies playerDefaults through native view manager, not through useNitroPlayer defaults', () => {
     const { React, act, renderNode, NitroPlayerView, useNitroPlayer } = setupSubject(false);
 
     act(() => {
@@ -197,8 +199,7 @@ describe('NitroPlayerView attach contract', () => {
     });
 
     expect(useNitroPlayer).toHaveBeenCalledWith(
-      { uri: 'https://cdn.example.com/video.mp4' },
-      { loop: true }
+      { uri: 'https://cdn.example.com/video.mp4' }
     );
   });
 });

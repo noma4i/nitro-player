@@ -20,6 +20,8 @@ public protocol HybridNitroPlayerViewManagerSpec_protocol: HybridObject {
   // Methods
   func enterFullscreen() throws -> Void
   func exitFullscreen() throws -> Void
+  func setPlayerDefaults(defaults: NitroPlayerDefaults) throws -> Void
+  func clearPlayerDefaults() throws -> Void
   func addOnAttachedListener(listener: @escaping () -> Void) throws -> ListenerSubscription
   func addOnDetachedListener(listener: @escaping () -> Void) throws -> ListenerSubscription
   func addOnFullscreenChangeListener(listener: @escaping (_ fullscreen: Bool) -> Void) throws -> ListenerSubscription

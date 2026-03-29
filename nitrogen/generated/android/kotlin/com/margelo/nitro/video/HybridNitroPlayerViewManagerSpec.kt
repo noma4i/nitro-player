@@ -70,6 +70,14 @@ abstract class HybridNitroPlayerViewManagerSpec: HybridObject() {
   @Keep
   abstract fun exitFullscreen(): Unit
   
+  @DoNotStrip
+  @Keep
+  abstract fun setPlayerDefaults(defaults: NitroPlayerDefaults): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun clearPlayerDefaults(): Unit
+  
   abstract fun addOnAttachedListener(listener: () -> Unit): ListenerSubscription
   
   @DoNotStrip

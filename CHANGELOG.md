@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.0-beta.2
+
+### Changed
+
+- `usePlaybackState(player)` now returns raw native playback snapshots instead of JS-interpolated progress
+- Declarative `source` updates now keep a long-lived player instance and apply changes through native `replaceSourceAsync()`
+- `NitroPlayerView.playerDefaults` are now applied by the native view manager instead of a JS-side setter loop
+- HLS proxy auto-start, explicit stop state, and prefetch deduplication are now owned by native runtime singletons on iOS and Android
+- HLS manifest routing now happens inside the native source factories instead of the TypeScript layer
+
+### Fixed
+
+- Removed the remaining JS-side source identity serialization and object bookkeeping from the playback lifecycle path
+- Android: exposed proxy listening port from `HlsCacheProxyServer` for native runtime URL generation
+- TS docs now match the native-first runtime model for playback state, source updates, and HLS proxy ownership
+
 ## 1.0.0-beta.1
 
 ### Breaking

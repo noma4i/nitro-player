@@ -21,9 +21,24 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
     NitroPlayerManager.getNitroPlayerViewWeakReferenceByNitroId(nitroId) ?: throw NitroPlayerViewError.ViewNotFound(nitroId)
   private val listeners = mutableListOf<ViewListenerPair>()
   private val listenersLock = Any()
+  private var playerDefaults: NitroPlayerDefaults? = null
 
   init {
     videoView.get()?.eventsEmitter = this
+  }
+
+  private fun applyDefaults(player: HybridNitroPlayer?) {
+    val defaults = playerDefaults ?: return
+    val activePlayer = player ?: return
+
+    defaults.loop?.let { activePlayer.loop = it }
+    defaults.muted?.let { activePlayer.muted = it }
+    defaults.volume?.let { activePlayer.volume = it }
+    defaults.rate?.let { activePlayer.rate = it }
+    defaults.mixAudioMode?.let { activePlayer.mixAudioMode = it }
+    defaults.ignoreSilentSwitchMode?.let { activePlayer.ignoreSilentSwitchMode = it }
+    defaults.playInBackground?.let { activePlayer.playInBackground = it }
+    defaults.playWhenInactive?.let { activePlayer.playWhenInactive = it }
   }
 
   override var player: HybridNitroPlayerSpec?
@@ -32,7 +47,9 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
     }
     set(value) {
       Threading.runOnMainThread {
-        videoView.get()?.hybridPlayer = value as? HybridNitroPlayer
+        val hybridPlayer = value as? HybridNitroPlayer
+        videoView.get()?.hybridPlayer = hybridPlayer
+        applyDefaults(hybridPlayer)
       }
     }
 
@@ -71,6 +88,15 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
     set(value) {
       videoView.get()?.surfaceType = value
     }
+
+  override fun setPlayerDefaults(defaults: NitroPlayerDefaults) {
+    playerDefaults = defaults
+    applyDefaults(videoView.get()?.hybridPlayer)
+  }
+
+  override fun clearPlayerDefaults() {
+    playerDefaults = null
+  }
 
   // MARK: - Private helpers
 

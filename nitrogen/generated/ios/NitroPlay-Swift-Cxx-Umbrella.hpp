@@ -42,6 +42,8 @@ namespace margelo::nitro::video { struct MemorySnapshot; }
 namespace margelo::nitro::video { enum class MixAudioMode; }
 // Forward declaration of `NativeNitroPlayerConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct NativeNitroPlayerConfig; }
+// Forward declaration of `NitroPlayerDefaults` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroPlayerDefaults; }
 // Forward declaration of `NitroPlayerErrorCode` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerErrorCode; }
 // Forward declaration of `NitroPlayerInformation` to properly resolve imports.
@@ -101,6 +103,7 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "MemorySnapshot.hpp"
 #include "MixAudioMode.hpp"
 #include "NativeNitroPlayerConfig.hpp"
+#include "NitroPlayerDefaults.hpp"
 #include "NitroPlayerErrorCode.hpp"
 #include "NitroPlayerInformation.hpp"
 #include "NitroPlayerOrientation.hpp"

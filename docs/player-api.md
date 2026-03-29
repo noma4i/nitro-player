@@ -98,5 +98,5 @@ Errors do not emit a standalone `onError` event in `1.0.0`. Use `onPlaybackState
 
 | Hook | Returns | Purpose |
 |------|---------|---------|
-| `usePlaybackState(player)` | `PlaybackState` | Interpolated playback snapshot |
+| `usePlaybackState(player)` | `PlaybackState` | Raw native playback snapshot |
 | `useEvent(target, event, listener)` | `void` | Event subscription helper |

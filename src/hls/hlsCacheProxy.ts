@@ -21,12 +21,7 @@ const DEFAULT_STREAM_CACHE_STATS: HlsStreamCacheStats = {
 const NativeProxy = NativeModules?.HlsCacheProxy as HlsCacheProxyNative | undefined;
 
 class HlsCacheProxy {
-  private defaultPort = 18181;
-  private prefetchTimestamps = new Map<string, number>();
-  private prefetchDedupMs = 60_000;
   private didWarnUnavailable = false;
-  private didAutoStart = false;
-  private isExplicitlyStopped = false;
 
   private warnUnavailable(): void {
     if (this.didWarnUnavailable) {
@@ -37,55 +32,26 @@ class HlsCacheProxy {
     console.warn('[HlsCacheProxy] Native module not available, proxy disabled');
   }
 
-  private ensureStarted(): void {
-    if (this.isExplicitlyStopped || this.didAutoStart) {
-      return;
-    }
-
-    if (!NativeProxy?.start) {
-      this.warnUnavailable();
-      return;
-    }
-
-    this.didAutoStart = true;
-
-    try {
-      NativeProxy.start(this.defaultPort);
-    } catch (error) {
-      this.didAutoStart = false;
-      console.warn('[HlsCacheProxy] Failed to auto-start proxy', error);
-    }
-  }
-
   start(port?: number): void {
     if (!NativeProxy?.start) {
       this.warnUnavailable();
       return;
     }
 
-    this.isExplicitlyStopped = false;
-    const resolvedPort = typeof port === 'number' ? port : this.defaultPort;
-    this.defaultPort = resolvedPort;
-
     try {
-      NativeProxy.start(resolvedPort);
-      this.didAutoStart = true;
+      NativeProxy.start(port);
     } catch (error) {
-      this.didAutoStart = false;
       console.warn('[HlsCacheProxy] Failed to start proxy', error);
     }
   }
 
   stop(): void {
-    this.isExplicitlyStopped = true;
-    this.didAutoStart = false;
     NativeProxy?.stop?.();
   }
 
   getProxiedUrl(url: string, headers?: Headers): string {
-    this.ensureStarted();
-
     if (!NativeProxy?.getProxiedUrl) {
+      this.warnUnavailable();
       return url;
     }
 
@@ -93,17 +59,10 @@ class HlsCacheProxy {
   }
 
   async prefetchFirstSegment(url: string, headers?: Headers): Promise<void> {
-    this.ensureStarted();
-
     if (!NativeProxy?.prefetchFirstSegment) {
+      this.warnUnavailable();
       return;
     }
-    const last = this.prefetchTimestamps.get(url);
-    if (last && Date.now() - last < this.prefetchDedupMs) {
-      return;
-    }
-    this.prefetchTimestamps.set(url, Date.now());
-    this.evictStalePrefetchEntries();
     try {
       await NativeProxy.prefetchFirstSegment(url, headers);
     } catch (error) {
@@ -112,9 +71,8 @@ class HlsCacheProxy {
   }
 
   async getCacheStats(): Promise<HlsCacheStats> {
-    this.ensureStarted();
-
     if (!NativeProxy?.getCacheStats) {
+      this.warnUnavailable();
       return DEFAULT_CACHE_STATS;
     }
     try {
@@ -125,9 +83,8 @@ class HlsCacheProxy {
   }
 
   async getStreamCacheStats(url: string): Promise<HlsStreamCacheStats> {
-    this.ensureStarted();
-
     if (!NativeProxy?.getStreamCacheStats) {
+      this.warnUnavailable();
       return DEFAULT_STREAM_CACHE_STATS;
     }
     try {
@@ -146,17 +103,6 @@ class HlsCacheProxy {
     } catch {
       console.warn('[HlsCacheProxy] clearCache failed');
       return false;
-    }
-  }
-  private evictStalePrefetchEntries(): void {
-    if (this.prefetchTimestamps.size <= 500) {
-      return;
-    }
-    const now = Date.now();
-    for (const [key, ts] of this.prefetchTimestamps) {
-      if (now - ts > this.prefetchDedupMs) {
-        this.prefetchTimestamps.delete(key);
-      }
     }
   }
 }

@@ -44,11 +44,16 @@ const wrapNativeViewManagerFunction = <T,>(manager: NitroPlayerViewManager | nul
   }
 };
 
-const updateNativeProps = (manager: NitroPlayerViewManager, player: NitroPlayer, props: Omit<NitroPlayerViewProps, 'source' | 'playerDefaults'>) => {
+const updateNativeProps = (manager: NitroPlayerViewManager, player: NitroPlayer, defaults: NitroPlayerDefaults | undefined, props: Omit<NitroPlayerViewProps, 'source' | 'playerDefaults'>) => {
   manager.surfaceType = props.surfaceType ?? 'surface';
   manager.controls = props.controls ?? false;
   manager.resizeMode = props.resizeMode ?? 'none';
   manager.keepScreenAwake = props.keepScreenAwake ?? true;
+  if (defaults) {
+    manager.setPlayerDefaults(defaults);
+  } else {
+    manager.clearPlayerDefaults();
+  }
   manager.player = player.__getNativePlayer();
 };
 
@@ -70,7 +75,7 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
     },
     ref
   ) => {
-    const player = useNitroPlayer(source, playerDefaults);
+    const player = useNitroPlayer(source);
     const nitroId = React.useMemo(() => nitroIdCounter++, []);
     const nitroViewManager = React.useRef<NitroPlayerViewManager | null>(null);
     const [isManagerReady, setIsManagerReady] = React.useState(false);
@@ -215,13 +220,13 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
         return;
       }
 
-      updateNativeProps(nitroViewManager.current, player, {
+      updateNativeProps(nitroViewManager.current, player, playerDefaults, {
         controls,
         resizeMode,
         keepScreenAwake,
         surfaceType
       });
-    }, [player, controls, resizeMode, keepScreenAwake, surfaceType, isManagerReady]);
+    }, [player, playerDefaults, controls, resizeMode, keepScreenAwake, surfaceType, isManagerReady]);
 
     return (
       <NativeNitroPlayerView

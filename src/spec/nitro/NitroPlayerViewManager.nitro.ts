@@ -2,6 +2,7 @@ import type { HybridObject } from 'react-native-nitro-modules';
 import type { ResizeMode } from '../../core/types/ResizeMode';
 import type { NitroPlayer } from './NitroPlayer.nitro';
 import type { ListenerSubscription } from './NitroPlayerEventEmitter.nitro';
+import type { NitroPlayerDefaults } from '../../core/types/NitroPlayerDefaults';
 
 export type SurfaceType = 'surface' | 'texture';
 
@@ -16,6 +17,8 @@ export interface NitroPlayerViewManager
   exitFullscreen(): void;
   keepScreenAwake: boolean;
   surfaceType: SurfaceType;
+  setPlayerDefaults(defaults: NitroPlayerDefaults): void;
+  clearPlayerDefaults(): void;
 
   addOnAttachedListener(listener: () => void): ListenerSubscription;
 

@@ -2,11 +2,11 @@
 
 Lightweight native-first video player and HLS cache proxy for React Native.
 
-Current prerelease: `1.0.0-beta.1`
+Current prerelease: `1.0.0-beta.2`
 
 ## Installation
 
-Install from GitHub tag `v1.0.0-beta.1`.
+Install from GitHub tag `v1.0.0-beta.2`.
 
 Peer dependency: `react-native-nitro-modules >= 0.35.0`
 
@@ -37,7 +37,7 @@ Peer dependency: `react-native-nitro-modules >= 0.35.0`
 | `NitroPlayerView` | Convenience component with native controls and fullscreen bridge |
 | `NitroPlayer` | Imperative player object |
 | `createNitroSource(config)` | Canonical source factory |
-| `usePlaybackState(player)` | Interpolated playback snapshot |
+| `usePlaybackState(player)` | Raw native playback snapshot |
 | `useEvent(target, event, listener)` | Event subscription hook |
 
 ## Source DSL
@@ -61,6 +61,16 @@ Peer dependency: `react-native-nitro-modules >= 0.35.0`
 | `feed` lifecycle | metadata preload, metadata retention, 3000 ms trim |
 | HLS proxy | enabled for `.m3u8` unless explicitly disabled |
 | `initialization` | `eager` |
+
+## Runtime Model
+
+| Area | Owner |
+|------|-------|
+| Playback progress and buffering state | Native snapshot emission |
+| HLS proxy autostart and prefetch deduplication | Native runtime |
+| HLS manifest routing | Native source factory |
+| Declarative source updates | Long-lived player with native `replaceSourceAsync()` |
+| `playerDefaults` application in `NitroPlayerView` | Native view manager |
 
 ## Requirements
 

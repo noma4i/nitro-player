@@ -28,6 +28,8 @@ namespace margelo::nitro::video {
       prototype.registerHybridSetter("surfaceType", &HybridNitroPlayerViewManagerSpec::setSurfaceType);
       prototype.registerHybridMethod("enterFullscreen", &HybridNitroPlayerViewManagerSpec::enterFullscreen);
       prototype.registerHybridMethod("exitFullscreen", &HybridNitroPlayerViewManagerSpec::exitFullscreen);
+      prototype.registerHybridMethod("setPlayerDefaults", &HybridNitroPlayerViewManagerSpec::setPlayerDefaults);
+      prototype.registerHybridMethod("clearPlayerDefaults", &HybridNitroPlayerViewManagerSpec::clearPlayerDefaults);
       prototype.registerHybridMethod("addOnAttachedListener", &HybridNitroPlayerViewManagerSpec::addOnAttachedListener);
       prototype.registerHybridMethod("addOnDetachedListener", &HybridNitroPlayerViewManagerSpec::addOnDetachedListener);
       prototype.registerHybridMethod("addOnFullscreenChangeListener", &HybridNitroPlayerViewManagerSpec::addOnFullscreenChangeListener);

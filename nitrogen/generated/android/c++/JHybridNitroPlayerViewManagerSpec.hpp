@@ -67,6 +67,8 @@ namespace margelo::nitro::video {
     // Methods
     void enterFullscreen() override;
     void exitFullscreen() override;
+    void setPlayerDefaults(const NitroPlayerDefaults& defaults) override;
+    void clearPlayerDefaults() override;
     ListenerSubscription addOnAttachedListener(const std::function<void()>& listener) override;
     ListenerSubscription addOnDetachedListener(const std::function<void()>& listener) override;
     ListenerSubscription addOnFullscreenChangeListener(const std::function<void(bool /* fullscreen */)>& listener) override;
