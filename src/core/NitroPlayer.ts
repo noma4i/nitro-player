@@ -77,29 +77,33 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     return this.player;
   }
 
-  private throwError(error: unknown) {
-    throw tryParseNativeNitroPlayerError(error);
+  private parseError(error: unknown) {
+    return tryParseNativeNitroPlayerError(error);
   }
 
   /**
    * Updates the memory size of the player and its source. Should be called after any operation that changes the memory size of the player or its source.
    * @internal
    */
-  private updateMemorySize() {
+  private refreshMemorySize() {
     NitroModules.updateMemorySize(this.player);
     NitroModules.updateMemorySize(this.player.source);
   }
 
-  /**
-   * Wraps a promise to try parsing native errors to NitroPlayerRuntimeError
-   * @internal
-   */
-  private wrapPromise<T>(promise: Promise<T>) {
-    return new Promise<T>((resolve, reject) => {
-      promise.then(resolve).catch((error) => {
-        reject(this.throwError(error));
-      });
-    });
+  private runSync<T>(operation: () => T): T {
+    try {
+      return operation();
+    } catch (error) {
+      throw this.parseError(error);
+    }
+  }
+
+  private async runAsync<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      throw this.parseError(error);
+    }
   }
 
   // Source
@@ -234,15 +238,13 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
   }
 
   async initialize(): Promise<void> {
-    await this.wrapPromise(this.player.initialize());
-
-    this.updateMemorySize();
+    await this.runAsync(() => this.player.initialize());
+    this.refreshMemorySize();
   }
 
   async preload(): Promise<void> {
-    await this.wrapPromise(this.player.preload());
-
-    this.updateMemorySize();
+    await this.runAsync(() => this.player.preload());
+    this.refreshMemorySize();
   }
 
   /**
@@ -256,55 +258,35 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
   }
 
   play(): void {
-    try {
-      this.player.play();
-    } catch (error) {
-      this.throwError(error);
-    }
+    this.runSync(() => this.player.play());
   }
 
   pause(): void {
-    try {
-      this.player.pause();
-    } catch (error) {
-      this.throwError(error);
-    }
+    this.runSync(() => this.player.pause());
   }
 
   seekBy(time: number): void {
-    try {
-      this.player.seekBy(time);
-    } catch (error) {
-      this.throwError(error);
-    }
+    this.runSync(() => this.player.seekBy(time));
   }
 
   seekTo(time: number): void {
-    try {
-      this.player.seekTo(time);
-    } catch (error) {
-      this.throwError(error);
-    }
+    this.runSync(() => this.player.seekTo(time));
   }
 
   async replaceSourceAsync(
     source: NitroSourceConfig | NitroPlayerSource
   ): Promise<void> {
-    this.updateMemorySize();
-
-    await this.wrapPromise(
-      this.player.replaceSourceAsync(
-        createNitroSource(source)
-      )
+    this.refreshMemorySize();
+    await this.runAsync(() =>
+      this.player.replaceSourceAsync(createNitroSource(source))
     );
-
-    this.updateMemorySize();
+    this.refreshMemorySize();
   }
 
   async clearSourceAsync(): Promise<void> {
-    this.updateMemorySize();
-    await this.wrapPromise(this.player.clearSourceAsync());
-    this.updateMemorySize();
+    this.refreshMemorySize();
+    await this.runAsync(() => this.player.clearSourceAsync());
+    this.refreshMemorySize();
   }
 
 }
