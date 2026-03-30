@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0-beta.8
+
+### Changed
+
+- iOS + Android: HLS proxy now starts lazily on first playback-facing use (`getProxiedUrl`/`prefetchFirstSegment`) instead of eagerly on module registration. Read-only methods (`getCacheStats`, `getStreamCacheStats`, `getThumbnail`, `clearCache`) no longer trigger proxy startup
+- TS: refactored `NitroPlayer` error handling with `runSync`/`runAsync` wrappers, replacing repetitive try-catch blocks
+- TS: `useNitroPlayer` now serializes `replaceSourceAsync` calls via a promise queue, preventing race conditions from rapid source changes
+- TS: `NitroPlayerView` uses `isMountedRef` for cleaner unmount detection instead of stale `nitroId` comparison
+- Android: `HlsCacheStore` cleanup - use string templates, `File` import
+
+### Added
+
+- Android: `HlsProxyRuntimeBehaviorTest` unit tests for lazy-start state machine
+
 ## 1.0.0-beta.7
 
 ### Changed
