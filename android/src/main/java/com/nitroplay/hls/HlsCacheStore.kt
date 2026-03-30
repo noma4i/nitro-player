@@ -193,27 +193,28 @@ class HlsCacheStore(context: Context) {
         val digest = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
         return digest.joinToString("") { "%02x".format(it) }
     }
-}
 
     fun putThumbnail(url: String, data: ByteArray): String? {
         if (!cacheDir.exists()) cacheDir.mkdirs()
-        val name = sha256(url) + ".thumb"
-        val file = java.io.File(cacheDir, name)
+        val name = "${sha256(url)}.thumb"
+        val file = File(cacheDir, name)
         return try {
             file.writeBytes(data)
             file.absolutePath
-        } catch (e: Exception) { null }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     fun getThumbnailPath(url: String): String? {
-        val name = sha256(url) + ".thumb"
-        val file = java.io.File(cacheDir, name)
+        val name = "${sha256(url)}.thumb"
+        val file = File(cacheDir, name)
         return if (file.exists()) file.absolutePath else null
     }
 
     fun hasThumbnail(url: String): Boolean {
-        val name = sha256(url) + ".thumb"
-        return java.io.File(cacheDir, name).exists()
+        val name = "${sha256(url)}.thumb"
+        return File(cacheDir, name).exists()
     }
 }
 

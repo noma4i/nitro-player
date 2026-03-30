@@ -12,23 +12,23 @@ object HlsProxyRuntime {
   private val lock = Any()
   private var port: Int = DEFAULT_PORT
   private var isRegistered = false
-  private var shouldBeRunning = false
+  private var didAutoStart = false
   private var isExplicitlyStopped = false
   private var server: HlsCacheProxyServer? = null
   private var reactContext: ReactApplicationContext? = null
   private val prefetchTimestamps = LinkedHashMap<String, Long>()
 
+  internal data class RuntimeStateSnapshot(
+    val isRegistered: Boolean,
+    val didAutoStart: Boolean,
+    val isExplicitlyStopped: Boolean,
+    val hasServer: Boolean
+  )
+
   fun register(reactContext: ReactApplicationContext) {
-    val (resolvedPort, needsStart) = synchronized(lock) {
-      val alreadyRunning = isRegistered && shouldBeRunning
+    synchronized(lock) {
       this.reactContext = reactContext
       isRegistered = true
-      shouldBeRunning = true
-      isExplicitlyStopped = false
-      Pair(port, !alreadyRunning)
-    }
-    if (needsStart) {
-      ensureServerRunning(desiredPort = resolvedPort)
     }
   }
 
@@ -38,7 +38,7 @@ object HlsProxyRuntime {
       val resolvedPort = if ((port ?: DEFAULT_PORT) > 0) port ?: DEFAULT_PORT else DEFAULT_PORT
       this.port = resolvedPort
       isRegistered = true
-      shouldBeRunning = true
+      didAutoStart = true
       isExplicitlyStopped = false
       Pair(resolvedPort, server?.isAlive == true && previousPort != resolvedPort)
     }
@@ -47,22 +47,23 @@ object HlsProxyRuntime {
 
   fun stop() {
     synchronized(lock) {
-      shouldBeRunning = false
+      didAutoStart = false
       isExplicitlyStopped = true
     }
     stopServer()
   }
 
   fun onHostResume() {
-    val shouldRun = synchronized(lock) { isRegistered && shouldBeRunning && !isExplicitlyStopped }
+    val shouldRun = synchronized(lock) { isRegistered && didAutoStart && !isExplicitlyStopped }
     if (shouldRun) {
-      ensureServerRunning(forceRestart = server?.isAlive != true)
+      val forceRestart = synchronized(lock) { server?.isAlive != true }
+      ensureServerRunning(forceRestart = forceRestart)
     }
   }
 
   fun onHostDestroy() {
     synchronized(lock) {
-      shouldBeRunning = false
+      didAutoStart = false
     }
     stopServer()
   }
@@ -74,7 +75,7 @@ object HlsProxyRuntime {
   fun getProxiedUrl(url: String, headers: Map<String, String>?): String {
     val isStopped = synchronized(lock) { isExplicitlyStopped }
     if (isStopped) return url
-    ensureAutoStarted()
+    ensureStarted()
     if (!ensureServerRunning()) return url
     val activeServer = synchronized(lock) { server } ?: return url
     if (!activeServer.isAlive) return url
@@ -93,7 +94,7 @@ object HlsProxyRuntime {
       onComplete()
       return
     }
-    ensureAutoStarted()
+    ensureStarted()
 
     val shouldPrefetch = synchronized(lock) {
       val now = System.currentTimeMillis()
@@ -152,14 +153,14 @@ object HlsProxyRuntime {
   }
 
   fun getCacheStats() = Arguments.createMap().apply {
-    val stats = server?.cacheStore?.getCacheStats()
+    val stats = synchronized(lock) { server?.cacheStore?.getCacheStats() }
     putDouble("totalSize", (stats?.get("totalSize") as? Long)?.toDouble() ?: 0.0)
     putInt("fileCount", (stats?.get("fileCount") as? Int) ?: 0)
     putDouble("maxSize", (stats?.get("maxSize") as? Long)?.toDouble() ?: 5368709120.0)
   }
 
   fun getStreamCacheStats(url: String) = Arguments.createMap().apply {
-    val stats = server?.cacheStore?.getStreamCacheStats(url)
+    val stats = synchronized(lock) { server?.cacheStore?.getStreamCacheStats(url) }
     putDouble("totalSize", (stats?.get("totalSize") as? Long)?.toDouble() ?: 0.0)
     putInt("fileCount", (stats?.get("fileCount") as? Int) ?: 0)
     putDouble("maxSize", (stats?.get("maxSize") as? Long)?.toDouble() ?: 5368709120.0)
@@ -168,14 +169,43 @@ object HlsProxyRuntime {
   }
 
   fun clearCache() {
-    server?.cacheStore?.clearAll()
+    synchronized(lock) { server?.cacheStore }?.clearAll()
   }
 
-  private fun ensureAutoStarted() {
+  internal fun snapshotStateForTests(): RuntimeStateSnapshot {
     synchronized(lock) {
-      if (!isRegistered) {
-        isRegistered = true
-        shouldBeRunning = true
+      return RuntimeStateSnapshot(
+        isRegistered = isRegistered,
+        didAutoStart = didAutoStart,
+        isExplicitlyStopped = isExplicitlyStopped,
+        hasServer = server != null
+      )
+    }
+  }
+
+  internal fun registerForTests() {
+    synchronized(lock) {
+      isRegistered = true
+    }
+  }
+
+  internal fun resetStateForTests() {
+    stopServer()
+    synchronized(lock) {
+      port = DEFAULT_PORT
+      isRegistered = false
+      didAutoStart = false
+      isExplicitlyStopped = false
+      reactContext = null
+      prefetchTimestamps.clear()
+    }
+  }
+
+  private fun ensureStarted() {
+    synchronized(lock) {
+      isRegistered = true
+      if (!isExplicitlyStopped) {
+        didAutoStart = true
       }
     }
   }

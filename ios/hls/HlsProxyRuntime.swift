@@ -67,21 +67,18 @@ final class HlsProxyRuntime {
   }
 
   func getCacheStats() -> [String: Any] {
-    ensureStarted()
     return runOnMainSync {
       controller.getCacheStats()
     }
   }
 
   func getStreamCacheStats(url: String) -> [String: Any] {
-    ensureStarted()
     return runOnMainSync {
       controller.getCacheStats(streamKey: url)
     }
   }
 
   func getThumbnailUrl(url: String, headers: [String: String]?) async -> String? {
-    ensureStarted()
     return await controller.getThumbnailUrl(for: url, headers: headers)
   }
 
