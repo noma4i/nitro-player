@@ -15,6 +15,8 @@ import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
 import com.nitroplay.video.core.LibraryError
+import com.nitroplay.video.core.PlayIntentResolver
+import com.nitroplay.video.core.PlayPauseResolution
 import com.nitroplay.video.core.PlayerError
 import com.nitroplay.video.core.NitroPlayerManager
 import com.nitroplay.video.core.utils.Threading.mainThreadProperty
@@ -31,7 +33,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override var eventEmitter = HybridNitroPlayerEventEmitter()
 
   internal var isReleased = false
-  internal var wantsToPlay = false
+  internal val intentResolver = PlayIntentResolver()
   internal var allocator: DefaultAllocator? = null
   private var context = NitroModules.applicationContext
     ?: run {
@@ -294,7 +296,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       }
 
       NitroPlayerManager.touchFeedHotCandidate(this)
-      wantsToPlay = true
+      intentResolver.onPlay()
       player.play()
       status = NitroPlayerStatus.PLAYING
       emitPlaybackState()
@@ -304,7 +306,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   override fun pause() {
     runOnMainThread {
       if (isReleased) return@runOnMainThread
-      wantsToPlay = false
+      intentResolver.onPause()
       player.pause()
 
       if (status != NitroPlayerStatus.ENDED && status != NitroPlayerStatus.IDLE) {
@@ -331,7 +333,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   override fun replaceSourceAsync(source: HybridNitroPlayerSourceSpec): Promise<Unit> {
-    wantsToPlay = false
+    intentResolver.onSourceChange()
     return Promise.async {
       val hybridSource = source as? HybridNitroPlayerSource ?: throw PlayerError.InvalidSource
       val oldSource = if (::source.isInitialized) {
@@ -538,9 +540,11 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   internal fun resolvePlayPauseStatus(): NitroPlayerStatus {
-    if (player.isPlaying) return NitroPlayerStatus.PLAYING
-    if (wantsToPlay) return status
-    return NitroPlayerStatus.PAUSED
+    return when (intentResolver.resolve(player.isPlaying)) {
+        PlayPauseResolution.PLAYING -> NitroPlayerStatus.PLAYING
+        PlayPauseResolution.KEEP_CURRENT -> status
+        PlayPauseResolution.PAUSED -> NitroPlayerStatus.PAUSED
+    }
   }
 
   internal fun enterBuffering() {

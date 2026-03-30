@@ -19,6 +19,8 @@ extension HybridNitroPlayer {
       }
 
       self.cancelPendingTrim()
+      self.initTask?.cancel()
+      self.initTask = nil
 
       if !self.hasActiveSource || self.playerItem != nil {
         return
@@ -38,7 +40,7 @@ extension HybridNitroPlayer {
   func release() {
     if isReleased { return }
     isReleased = true
-    wantsToPlay = false
+    intentResolver.onRelease()
     hasActiveSource = false
     lastError = nil
 
@@ -124,7 +126,7 @@ extension HybridNitroPlayer {
   }
 
   func replaceSourceAsync(source: any HybridNitroPlayerSourceSpec) throws -> Promise<Void> {
-    wantsToPlay = false
+    intentResolver.onSourceChange()
     let promise = Promise<Void>()
     Task.detached(priority: .userInitiated) { [weak self] in
       guard let self else {
@@ -285,7 +287,7 @@ extension HybridNitroPlayer {
 
   func clearCurrentSource() {
     guard !isReleased else { return }
-    wantsToPlay = false
+    intentResolver.onSourceChange()
 
     cancelPendingTrim()
     sourceLoader.cancelSync()
@@ -362,7 +364,7 @@ extension HybridNitroPlayer {
   func trimToConfiguredRetentionIfNeeded() {
     pendingTrimWorkItem = nil
 
-    if isReleased || isAttachedToVideoView || isPlaying || wantsToPlay {
+    if isReleased || isAttachedToVideoView || isPlaying || intentResolver.wantsToPlay {
       return
     }
 
@@ -406,7 +408,7 @@ extension HybridNitroPlayer {
       return false
     }
 
-    return isPlaying || isAttachedToVideoView || wantsToPlay
+    return isPlaying || isAttachedToVideoView || intentResolver.wantsToPlay
   }
 
   func trimForFeedHotPool() {

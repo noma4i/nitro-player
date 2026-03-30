@@ -23,7 +23,9 @@ class ListenerRegistry {
     for (entry in snapshot) {
       try {
         invoke(entry.callback as T)
-      } catch (_: Exception) {}
+      } catch (e: Exception) {
+        android.util.Log.e("ListenerRegistry", "Error in $event listener", e)
+      }
     }
   }
 
