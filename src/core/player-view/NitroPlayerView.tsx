@@ -78,6 +78,7 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
     const player = useNitroPlayer(source);
     const nitroId = React.useMemo(() => nitroIdCounter++, []);
     const nitroViewManager = React.useRef<NitroPlayerViewManager | null>(null);
+    const isMountedRef = React.useRef(true);
     const [isManagerReady, setIsManagerReady] = React.useState(false);
     const [isAttached, setIsAttached] = React.useState(false);
     const lastDeliveredAttachStateRef = React.useRef(false);
@@ -98,11 +99,13 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
         } catch (error) {
           const parsedError = tryParseNativeNitroPlayerError(error);
 
-          if (parsedError instanceof NitroPlayerComponentError && parsedError.code === 'view/not-found') {
-            if (id === nitroId) {
-              console.warn('[NitroPlay] NitroPlayerView was unmounted before native manager was able to find it.');
-              return;
-            }
+          if (
+            parsedError instanceof NitroPlayerComponentError &&
+            parsedError.code === 'view/not-found' &&
+            !isMountedRef.current
+          ) {
+            console.warn('[NitroPlay] NitroPlayerView was unmounted before native manager was able to find it.');
+            return;
           }
 
           throw parsedError;
@@ -158,13 +161,14 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
     );
 
     React.useEffect(() => {
+      isMountedRef.current = true;
+
       return () => {
+        isMountedRef.current = false;
         if (nitroViewManager.current) {
           nitroViewManager.current.clearAllListeners();
         }
         lastDeliveredAttachStateRef.current = false;
-        setIsAttached(false);
-        setIsManagerReady(false);
       };
     }, []);
 
