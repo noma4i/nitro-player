@@ -8,9 +8,6 @@
 import AVFoundation
 import Foundation
 import NitroModules
-import OSLog
-
-private let playerLogger = Logger(subsystem: "com.nitroplay.video", category: "Player")
 
 class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
 
@@ -107,7 +104,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   var source: any HybridNitroPlayerSourceSpec
 
   var status: NitroPlayerStatus = .idle
-  var intentResolver = PlayIntentResolver()
+  var wantsToPlay = false
 
   var eventEmitter: HybridNitroPlayerEventEmitterSpec
   var _eventEmitter: HybridNitroPlayerEventEmitter? {
@@ -318,21 +315,19 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   func resolvePlayPauseStatus() -> NitroPlayerStatus {
-    switch intentResolver.resolve(isPlaying: player.rate > 0) {
-    case .playing: return .playing
-    case .keepCurrent: return status
-    case .paused: return .paused
-    }
+    if player.rate > 0 { return .playing }
+    if wantsToPlay { return status }
+    return .paused
   }
 
   func play() throws {
     guard !isReleased else { return }
     cancelPendingTrim()
-    intentResolver.onPlay()
+    wantsToPlay = true
     NitroPlayerManager.shared.touchFeedHotCandidate(self)
 
     guard hasActiveSource else {
-      intentResolver.onPause()
+      wantsToPlay = false
       status = .idle
       readyToDisplay = false
       isCurrentlyBuffering = false
@@ -362,13 +357,13 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
       do {
         try await self.prepareBufferedState()
         DispatchQueue.main.async { [weak self] in
-          guard let self, !self.isReleased, self.intentResolver.wantsToPlay else { return }
+          guard let self, !self.isReleased, self.wantsToPlay else { return }
           self.player.play()
         }
       } catch {
         DispatchQueue.main.async { [weak self] in
           guard let self, !self.isReleased else { return }
-          self.intentResolver.onError()
+          self.wantsToPlay = false
           self.status = .error
           self.setPlaybackError(code: .unknownUnknown, message: error.localizedDescription)
           self.emitPlaybackState()
@@ -379,7 +374,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
 
   func pause() throws {
     guard !isReleased else { return }
-    intentResolver.onPause()
+    wantsToPlay = false
     player.pause()
 
     if status != .ended && status != .idle {

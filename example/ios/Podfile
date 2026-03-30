@@ -126,7 +126,6 @@ end
 
 target 'NitroPlayExample' do
   config = use_native_modules!
-
   pod 'GCDWebServer', :modular_headers => true
 
   use_react_native!(

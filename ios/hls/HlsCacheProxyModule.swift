@@ -8,7 +8,6 @@ class HlsCacheProxy: NSObject, RCTBridgeModule {
 
   override init() {
     super.init()
-    HlsProxyRuntime.shared.register()
   }
 
   @objc

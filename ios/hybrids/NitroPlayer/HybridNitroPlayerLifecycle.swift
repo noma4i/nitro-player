@@ -6,9 +6,6 @@
 import AVFoundation
 import Foundation
 import NitroModules
-import OSLog
-
-private let lifecycleLogger = Logger(subsystem: "com.nitroplay.video", category: "PlayerLifecycle")
 
 extension HybridNitroPlayer {
 
@@ -22,7 +19,10 @@ extension HybridNitroPlayer {
       self.initTask?.cancel()
       self.initTask = nil
 
-      if !self.hasActiveSource || self.playerItem != nil {
+      if !self.hasActiveSource {
+        return
+      }
+      if self.playerItem != nil {
         return
       }
 
@@ -40,7 +40,7 @@ extension HybridNitroPlayer {
   func release() {
     if isReleased { return }
     isReleased = true
-    intentResolver.onRelease()
+    wantsToPlay = false
     hasActiveSource = false
     lastError = nil
 
@@ -126,7 +126,7 @@ extension HybridNitroPlayer {
   }
 
   func replaceSourceAsync(source: any HybridNitroPlayerSourceSpec) throws -> Promise<Void> {
-    intentResolver.onSourceChange()
+    wantsToPlay = false
     let promise = Promise<Void>()
     Task.detached(priority: .userInitiated) { [weak self] in
       guard let self else {
@@ -217,7 +217,6 @@ extension HybridNitroPlayer {
       if let imageUri, let imageUrl = URL(string: imageUri) {
         artworkTask = Task { [weak playerItem] in
           guard let (data, _) = try? await URLSession.shared.data(from: imageUrl) else {
-            lifecycleLogger.debug("Failed to load artwork from: \(imageUrl)")
             return
           }
           DispatchQueue.main.async {
@@ -225,8 +224,6 @@ extension HybridNitroPlayer {
             playerItem.externalMetadata = playerItem.externalMetadata + [.make(identifier: .commonIdentifierArtwork, value: data as NSData)]
           }
         }
-      } else if let imageUri {
-        lifecycleLogger.debug("Invalid imageUri for artwork: \(imageUri)")
       }
     }
 
@@ -287,7 +284,7 @@ extension HybridNitroPlayer {
 
   func clearCurrentSource() {
     guard !isReleased else { return }
-    intentResolver.onSourceChange()
+    wantsToPlay = false
 
     cancelPendingTrim()
     sourceLoader.cancelSync()
@@ -327,8 +324,18 @@ extension HybridNitroPlayer {
     }
     let resumeSeconds = resumePositionSeconds
     await MainActor.run { [weak self] in
-      guard let self, !self.isReleased, self.hasActiveSource else { return }
-      guard (activeSource as AnyObject) === (self.source as AnyObject) else { return }
+      guard let self else {
+        return
+      }
+      guard !self.isReleased else {
+        return
+      }
+      guard self.hasActiveSource else {
+        return
+      }
+      guard (activeSource as AnyObject) === (self.source as AnyObject) else {
+        return
+      }
       self.playerItem = playerItem
       self.player.replaceCurrentItem(with: playerItem)
       if resumeSeconds > 0 {
@@ -364,7 +371,7 @@ extension HybridNitroPlayer {
   func trimToConfiguredRetentionIfNeeded() {
     pendingTrimWorkItem = nil
 
-    if isReleased || isAttachedToVideoView || isPlaying || intentResolver.wantsToPlay {
+    if isReleased || isAttachedToVideoView || isPlaying || wantsToPlay {
       return
     }
 
@@ -408,7 +415,7 @@ extension HybridNitroPlayer {
       return false
     }
 
-    return isPlaying || isAttachedToVideoView || intentResolver.wantsToPlay
+    return isPlaying || isAttachedToVideoView || wantsToPlay
   }
 
   func trimForFeedHotPool() {

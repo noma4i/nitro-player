@@ -85,7 +85,7 @@ internal class NitroPlayerListenerBridge(
           )
         }
         Player.STATE_ENDED -> {
-          host.intentResolver.onEnded()
+          host.wantsToPlay = false
           host.isCurrentlyBuffering = false
           host.status = NitroPlayerStatus.ENDED
           host.lastError = null
@@ -114,7 +114,7 @@ internal class NitroPlayerListenerBridge(
     }
 
     override fun onPlayerError(error: PlaybackException) {
-      host.intentResolver.onError()
+      host.wantsToPlay = false
       host.isCurrentlyBuffering = false
       host.status = NitroPlayerStatus.ERROR
       host.readyToDisplay = false

@@ -12,7 +12,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
   // MARK: - NitroPlayerObserverDelegate
 
   func onPlayedToEnd(player: AVPlayer) {
-    intentResolver.onEnded()
+    wantsToPlay = false
     status = .ended
     resetPlaybackError()
     emitPlaybackState()
@@ -56,7 +56,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
   func onTimeControlStatusChanged(status: AVPlayer.TimeControlStatus) {
     if player.status == .failed || playerItem?.status == .failed {
-      intentResolver.onError()
+      wantsToPlay = false
       self.status = .error
       isCurrentlyBuffering = false
       readyToDisplay = false
@@ -94,7 +94,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
   func onPlayerStatusChanged(status: AVPlayer.Status) {
     if status == .failed || playerItem?.status == .failed {
-      intentResolver.onError()
+      wantsToPlay = false
       self.status = .error
       isCurrentlyBuffering = false
       readyToDisplay = false
@@ -105,7 +105,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
   func onPlayerItemStatusChanged(status: AVPlayerItem.Status) {
     if status == .failed {
-      intentResolver.onError()
+      wantsToPlay = false
       self.status = .error
       isCurrentlyBuffering = false
       setPlaybackError(code: .unknownUnknown, message: playerItem?.error?.localizedDescription ?? "Unknown playback error")
@@ -148,7 +148,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       }
 
     case .failed:
-      intentResolver.onError()
+      wantsToPlay = false
       self.status = .error
       isCurrentlyBuffering = false
       readyToDisplay = false

@@ -95,7 +95,7 @@ internal class NitroPlayerLifecycle(
   }
 
   fun clearCurrentSourceState(sourceToTrim: HybridNitroPlayerSource?) {
-    host.intentResolver.onSourceChange()
+    host.wantsToPlay = false
     cancelPendingTrim()
     host.listenerBridge.stopProgressUpdates()
     sourceToTrim?.sourceLoader?.cancel()
@@ -165,7 +165,7 @@ internal class NitroPlayerLifecycle(
       return false
     }
 
-    if (host.isPlaying || host.intentResolver.wantsToPlay) {
+    if (host.isPlaying || host.wantsToPlay) {
       return true
     }
 

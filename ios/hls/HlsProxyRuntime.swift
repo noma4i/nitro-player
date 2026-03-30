@@ -9,42 +9,28 @@ final class HlsProxyRuntime {
   private let controller = HlsProxyServerController()
 
   private var port: Int = 18181
-  private var isRegistered = false
-  private var shouldBeRunning = false
+  private var didAutoStart = false
   private var isExplicitlyStopped = false
   private var prefetchTimestamps: [String: Date] = [:]
 
   private init() {}
 
-  func register() {
-    let (resolvedPort, needsStart) = stateQueue.sync { () -> (Int, Bool) in
-      let alreadyRunning = isRegistered && shouldBeRunning
-      isRegistered = true
-      shouldBeRunning = true
-      isExplicitlyStopped = false
-      return (port, !alreadyRunning)
-    }
-    guard needsStart else { return }
-    _ = ensureControllerRunning(port: resolvedPort)
-  }
-
   func start(port: Int?) {
-    let (resolvedPort, shouldRestart) = stateQueue.sync { () -> (Int, Bool) in
-      let previousPort = self.port
-      let nextPort = (port ?? defaultPort) > 0 ? (port ?? defaultPort) : defaultPort
-      self.port = nextPort
-      isRegistered = true
-      shouldBeRunning = true
-      isExplicitlyStopped = false
-      return (nextPort, previousPort != nextPort)
+    let resolvedPort = (port ?? defaultPort) > 0 ? (port ?? defaultPort) : defaultPort
+    stateQueue.sync {
+      self.port = resolvedPort
+      self.isExplicitlyStopped = false
+      self.didAutoStart = true
     }
-    _ = ensureControllerRunning(port: resolvedPort, forceRestart: shouldRestart)
+    runOnMainSync {
+      controller.start(port: resolvedPort)
+    }
   }
 
   func stop() {
     stateQueue.sync {
-      shouldBeRunning = false
       isExplicitlyStopped = true
+      didAutoStart = false
     }
     runOnMainSync {
       controller.stop()
@@ -52,18 +38,14 @@ final class HlsProxyRuntime {
   }
 
   func getProxiedUrl(url: String, headers: [String: String]?) -> String {
-    let canUse = stateQueue.sync { isRegistered && shouldBeRunning && !isExplicitlyStopped }
-    guard canUse else { return url }
-    guard ensureControllerRunning(port: stateQueue.sync { port }) else { return url }
+    ensureStarted()
     return runOnMainSync {
       controller.proxiedManifestUrl(for: url, headers: headers) ?? url
     }
   }
 
   func prefetchFirstSegment(url: String, headers: [String: String]?) async throws {
-    let canUse = stateQueue.sync { isRegistered && shouldBeRunning && !isExplicitlyStopped }
-    guard canUse else { return }
-    guard ensureControllerRunning(port: stateQueue.sync { port }) else { return }
+    ensureStarted()
 
     let shouldPrefetch = stateQueue.sync { () -> Bool in
       let now = Date()
@@ -77,18 +59,22 @@ final class HlsProxyRuntime {
       return true
     }
 
-    guard shouldPrefetch else { return }
+    guard shouldPrefetch else {
+      return
+    }
 
     try await controller.prefetchFirstSegment(url: url, headers: headers)
   }
 
   func getCacheStats() -> [String: Any] {
+    ensureStarted()
     return runOnMainSync {
       controller.getCacheStats()
     }
   }
 
   func getStreamCacheStats(url: String) -> [String: Any] {
+    ensureStarted()
     return runOnMainSync {
       controller.getCacheStats(streamKey: url)
     }
@@ -100,14 +86,22 @@ final class HlsProxyRuntime {
     }
   }
 
-  @discardableResult
-  private func ensureControllerRunning(port: Int, forceRestart: Bool = false) -> Bool {
-    return runOnMainSync {
-      if !forceRestart && controller.isRunning {
-        return true
+  private func ensureStarted() {
+    let shouldStart = stateQueue.sync { () -> Bool in
+      guard !isExplicitlyStopped else {
+        return false
       }
-      controller.start(port: port)
-      return controller.isRunning
+      if didAutoStart {
+        return false
+      }
+      didAutoStart = true
+      return true
+    }
+
+    if shouldStart {
+      runOnMainSync {
+        controller.start(port: port)
+      }
     }
   }
 

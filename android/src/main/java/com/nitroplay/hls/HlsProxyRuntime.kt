@@ -72,8 +72,9 @@ object HlsProxyRuntime {
   }
 
   fun getProxiedUrl(url: String, headers: Map<String, String>?): String {
-    val canUse = synchronized(lock) { isRegistered && shouldBeRunning && !isExplicitlyStopped }
-    if (!canUse) return url
+    val isStopped = synchronized(lock) { isExplicitlyStopped }
+    if (isStopped) return url
+    ensureAutoStarted()
     if (!ensureServerRunning()) return url
     val activeServer = synchronized(lock) { server } ?: return url
     if (!activeServer.isAlive) return url
@@ -87,11 +88,12 @@ object HlsProxyRuntime {
   }
 
   fun prefetchFirstSegment(url: String, headers: ReadableMap?, onComplete: () -> Unit, onError: (Throwable) -> Unit) {
-    val canUse = synchronized(lock) { isRegistered && shouldBeRunning && !isExplicitlyStopped }
-    if (!canUse) {
+    val isStopped = synchronized(lock) { isExplicitlyStopped }
+    if (isStopped) {
       onComplete()
       return
     }
+    ensureAutoStarted()
 
     val shouldPrefetch = synchronized(lock) {
       val now = System.currentTimeMillis()
@@ -144,6 +146,15 @@ object HlsProxyRuntime {
 
   fun clearCache() {
     server?.cacheStore?.clearAll()
+  }
+
+  private fun ensureAutoStarted() {
+    synchronized(lock) {
+      if (!isRegistered) {
+        isRegistered = true
+        shouldBeRunning = true
+      }
+    }
   }
 
   private fun ensureServerRunning(forceRestart: Boolean = false, desiredPort: Int = port): Boolean {
