@@ -19,4 +19,5 @@ export interface HlsCacheProxyNative {
   getCacheStats: () => Promise<HlsCacheStats>;
   getStreamCacheStats: (url: string) => Promise<HlsStreamCacheStats>;
   clearCache: () => Promise<boolean>;
+  getThumbnailUrl: (url: string, headers?: Headers) => Promise<string | null>;
 }

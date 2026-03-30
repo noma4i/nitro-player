@@ -94,6 +94,19 @@ class HlsCacheProxy {
     }
   }
 
+  async getThumbnail(url: string, headers?: Headers): Promise<string | null> {
+    if (!NativeProxy?.getThumbnailUrl) {
+      this.warnUnavailable();
+      return null;
+    }
+    try {
+      const result = await NativeProxy.getThumbnailUrl(url, headers ?? {});
+      return result ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async clearCache(): Promise<boolean> {
     if (!NativeProxy?.clearCache) {
       return true;

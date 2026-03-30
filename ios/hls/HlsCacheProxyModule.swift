@@ -48,6 +48,14 @@ class HlsCacheProxy: NSObject, RCTBridgeModule {
   }
 
   @objc
+  func getThumbnailUrl(_ url: String, headers: NSDictionary?, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+    Task.detached {
+      let result = await HlsProxyRuntime.shared.getThumbnailUrl(url: url, headers: headers as? [String: String])
+      resolver(result)
+    }
+  }
+
+  @objc
   func clearCache(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
     HlsProxyRuntime.shared.clearCache()
     resolver(true)

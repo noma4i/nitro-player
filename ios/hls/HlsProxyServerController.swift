@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import GCDWebServer
 import UIKit
@@ -86,6 +87,32 @@ final class HlsProxyServerController: NSObject {
 
   func getCacheStats(streamKey: String) -> [String: Any] {
     cache.getCacheStats(streamKey: streamKey)
+  }
+
+  func getThumbnailUrl(for url: String, headers: [String: String]?) async -> String? {
+    if let cached = cache.getThumbnailPath(url: url) {
+      return cached.absoluteString
+    }
+
+    var assetUrl = URL(string: url)!
+    if let proxied = proxiedManifestUrl(for: url, headers: headers),
+       let proxiedUrl = URL(string: proxied) {
+      assetUrl = proxiedUrl
+    }
+
+    let asset = AVURLAsset(url: assetUrl)
+    let generator = AVAssetImageGenerator(asset: asset)
+    generator.appliesPreferredTrackTransform = true
+    generator.maximumSize = CGSize(width: 480, height: 480)
+
+    do {
+      let cgImage = try generator.copyCGImage(at: .zero, actualTime: nil)
+      let uiImage = UIImage(cgImage: cgImage)
+      guard let jpegData = uiImage.jpegData(compressionQuality: 0.7) else { return nil }
+      return cache.putThumbnail(url: url, data: jpegData)?.absoluteString
+    } catch {
+      return nil
+    }
   }
 
   func clearCache() {

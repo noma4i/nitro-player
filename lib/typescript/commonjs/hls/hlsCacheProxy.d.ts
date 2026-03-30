@@ -8,6 +8,7 @@ declare class HlsCacheProxy {
     prefetchFirstSegment(url: string, headers?: Headers): Promise<void>;
     getCacheStats(): Promise<HlsCacheStats>;
     getStreamCacheStats(url: string): Promise<HlsStreamCacheStats>;
+    getThumbnail(url: string, headers?: Headers): Promise<string | null>;
     clearCache(): Promise<boolean>;
 }
 export declare const hlsCacheProxy: HlsCacheProxy;

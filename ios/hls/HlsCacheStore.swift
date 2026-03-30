@@ -228,6 +228,33 @@ final class HlsCacheStore {
   }
 }
 
+  func putThumbnail(url: String, data: Data) -> URL? {
+    let name = sha256(url) + ".thumb"
+    let fileUrl = cacheDir.appendingPathComponent(name)
+    ensureDir()
+    do {
+      try data.write(to: fileUrl, options: .atomic)
+      return fileUrl
+    } catch {
+      cacheLogger.error("Failed to write thumbnail for \(url): \(error.localizedDescription)")
+      return nil
+    }
+  }
+
+  func getThumbnailPath(url: String) -> URL? {
+    let name = sha256(url) + ".thumb"
+    let fileUrl = cacheDir.appendingPathComponent(name)
+    guard FileManager.default.fileExists(atPath: fileUrl.path) else { return nil }
+    return fileUrl
+  }
+
+  func hasThumbnail(url: String) -> Bool {
+    let name = sha256(url) + ".thumb"
+    let fileUrl = cacheDir.appendingPathComponent(name)
+    return FileManager.default.fileExists(atPath: fileUrl.path)
+  }
+}
+
 struct HlsCacheEntry: Codable {
   let url: String
   let fileName: String

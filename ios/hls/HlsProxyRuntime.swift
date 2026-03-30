@@ -80,6 +80,11 @@ final class HlsProxyRuntime {
     }
   }
 
+  func getThumbnailUrl(url: String, headers: [String: String]?) async -> String? {
+    ensureStarted()
+    return await controller.getThumbnailUrl(for: url, headers: headers)
+  }
+
   func clearCache() {
     runOnMainSync {
       controller.clearCache()

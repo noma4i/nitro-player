@@ -1,9 +1,4 @@
 import { NitroPlayer } from '../NitroPlayer';
 import type { PlaybackState } from '../types/PlaybackState';
-type UsePlaybackStateOptions = {
-    interpolate?: boolean;
-    fps?: number;
-};
-export declare const usePlaybackState: (player: NitroPlayer | null | undefined, options?: UsePlaybackStateOptions) => PlaybackState | null;
-export {};
+export declare const usePlaybackState: (player: NitroPlayer | null | undefined) => PlaybackState | null;
 //# sourceMappingURL=usePlaybackState.d.ts.map
