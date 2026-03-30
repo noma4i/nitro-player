@@ -94,16 +94,19 @@ final class HlsProxyServerController: NSObject {
       return cached.absoluteString
     }
 
-    var assetUrl = URL(string: url)!
-    if let proxied = proxiedManifestUrl(for: url, headers: headers),
-       let proxiedUrl = URL(string: proxied) {
-      assetUrl = proxiedUrl
+    guard let assetUrl = URL(string: url) else { return nil }
+
+    var options: [String: Any] = [:]
+    if let headers, !headers.isEmpty {
+      options["AVURLAssetHTTPHeaderFieldsKey"] = headers
     }
 
-    let asset = AVURLAsset(url: assetUrl)
+    let asset = AVURLAsset(url: assetUrl, options: options)
     let generator = AVAssetImageGenerator(asset: asset)
     generator.appliesPreferredTrackTransform = true
     generator.maximumSize = CGSize(width: 480, height: 480)
+    generator.requestedTimeToleranceBefore = .zero
+    generator.requestedTimeToleranceAfter = CMTime(seconds: 2, preferredTimescale: 600)
 
     do {
       let cgImage = try generator.copyCGImage(at: .zero, actualTime: nil)
