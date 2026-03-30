@@ -35,8 +35,12 @@ jest.mock('../core/hooks/useManagedInstance', () => ({
 
 describe('useNitroPlayer', () => {
   beforeEach(() => {
+    const { useManagedInstance } = require('../core/hooks/useManagedInstance');
+
     destroy.mockClear();
     playerInstance.replaceSourceAsync.mockClear();
+    playerInstance.replaceSourceAsync.mockImplementation(() => Promise.resolve());
+    useManagedInstance.mockReturnValue(playerInstance);
   });
 
   it('creates a managed player once and keeps it stable across source updates', async () => {
@@ -72,5 +76,66 @@ describe('useNitroPlayer', () => {
 
     expect(result.current).toBe(playerInstance);
     expect(playerInstance.replaceSourceAsync).toHaveBeenCalledWith(nextSource);
+  });
+
+  it('serializes replaceSourceAsync calls when source changes rapidly', async () => {
+    const { useNitroPlayer } = require('../core/hooks/useNitroPlayer');
+    let resolveFirstReplace: (() => void) | undefined;
+    let resolveSecondReplace: (() => void) | undefined;
+
+    playerInstance.replaceSourceAsync
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>(resolve => {
+            resolveFirstReplace = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>(resolve => {
+            resolveSecondReplace = resolve;
+          })
+      );
+
+    const initialSource = { uri: 'https://cdn.example.com/video-1.mp4' };
+    const secondSource = { uri: 'https://cdn.example.com/video-2.mp4' };
+    const thirdSource = { uri: 'https://cdn.example.com/video-3.mp4' };
+
+    const { rerender } = renderHook(
+      ({ source }: { source: { uri: string } }) => useNitroPlayer(source),
+      {
+        initialProps: {
+          source: initialSource
+        }
+      }
+    );
+
+    await act(async () => {
+      rerender({ source: secondSource });
+      await Promise.resolve();
+    });
+
+    expect(playerInstance.replaceSourceAsync).toHaveBeenCalledTimes(1);
+    expect(playerInstance.replaceSourceAsync).toHaveBeenCalledWith(secondSource);
+
+    await act(async () => {
+      rerender({ source: thirdSource });
+      await Promise.resolve();
+    });
+
+    expect(playerInstance.replaceSourceAsync).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveFirstReplace?.();
+      await Promise.resolve();
+    });
+
+    expect(playerInstance.replaceSourceAsync).toHaveBeenCalledTimes(2);
+    expect(playerInstance.replaceSourceAsync).toHaveBeenLastCalledWith(thirdSource);
+
+    await act(async () => {
+      resolveSecondReplace?.();
+      await Promise.resolve();
+    });
   });
 });

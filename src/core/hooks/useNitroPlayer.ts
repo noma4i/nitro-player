@@ -25,6 +25,8 @@ export const useNitroPlayer = (
   );
 
   const previousSourceRef = useRef(source);
+  const replaceQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const sourceUpdateIdRef = useRef(0);
 
   useEffect(() => {
     if (previousSourceRef.current === source) {
@@ -33,13 +35,22 @@ export const useNitroPlayer = (
 
     previousSourceRef.current = source;
 
+    const updateId = ++sourceUpdateIdRef.current;
     let isActive = true;
-    const replacePromise = player.replaceSourceAsync(source);
-    Promise.resolve(replacePromise).catch(error => {
-      if (isActive) {
-        console.error('[NitroPlay] Failed to replace source from React update', error);
-      }
-    });
+    replaceQueueRef.current = replaceQueueRef.current
+      .catch(() => undefined)
+      .then(() => {
+        if (!isActive) {
+          return;
+        }
+
+        return player.replaceSourceAsync(source);
+      })
+      .catch(error => {
+        if (isActive && sourceUpdateIdRef.current === updateId) {
+          console.error('[NitroPlay] Failed to replace source from React update', error);
+        }
+      });
 
     return () => {
       isActive = false;
