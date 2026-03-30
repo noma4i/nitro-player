@@ -38,6 +38,7 @@ Peer dependency: `react-native-nitro-modules >= 0.35.0`
 | `NitroPlayerView`                   | Convenience component with native controls and fullscreen bridge |
 | `NitroPlayer`                       | Imperative player object                                         |
 | `createNitroSource(config)`         | Canonical source factory                                         |
+| `hlsCacheProxy`                     | HLS proxy, cache telemetry, thumbnail lookup                     |
 | `usePlaybackState(player)`          | Raw native playback snapshot                                     |
 | `useEvent(target, event, listener)` | Event subscription hook                                          |
 
@@ -80,7 +81,7 @@ Lifecycle controls how many resources a player allocates before, during, and aft
 | Area                                                                                   | Owner                                                |
 | -------------------------------------------------------------------------------------- | ---------------------------------------------------- |
 | Playback progress and buffering state                                                  | Native snapshot emission                             |
-| HLS proxy singleton, eager startup on library registration, and prefetch deduplication | Native runtime                                       |
+| HLS proxy singleton, lazy startup on first playback-facing use, and prefetch deduplication | Native runtime                                       |
 | HLS manifest routing                                                                   | Native source factory                                |
 | Declarative source updates                                                             | Long-lived player with native `replaceSourceAsync()` |
 | `playerDefaults` application in `NitroPlayerView`                                      | Native view manager                                  |

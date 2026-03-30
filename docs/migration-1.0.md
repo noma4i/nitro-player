@@ -64,7 +64,7 @@ Runtime entrypoints now point to built `lib/*` artifacts instead of `src/*`.
 | Default lifecycle | `NitroPlayerView` uses `balanced` when no `lifecycle` is provided                                   |
 | `feed` lifecycle  | Metadata-only preload; playerItem is not created during eager init                                  |
 | Source updates    | Player instance is reused; `replaceSourceAsync()` updates source without recreating the player      |
-| HLS proxy         | Starts eagerly on native module registration; requests only self-heal an already registered runtime |
+| HLS proxy         | Starts lazily on first playback-facing use; foreground lifecycle only self-heals an already auto-started runtime |
 
 ## Lifecycle presets
 

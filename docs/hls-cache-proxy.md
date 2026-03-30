@@ -13,9 +13,9 @@ App -> NitroPlayerView -> localhost:18181 -> CDN
 - iOS: GCDWebServer + `~/Library/Caches/hls-cache/`
 - Android: NanoHTTPD + `context.cacheDir/hls-cache/`
 - One native singleton runtime per app process owns proxy startup, shutdown, and prefetch deduplication on both platforms
-- The proxy starts eagerly when the library/native module is registered
-- Playback requests may only self-heal an already registered runtime if the server died after lifecycle changes
-- Read-only maintenance methods are not startup triggers
+- The proxy starts lazily on the first playback-facing operation (`getProxiedUrl()` or `prefetchFirstSegment()`) unless it was explicitly stopped
+- Foreground lifecycle may self-heal a previously auto-started runtime if the server died after app state changes
+- Read-only maintenance methods (`getCacheStats()`, `getStreamCacheStats()`, `getThumbnail()`, `clearCache()`) are not startup triggers
 
 Manifest responses always fresh (`Cache-Control: no-cache`). Segments cached to disk with SHA-256 filename.
 
@@ -25,10 +25,11 @@ Manifest responses always fresh (`Cache-Control: no-cache`). Segments cached to 
 |--------|---------|-------------|
 | `start(port?)` | `void` | Manual restart/override for the native proxy (default: 18181) |
 | `stop()` | `void` | Explicitly stop proxy singleton instance |
-| `getProxiedUrl(url, headers?)` | `string` | Get proxied URL for HLS stream using the already registered runtime |
-| `prefetchFirstSegment(url, headers?)` | `Promise<void>` | Pre-download init + first segment using the registered runtime |
+| `getProxiedUrl(url, headers?)` | `string` | Lazily start the runtime if needed and return a proxied HLS manifest URL |
+| `prefetchFirstSegment(url, headers?)` | `Promise<void>` | Lazily start the runtime if needed and pre-download init + first segment |
 | `getCacheStats()` | `Promise<HlsCacheStats>` | Total cache stats |
 | `getStreamCacheStats(url)` | `Promise<HlsStreamCacheStats>` | Per-stream cache stats |
+| `getThumbnail(url, headers?)` | `Promise<string \| null>` | Return cached/generated thumbnail path without starting the proxy runtime |
 | `clearCache()` | `Promise<boolean>` | Delete all cached segments from the current cache store |
 
 ## Types
@@ -63,6 +64,10 @@ Streams are always removed as a whole unit - no partial cleanup that would leave
 ## Prefetch Deduplication
 
 `prefetchFirstSegment()` deduplicates calls within 60 seconds for the same URL inside the native runtime. Safe to call on every feed item mount.
+
+## Thumbnails
+
+`getThumbnail()` first checks `HlsCacheStore` for an existing thumbnail. If none exists, each platform extracts frame 0 directly from the source URL and stores it as `SHA256(url).thumb` inside the same cache root. Thumbnail lookup and generation do not auto-start the proxy server.
 
 ## Disabling the Proxy
 
