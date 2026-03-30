@@ -140,6 +140,13 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
         .init(currentTime, duration, height, width, orientation)
       )
 
+      if let asset = playerItem.asset as? AVURLAsset {
+        let sourceUrl = (source as? HybridNitroPlayerSource)?.url.absoluteString ?? asset.url.absoluteString
+        Task.detached {
+          _ = await HlsProxyRuntime.shared.getThumbnailUrl(url: sourceUrl, headers: nil)
+        }
+      }
+
       if playerItem.isPlaybackLikelyToKeepUp
         && !playerItem.isPlaybackBufferEmpty
       {

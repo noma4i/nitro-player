@@ -59,6 +59,14 @@ class HlsCacheProxyModule(private val reactContext: ReactApplicationContext)
         promise.resolve(true)
     }
 
+    @ReactMethod
+    fun getThumbnailUrl(url: String, headers: ReadableMap?, promise: Promise) {
+        Thread {
+            val result = HlsProxyRuntime.getThumbnailUrl(url, com.nitroplay.hls.HlsHeaderCodec.decode(headers))
+            promise.resolve(result)
+        }.start()
+    }
+
     // LifecycleEventListener — self-heal on foreground return
     override fun onHostResume() {
         HlsProxyRuntime.onHostResume()

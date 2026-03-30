@@ -106,7 +106,7 @@ final class HlsProxyServerController: NSObject {
     generator.appliesPreferredTrackTransform = true
     generator.maximumSize = CGSize(width: 480, height: 480)
     generator.requestedTimeToleranceBefore = .zero
-    generator.requestedTimeToleranceAfter = CMTime(seconds: 2, preferredTimescale: 600)
+    generator.requestedTimeToleranceAfter = .zero
 
     do {
       let cgImage = try generator.copyCGImage(at: .zero, actualTime: nil)

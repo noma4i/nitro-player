@@ -128,6 +128,29 @@ object HlsProxyRuntime {
     activeServer.prefetch(url, HlsHeaderCodec.decode(headers), onComplete, onError)
   }
 
+  fun getThumbnailUrl(url: String, headers: Map<String, String>?): String? {
+    val store = synchronized(lock) { server?.cacheStore } ?: return null
+    store.getThumbnailPath(url)?.let { return it }
+
+    return try {
+      val retriever = android.media.MediaMetadataRetriever()
+      if (headers != null && headers.isNotEmpty()) {
+        retriever.setDataSource(url, headers)
+      } else {
+        retriever.setDataSource(url, HashMap())
+      }
+      val bitmap = retriever.getFrameAtTime(0, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+      retriever.release()
+      if (bitmap != null) {
+        val stream = java.io.ByteArrayOutputStream()
+        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, stream)
+        store.putThumbnail(url, stream.toByteArray())
+      } else null
+    } catch (e: Exception) {
+      null
+    }
+  }
+
   fun getCacheStats() = Arguments.createMap().apply {
     val stats = server?.cacheStore?.getCacheStats()
     putDouble("totalSize", (stats?.get("totalSize") as? Long)?.toDouble() ?: 0.0)

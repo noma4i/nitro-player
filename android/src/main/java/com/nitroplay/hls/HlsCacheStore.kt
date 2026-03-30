@@ -195,6 +195,28 @@ class HlsCacheStore(context: Context) {
     }
 }
 
+    fun putThumbnail(url: String, data: ByteArray): String? {
+        if (!cacheDir.exists()) cacheDir.mkdirs()
+        val name = sha256(url) + ".thumb"
+        val file = java.io.File(cacheDir, name)
+        return try {
+            file.writeBytes(data)
+            file.absolutePath
+        } catch (e: Exception) { null }
+    }
+
+    fun getThumbnailPath(url: String): String? {
+        val name = sha256(url) + ".thumb"
+        val file = java.io.File(cacheDir, name)
+        return if (file.exists()) file.absolutePath else null
+    }
+
+    fun hasThumbnail(url: String): Boolean {
+        val name = sha256(url) + ".thumb"
+        return java.io.File(cacheDir, name).exists()
+    }
+}
+
 data class HlsCacheEntry(
     val url: String,
     val fileName: String,
