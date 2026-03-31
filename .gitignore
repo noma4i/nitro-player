@@ -74,4 +74,4 @@ CLAUDE.md
 !tsconfig.build.json
 !nitro.json
 !react-native.config.js
-*nitro*.tgz
+*.tgz
