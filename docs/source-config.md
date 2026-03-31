@@ -4,7 +4,7 @@
 
 | Field | Type | Default | Purpose |
 | --- | --- | --- | --- |
-| `uri` | `string \| number` | required | Network URL or React Native asset reference |
+| `uri` | `string \| number` | required | Network URL, local `file://` URI, absolute local file path, or React Native asset reference |
 | `headers` | `Record<string, string>` | none | Request headers |
 | `metadata` | `NitroSourceMetadata` | none | Player-facing media metadata |
 | `startup` | `'eager' \| 'lazy'` | native default | Startup strategy |
@@ -137,3 +137,5 @@ const source = {
 | `replaceSourceAsync(source)` | Accepts `NitroSourceConfig` or `NitroPlayerSource` |
 
 JS forwards this config as-is to native normalization. It does not rewrite HLS URLs, resolve transport, or expand retention presets.
+
+For local media, native normalization accepts absolute filesystem paths on both platforms and converts them to canonical `file://` URLs internally. Application code should still prefer `file://` when it creates recorded-media objects itself.

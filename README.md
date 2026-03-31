@@ -2,11 +2,11 @@
 
 Native-first video player for React Native with shared HLS transport, stream cache, and first-frame preview utilities.
 
-Current prerelease: `1.0.0-beta.9`
+Current prerelease: `1.0.0-beta.10`
 
 ## Installation
 
-Install from GitHub tag `v1.0.0-beta.9`.
+Install from GitHub tag `v1.0.0-beta.10`.
 
 Peer dependency: `react-native-nitro-modules >= 0.35.0`
 
@@ -54,7 +54,7 @@ export function FeedCard() {
 
 | Field | Type | Purpose |
 | --- | --- | --- |
-| `uri` | `string \| number` | Network URL or React Native asset |
+| `uri` | `string \| number` | Network URL, local `file://` URI, absolute local file path, or React Native asset |
 | `headers` | `Record<string,string>` | Request headers |
 | `metadata` | `NitroSourceMetadata` | Title, subtitle, description, artist, image |
 | `startup` | `'eager' \| 'lazy'` | Startup strategy |
@@ -77,6 +77,8 @@ export function FeedCard() {
 | Manual preview | `videoPreview.getFirstFrame(source)` returns cached/generated frame path |
 | Stream/preview identity | `{ uri, headers }` is the canonical identity for cache stats and preview artifacts |
 | Stream cache | `streamCache.prefetch(source)` is safe to call repeatedly |
+
+Absolute local file paths are accepted on both iOS and Android and are normalized internally to `file://` URLs. App code should prefer canonical `file://` URIs when it owns freshly recorded media paths.
 
 ## Player Events
 

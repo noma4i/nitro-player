@@ -6,21 +6,31 @@ import androidx.media3.datasource.RawResourceDataSource
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
 import com.nitroplay.hls.HlsProxyRuntime
+import java.io.File
 import java.util.Locale
 
-@DoNotStrip
-class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
-  private val applicationContext: Context
-    get() = NitroModules.applicationContext
-      ?: throw IllegalStateException(
-        "NitroModules.applicationContext has not been initialized."
-      )
+internal object HybridNitroPlayerUriNormalizer {
+  fun isAndroidRawResourceName(input: String): Boolean {
+    if (input.isBlank()) {
+      return false
+    }
 
-  private fun normalizeUri(input: String): String {
+    return input.all { character -> character in 'a'..'z' || character in '0'..'9' || character == '_' }
+  }
+
+  fun normalize(input: String, applicationContext: Context): String {
     val parsedUri = Uri.parse(input)
 
     if (parsedUri.scheme != null) {
       return parsedUri.toString()
+    }
+
+    if (File(input).isAbsolute || input.startsWith("/")) {
+      return Uri.fromFile(File(input)).toString()
+    }
+
+    if (!isAndroidRawResourceName(input)) {
+      return input
     }
 
     val resId = applicationContext.resources
@@ -33,6 +43,19 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
     val mediaUri = RawResourceDataSource.buildRawResourceUri(resId)
 
     return mediaUri.toString()
+  }
+}
+
+@DoNotStrip
+class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
+  private val applicationContext: Context
+    get() = NitroModules.applicationContext
+      ?: throw IllegalStateException(
+        "NitroModules.applicationContext has not been initialized."
+      )
+
+  private fun normalizeUri(input: String): String {
+    return HybridNitroPlayerUriNormalizer.normalize(input, applicationContext)
   }
 
   private fun isHlsManifest(uri: String): Boolean {

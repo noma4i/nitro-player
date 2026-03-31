@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.0-beta.10
+
+### Changed
+
+- iOS + Android: local absolute filesystem video paths are now normalized to canonical `file://` URLs inside native source factories, matching the mounted-player/runtime contract for freshly recorded media
+- Docs now explicitly document that `NitroSourceConfig.uri` accepts network URLs, React Native assets, `file://` URLs, and raw absolute local paths while still recommending canonical `file://` app-side input
+
+### Fixed
+
+- Android: stopped treating raw absolute local file paths like `/data/user/0/.../cache/*.mp4` as `res/raw` identifiers, which previously crashed recorded-video playback with `The video resource ... could not be found in res/raw`
+- iOS: aligned absolute local-path handling with Android by converting raw filesystem paths into file URLs before source creation and transport normalization
+- Android tests: added regression coverage for URI normalization without relying on JNI-backed `HybridObject` construction during JVM unit tests
+
 ## 1.0.0-beta.9
 
 ### Breaking

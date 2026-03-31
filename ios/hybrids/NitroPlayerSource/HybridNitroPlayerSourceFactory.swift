@@ -8,6 +8,14 @@
 import Foundation
 
 class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
+  private func normalizeUri(_ uri: String) -> String {
+    guard uri.hasPrefix("/") else {
+      return uri
+    }
+
+    return URL(fileURLWithPath: uri).absoluteString
+  }
+
   private func isHlsManifest(_ uri: String) -> Bool {
     guard var components = URLComponents(string: uri) else {
       return uri.lowercased().hasSuffix(".m3u8")
@@ -18,10 +26,11 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
   }
 
   private func normalizedConfig(from config: NativeNitroPlayerConfig) -> NativeNitroPlayerConfig {
+    let normalizedUri = normalizeUri(config.uri)
     let shouldUseHlsProxy = config.transport?.mode != .direct
-    let route = shouldUseHlsProxy && isHlsManifest(config.uri)
-      ? HlsProxyRuntime.shared.resolvePlaybackRoute(url: config.uri, headers: config.headers)
-      : HlsProxyRouteResolution(url: config.uri, isProxying: false)
+    let route = shouldUseHlsProxy && isHlsManifest(normalizedUri)
+      ? HlsProxyRuntime.shared.resolvePlaybackRoute(url: normalizedUri, headers: config.headers)
+      : HlsProxyRouteResolution(url: normalizedUri, isProxying: false)
 
     return NativeNitroPlayerConfig(
       uri: route.url,
@@ -38,17 +47,27 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
   func fromNitroPlayerConfig(config: NativeNitroPlayerConfig) throws
     -> any HybridNitroPlayerSourceSpec
   {
-    let normalized = normalizedConfig(from: config)
+    let normalizedInput = NativeNitroPlayerConfig(
+      uri: normalizeUri(config.uri),
+      headers: config.headers,
+      metadata: config.metadata,
+      startup: config.startup,
+      buffer: config.buffer,
+      retention: config.retention,
+      transport: config.transport,
+      preview: config.preview
+    )
+    let normalized = normalizedConfig(from: normalizedInput)
     return try HybridNitroPlayerSource(
       config: normalized,
-      originalConfig: config,
-      isProxyRouteActive: normalized.uri != config.uri
+      originalConfig: normalizedInput,
+      isProxyRouteActive: normalized.uri != normalizedInput.uri
     )
   }
 
   func fromUri(uri: String) throws -> HybridNitroPlayerSourceSpec {
     let config = NativeNitroPlayerConfig(
-      uri: uri,
+      uri: normalizeUri(uri),
       headers: nil,
       metadata: nil,
       startup: .eager,
