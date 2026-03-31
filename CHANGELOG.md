@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.0.0-beta.9
+
+### Breaking
+
+- Public source DSL is now v2-only: `uri`, `headers`, `metadata`, `startup`, `buffer`, `retention`, `transport`, `preview`. Legacy `lifecycle`, `initialization`, `advanced.*`, top-level proxy flags, and JS-facing `hlsCacheProxy` usage are removed from the canonical API surface
+- Public utility surfaces are now `streamCache` and `videoPreview`. Consumer code should not use the old mixed HLS facade naming
+- `PlaybackState.isReadyToDisplay` is replaced by `isVisualReady`, and the canonical visual-start contract is `isVisualReady || hasFirstFrame`
+
+### Added
+
+- `preview.autoThumbnail` to let attached native player views own first-frame placeholder/reveal by default, with explicit opt-out
+- Sticky `onFirstFrame` delivery plus `videoPreview.getFirstFrame(source)` and `videoPreview.clear()` for manual preview access
+- `streamCache.prefetch(source)`, `streamCache.getStats(source?)`, and `streamCache.clear()` as the canonical public transport/cache utilities
+
+### Changed
+
+- iOS + Android: HLS/runtime startup now uses lazy native ownership, bounded startup recovery, and direct fallback in `transport.mode='auto'` when proxy bootstrap is unavailable
+- iOS + Android: stream cache and preview identity are now header-aware (`{ uri, headers }`), so the same URL under different request headers no longer shares cache or preview artifacts
+- iOS + Android: preview/first-frame extraction is isolated from playback state changes and transport side effects; attached views use native auto-thumbnail as the primary mounted-surface reveal path
+- Docs and example app now describe and exercise the v2 source DSL, `streamCache`, `videoPreview`, native auto-thumbnail, and multi-player/header-isolated streaming scenarios
+
+### Fixed
+
+- iOS + Android: startup playback for streaming video is now resilient to early proxy/runtime failures instead of getting stuck on the first empty/error response
+- iOS + Android: stale async work from old source generations can no longer leak `onLoad`, `onError`, or `onFirstFrame` into a newer `replaceSourceAsync()` / `clearSourceAsync()` session
+- Android: removed optimistic false `PLAYING` state before real readiness/isPlaying, aligning visible status with actual playback state
+- TS: `useNitroPlayer`/player orchestration no longer race on rapid source churn, and `NitroPlayerView`/player event plumbing no longer depend on stale JS-side lifecycle bookkeeping
+
 ## 1.0.0-beta.8
 
 ### Changed

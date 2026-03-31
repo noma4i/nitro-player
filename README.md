@@ -2,11 +2,11 @@
 
 Native-first video player for React Native with shared HLS transport, stream cache, and first-frame preview utilities.
 
-Current prerelease: `1.0.0-beta.8`
+Current prerelease: `1.0.0-beta.9`
 
 ## Installation
 
-Install from GitHub tag `v1.0.0-beta.8`.
+Install from GitHub tag `v1.0.0-beta.9`.
 
 Peer dependency: `react-native-nitro-modules >= 0.35.0`
 
