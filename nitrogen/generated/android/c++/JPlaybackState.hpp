@@ -58,8 +58,8 @@ namespace margelo::nitro::video {
       jboolean isPlaying = this->getFieldValue(fieldIsPlaying);
       static const auto fieldIsBuffering = clazz->getField<jboolean>("isBuffering");
       jboolean isBuffering = this->getFieldValue(fieldIsBuffering);
-      static const auto fieldIsReadyToDisplay = clazz->getField<jboolean>("isReadyToDisplay");
-      jboolean isReadyToDisplay = this->getFieldValue(fieldIsReadyToDisplay);
+      static const auto fieldIsVisualReady = clazz->getField<jboolean>("isVisualReady");
+      jboolean isVisualReady = this->getFieldValue(fieldIsVisualReady);
       static const auto fieldError = clazz->getField<JVariant_NullType_PlaybackError>("error");
       jni::local_ref<JVariant_NullType_PlaybackError> error = this->getFieldValue(fieldError);
       static const auto fieldNativeTimestampMs = clazz->getField<double>("nativeTimestampMs");
@@ -73,7 +73,7 @@ namespace margelo::nitro::video {
         rate,
         static_cast<bool>(isPlaying),
         static_cast<bool>(isBuffering),
-        static_cast<bool>(isReadyToDisplay),
+        static_cast<bool>(isVisualReady),
         error != nullptr ? std::make_optional(error->toCpp()) : std::nullopt,
         nativeTimestampMs
       );
@@ -98,7 +98,7 @@ namespace margelo::nitro::video {
         value.rate,
         value.isPlaying,
         value.isBuffering,
-        value.isReadyToDisplay,
+        value.isVisualReady,
         value.error.has_value() ? JVariant_NullType_PlaybackError::fromCpp(value.error.value()) : nullptr,
         value.nativeTimestampMs
       );

@@ -9,7 +9,7 @@ export interface PlaybackState {
     rate: number;
     isPlaying: boolean;
     isBuffering: boolean;
-    isReadyToDisplay: boolean;
+    isVisualReady: boolean;
     error?: PlaybackError | null;
     nativeTimestampMs: number;
 }

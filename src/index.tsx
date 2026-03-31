@@ -5,13 +5,14 @@ export type {
   NitroPlayerEvents as NitroPlayerEventsType,
   NitroPlayerViewEvents,
   BandwidthData,
+  onFirstFrameData,
   onLoadData,
   onLoadStartData,
   SourceType,
   onVolumeChangeData
 } from './core/types/Events';
 export { ALL_PLAYER_EVENTS, ALL_VIEW_EVENTS } from './core/types/Events';
-export type { MemoryProfile, OffscreenRetention, PreloadLevel } from './core/types/MemoryConfig';
+export type { OffscreenRetention, PreloadLevel } from './core/types/MemoryConfig';
 export type { MemoryRetentionState, MemorySnapshot } from './core/types/MemorySnapshot';
 export type { PlaybackError } from './core/types/PlaybackError';
 export type { PlaybackState } from './core/types/PlaybackState';
@@ -19,12 +20,14 @@ export type { IgnoreSilentSwitchMode } from './core/types/IgnoreSilentSwitchMode
 export type { MixAudioMode } from './core/types/MixAudioMode';
 export type { ResizeMode } from './core/types/ResizeMode';
 export type {
-  NitroSourceAdvancedConfig,
-  NitroSourceAdvancedLifecycleConfig,
-  NitroSourceAdvancedTransportConfig,
   NitroSourceConfig,
-  NitroSourceInitialization,
   NitroSourceMetadata,
+  NitroSourcePreviewConfig,
+  NitroSourcePreviewMode,
+  NitroSourceRetentionConfig,
+  NitroSourceStartup,
+  NitroSourceTransportConfig,
+  NitroSourceTransportMode,
   NitroSourceUri
 } from './core/types/NitroPlayerConfig';
 export type { NitroPlayerDefaults } from './core/types/NitroPlayerDefaults';
@@ -45,7 +48,10 @@ export type { NitroPlayerStatus } from './core/types/NitroPlayerStatus';
 export { default as NitroPlayerView, type NitroPlayerViewProps, type NitroPlayerViewRef } from './core/player-view/NitroPlayerView';
 export { NitroPlayer } from './core/NitroPlayer';
 export { createNitroSource } from './core/utils/sourceFactory';
-
-// HLS Cache Proxy
-export { hlsCacheProxy } from './hls/hlsCacheProxy';
-export type { HlsCacheStats, HlsStreamCacheStats, Headers as HlsHeaders } from './hls/types';
+export { streamCache } from './transport/streamCache';
+export { videoPreview } from './preview/videoPreview';
+export type {
+  StreamCacheStats,
+  StreamSourceCacheStats,
+  StreamHeaders
+} from './transport/types';

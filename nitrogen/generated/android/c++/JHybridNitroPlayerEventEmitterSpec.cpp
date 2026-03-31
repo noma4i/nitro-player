@@ -21,14 +21,16 @@ namespace margelo::nitro::video { struct onLoadStartData; }
 namespace margelo::nitro::video { enum class SourceType; }
 // Forward declaration of `HybridNitroPlayerSourceSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridNitroPlayerSourceSpec; }
-// Forward declaration of `PlaybackState` to properly resolve imports.
-namespace margelo::nitro::video { struct PlaybackState; }
-// Forward declaration of `NitroPlayerStatus` to properly resolve imports.
-namespace margelo::nitro::video { enum class NitroPlayerStatus; }
+// Forward declaration of `onFirstFrameData` to properly resolve imports.
+namespace margelo::nitro::video { struct onFirstFrameData; }
 // Forward declaration of `PlaybackError` to properly resolve imports.
 namespace margelo::nitro::video { struct PlaybackError; }
 // Forward declaration of `NitroPlayerErrorCode` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerErrorCode; }
+// Forward declaration of `PlaybackState` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackState; }
+// Forward declaration of `NitroPlayerStatus` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroPlayerStatus; }
 // Forward declaration of `onVolumeChangeData` to properly resolve imports.
 namespace margelo::nitro::video { struct onVolumeChangeData; }
 
@@ -54,20 +56,24 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include <memory>
 #include "HybridNitroPlayerSourceSpec.hpp"
 #include "JHybridNitroPlayerSourceSpec.hpp"
+#include "onFirstFrameData.hpp"
+#include "JFunc_void_onFirstFrameData.hpp"
+#include "JonFirstFrameData.hpp"
+#include <string>
+#include "PlaybackError.hpp"
+#include "JFunc_void_PlaybackError.hpp"
+#include "JPlaybackError.hpp"
+#include "NitroPlayerErrorCode.hpp"
+#include "JNitroPlayerErrorCode.hpp"
 #include "PlaybackState.hpp"
 #include "JFunc_void_PlaybackState.hpp"
 #include "JPlaybackState.hpp"
 #include "NitroPlayerStatus.hpp"
 #include "JNitroPlayerStatus.hpp"
 #include <NitroModules/Null.hpp>
-#include "PlaybackError.hpp"
 #include <variant>
 #include "JVariant_NullType_PlaybackError.hpp"
 #include <NitroModules/JNull.hpp>
-#include "JPlaybackError.hpp"
-#include "NitroPlayerErrorCode.hpp"
-#include "JNitroPlayerErrorCode.hpp"
-#include <string>
 #include "onVolumeChangeData.hpp"
 #include "JFunc_void_onVolumeChangeData.hpp"
 #include "JonVolumeChangeData.hpp"
@@ -118,6 +124,16 @@ namespace margelo::nitro::video {
   ListenerSubscription JHybridNitroPlayerEventEmitterSpec::addOnLoadStartListener(const std::function<void(const onLoadStartData& /* data */)>& listener) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_onLoadStartData::javaobject> /* listener */)>("addOnLoadStartListener_cxx");
     auto __result = method(_javaPart, JFunc_void_onLoadStartData_cxx::fromCpp(listener));
+    return __result->toCpp();
+  }
+  ListenerSubscription JHybridNitroPlayerEventEmitterSpec::addOnFirstFrameListener(const std::function<void(const onFirstFrameData& /* data */)>& listener) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_onFirstFrameData::javaobject> /* listener */)>("addOnFirstFrameListener_cxx");
+    auto __result = method(_javaPart, JFunc_void_onFirstFrameData_cxx::fromCpp(listener));
+    return __result->toCpp();
+  }
+  ListenerSubscription JHybridNitroPlayerEventEmitterSpec::addOnErrorListener(const std::function<void(const PlaybackError& /* error */)>& listener) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_PlaybackError::javaobject> /* listener */)>("addOnErrorListener_cxx");
+    auto __result = method(_javaPart, JFunc_void_PlaybackError_cxx::fromCpp(listener));
     return __result->toCpp();
   }
   ListenerSubscription JHybridNitroPlayerEventEmitterSpec::addOnPlaybackStateListener(const std::function<void(const PlaybackState& /* state */)>& listener) {

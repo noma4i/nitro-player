@@ -93,7 +93,7 @@ namespace margelo::nitro::video {
       virtual void setPlayWhenInactive(bool playWhenInactive) = 0;
       virtual bool getIsPlaying() = 0;
       virtual bool getIsBuffering() = 0;
-      virtual bool getIsReadyToDisplay() = 0;
+      virtual bool getIsVisualReady() = 0;
 
     public:
       // Methods

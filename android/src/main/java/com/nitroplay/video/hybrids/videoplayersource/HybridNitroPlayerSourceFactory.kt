@@ -43,20 +43,23 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
 
   private fun normalizeConfig(config: NativeNitroPlayerConfig): NativeNitroPlayerConfig {
     val normalizedUri = normalizeUri(config.uri)
-    val shouldUseHlsProxy = config.advanced?.transport?.useHlsProxy != false
-    val proxiedUri = if (shouldUseHlsProxy && isHlsManifest(normalizedUri)) {
-      HlsProxyRuntime.getProxiedUrl(normalizedUri, config.headers)
+    val normalizedConfig = config.copy(uri = normalizedUri)
+    val shouldUseHlsProxy = normalizedConfig.transport?.mode != NitroSourceTransportMode.DIRECT
+    val route = if (shouldUseHlsProxy && isHlsManifest(normalizedUri)) {
+      HlsProxyRuntime.resolvePlaybackRoute(normalizedUri, normalizedConfig.headers)
     } else {
-      normalizedUri
+      null
     }
 
     return NativeNitroPlayerConfig(
-      uri = proxiedUri,
-      headers = config.headers,
-      metadata = config.metadata,
-      lifecycle = config.lifecycle,
-      initialization = config.initialization,
-      advanced = config.advanced
+      uri = route?.url ?: normalizedUri,
+      headers = normalizedConfig.headers,
+      metadata = normalizedConfig.metadata,
+      startup = normalizedConfig.startup,
+      buffer = normalizedConfig.buffer,
+      retention = normalizedConfig.retention,
+      transport = normalizedConfig.transport,
+      preview = normalizedConfig.preview
     )
   }
 
@@ -65,16 +68,24 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
       uri = normalizeUri(uri),
       headers = null,
       metadata = null,
-      lifecycle = MemoryProfile.BALANCED,
-      initialization = NitroSourceInitialization.EAGER,
-      advanced = null
+      startup = NitroSourceStartup.EAGER,
+      buffer = null,
+      retention = null,
+      transport = null,
+      preview = null
     ))
 
     return HybridNitroPlayerSource(config)
   }
 
   override fun fromNitroPlayerConfig(config: NativeNitroPlayerConfig): HybridNitroPlayerSourceSpec {
-    return HybridNitroPlayerSource(normalizeConfig(config))
+    val normalizedConfig = config.copy(uri = normalizeUri(config.uri))
+    val effectiveConfig = normalizeConfig(config)
+    return HybridNitroPlayerSource(
+      config = effectiveConfig,
+      originalConfig = normalizedConfig,
+      isProxyRouteActive = effectiveConfig.uri != normalizedConfig.uri
+    )
   }
 
   override val memorySize: Long

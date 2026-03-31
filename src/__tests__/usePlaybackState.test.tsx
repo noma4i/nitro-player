@@ -21,7 +21,7 @@ function makePlaybackState(overrides: Record<string, unknown> = {}) {
     rate: 1,
     isPlaying: false,
     isBuffering: false,
-    isReadyToDisplay: false,
+    isVisualReady: false,
     nativeTimestampMs: 1000000,
     ...overrides
   };

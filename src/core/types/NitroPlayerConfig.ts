@@ -1,8 +1,10 @@
 import type { BufferConfig } from './BufferConfig';
-import type { MemoryProfile, OffscreenRetention, PreloadLevel } from './MemoryConfig';
+import type { OffscreenRetention, PreloadLevel } from './MemoryConfig';
 
 export type NitroSourceUri = number | string;
-export type NitroSourceInitialization = 'eager' | 'lazy';
+export type NitroSourceStartup = 'eager' | 'lazy';
+export type NitroSourceTransportMode = 'auto' | 'direct' | 'proxy';
+export type NitroSourcePreviewMode = 'listener' | 'always' | 'manual';
 
 export interface NitroSourceMetadata {
   title?: string;
@@ -12,20 +14,23 @@ export interface NitroSourceMetadata {
   imageUri?: string;
 }
 
-export interface NitroSourceAdvancedLifecycleConfig {
-  preloadLevel?: PreloadLevel;
-  offscreenRetention?: OffscreenRetention;
+export interface NitroSourceRetentionConfig {
+  preload?: PreloadLevel;
+  offscreen?: OffscreenRetention;
   trimDelayMs?: number;
+  feedPoolEligible?: boolean;
 }
 
-export interface NitroSourceAdvancedTransportConfig {
-  useHlsProxy?: boolean;
+export interface NitroSourceTransportConfig {
+  mode?: NitroSourceTransportMode;
 }
 
-export interface NitroSourceAdvancedConfig {
-  buffer?: BufferConfig;
-  lifecycle?: NitroSourceAdvancedLifecycleConfig;
-  transport?: NitroSourceAdvancedTransportConfig;
+export interface NitroSourcePreviewConfig {
+  mode?: NitroSourcePreviewMode;
+  autoThumbnail?: boolean;
+  maxWidth?: number;
+  maxHeight?: number;
+  quality?: number;
 }
 
 export interface NitroSourceConfig {
@@ -43,19 +48,27 @@ export interface NitroSourceConfig {
    */
   metadata?: NitroSourceMetadata;
   /**
-   * High-level lifecycle preset.
-   * @default 'balanced'
-   */
-  lifecycle?: MemoryProfile;
-  /**
-   * Source initialization strategy.
+   * Source startup strategy.
    * @default 'eager'
    */
-  initialization?: NitroSourceInitialization;
+  startup?: NitroSourceStartup;
   /**
-   * Expert-only knobs that override the standard source packaging.
+   * Explicit buffering configuration.
    */
-  advanced?: NitroSourceAdvancedConfig;
+  buffer?: BufferConfig;
+  /**
+   * Explicit retention and trim policy.
+   */
+  retention?: NitroSourceRetentionConfig;
+  /**
+   * How the source should be transported.
+   * @default 'auto'
+   */
+  transport?: NitroSourceTransportConfig;
+  /**
+   * First-frame and preview generation policy.
+   */
+  preview?: NitroSourcePreviewConfig;
 }
 
 // @internal

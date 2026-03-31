@@ -25,7 +25,7 @@ export interface NitroPlayerBase {
   playWhenInactive: boolean;
   readonly isPlaying: boolean;
   readonly isBuffering: boolean;
-  readonly isReadyToDisplay: boolean;
+  readonly isVisualReady: boolean;
 
   initialize(): Promise<void>;
   preload(): Promise<void>;

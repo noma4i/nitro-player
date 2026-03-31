@@ -296,10 +296,10 @@ open class HybridNitroPlayerSpec_cxx {
     }
   }
   
-  public final var isReadyToDisplay: Bool {
+  public final var isVisualReady: Bool {
     @inline(__always)
     get {
-      return self.__implementation.isReadyToDisplay
+      return self.__implementation.isVisualReady
     }
   }
 

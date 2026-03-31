@@ -115,4 +115,40 @@ class BufferingStateLogicTest {
 
     assertFalse(isCurrentlyBuffering)
   }
+
+  @Test
+  fun resolvePlayPauseStatus_whenWantsToPlayAfterError_returnsLoading() {
+    status = NitroPlayerStatus.ERROR
+    val wantsToPlay = true
+    val isPlaying = false
+
+    val resolved = if (isPlaying) {
+      NitroPlayerStatus.PLAYING
+    } else if (wantsToPlay) {
+      when (status) {
+        NitroPlayerStatus.BUFFERING,
+        NitroPlayerStatus.LOADING,
+        NitroPlayerStatus.PLAYING -> status
+        else -> NitroPlayerStatus.LOADING
+      }
+    } else {
+      NitroPlayerStatus.PAUSED
+    }
+
+    assertEquals(NitroPlayerStatus.LOADING, resolved)
+  }
+
+  @Test
+  fun playBeforeReady_prefersLoadingOverPlaying() {
+    val isPlaying = false
+    val playbackState = 1
+
+    val resolved = when {
+      isPlaying -> NitroPlayerStatus.PLAYING
+      playbackState == 2 -> NitroPlayerStatus.BUFFERING
+      else -> NitroPlayerStatus.LOADING
+    }
+
+    assertEquals(NitroPlayerStatus.LOADING, resolved)
+  }
 }

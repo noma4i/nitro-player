@@ -10,6 +10,12 @@ import Foundation
 import NitroModules
 
 class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
+  struct FirstFrameContext {
+    let sourceUri: String
+    let headers: [String: String]?
+    let width: Double
+    let height: Double
+  }
 
   /**
    * Player instance for video playback
@@ -25,7 +31,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
 
   var playerItem: AVPlayerItem? {
     didSet {
-      if let bufferConfig = currentSourceConfig()?.advanced?.buffer {
+      if let bufferConfig = currentSourceConfig()?.buffer {
         playerItem?.setBufferConfig(config: bufferConfig)
       }
     }
@@ -41,6 +47,16 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   var resumePositionSeconds: Double = 0
   var isAttachedToVideoView = false
   var pendingTrimWorkItem: DispatchWorkItem?
+  var startupRecoveryTask: Task<Void, Never>?
+  var firstFrameTask: Task<Void, Never>?
+  var sourceGeneration: Int = 0
+  var startupRecoveryAttempts: Int = 0
+  var hasLoadedCurrentSource = false
+  var firstFrame: onFirstFrameData?
+  var firstFrameContext: FirstFrameContext?
+
+  private let startupRecoveryDelayNs: UInt64 = 250_000_000
+  private let maxStartupRecoveryAttempts = 1
 
   func replaceCurrentItem(_ item: AVPlayerItem?) {
     let apply = { [weak self] in
@@ -65,8 +81,14 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     self.player.automaticallyWaitsToMinimizeStalling = false
 
     super.init()
+    beginSourceGeneration()
     self.playerObserver = NitroPlayerObserver(delegate: self)
     self.playerObserver?.initializePlayerObservers()
+    self._eventEmitter?.onFirstFrameListenerAdded = { [weak self] in
+      DispatchQueue.main.async {
+        self?.requestFirstFrameIfNeeded()
+      }
+    }
 
     initTask = Task { [weak self] in
       guard let self else { return }
@@ -226,7 +248,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     isCurrentlyBuffering
   }
 
-  var isReadyToDisplay: Bool {
+  var isVisualReady: Bool {
     readyToDisplay
   }
 
@@ -241,7 +263,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
         rate: 0,
         isPlaying: false,
         isBuffering: false,
-        isReadyToDisplay: false,
+        isVisualReady: false,
         error: nil,
         nativeTimestampMs: Date().timeIntervalSince1970 * 1000
       )
@@ -256,7 +278,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
       rate: rate,
       isPlaying: isPlaying,
       isBuffering: isBuffering,
-      isReadyToDisplay: readyToDisplay,
+      isVisualReady: readyToDisplay,
       error: lastError.map { .second($0) },
       nativeTimestampMs: Date().timeIntervalSince1970 * 1000
     )
@@ -297,8 +319,8 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     (source as? HybridNitroPlayerSource)?.config
   }
 
-  func resolvedInitialization() -> NitroSourceInitialization {
-    currentSourceConfig()?.initialization ?? .eager
+  func resolvedInitialization() -> NitroSourceStartup {
+    currentSourceConfig()?.startup ?? .eager
   }
 
   func resetPlaybackError() {
@@ -309,14 +331,202 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     lastError = PlaybackError(code: code, message: message)
   }
 
+  func beginSourceGeneration() {
+    sourceGeneration += 1
+    startupRecoveryAttempts = 0
+    hasLoadedCurrentSource = false
+    firstFrame = nil
+    firstFrameContext = nil
+    cancelFirstFrameRequest()
+    cancelStartupRecovery()
+    _eventEmitter?.resetStickyState()
+  }
+
+  func markCurrentSourceLoaded() {
+    hasLoadedCurrentSource = true
+    startupRecoveryAttempts = 0
+    cancelStartupRecovery()
+  }
+
+  func cancelStartupRecovery() {
+    startupRecoveryTask?.cancel()
+    startupRecoveryTask = nil
+  }
+
+  func cancelFirstFrameRequest() {
+    firstFrameTask?.cancel()
+    firstFrameTask = nil
+  }
+
+  func currentHybridSource() -> HybridNitroPlayerSource? {
+    source as? HybridNitroPlayerSource
+  }
+
+  func shouldAttemptStartupRecovery() -> Bool {
+    guard !isReleased else { return false }
+    guard hasActiveSource, wantsToPlay, !hasLoadedCurrentSource else { return false }
+    guard startupRecoveryAttempts < maxStartupRecoveryAttempts else { return false }
+    return currentHybridSource()?.supportsStartupRecovery() == true
+  }
+
+  @discardableResult
+  func attemptStartupRecoveryIfNeeded(message: String) -> Bool {
+    guard shouldAttemptStartupRecovery() else {
+      return false
+    }
+
+    startupRecoveryAttempts += 1
+    let generation = sourceGeneration
+    isCurrentlyBuffering = false
+    readyToDisplay = false
+    resetPlaybackError()
+    status = .loading
+    emitPlaybackState()
+
+    cancelStartupRecovery()
+    startupRecoveryTask = Task.detached(priority: .userInitiated) { [weak self] in
+      do {
+        try await Task.sleep(nanoseconds: self?.startupRecoveryDelayNs ?? 0)
+      } catch {
+        return
+      }
+
+      guard let self else { return }
+      guard !self.isReleased, self.hasActiveSource, self.wantsToPlay else { return }
+      guard self.sourceGeneration == generation else { return }
+
+      HlsProxyRuntime.shared.restartForPlaybackRecovery()
+      self.currentHybridSource()?.refreshPlaybackRouteForStartupRecovery()
+      self.initTask?.cancel()
+      self.initTask = nil
+      self.artworkTask?.cancel()
+      self.artworkTask = nil
+
+      do {
+        try await self.prepareBufferedState()
+        DispatchQueue.main.async { [weak self] in
+          guard let self, !self.isReleased, self.sourceGeneration == generation, self.wantsToPlay else {
+            return
+          }
+          self.player.play()
+        }
+      } catch {
+        DispatchQueue.main.async { [weak self] in
+          guard let self, !self.isReleased, self.sourceGeneration == generation else { return }
+          self.failPlayback(message: message.isEmpty ? error.localizedDescription : message)
+        }
+      }
+    }
+
+    return true
+  }
+
+  func failPlayback(message: String) {
+    cancelStartupRecovery()
+    cancelFirstFrameRequest()
+    wantsToPlay = false
+    status = .error
+    isCurrentlyBuffering = false
+    readyToDisplay = false
+    setPlaybackError(code: .unknownUnknown, message: message)
+    if let lastError {
+      _eventEmitter?.onError(lastError)
+    }
+    emitPlaybackState()
+  }
+
+  func cacheFirstFrameContext(sourceUri: String, width: Double, height: Double) {
+    firstFrameContext = FirstFrameContext(
+      sourceUri: sourceUri,
+      headers: currentSourceConfig()?.headers,
+      width: width,
+      height: height
+    )
+  }
+
+  func emitFirstFrame(uri: String, width: Double, height: Double, sourceUri: String, fromCache: Bool) {
+    let data = onFirstFrameData(
+      uri: uri,
+      width: width,
+      height: height,
+      sourceUri: sourceUri,
+      fromCache: fromCache
+    )
+    firstFrame = data
+    _eventEmitter?.onFirstFrame(data)
+  }
+
   func markReadyToDisplay() {
     readyToDisplay = true
+    requestFirstFrameIfNeeded()
     emitPlaybackState()
+  }
+
+  func requestFirstFrameIfNeeded() {
+    guard !isReleased, hasActiveSource, readyToDisplay, firstFrame == nil else { return }
+    guard let context = firstFrameContext else { return }
+    let autoThumbnailEnabled = currentAutoThumbnailEnabled()
+
+    switch currentPreviewMode() {
+    case .manual:
+      guard autoThumbnailEnabled else { return }
+    case .listener:
+      guard autoThumbnailEnabled || _eventEmitter?.hasOnFirstFrameListeners() == true else { return }
+    case .always:
+      break
+    @unknown default:
+      break
+    }
+
+    let generation = sourceGeneration
+    if firstFrameTask != nil {
+      return
+    }
+
+    firstFrameTask = Task.detached(priority: .utility) { [weak self] in
+      guard let self else { return }
+      let result = await VideoPreviewRuntime.shared.getFirstFrame(
+        url: context.sourceUri,
+        headers: context.headers,
+        preview: self.currentSourceConfig()?.preview
+      )
+
+      DispatchQueue.main.async { [weak self] in
+        guard let self else { return }
+        defer { self.firstFrameTask = nil }
+        guard !self.isReleased, self.sourceGeneration == generation, self.hasActiveSource, self.readyToDisplay, self.firstFrame == nil else {
+          return
+        }
+        guard let result else { return }
+        self.emitFirstFrame(
+          uri: result.uri,
+          width: context.width,
+          height: context.height,
+          sourceUri: context.sourceUri,
+          fromCache: result.fromCache
+        )
+      }
+    }
+  }
+
+  private func currentPreviewMode() -> NitroSourcePreviewMode {
+    currentSourceConfig()?.preview?.mode ?? .listener
+  }
+
+  private func currentAutoThumbnailEnabled() -> Bool {
+    currentSourceConfig()?.preview?.autoThumbnail ?? true
   }
 
   func resolvePlayPauseStatus() -> NitroPlayerStatus {
     if player.rate > 0 { return .playing }
-    if wantsToPlay { return status }
+    if wantsToPlay {
+      switch status {
+      case .buffering, .loading, .playing:
+        return status
+      default:
+        return .loading
+      }
+    }
     return .paused
   }
 
@@ -338,7 +548,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
 
     if player.currentItem != nil {
       player.play()
-      status = .playing
+      status = player.rate > 0 ? .playing : resolvePlayPauseStatus()
       isCurrentlyBuffering = false
       emitPlaybackState()
       return
@@ -363,10 +573,10 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
       } catch {
         DispatchQueue.main.async { [weak self] in
           guard let self, !self.isReleased else { return }
-          self.wantsToPlay = false
-          self.status = .error
-          self.setPlaybackError(code: .unknownUnknown, message: error.localizedDescription)
-          self.emitPlaybackState()
+          if self.attemptStartupRecoveryIfNeeded(message: error.localizedDescription) {
+            return
+          }
+          self.failPlayback(message: error.localizedDescription)
         }
       }
     }
@@ -375,6 +585,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   func pause() throws {
     guard !isReleased else { return }
     wantsToPlay = false
+    cancelStartupRecovery()
     player.pause()
 
     if status != .ended && status != .idle {
@@ -413,6 +624,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   func notifyViewAttached() {
     isAttachedToVideoView = true
     cancelPendingTrim()
+    requestFirstFrameIfNeeded()
     NitroPlayerManager.shared.touchFeedHotCandidate(self)
   }
 

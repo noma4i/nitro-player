@@ -22,6 +22,8 @@
 #include "JFunc_void_BandwidthData.hpp"
 #include "JFunc_void_onLoadData.hpp"
 #include "JFunc_void_onLoadStartData.hpp"
+#include "JFunc_void_onFirstFrameData.hpp"
+#include "JFunc_void_PlaybackError.hpp"
 #include "JFunc_void_PlaybackState.hpp"
 #include "JFunc_void_onVolumeChangeData.hpp"
 #include "JHybridNitroPlayerSourceSpec.hpp"
@@ -76,6 +78,8 @@ void registerAllNatives() {
   margelo::nitro::video::JFunc_void_BandwidthData_cxx::registerNatives();
   margelo::nitro::video::JFunc_void_onLoadData_cxx::registerNatives();
   margelo::nitro::video::JFunc_void_onLoadStartData_cxx::registerNatives();
+  margelo::nitro::video::JFunc_void_onFirstFrameData_cxx::registerNatives();
+  margelo::nitro::video::JFunc_void_PlaybackError_cxx::registerNatives();
   margelo::nitro::video::JFunc_void_PlaybackState_cxx::registerNatives();
   margelo::nitro::video::JFunc_void_onVolumeChangeData_cxx::registerNatives();
   margelo::nitro::video::JHybridNitroPlayerSourceSpec::CxxPart::registerNatives();

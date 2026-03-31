@@ -1,12 +1,9 @@
 /**
- * Lifecycle contract tests.
+ * Source contract tests.
  *
- * These tests verify that the source factory and player correctly handle
- * all lifecycle configurations. A failure here means a consumer relying
- * on onLoad/isReady will deadlock (infinite buffering).
- *
- * KEY INVARIANT: Every lifecycle preset must produce a native config that,
- * when paired with preload(), results in a fully initialized player.
+ * These tests lock the v2 JS -> native config boundary:
+ * JS must forward the explicit source DSL without lifecycle presets,
+ * hidden fallback fields, or transport-side mutation.
  */
 
 const mockPreload = jest.fn(() => Promise.resolve());
@@ -39,7 +36,7 @@ const mockCreatePlayer = jest.fn((source: unknown) => ({
     rate: 1,
     isPlaying: false,
     isBuffering: false,
-    isReadyToDisplay: false,
+    isVisualReady: false,
     nativeTimestampMs: 0,
     error: null
   },
@@ -87,78 +84,107 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe('source factory: lifecycle config passthrough', () => {
-  const LIFECYCLE_VALUES = ['feed', 'balanced', 'immersive'] as const;
+describe('source factory: v2 passthrough contract', () => {
+  const STARTUP_VALUES = ['eager', 'lazy'] as const;
+  const TRANSPORT_VALUES = ['auto', 'direct', 'proxy'] as const;
+  const PREVIEW_VALUES = ['listener', 'always', 'manual'] as const;
 
-  it.each(LIFECYCLE_VALUES)('passes lifecycle=%s directly to native without JS-side resolution', lifecycle => {
+  it.each(STARTUP_VALUES)('passes startup=%s directly to native', startup => {
     const { createNitroSource } = require('../core/utils/sourceFactory');
 
-    createNitroSource({ uri: 'https://cdn.example.com/stream.m3u8', lifecycle });
+    createNitroSource({ uri: 'https://cdn.example.com/stream.m3u8', startup });
 
-    expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(expect.objectContaining({ lifecycle }));
+    expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(expect.objectContaining({ startup }));
   });
 
-  it('passes initialization field to native', () => {
-    const { createNitroSource } = require('../core/utils/sourceFactory');
-
-    createNitroSource({ uri: 'https://cdn.example.com/v.mp4', initialization: 'lazy' });
-
-    expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(expect.objectContaining({ initialization: 'lazy' }));
-  });
-
-  it('passes advanced.transport.useHlsProxy to native', () => {
+  it.each(TRANSPORT_VALUES)('passes transport.mode=%s directly to native', mode => {
     const { createNitroSource } = require('../core/utils/sourceFactory');
 
     createNitroSource({
-      uri: 'https://cdn.example.com/v.m3u8',
-      advanced: { transport: { useHlsProxy: false } }
+      uri: 'https://cdn.example.com/stream.m3u8',
+      transport: { mode }
     });
 
     expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        advanced: expect.objectContaining({
-          transport: { useHlsProxy: false }
-        })
+        transport: { mode }
       })
     );
   });
 
-  it('defaults to undefined for all optional fields (native decides defaults)', () => {
+  it.each(PREVIEW_VALUES)('passes preview.mode=%s directly to native', mode => {
+    const { createNitroSource } = require('../core/utils/sourceFactory');
+
+    createNitroSource({
+      uri: 'https://cdn.example.com/video.mp4',
+      preview: { mode }
+    });
+
+    expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preview: { mode }
+      })
+    );
+  });
+
+  it('passes preview.autoThumbnail directly to native', () => {
+    const { createNitroSource } = require('../core/utils/sourceFactory');
+
+    createNitroSource({
+      uri: 'https://cdn.example.com/video.mp4',
+      preview: { autoThumbnail: false }
+    });
+
+    expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preview: { autoThumbnail: false }
+      })
+    );
+  });
+
+  it('passes explicit retention policy to native without JS-side preset resolution', () => {
+    const { createNitroSource } = require('../core/utils/sourceFactory');
+
+    createNitroSource({
+      uri: 'https://cdn.example.com/feed-item.m3u8',
+      retention: {
+        preload: 'metadata',
+        offscreen: 'metadata',
+        trimDelayMs: 3000,
+        feedPoolEligible: true
+      }
+    });
+
+    expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retention: {
+          preload: 'metadata',
+          offscreen: 'metadata',
+          trimDelayMs: 3000,
+          feedPoolEligible: true
+        }
+      })
+    );
+  });
+
+  it('defaults to undefined for all optional v2 fields so native owns defaults', () => {
     const { createNitroSource } = require('../core/utils/sourceFactory');
 
     createNitroSource({ uri: 'https://cdn.example.com/video.mp4' });
 
     const config = mockFromNitroPlayerConfig.mock.calls[0][0];
-    expect(config.lifecycle).toBeUndefined();
-    expect(config.initialization).toBeUndefined();
-    expect(config.advanced).toBeUndefined();
+    expect(config.startup).toBeUndefined();
+    expect(config.buffer).toBeUndefined();
+    expect(config.retention).toBeUndefined();
+    expect(config.transport).toBeUndefined();
+    expect(config.preview).toBeUndefined();
     expect(config.headers).toBeUndefined();
     expect(config.metadata).toBeUndefined();
   });
 });
 
-describe('consumer contract: feed lifecycle metadata-only preload', () => {
-  /**
-   * With lifecycle='feed', native only loads metadata on creation.
-   * play() handles full initialization automatically via async path.
-   * Consumer does NOT need to call initialize() before play().
-   */
-  it('feed lifecycle: config passed to native has lifecycle=feed', () => {
-    const { createNitroSource } = require('../core/utils/sourceFactory');
-
-    createNitroSource({
-      uri: 'https://cdn.example.com/feed-item.m3u8',
-      lifecycle: 'feed'
-    });
-
-    // Native resolves feed -> preloadLevel=metadata (NOT buffered)
-    // play() triggers full init automatically if playerItem is nil
-    expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(expect.objectContaining({ lifecycle: 'feed' }));
-  });
-});
-
-describe('source factory: HLS URL detection belongs to native', () => {
-  it('does NOT modify .m3u8 URLs on JS side (native handles proxy)', () => {
+describe('source factory: route ownership stays native', () => {
+  it('does NOT modify HLS URLs on JS side', () => {
     const { createNitroSource } = require('../core/utils/sourceFactory');
 
     createNitroSource({ uri: 'https://cdn.example.com/live.m3u8' });
@@ -167,7 +193,7 @@ describe('source factory: HLS URL detection belongs to native', () => {
     expect(config.uri).toBe('https://cdn.example.com/live.m3u8');
   });
 
-  it('does NOT modify non-HLS URLs', () => {
+  it('does NOT modify non-HLS URLs on JS side', () => {
     const { createNitroSource } = require('../core/utils/sourceFactory');
 
     createNitroSource({ uri: 'https://cdn.example.com/video.mp4' });
@@ -177,42 +203,45 @@ describe('source factory: HLS URL detection belongs to native', () => {
   });
 });
 
-describe('source factory: config structure matches native expectations', () => {
-  it('NativeNitroPlayerConfig has exactly the expected fields', () => {
+describe('source factory: native config structure', () => {
+  it('NativeNitroPlayerConfig has exactly the expected v2 fields', () => {
     const { createNitroSource } = require('../core/utils/sourceFactory');
 
     createNitroSource({
       uri: 'https://cdn.example.com/v.mp4',
       headers: { Authorization: 'Bearer xxx' },
       metadata: { title: 'Test' },
-      lifecycle: 'balanced',
-      initialization: 'eager',
-      advanced: {
-        buffer: { minBufferMs: 5000 },
-        lifecycle: { preloadLevel: 'buffered' },
-        transport: { useHlsProxy: true }
-      }
+      startup: 'eager',
+      buffer: { minBufferMs: 5000 },
+      retention: { preload: 'buffered', offscreen: 'hot', trimDelayMs: 10000 },
+      transport: { mode: 'auto' },
+      preview: { mode: 'listener', autoThumbnail: true, maxWidth: 480, maxHeight: 480, quality: 70 }
     });
 
     const config = mockFromNitroPlayerConfig.mock.calls[0][0];
     const keys = Object.keys(config).sort();
-    expect(keys).toEqual(['advanced', 'headers', 'initialization', 'lifecycle', 'metadata', 'uri']);
+    expect(keys).toEqual(['buffer', 'headers', 'metadata', 'preview', 'retention', 'startup', 'transport', 'uri']);
   });
 
-  it('does NOT pass unknown fields to native (old API fields stripped)', () => {
+  it('does NOT pass removed legacy fields to native', () => {
     const { createNitroSource } = require('../core/utils/sourceFactory');
 
-    // Simulate old-API fields that might leak through spread operators
-    const configWithOldFields = {
+    const configWithLegacyFields = {
       uri: 'https://cdn.example.com/v.mp4',
+      lifecycle: 'feed',
+      initialization: 'lazy',
+      advanced: { transport: { useHlsProxy: true } },
       memoryConfig: { profile: 'feed' },
       initializeOnCreation: true,
       useHlsProxy: true,
       bufferConfig: { minBufferMs: 5000 }
     };
-    createNitroSource(configWithOldFields as { uri: string });
+    createNitroSource(configWithLegacyFields as { uri: string });
 
     const config = mockFromNitroPlayerConfig.mock.calls[0][0];
+    expect(config).not.toHaveProperty('lifecycle');
+    expect(config).not.toHaveProperty('initialization');
+    expect(config).not.toHaveProperty('advanced');
     expect(config).not.toHaveProperty('memoryConfig');
     expect(config).not.toHaveProperty('initializeOnCreation');
     expect(config).not.toHaveProperty('useHlsProxy');

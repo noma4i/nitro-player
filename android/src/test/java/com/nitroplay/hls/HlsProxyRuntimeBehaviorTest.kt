@@ -40,6 +40,16 @@ class HlsProxyRuntimeBehaviorTest {
   }
 
   @Test
+  fun resolvePlaybackRoute_withoutServer_fallsBackToOriginalUrl() {
+    val originalUrl = "https://cdn.example.com/live.m3u8"
+
+    val result = HlsProxyRuntime.resolvePlaybackRoute(originalUrl, emptyMap())
+
+    assertEquals(originalUrl, result.url)
+    assertFalse(result.isProxying)
+  }
+
+  @Test
   fun stop_preventsImplicitRestart() {
     val url = "https://cdn.example.com/live.m3u8"
 

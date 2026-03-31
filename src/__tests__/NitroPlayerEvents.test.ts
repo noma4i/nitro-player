@@ -17,6 +17,8 @@ function makeMockEventEmitter(): NitroPlayerEventEmitter {
 
   return {
     addOnBandwidthUpdateListener: jest.fn(cb => addListener('onBandwidthUpdate', cb)),
+    addOnErrorListener: jest.fn(cb => addListener('onError', cb)),
+    addOnFirstFrameListener: jest.fn(cb => addListener('onFirstFrame', cb)),
     addOnLoadListener: jest.fn(cb => addListener('onLoad', cb)),
     addOnLoadStartListener: jest.fn(cb => addListener('onLoadStart', cb)),
     addOnPlaybackStateListener: jest.fn(cb => addListener('onPlaybackState', cb)),
@@ -95,6 +97,26 @@ describe('NitroPlayerEvents', () => {
     sub1.remove();
     // sub2 should still be valid
     expect(typeof sub2.remove).toBe('function');
+  });
+
+  it('supports onError subscriptions', () => {
+    const emitter = makeMockEventEmitter();
+    const events = new NitroPlayerEvents(emitter);
+    const callback = jest.fn();
+
+    events.addEventListener('onError', callback);
+
+    expect(emitter.addOnErrorListener).toHaveBeenCalledWith(callback);
+  });
+
+  it('supports onFirstFrame subscriptions', () => {
+    const emitter = makeMockEventEmitter();
+    const events = new NitroPlayerEvents(emitter);
+    const callback = jest.fn();
+
+    events.addEventListener('onFirstFrame', callback);
+
+    expect(emitter.addOnFirstFrameListener).toHaveBeenCalledWith(callback);
   });
 
   it('throws for unsupported event', () => {

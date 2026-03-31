@@ -13,22 +13,24 @@
 #include "BufferConfig.hpp"
 #include "JBufferConfig.hpp"
 #include "JLivePlaybackParams.hpp"
-#include "JMemoryProfile.hpp"
-#include "JNitroSourceAdvancedConfig.hpp"
-#include "JNitroSourceAdvancedLifecycleConfig.hpp"
-#include "JNitroSourceAdvancedTransportConfig.hpp"
-#include "JNitroSourceInitialization.hpp"
 #include "JNitroSourceMetadata.hpp"
+#include "JNitroSourcePreviewConfig.hpp"
+#include "JNitroSourcePreviewMode.hpp"
+#include "JNitroSourceRetentionConfig.hpp"
+#include "JNitroSourceStartup.hpp"
+#include "JNitroSourceTransportConfig.hpp"
+#include "JNitroSourceTransportMode.hpp"
 #include "JOffscreenRetention.hpp"
 #include "JPreloadLevel.hpp"
 #include "JResolution.hpp"
 #include "LivePlaybackParams.hpp"
-#include "MemoryProfile.hpp"
-#include "NitroSourceAdvancedConfig.hpp"
-#include "NitroSourceAdvancedLifecycleConfig.hpp"
-#include "NitroSourceAdvancedTransportConfig.hpp"
-#include "NitroSourceInitialization.hpp"
 #include "NitroSourceMetadata.hpp"
+#include "NitroSourcePreviewConfig.hpp"
+#include "NitroSourcePreviewMode.hpp"
+#include "NitroSourceRetentionConfig.hpp"
+#include "NitroSourceStartup.hpp"
+#include "NitroSourceTransportConfig.hpp"
+#include "NitroSourceTransportMode.hpp"
 #include "OffscreenRetention.hpp"
 #include "PreloadLevel.hpp"
 #include "Resolution.hpp"
@@ -61,12 +63,16 @@ namespace margelo::nitro::video {
       jni::local_ref<jni::JMap<jni::JString, jni::JString>> headers = this->getFieldValue(fieldHeaders);
       static const auto fieldMetadata = clazz->getField<JNitroSourceMetadata>("metadata");
       jni::local_ref<JNitroSourceMetadata> metadata = this->getFieldValue(fieldMetadata);
-      static const auto fieldLifecycle = clazz->getField<JMemoryProfile>("lifecycle");
-      jni::local_ref<JMemoryProfile> lifecycle = this->getFieldValue(fieldLifecycle);
-      static const auto fieldInitialization = clazz->getField<JNitroSourceInitialization>("initialization");
-      jni::local_ref<JNitroSourceInitialization> initialization = this->getFieldValue(fieldInitialization);
-      static const auto fieldAdvanced = clazz->getField<JNitroSourceAdvancedConfig>("advanced");
-      jni::local_ref<JNitroSourceAdvancedConfig> advanced = this->getFieldValue(fieldAdvanced);
+      static const auto fieldStartup = clazz->getField<JNitroSourceStartup>("startup");
+      jni::local_ref<JNitroSourceStartup> startup = this->getFieldValue(fieldStartup);
+      static const auto fieldBuffer = clazz->getField<JBufferConfig>("buffer");
+      jni::local_ref<JBufferConfig> buffer = this->getFieldValue(fieldBuffer);
+      static const auto fieldRetention = clazz->getField<JNitroSourceRetentionConfig>("retention");
+      jni::local_ref<JNitroSourceRetentionConfig> retention = this->getFieldValue(fieldRetention);
+      static const auto fieldTransport = clazz->getField<JNitroSourceTransportConfig>("transport");
+      jni::local_ref<JNitroSourceTransportConfig> transport = this->getFieldValue(fieldTransport);
+      static const auto fieldPreview = clazz->getField<JNitroSourcePreviewConfig>("preview");
+      jni::local_ref<JNitroSourcePreviewConfig> preview = this->getFieldValue(fieldPreview);
       return NativeNitroPlayerConfig(
         uri->toStdString(),
         headers != nullptr ? std::make_optional([&]() {
@@ -78,9 +84,11 @@ namespace margelo::nitro::video {
           return __map;
         }()) : std::nullopt,
         metadata != nullptr ? std::make_optional(metadata->toCpp()) : std::nullopt,
-        lifecycle != nullptr ? std::make_optional(lifecycle->toCpp()) : std::nullopt,
-        initialization != nullptr ? std::make_optional(initialization->toCpp()) : std::nullopt,
-        advanced != nullptr ? std::make_optional(advanced->toCpp()) : std::nullopt
+        startup != nullptr ? std::make_optional(startup->toCpp()) : std::nullopt,
+        buffer != nullptr ? std::make_optional(buffer->toCpp()) : std::nullopt,
+        retention != nullptr ? std::make_optional(retention->toCpp()) : std::nullopt,
+        transport != nullptr ? std::make_optional(transport->toCpp()) : std::nullopt,
+        preview != nullptr ? std::make_optional(preview->toCpp()) : std::nullopt
       );
     }
 
@@ -90,7 +98,7 @@ namespace margelo::nitro::video {
      */
     [[maybe_unused]]
     static jni::local_ref<JNativeNitroPlayerConfig::javaobject> fromCpp(const NativeNitroPlayerConfig& value) {
-      using JSignature = JNativeNitroPlayerConfig(jni::alias_ref<jni::JString>, jni::alias_ref<jni::JMap<jni::JString, jni::JString>>, jni::alias_ref<JNitroSourceMetadata>, jni::alias_ref<JMemoryProfile>, jni::alias_ref<JNitroSourceInitialization>, jni::alias_ref<JNitroSourceAdvancedConfig>);
+      using JSignature = JNativeNitroPlayerConfig(jni::alias_ref<jni::JString>, jni::alias_ref<jni::JMap<jni::JString, jni::JString>>, jni::alias_ref<JNitroSourceMetadata>, jni::alias_ref<JNitroSourceStartup>, jni::alias_ref<JBufferConfig>, jni::alias_ref<JNitroSourceRetentionConfig>, jni::alias_ref<JNitroSourceTransportConfig>, jni::alias_ref<JNitroSourcePreviewConfig>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -104,9 +112,11 @@ namespace margelo::nitro::video {
           return __map;
         }() : nullptr,
         value.metadata.has_value() ? JNitroSourceMetadata::fromCpp(value.metadata.value()) : nullptr,
-        value.lifecycle.has_value() ? JMemoryProfile::fromCpp(value.lifecycle.value()) : nullptr,
-        value.initialization.has_value() ? JNitroSourceInitialization::fromCpp(value.initialization.value()) : nullptr,
-        value.advanced.has_value() ? JNitroSourceAdvancedConfig::fromCpp(value.advanced.value()) : nullptr
+        value.startup.has_value() ? JNitroSourceStartup::fromCpp(value.startup.value()) : nullptr,
+        value.buffer.has_value() ? JBufferConfig::fromCpp(value.buffer.value()) : nullptr,
+        value.retention.has_value() ? JNitroSourceRetentionConfig::fromCpp(value.retention.value()) : nullptr,
+        value.transport.has_value() ? JNitroSourceTransportConfig::fromCpp(value.transport.value()) : nullptr,
+        value.preview.has_value() ? JNitroSourcePreviewConfig::fromCpp(value.preview.value()) : nullptr
       );
     }
   };

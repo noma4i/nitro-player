@@ -13,6 +13,10 @@ export class NitroPlayerEvents {
     switch (event) {
       case 'onBandwidthUpdate':
         return this.eventEmitter.addOnBandwidthUpdateListener(callback as PlayerEvents['onBandwidthUpdate']);
+      case 'onError':
+        return this.eventEmitter.addOnErrorListener(callback as PlayerEvents['onError']);
+      case 'onFirstFrame':
+        return this.eventEmitter.addOnFirstFrameListener(callback as PlayerEvents['onFirstFrame']);
       case 'onLoad':
         return this.eventEmitter.addOnLoadListener(callback as PlayerEvents['onLoad']);
       case 'onLoadStart':

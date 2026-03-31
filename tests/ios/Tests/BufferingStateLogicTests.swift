@@ -100,4 +100,18 @@ final class BufferingStateLogicTests: XCTestCase {
     XCTAssertFalse(isCurrentlyBuffering)
     XCTAssertEqual(status, .ended)
   }
+
+  func testResolvePlayPauseStatusWhenWantsToPlayAfterErrorReturnsLoading() {
+    status = .error
+    let resolved: TestPlayerStatus = {
+      switch status {
+      case .buffering, .loading, .playing:
+        return status
+      default:
+        return .loading
+      }
+    }()
+
+    XCTAssertEqual(resolved, .loading)
+  }
 }

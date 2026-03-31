@@ -188,8 +188,8 @@ namespace margelo::nitro::video {
     inline bool getIsBuffering() noexcept override {
       return _swiftPart.isBuffering();
     }
-    inline bool getIsReadyToDisplay() noexcept override {
-      return _swiftPart.isReadyToDisplay();
+    inline bool getIsVisualReady() noexcept override {
+      return _swiftPart.isVisualReady();
     }
 
   public:

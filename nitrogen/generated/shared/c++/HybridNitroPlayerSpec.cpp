@@ -42,7 +42,7 @@ namespace margelo::nitro::video {
       prototype.registerHybridSetter("playWhenInactive", &HybridNitroPlayerSpec::setPlayWhenInactive);
       prototype.registerHybridGetter("isPlaying", &HybridNitroPlayerSpec::getIsPlaying);
       prototype.registerHybridGetter("isBuffering", &HybridNitroPlayerSpec::getIsBuffering);
-      prototype.registerHybridGetter("isReadyToDisplay", &HybridNitroPlayerSpec::getIsReadyToDisplay);
+      prototype.registerHybridGetter("isVisualReady", &HybridNitroPlayerSpec::getIsVisualReady);
       prototype.registerHybridMethod("replaceSourceAsync", &HybridNitroPlayerSpec::replaceSourceAsync);
       prototype.registerHybridMethod("clearSourceAsync", &HybridNitroPlayerSpec::clearSourceAsync);
       prototype.registerHybridMethod("release", &HybridNitroPlayerSpec::release);

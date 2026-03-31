@@ -32,8 +32,6 @@ namespace margelo::nitro::video { enum class IgnoreSilentSwitchMode; }
 namespace margelo::nitro::video { struct ListenerSubscription; }
 // Forward declaration of `LivePlaybackParams` to properly resolve imports.
 namespace margelo::nitro::video { struct LivePlaybackParams; }
-// Forward declaration of `MemoryProfile` to properly resolve imports.
-namespace margelo::nitro::video { enum class MemoryProfile; }
 // Forward declaration of `MixAudioMode` to properly resolve imports.
 namespace margelo::nitro::video { enum class MixAudioMode; }
 // Forward declaration of `NitroPlayerErrorCode` to properly resolve imports.
@@ -44,16 +42,20 @@ namespace margelo::nitro::video { struct NitroPlayerInformation; }
 namespace margelo::nitro::video { enum class NitroPlayerOrientation; }
 // Forward declaration of `NitroPlayerStatus` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerStatus; }
-// Forward declaration of `NitroSourceAdvancedConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct NitroSourceAdvancedConfig; }
-// Forward declaration of `NitroSourceAdvancedLifecycleConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct NitroSourceAdvancedLifecycleConfig; }
-// Forward declaration of `NitroSourceAdvancedTransportConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct NitroSourceAdvancedTransportConfig; }
-// Forward declaration of `NitroSourceInitialization` to properly resolve imports.
-namespace margelo::nitro::video { enum class NitroSourceInitialization; }
 // Forward declaration of `NitroSourceMetadata` to properly resolve imports.
 namespace margelo::nitro::video { struct NitroSourceMetadata; }
+// Forward declaration of `NitroSourcePreviewConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroSourcePreviewConfig; }
+// Forward declaration of `NitroSourcePreviewMode` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroSourcePreviewMode; }
+// Forward declaration of `NitroSourceRetentionConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroSourceRetentionConfig; }
+// Forward declaration of `NitroSourceStartup` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroSourceStartup; }
+// Forward declaration of `NitroSourceTransportConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroSourceTransportConfig; }
+// Forward declaration of `NitroSourceTransportMode` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroSourceTransportMode; }
 // Forward declaration of `OffscreenRetention` to properly resolve imports.
 namespace margelo::nitro::video { enum class OffscreenRetention; }
 // Forward declaration of `PlaybackError` to properly resolve imports.
@@ -66,6 +68,8 @@ namespace margelo::nitro::video { enum class PreloadLevel; }
 namespace margelo::nitro::video { struct Resolution; }
 // Forward declaration of `SourceType` to properly resolve imports.
 namespace margelo::nitro::video { enum class SourceType; }
+// Forward declaration of `onFirstFrameData` to properly resolve imports.
+namespace margelo::nitro::video { struct onFirstFrameData; }
 // Forward declaration of `onLoadData` to properly resolve imports.
 namespace margelo::nitro::video { struct onLoadData; }
 // Forward declaration of `onLoadStartData` to properly resolve imports.
@@ -102,23 +106,25 @@ namespace NitroPlay { class HybridNitroPlayerViewManagerSpec_cxx; }
 #include "IgnoreSilentSwitchMode.hpp"
 #include "ListenerSubscription.hpp"
 #include "LivePlaybackParams.hpp"
-#include "MemoryProfile.hpp"
 #include "MixAudioMode.hpp"
 #include "NitroPlayerErrorCode.hpp"
 #include "NitroPlayerInformation.hpp"
 #include "NitroPlayerOrientation.hpp"
 #include "NitroPlayerStatus.hpp"
-#include "NitroSourceAdvancedConfig.hpp"
-#include "NitroSourceAdvancedLifecycleConfig.hpp"
-#include "NitroSourceAdvancedTransportConfig.hpp"
-#include "NitroSourceInitialization.hpp"
 #include "NitroSourceMetadata.hpp"
+#include "NitroSourcePreviewConfig.hpp"
+#include "NitroSourcePreviewMode.hpp"
+#include "NitroSourceRetentionConfig.hpp"
+#include "NitroSourceStartup.hpp"
+#include "NitroSourceTransportConfig.hpp"
+#include "NitroSourceTransportMode.hpp"
 #include "OffscreenRetention.hpp"
 #include "PlaybackError.hpp"
 #include "PlaybackState.hpp"
 #include "PreloadLevel.hpp"
 #include "Resolution.hpp"
 #include "SourceType.hpp"
+#include "onFirstFrameData.hpp"
 #include "onLoadData.hpp"
 #include "onLoadStartData.hpp"
 #include "onVolumeChangeData.hpp"
@@ -396,6 +402,50 @@ namespace margelo::nitro::video::bridge::swift {
     return Func_void_onLoadStartData_Wrapper(std::move(value));
   }
   
+  // pragma MARK: std::function<void(const onFirstFrameData& /* data */)>
+  /**
+   * Specialized version of `std::function<void(const onFirstFrameData&)>`.
+   */
+  using Func_void_onFirstFrameData = std::function<void(const onFirstFrameData& /* data */)>;
+  /**
+   * Wrapper class for a `std::function<void(const onFirstFrameData& / * data * /)>`, this can be used from Swift.
+   */
+  class Func_void_onFirstFrameData_Wrapper final {
+  public:
+    explicit Func_void_onFirstFrameData_Wrapper(std::function<void(const onFirstFrameData& /* data */)>&& func): _function(std::make_unique<std::function<void(const onFirstFrameData& /* data */)>>(std::move(func))) {}
+    inline void call(onFirstFrameData data) const noexcept {
+      _function->operator()(data);
+    }
+  private:
+    std::unique_ptr<std::function<void(const onFirstFrameData& /* data */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_onFirstFrameData create_Func_void_onFirstFrameData(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_onFirstFrameData_Wrapper wrap_Func_void_onFirstFrameData(Func_void_onFirstFrameData value) noexcept {
+    return Func_void_onFirstFrameData_Wrapper(std::move(value));
+  }
+  
+  // pragma MARK: std::function<void(const PlaybackError& /* error */)>
+  /**
+   * Specialized version of `std::function<void(const PlaybackError&)>`.
+   */
+  using Func_void_PlaybackError = std::function<void(const PlaybackError& /* error */)>;
+  /**
+   * Wrapper class for a `std::function<void(const PlaybackError& / * error * /)>`, this can be used from Swift.
+   */
+  class Func_void_PlaybackError_Wrapper final {
+  public:
+    explicit Func_void_PlaybackError_Wrapper(std::function<void(const PlaybackError& /* error */)>&& func): _function(std::make_unique<std::function<void(const PlaybackError& /* error */)>>(std::move(func))) {}
+    inline void call(PlaybackError error) const noexcept {
+      _function->operator()(error);
+    }
+  private:
+    std::unique_ptr<std::function<void(const PlaybackError& /* error */)>> _function;
+  } SWIFT_NONCOPYABLE;
+  Func_void_PlaybackError create_Func_void_PlaybackError(void* NON_NULL swiftClosureWrapper) noexcept;
+  inline Func_void_PlaybackError_Wrapper wrap_Func_void_PlaybackError(Func_void_PlaybackError value) noexcept {
+    return Func_void_PlaybackError_Wrapper(std::move(value));
+  }
+  
   // pragma MARK: std::function<void(const PlaybackState& /* state */)>
   /**
    * Specialized version of `std::function<void(const PlaybackState&)>`.
@@ -562,33 +612,18 @@ namespace margelo::nitro::video::bridge::swift {
     return optional.value();
   }
   
-  // pragma MARK: std::optional<MemoryProfile>
+  // pragma MARK: std::optional<NitroSourceStartup>
   /**
-   * Specialized version of `std::optional<MemoryProfile>`.
+   * Specialized version of `std::optional<NitroSourceStartup>`.
    */
-  using std__optional_MemoryProfile_ = std::optional<MemoryProfile>;
-  inline std::optional<MemoryProfile> create_std__optional_MemoryProfile_(const MemoryProfile& value) noexcept {
-    return std::optional<MemoryProfile>(value);
+  using std__optional_NitroSourceStartup_ = std::optional<NitroSourceStartup>;
+  inline std::optional<NitroSourceStartup> create_std__optional_NitroSourceStartup_(const NitroSourceStartup& value) noexcept {
+    return std::optional<NitroSourceStartup>(value);
   }
-  inline bool has_value_std__optional_MemoryProfile_(const std::optional<MemoryProfile>& optional) noexcept {
+  inline bool has_value_std__optional_NitroSourceStartup_(const std::optional<NitroSourceStartup>& optional) noexcept {
     return optional.has_value();
   }
-  inline MemoryProfile get_std__optional_MemoryProfile_(const std::optional<MemoryProfile>& optional) noexcept {
-    return optional.value();
-  }
-  
-  // pragma MARK: std::optional<NitroSourceInitialization>
-  /**
-   * Specialized version of `std::optional<NitroSourceInitialization>`.
-   */
-  using std__optional_NitroSourceInitialization_ = std::optional<NitroSourceInitialization>;
-  inline std::optional<NitroSourceInitialization> create_std__optional_NitroSourceInitialization_(const NitroSourceInitialization& value) noexcept {
-    return std::optional<NitroSourceInitialization>(value);
-  }
-  inline bool has_value_std__optional_NitroSourceInitialization_(const std::optional<NitroSourceInitialization>& optional) noexcept {
-    return optional.has_value();
-  }
-  inline NitroSourceInitialization get_std__optional_NitroSourceInitialization_(const std::optional<NitroSourceInitialization>& optional) noexcept {
+  inline NitroSourceStartup get_std__optional_NitroSourceStartup_(const std::optional<NitroSourceStartup>& optional) noexcept {
     return optional.value();
   }
   
@@ -667,21 +702,6 @@ namespace margelo::nitro::video::bridge::swift {
     return optional.value();
   }
   
-  // pragma MARK: std::optional<NitroSourceAdvancedLifecycleConfig>
-  /**
-   * Specialized version of `std::optional<NitroSourceAdvancedLifecycleConfig>`.
-   */
-  using std__optional_NitroSourceAdvancedLifecycleConfig_ = std::optional<NitroSourceAdvancedLifecycleConfig>;
-  inline std::optional<NitroSourceAdvancedLifecycleConfig> create_std__optional_NitroSourceAdvancedLifecycleConfig_(const NitroSourceAdvancedLifecycleConfig& value) noexcept {
-    return std::optional<NitroSourceAdvancedLifecycleConfig>(value);
-  }
-  inline bool has_value_std__optional_NitroSourceAdvancedLifecycleConfig_(const std::optional<NitroSourceAdvancedLifecycleConfig>& optional) noexcept {
-    return optional.has_value();
-  }
-  inline NitroSourceAdvancedLifecycleConfig get_std__optional_NitroSourceAdvancedLifecycleConfig_(const std::optional<NitroSourceAdvancedLifecycleConfig>& optional) noexcept {
-    return optional.value();
-  }
-  
   // pragma MARK: std::optional<bool>
   /**
    * Specialized version of `std::optional<bool>`.
@@ -697,33 +717,78 @@ namespace margelo::nitro::video::bridge::swift {
     return optional.value();
   }
   
-  // pragma MARK: std::optional<NitroSourceAdvancedTransportConfig>
+  // pragma MARK: std::optional<NitroSourceRetentionConfig>
   /**
-   * Specialized version of `std::optional<NitroSourceAdvancedTransportConfig>`.
+   * Specialized version of `std::optional<NitroSourceRetentionConfig>`.
    */
-  using std__optional_NitroSourceAdvancedTransportConfig_ = std::optional<NitroSourceAdvancedTransportConfig>;
-  inline std::optional<NitroSourceAdvancedTransportConfig> create_std__optional_NitroSourceAdvancedTransportConfig_(const NitroSourceAdvancedTransportConfig& value) noexcept {
-    return std::optional<NitroSourceAdvancedTransportConfig>(value);
+  using std__optional_NitroSourceRetentionConfig_ = std::optional<NitroSourceRetentionConfig>;
+  inline std::optional<NitroSourceRetentionConfig> create_std__optional_NitroSourceRetentionConfig_(const NitroSourceRetentionConfig& value) noexcept {
+    return std::optional<NitroSourceRetentionConfig>(value);
   }
-  inline bool has_value_std__optional_NitroSourceAdvancedTransportConfig_(const std::optional<NitroSourceAdvancedTransportConfig>& optional) noexcept {
+  inline bool has_value_std__optional_NitroSourceRetentionConfig_(const std::optional<NitroSourceRetentionConfig>& optional) noexcept {
     return optional.has_value();
   }
-  inline NitroSourceAdvancedTransportConfig get_std__optional_NitroSourceAdvancedTransportConfig_(const std::optional<NitroSourceAdvancedTransportConfig>& optional) noexcept {
+  inline NitroSourceRetentionConfig get_std__optional_NitroSourceRetentionConfig_(const std::optional<NitroSourceRetentionConfig>& optional) noexcept {
     return optional.value();
   }
   
-  // pragma MARK: std::optional<NitroSourceAdvancedConfig>
+  // pragma MARK: std::optional<NitroSourceTransportMode>
   /**
-   * Specialized version of `std::optional<NitroSourceAdvancedConfig>`.
+   * Specialized version of `std::optional<NitroSourceTransportMode>`.
    */
-  using std__optional_NitroSourceAdvancedConfig_ = std::optional<NitroSourceAdvancedConfig>;
-  inline std::optional<NitroSourceAdvancedConfig> create_std__optional_NitroSourceAdvancedConfig_(const NitroSourceAdvancedConfig& value) noexcept {
-    return std::optional<NitroSourceAdvancedConfig>(value);
+  using std__optional_NitroSourceTransportMode_ = std::optional<NitroSourceTransportMode>;
+  inline std::optional<NitroSourceTransportMode> create_std__optional_NitroSourceTransportMode_(const NitroSourceTransportMode& value) noexcept {
+    return std::optional<NitroSourceTransportMode>(value);
   }
-  inline bool has_value_std__optional_NitroSourceAdvancedConfig_(const std::optional<NitroSourceAdvancedConfig>& optional) noexcept {
+  inline bool has_value_std__optional_NitroSourceTransportMode_(const std::optional<NitroSourceTransportMode>& optional) noexcept {
     return optional.has_value();
   }
-  inline NitroSourceAdvancedConfig get_std__optional_NitroSourceAdvancedConfig_(const std::optional<NitroSourceAdvancedConfig>& optional) noexcept {
+  inline NitroSourceTransportMode get_std__optional_NitroSourceTransportMode_(const std::optional<NitroSourceTransportMode>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<NitroSourceTransportConfig>
+  /**
+   * Specialized version of `std::optional<NitroSourceTransportConfig>`.
+   */
+  using std__optional_NitroSourceTransportConfig_ = std::optional<NitroSourceTransportConfig>;
+  inline std::optional<NitroSourceTransportConfig> create_std__optional_NitroSourceTransportConfig_(const NitroSourceTransportConfig& value) noexcept {
+    return std::optional<NitroSourceTransportConfig>(value);
+  }
+  inline bool has_value_std__optional_NitroSourceTransportConfig_(const std::optional<NitroSourceTransportConfig>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline NitroSourceTransportConfig get_std__optional_NitroSourceTransportConfig_(const std::optional<NitroSourceTransportConfig>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<NitroSourcePreviewMode>
+  /**
+   * Specialized version of `std::optional<NitroSourcePreviewMode>`.
+   */
+  using std__optional_NitroSourcePreviewMode_ = std::optional<NitroSourcePreviewMode>;
+  inline std::optional<NitroSourcePreviewMode> create_std__optional_NitroSourcePreviewMode_(const NitroSourcePreviewMode& value) noexcept {
+    return std::optional<NitroSourcePreviewMode>(value);
+  }
+  inline bool has_value_std__optional_NitroSourcePreviewMode_(const std::optional<NitroSourcePreviewMode>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline NitroSourcePreviewMode get_std__optional_NitroSourcePreviewMode_(const std::optional<NitroSourcePreviewMode>& optional) noexcept {
+    return optional.value();
+  }
+  
+  // pragma MARK: std::optional<NitroSourcePreviewConfig>
+  /**
+   * Specialized version of `std::optional<NitroSourcePreviewConfig>`.
+   */
+  using std__optional_NitroSourcePreviewConfig_ = std::optional<NitroSourcePreviewConfig>;
+  inline std::optional<NitroSourcePreviewConfig> create_std__optional_NitroSourcePreviewConfig_(const NitroSourcePreviewConfig& value) noexcept {
+    return std::optional<NitroSourcePreviewConfig>(value);
+  }
+  inline bool has_value_std__optional_NitroSourcePreviewConfig_(const std::optional<NitroSourcePreviewConfig>& optional) noexcept {
+    return optional.has_value();
+  }
+  inline NitroSourcePreviewConfig get_std__optional_NitroSourcePreviewConfig_(const std::optional<NitroSourcePreviewConfig>& optional) noexcept {
     return optional.value();
   }
   

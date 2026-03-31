@@ -1,5 +1,10 @@
 import Foundation
 
+struct HlsProxyRouteResolution {
+  let url: String
+  let isProxying: Bool
+}
+
 final class HlsProxyRuntime {
   static let shared = HlsProxyRuntime()
 
@@ -38,10 +43,7 @@ final class HlsProxyRuntime {
   }
 
   func getProxiedUrl(url: String, headers: [String: String]?) -> String {
-    ensureStarted()
-    return runOnMainSync {
-      controller.proxiedManifestUrl(for: url, headers: headers) ?? url
-    }
+    resolvePlaybackRoute(url: url, headers: headers).url
   }
 
   func prefetchFirstSegment(url: String, headers: [String: String]?) async throws {
@@ -49,10 +51,11 @@ final class HlsProxyRuntime {
 
     let shouldPrefetch = stateQueue.sync { () -> Bool in
       let now = Date()
-      if let last = prefetchTimestamps[url], now.timeIntervalSince(last) < prefetchDedupMs {
+      let dedupKey = HlsIdentity.sourceKey(url: url, headers: headers)
+      if let last = prefetchTimestamps[dedupKey], now.timeIntervalSince(last) < prefetchDedupMs {
         return false
       }
-      prefetchTimestamps[url] = now
+      prefetchTimestamps[dedupKey] = now
       if prefetchTimestamps.count > 500 {
         prefetchTimestamps = prefetchTimestamps.filter { now.timeIntervalSince($0.value) < prefetchDedupMs }
       }
@@ -72,19 +75,53 @@ final class HlsProxyRuntime {
     }
   }
 
-  func getStreamCacheStats(url: String) -> [String: Any] {
+  func getStreamCacheStats(url: String, headers: [String: String]?) -> [String: Any] {
     return runOnMainSync {
-      controller.getCacheStats(streamKey: url)
+      controller.getCacheStats(streamKey: HlsIdentity.sourceKey(url: url, headers: headers))
     }
   }
 
   func getThumbnailUrl(url: String, headers: [String: String]?) async -> String? {
-    return await controller.getThumbnailUrl(for: url, headers: headers)
+    return await VideoPreviewRuntime.shared.getFirstFrame(url: url, headers: headers, preview: nil)?.uri
   }
 
   func clearCache() {
     runOnMainSync {
       controller.clearCache()
+    }
+  }
+
+  func clearPreview() {
+    VideoPreviewRuntime.shared.clear()
+  }
+
+  func resolvePlaybackRoute(url: String, headers: [String: String]?) -> HlsProxyRouteResolution {
+    ensureStarted()
+    let proxiedUrl = runOnMainSync {
+      controller.proxiedManifestUrl(for: url, headers: headers)
+    }
+    return HlsProxyRouteResolution(
+      url: proxiedUrl ?? url,
+      isProxying: proxiedUrl != nil
+    )
+  }
+
+  func restartForPlaybackRecovery() {
+    let restartPort = stateQueue.sync { () -> Int? in
+      guard !isExplicitlyStopped else {
+        return nil
+      }
+      didAutoStart = true
+      return port
+    }
+
+    guard let restartPort else {
+      return
+    }
+
+    runOnMainSync {
+      controller.stop()
+      controller.start(port: restartPort)
     }
   }
 

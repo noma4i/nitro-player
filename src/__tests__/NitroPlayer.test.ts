@@ -189,7 +189,7 @@ describe('NitroPlayer async methods', () => {
     rate: 1,
     isPlaying: false,
     isBuffering: false,
-    isReadyToDisplay: false,
+    isVisualReady: false,
     nativeTimestampMs: 0
   };
 
@@ -383,7 +383,7 @@ describe('NitroPlayer getters', () => {
     rate: 1.5,
     isPlaying: true,
     isBuffering: false,
-    isReadyToDisplay: true,
+    isVisualReady: true,
     nativeTimestampMs: 0
   };
 
@@ -550,5 +550,12 @@ describe('NitroPlayer getters', () => {
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     expect(player.isBuffering).toBe(false);
+  });
+
+  it('isVisualReady reads from playbackState.isVisualReady', () => {
+    const { NitroPlayer } = require('../core/NitroPlayer');
+    const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
+
+    expect(player.isVisualReady).toBe(true);
   });
 });

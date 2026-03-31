@@ -12,6 +12,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
   // MARK: - NitroPlayerObserverDelegate
 
   func onPlayedToEnd(player: AVPlayer) {
+    cancelStartupRecovery()
     wantsToPlay = false
     status = .ended
     resetPlaybackError()
@@ -56,12 +57,11 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
   func onTimeControlStatusChanged(status: AVPlayer.TimeControlStatus) {
     if player.status == .failed || playerItem?.status == .failed {
-      wantsToPlay = false
-      self.status = .error
-      isCurrentlyBuffering = false
-      readyToDisplay = false
-      setPlaybackError(code: .unknownUnknown, message: player.error?.localizedDescription ?? playerItem?.error?.localizedDescription ?? "Unknown playback error")
-      emitPlaybackState()
+      let message = player.error?.localizedDescription ?? playerItem?.error?.localizedDescription ?? "Unknown playback error"
+      if attemptStartupRecoveryIfNeeded(message: message) {
+        return
+      }
+      failPlayback(message: message)
       return
     }
 
@@ -94,22 +94,21 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
   func onPlayerStatusChanged(status: AVPlayer.Status) {
     if status == .failed || playerItem?.status == .failed {
-      wantsToPlay = false
-      self.status = .error
-      isCurrentlyBuffering = false
-      readyToDisplay = false
-      setPlaybackError(code: .unknownUnknown, message: player.error?.localizedDescription ?? playerItem?.error?.localizedDescription ?? "Unknown playback error")
-      updateAndEmitPlaybackState()
+      let message = player.error?.localizedDescription ?? playerItem?.error?.localizedDescription ?? "Unknown playback error"
+      if attemptStartupRecoveryIfNeeded(message: message) {
+        return
+      }
+      failPlayback(message: message)
     }
   }
 
   func onPlayerItemStatusChanged(status: AVPlayerItem.Status) {
     if status == .failed {
-      wantsToPlay = false
-      self.status = .error
-      isCurrentlyBuffering = false
-      setPlaybackError(code: .unknownUnknown, message: playerItem?.error?.localizedDescription ?? "Unknown playback error")
-      updateAndEmitPlaybackState()
+      let message = playerItem?.error?.localizedDescription ?? "Unknown playback error"
+      if attemptStartupRecoveryIfNeeded(message: message) {
+        return
+      }
+      failPlayback(message: message)
       return
     }
 
@@ -128,6 +127,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
     case .readyToPlay:
       guard let playerItem else { return }
+      markCurrentSourceLoaded()
       resetPlaybackError()
 
       let height = playerItem.presentationSize.height
@@ -141,10 +141,13 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       )
 
       if let asset = playerItem.asset as? AVURLAsset {
-        let sourceUrl = (source as? HybridNitroPlayerSource)?.url.absoluteString ?? asset.url.absoluteString
-        Task.detached {
-          _ = await HlsProxyRuntime.shared.getThumbnailUrl(url: sourceUrl, headers: nil)
-        }
+        let sourceUrl = currentHybridSource()?.previewSourceUri() ?? asset.url.absoluteString
+        cacheFirstFrameContext(
+          sourceUri: sourceUrl,
+          width: width,
+          height: height
+        )
+        requestFirstFrameIfNeeded()
       }
 
       if playerItem.isPlaybackLikelyToKeepUp
@@ -155,11 +158,12 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       }
 
     case .failed:
-      wantsToPlay = false
-      self.status = .error
-      isCurrentlyBuffering = false
-      readyToDisplay = false
-      setPlaybackError(code: .unknownUnknown, message: playerItem?.error?.localizedDescription ?? "Unknown playback error")
+      let message = playerItem?.error?.localizedDescription ?? "Unknown playback error"
+      if attemptStartupRecoveryIfNeeded(message: message) {
+        return
+      }
+      failPlayback(message: message)
+      return
 
     @unknown default:
       break

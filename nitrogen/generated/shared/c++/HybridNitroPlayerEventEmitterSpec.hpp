@@ -21,6 +21,10 @@ namespace margelo::nitro::video { struct BandwidthData; }
 namespace margelo::nitro::video { struct onLoadData; }
 // Forward declaration of `onLoadStartData` to properly resolve imports.
 namespace margelo::nitro::video { struct onLoadStartData; }
+// Forward declaration of `onFirstFrameData` to properly resolve imports.
+namespace margelo::nitro::video { struct onFirstFrameData; }
+// Forward declaration of `PlaybackError` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackError; }
 // Forward declaration of `PlaybackState` to properly resolve imports.
 namespace margelo::nitro::video { struct PlaybackState; }
 // Forward declaration of `onVolumeChangeData` to properly resolve imports.
@@ -31,6 +35,8 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include <functional>
 #include "onLoadData.hpp"
 #include "onLoadStartData.hpp"
+#include "onFirstFrameData.hpp"
+#include "PlaybackError.hpp"
 #include "PlaybackState.hpp"
 #include "onVolumeChangeData.hpp"
 
@@ -68,6 +74,8 @@ namespace margelo::nitro::video {
       virtual ListenerSubscription addOnBandwidthUpdateListener(const std::function<void(const BandwidthData& /* data */)>& listener) = 0;
       virtual ListenerSubscription addOnLoadListener(const std::function<void(const onLoadData& /* data */)>& listener) = 0;
       virtual ListenerSubscription addOnLoadStartListener(const std::function<void(const onLoadStartData& /* data */)>& listener) = 0;
+      virtual ListenerSubscription addOnFirstFrameListener(const std::function<void(const onFirstFrameData& /* data */)>& listener) = 0;
+      virtual ListenerSubscription addOnErrorListener(const std::function<void(const PlaybackError& /* error */)>& listener) = 0;
       virtual ListenerSubscription addOnPlaybackStateListener(const std::function<void(const PlaybackState& /* state */)>& listener) = 0;
       virtual ListenerSubscription addOnVolumeChangeListener(const std::function<void(const onVolumeChangeData& /* data */)>& listener) = 0;
       virtual void clearAllListeners() = 0;

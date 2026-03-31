@@ -124,6 +124,22 @@ namespace margelo::nitro::video::bridge::swift {
     };
   }
   
+  // pragma MARK: std::function<void(const onFirstFrameData& /* data */)>
+  Func_void_onFirstFrameData create_Func_void_onFirstFrameData(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlay::Func_void_onFirstFrameData::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const onFirstFrameData& data) mutable -> void {
+      swiftClosure.call(data);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const PlaybackError& /* error */)>
+  Func_void_PlaybackError create_Func_void_PlaybackError(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlay::Func_void_PlaybackError::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const PlaybackError& error) mutable -> void {
+      swiftClosure.call(error);
+    };
+  }
+  
   // pragma MARK: std::function<void(const PlaybackState& /* state */)>
   Func_void_PlaybackState create_Func_void_PlaybackState(void* NON_NULL swiftClosureWrapper) noexcept {
     auto swiftClosure = NitroPlay::Func_void_PlaybackState::fromUnsafe(swiftClosureWrapper);

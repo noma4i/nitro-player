@@ -233,8 +233,8 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     return this.playbackState.isBuffering;
   }
 
-  get isReadyToDisplay(): boolean {
-    return this.playbackState.isReadyToDisplay;
+  get isVisualReady(): boolean {
+    return this.playbackState.isVisualReady;
   }
 
   async initialize(): Promise<void> {

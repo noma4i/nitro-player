@@ -38,6 +38,12 @@ final class ListenerRegistry {
     lock.unlock()
   }
 
+  func hasListeners(event: String) -> Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    return listeners.contains { $0.eventName == event }
+  }
+
   private func remove(id: UUID) {
     lock.lock()
     listeners.removeAll { $0.id == id }

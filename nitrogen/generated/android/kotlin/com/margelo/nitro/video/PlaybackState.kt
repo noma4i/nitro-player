@@ -43,7 +43,7 @@ data class PlaybackState(
   val isBuffering: Boolean,
   @DoNotStrip
   @Keep
-  val isReadyToDisplay: Boolean,
+  val isVisualReady: Boolean,
   @DoNotStrip
   @Keep
   val error: Variant_NullType_PlaybackError?,
@@ -61,8 +61,8 @@ data class PlaybackState(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(status: NitroPlayerStatus, currentTime: Double, duration: Double, bufferDuration: Double, bufferedPosition: Double, rate: Double, isPlaying: Boolean, isBuffering: Boolean, isReadyToDisplay: Boolean, error: Variant_NullType_PlaybackError?, nativeTimestampMs: Double): PlaybackState {
-      return PlaybackState(status, currentTime, duration, bufferDuration, bufferedPosition, rate, isPlaying, isBuffering, isReadyToDisplay, error, nativeTimestampMs)
+    private fun fromCpp(status: NitroPlayerStatus, currentTime: Double, duration: Double, bufferDuration: Double, bufferedPosition: Double, rate: Double, isPlaying: Boolean, isBuffering: Boolean, isVisualReady: Boolean, error: Variant_NullType_PlaybackError?, nativeTimestampMs: Double): PlaybackState {
+      return PlaybackState(status, currentTime, duration, bufferDuration, bufferedPosition, rate, isPlaying, isBuffering, isVisualReady, error, nativeTimestampMs)
     }
   }
 }

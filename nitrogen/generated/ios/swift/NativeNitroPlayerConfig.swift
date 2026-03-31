@@ -18,7 +18,7 @@ public extension NativeNitroPlayerConfig {
   /**
    * Create a new instance of `NativeNitroPlayerConfig`.
    */
-  init(uri: String, headers: Dictionary<String, String>?, metadata: NitroSourceMetadata?, lifecycle: MemoryProfile?, initialization: NitroSourceInitialization?, advanced: NitroSourceAdvancedConfig?) {
+  init(uri: String, headers: Dictionary<String, String>?, metadata: NitroSourceMetadata?, startup: NitroSourceStartup?, buffer: BufferConfig?, retention: NitroSourceRetentionConfig?, transport: NitroSourceTransportConfig?, preview: NitroSourcePreviewConfig?) {
     self.init(std.string(uri), { () -> bridge.std__optional_std__unordered_map_std__string__std__string__ in
       if let __unwrappedValue = headers {
         return bridge.create_std__optional_std__unordered_map_std__string__std__string__({ () -> bridge.std__unordered_map_std__string__std__string_ in
@@ -37,21 +37,33 @@ public extension NativeNitroPlayerConfig {
       } else {
         return .init()
       }
-    }(), { () -> bridge.std__optional_MemoryProfile_ in
-      if let __unwrappedValue = lifecycle {
-        return bridge.create_std__optional_MemoryProfile_(__unwrappedValue)
+    }(), { () -> bridge.std__optional_NitroSourceStartup_ in
+      if let __unwrappedValue = startup {
+        return bridge.create_std__optional_NitroSourceStartup_(__unwrappedValue)
       } else {
         return .init()
       }
-    }(), { () -> bridge.std__optional_NitroSourceInitialization_ in
-      if let __unwrappedValue = initialization {
-        return bridge.create_std__optional_NitroSourceInitialization_(__unwrappedValue)
+    }(), { () -> bridge.std__optional_BufferConfig_ in
+      if let __unwrappedValue = buffer {
+        return bridge.create_std__optional_BufferConfig_(__unwrappedValue)
       } else {
         return .init()
       }
-    }(), { () -> bridge.std__optional_NitroSourceAdvancedConfig_ in
-      if let __unwrappedValue = advanced {
-        return bridge.create_std__optional_NitroSourceAdvancedConfig_(__unwrappedValue)
+    }(), { () -> bridge.std__optional_NitroSourceRetentionConfig_ in
+      if let __unwrappedValue = retention {
+        return bridge.create_std__optional_NitroSourceRetentionConfig_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_NitroSourceTransportConfig_ in
+      if let __unwrappedValue = transport {
+        return bridge.create_std__optional_NitroSourceTransportConfig_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_NitroSourcePreviewConfig_ in
+      if let __unwrappedValue = preview {
+        return bridge.create_std__optional_NitroSourcePreviewConfig_(__unwrappedValue)
       } else {
         return .init()
       }
@@ -89,17 +101,27 @@ public extension NativeNitroPlayerConfig {
   }
   
   @inline(__always)
-  var lifecycle: MemoryProfile? {
-    return self.__lifecycle.value
+  var startup: NitroSourceStartup? {
+    return self.__startup.value
   }
   
   @inline(__always)
-  var initialization: NitroSourceInitialization? {
-    return self.__initialization.value
+  var buffer: BufferConfig? {
+    return self.__buffer.value
   }
   
   @inline(__always)
-  var advanced: NitroSourceAdvancedConfig? {
-    return self.__advanced.value
+  var retention: NitroSourceRetentionConfig? {
+    return self.__retention.value
+  }
+  
+  @inline(__always)
+  var transport: NitroSourceTransportConfig? {
+    return self.__transport.value
+  }
+  
+  @inline(__always)
+  var preview: NitroSourcePreviewConfig? {
+    return self.__preview.value
   }
 }

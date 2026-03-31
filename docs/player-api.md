@@ -1,11 +1,37 @@
 # NitroPlayer API
 
-Access the imperative player as `ref.current.player`. Treat view attachment as `ref.current.isAttached` or `onAttached` / `onDetached`.
+Access the imperative player as `ref.current.player`. View attachment is exposed through `ref.current.isAttached`, `onAttached`, and `onDetached`.
+
+## Minimal usage
+
+```tsx
+import React, { useRef } from 'react';
+import { NitroPlayerView, type NitroPlayerViewRef } from '@noma4i/nitro-play';
+
+export function Demo() {
+  const ref = useRef<NitroPlayerViewRef>(null);
+
+  return (
+    <NitroPlayerView
+      ref={ref}
+      source={{
+        uri: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+        startup: 'lazy',
+        transport: { mode: 'auto' },
+        preview: { mode: 'listener' },
+      }}
+      onAttached={player => player.play()}
+      resizeMode="contain"
+      style={{ width: '100%', aspectRatio: 16 / 9 }}
+    />
+  );
+}
+```
 
 ## `NitroPlayerView`
 
 | Prop | Type | Notes |
-|------|------|-------|
+| --- | --- | --- |
 | `source` | `NitroSourceConfig` | Required |
 | `playerDefaults` | `NitroPlayerDefaults` | Declarative startup state |
 | `controls` | `boolean` | Native controls |
@@ -21,7 +47,7 @@ Access the imperative player as `ref.current.player`. Treat view attachment as `
 ## `NitroPlayerViewRef`
 
 | Member | Type | Notes |
-|--------|------|-------|
+| --- | --- | --- |
 | `player` | `NitroPlayer` | Imperative player |
 | `isAttached` | `boolean` | Native attach state |
 | `enterFullscreen()` | `void` | Enter fullscreen |
@@ -31,7 +57,7 @@ Access the imperative player as `ref.current.player`. Treat view attachment as `
 ## `NitroPlayer` properties
 
 | Property | Type | Get | Set |
-|----------|------|-----|-----|
+| --- | --- | --- | --- |
 | `source` | `NitroPlayerSource` | yes | no |
 | `playbackState` | `PlaybackState` | yes | no |
 | `memorySnapshot` | `MemorySnapshot` | yes | no |
@@ -44,7 +70,7 @@ Access the imperative player as `ref.current.player`. Treat view attachment as `
 | `rate` | `number` | yes | yes |
 | `isPlaying` | `boolean` | yes | no |
 | `isBuffering` | `boolean` | yes | no |
-| `isReadyToDisplay` | `boolean` | yes | no |
+| `isVisualReady` | `boolean` | yes | no |
 | `bufferDuration` | `number` | yes | no |
 | `bufferedPosition` | `number` | yes | no |
 | `mixAudioMode` | `MixAudioMode` | yes | yes |
@@ -55,21 +81,21 @@ Access the imperative player as `ref.current.player`. Treat view attachment as `
 ## `NitroPlayer` methods
 
 | Method | Returns | Notes |
-|--------|---------|-------|
-| `play()` | `void` | Start playback |
+| --- | --- | --- |
+| `play()` | `void` | Start playback; valid before `onLoad` |
 | `pause()` | `void` | Pause playback |
 | `seekTo(seconds)` | `void` | Absolute seek |
 | `seekBy(seconds)` | `void` | Relative seek |
 | `initialize()` | `Promise<void>` | Manual initialization |
 | `preload()` | `Promise<void>` | Preload without starting playback |
-| `replaceSourceAsync(source)` | `Promise<void>` | Replace with a new `NitroSourceConfig` or `NitroPlayerSource` |
+| `replaceSourceAsync(source)` | `Promise<void>` | Replace with `NitroSourceConfig` or `NitroPlayerSource` |
 | `clearSourceAsync()` | `Promise<void>` | Clear current source and keep player reusable |
 | `release()` | `void` | Terminal teardown |
 
 ## `PlaybackState`
 
 | Field | Type | Notes |
-|------|------|-------|
+| --- | --- | --- |
 | `status` | `NitroPlayerStatus` | `idle`, `loading`, `playing`, `paused`, `buffering`, `ended`, `error` |
 | `currentTime` | `number` | Seconds |
 | `duration` | `number` | Seconds |
@@ -78,25 +104,51 @@ Access the imperative player as `ref.current.player`. Treat view attachment as `
 | `rate` | `number` | Effective playback rate |
 | `isPlaying` | `boolean` | Native playing state |
 | `isBuffering` | `boolean` | Native buffering state |
-| `isReadyToDisplay` | `boolean` | First frame readiness |
+| `isVisualReady` | `boolean` | First visual frame readiness |
 | `error` | `PlaybackError \| null` | Present when `status === 'error'` |
 | `nativeTimestampMs` | `number` | Native event timestamp |
 
 ## Player events
 
 | Event | Payload |
-|-------|---------|
+| --- | --- |
 | `onPlaybackState` | `PlaybackState` |
 | `onLoad` | `onLoadData` |
 | `onLoadStart` | `onLoadStartData` |
+| `onError` | `PlaybackError` |
+| `onFirstFrame` | `onFirstFrameData` |
 | `onBandwidthUpdate` | `BandwidthData` |
 | `onVolumeChange` | `onVolumeChangeData` |
 
-Errors do not emit a standalone `onError` event in `1.0.0`. Use `onPlaybackState` and inspect `status` plus `error`.
+`onFirstFrame` is sticky for the active source generation. Late listeners receive the latest generated first frame immediately. `replaceSourceAsync()`, `clearSourceAsync()`, and `release()` reset that sticky state.
+
+Mounted `NitroPlayerView` surfaces do not need JS orchestration just to reveal the first visual frame. When `preview.autoThumbnail !== false`, the native view owns that placeholder/reveal path for the active source generation.
+
+## Imperative patterns
+
+| Goal | API |
+| --- | --- |
+| Start before load completes | `player.play()` |
+| Warm source without playback | `player.preload()` |
+| Replace active source | `await player.replaceSourceAsync(source)` |
+| Reset player to reusable idle | `await player.clearSourceAsync()` |
+| Terminal teardown | `player.release()` |
+
+## Utility surfaces
+
+| API | Purpose |
+| --- | --- |
+| `streamCache.prefetch(source)` | Warm transport and first segment cache |
+| `streamCache.getStats(source?)` | Total or per-source stream cache stats, header-aware |
+| `streamCache.clear()` | Clear disk cache |
+| `videoPreview.getFirstFrame(source)` | Manual first-frame lookup |
+| `videoPreview.clear()` | Clear cached preview artifacts |
+
+`streamCache.getStats(source)` and `videoPreview.getFirstFrame(source)` both accept either a URL string or `{ uri, headers }`. Use the object form whenever headers are part of the request identity.
 
 ## Hooks
 
 | Hook | Returns | Purpose |
-|------|---------|---------|
-| `usePlaybackState(player)` | `PlaybackState` | Raw native playback snapshot |
+| --- | --- | --- |
+| `usePlaybackState(player)` | `PlaybackState \| null` | Raw native playback snapshot |
 | `useEvent(target, event, listener)` | `void` | Event subscription helper |

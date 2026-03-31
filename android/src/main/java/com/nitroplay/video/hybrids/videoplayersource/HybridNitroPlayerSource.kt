@@ -4,6 +4,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.source.MediaSource
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
+import com.nitroplay.hls.HlsProxyRuntime
 import com.nitroplay.video.core.LibraryError
 import com.nitroplay.video.core.player.buildMediaSource
 import com.nitroplay.video.core.player.createMediaItemFromVideoConfig
@@ -13,6 +14,10 @@ import com.nitroplay.video.core.utils.NitroPlayerInformationUtils
 class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
   override lateinit var uri: String
   lateinit var config: NativeNitroPlayerConfig
+    private set
+  private lateinit var originalConfig: NativeNitroPlayerConfig
+  var isProxyRouteActive: Boolean = false
+    private set
 
   private var mediaItem: MediaItem? = null
   private var mediaSource: MediaSource? = null
@@ -22,9 +27,15 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
 
   internal val sourceLoader = SourceLoader()
 
-  constructor(config: NativeNitroPlayerConfig) : this() {
+  constructor(
+    config: NativeNitroPlayerConfig,
+    originalConfig: NativeNitroPlayerConfig = config,
+    isProxyRouteActive: Boolean = false
+  ) : this() {
     this.uri = config.uri
     this.config = config
+    this.originalConfig = originalConfig
+    this.isProxyRouteActive = isProxyRouteActive
   }
 
   private fun createOrGetMediaItem(): MediaItem {
@@ -88,6 +99,38 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
       mediaItem = null
       retentionState = MemoryRetentionState.COLD
     }
+  }
+
+  fun supportsStartupRecovery(): Boolean {
+    if (originalConfig.transport?.mode == NitroSourceTransportMode.DIRECT) {
+      return false
+    }
+    val withoutHash = originalConfig.uri.substringBefore('#')
+    val withoutQuery = withoutHash.substringBefore('?')
+    return withoutQuery.endsWith(".m3u8", ignoreCase = true)
+  }
+
+  fun previewSourceUri(): String {
+    return originalConfig.uri
+  }
+
+  @Synchronized
+  fun refreshPlaybackRouteForStartupRecovery(): Boolean {
+    if (!supportsStartupRecovery()) {
+      return false
+    }
+
+    sourceLoader.cancel()
+    trimToCold()
+
+    val resolution = HlsProxyRuntime.resolvePlaybackRoute(
+      originalConfig.uri,
+      originalConfig.headers
+    )
+    config = originalConfig.copy(uri = resolution.url)
+    uri = resolution.url
+    isProxyRouteActive = resolution.isProxying
+    return resolution.isProxying
   }
 
   private fun estimateConfigMemoryBytes(): Long {

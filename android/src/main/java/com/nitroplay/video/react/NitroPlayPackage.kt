@@ -6,11 +6,11 @@ import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.uimanager.ViewManager
-import com.nitroplay.hls.HlsCacheProxyModule
+import com.nitroplay.hls.NitroPlayStreamRuntimeModule
 
 class NitroPlayPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-    return listOf(HlsCacheProxyModule(reactContext))
+    return listOf(NitroPlayStreamRuntimeModule(reactContext))
   }
 
   @OptIn(UnstableApi::class)

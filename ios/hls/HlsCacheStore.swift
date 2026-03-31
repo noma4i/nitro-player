@@ -143,6 +143,15 @@ final class HlsCacheStore {
     }
   }
 
+  func clearThumbnails() {
+    queue.async {
+      let urls = (try? FileManager.default.contentsOfDirectory(at: self.cacheDir, includingPropertiesForKeys: nil)) ?? []
+      urls
+        .filter { $0.lastPathComponent.hasSuffix(".thumb") }
+        .forEach { try? FileManager.default.removeItem(at: $0) }
+    }
+  }
+
   private func ensureDir() {
     if !FileManager.default.fileExists(atPath: cacheDir.path) {
       try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)

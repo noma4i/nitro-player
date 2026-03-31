@@ -18,25 +18,32 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
   }
 
   private func normalizedConfig(from config: NativeNitroPlayerConfig) -> NativeNitroPlayerConfig {
-    let shouldUseHlsProxy = config.advanced?.transport?.useHlsProxy != false
-    let proxiedUri = shouldUseHlsProxy && isHlsManifest(config.uri)
-      ? HlsProxyRuntime.shared.getProxiedUrl(url: config.uri, headers: config.headers)
-      : config.uri
+    let shouldUseHlsProxy = config.transport?.mode != .direct
+    let route = shouldUseHlsProxy && isHlsManifest(config.uri)
+      ? HlsProxyRuntime.shared.resolvePlaybackRoute(url: config.uri, headers: config.headers)
+      : HlsProxyRouteResolution(url: config.uri, isProxying: false)
 
     return NativeNitroPlayerConfig(
-      uri: proxiedUri,
+      uri: route.url,
       headers: config.headers,
       metadata: config.metadata,
-      lifecycle: config.lifecycle,
-      initialization: config.initialization,
-      advanced: config.advanced
+      startup: config.startup,
+      buffer: config.buffer,
+      retention: config.retention,
+      transport: config.transport,
+      preview: config.preview
     )
   }
 
   func fromNitroPlayerConfig(config: NativeNitroPlayerConfig) throws
     -> any HybridNitroPlayerSourceSpec
   {
-    return try HybridNitroPlayerSource(config: normalizedConfig(from: config))
+    let normalized = normalizedConfig(from: config)
+    return try HybridNitroPlayerSource(
+      config: normalized,
+      originalConfig: config,
+      isProxyRouteActive: normalized.uri != config.uri
+    )
   }
 
   func fromUri(uri: String) throws -> HybridNitroPlayerSourceSpec {
@@ -44,9 +51,11 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
       uri: uri,
       headers: nil,
       metadata: nil,
-      lifecycle: .balanced,
-      initialization: .eager,
-      advanced: nil
+      startup: .eager,
+      buffer: nil,
+      retention: nil,
+      transport: nil,
+      preview: nil
     )
     return try HybridNitroPlayerSource(config: normalizedConfig(from: config))
   }

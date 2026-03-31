@@ -1,6 +1,6 @@
 # NitroPlay
 
-Lightweight native-first video player and HLS cache proxy for React Native.
+Native-first video player for React Native with shared HLS transport, stream cache, and first-frame preview utilities.
 
 Current prerelease: `1.0.0-beta.8`
 
@@ -10,87 +10,115 @@ Install from GitHub tag `v1.0.0-beta.8`.
 
 Peer dependency: `react-native-nitro-modules >= 0.35.0`
 
-## What Changed In 1.0
+## Quick Start
 
-- `source` is now object-only. String and number shorthands are removed from the public DSL.
-- `setup` is removed. Use `playerDefaults` for declarative startup state.
-- `replaceSourceAsync(null)` is removed. Use `clearSourceAsync()`.
-- Playback failures are surfaced through `PlaybackState.status === 'error'` and `PlaybackState.error`.
-- Source tuning moved to `lifecycle` and `advanced.*`.
-- Package runtime entrypoints now resolve to built `lib/*` artifacts.
+```tsx
+import React from 'react';
+import { NitroPlayerView } from '@noma4i/nitro-play';
 
-## Documentation
-
-| File                                                   | Purpose                                                                       |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| [docs/player-api.md](docs/player-api.md)               | Public player, view, events, hooks                                            |
-| [docs/source-config.md](docs/source-config.md)         | `NitroSourceConfig`, `NitroSource`, lifecycle DSL                             |
-| [docs/buffer-config.md](docs/buffer-config.md)         | `advanced.buffer` reference                                                   |
-| [docs/lifecycle-guide.md](docs/lifecycle-guide.md)     | Lifecycle presets: feed, balanced, immersive - выбор, инициализация, hot pool |
-| [docs/memory-management.md](docs/memory-management.md) | Retention states, memory snapshots, advanced overrides                        |
-| [docs/hls-cache-proxy.md](docs/hls-cache-proxy.md)     | Built-in HLS proxy and cache policy                                           |
-| [docs/migration-1.0.md](docs/migration-1.0.md)         | Breaking migration guide from `0.x`                                           |
+export function FeedCard() {
+  return (
+    <NitroPlayerView
+      source={{
+        uri: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+        startup: 'lazy',
+        transport: { mode: 'auto' },
+        retention: {
+          preload: 'metadata',
+          offscreen: 'metadata',
+          feedPoolEligible: true,
+        },
+        preview: { mode: 'listener', autoThumbnail: true },
+      }}
+      resizeMode="contain"
+      keepScreenAwake
+      style={{ width: '100%', aspectRatio: 16 / 9 }}
+    />
+  );
+}
+```
 
 ## Core API
 
-| Surface                             | Status                                                           |
-| ----------------------------------- | ---------------------------------------------------------------- |
-| `NitroPlayerView`                   | Convenience component with native controls and fullscreen bridge |
-| `NitroPlayer`                       | Imperative player object                                         |
-| `createNitroSource(config)`         | Canonical source factory                                         |
-| `hlsCacheProxy`                     | HLS proxy, cache telemetry, thumbnail lookup                     |
-| `usePlaybackState(player)`          | Raw native playback snapshot                                     |
-| `useEvent(target, event, listener)` | Event subscription hook                                          |
+| Surface | Purpose |
+| --- | --- |
+| `NitroPlayerView` | Declarative native view with fullscreen and attach events |
+| `NitroPlayer` | Imperative player object |
+| `createNitroSource(config)` | Canonical reusable source factory |
+| `streamCache` | Prefetch, cache stats, cache clearing |
+| `videoPreview` | Manual first-frame lookup |
+| `usePlaybackState(player)` | Raw native playback snapshot |
+| `useEvent(target, event, listener)` | Event subscription helper |
 
 ## Source DSL
 
-| Field                            | Purpose                                                     |
-| -------------------------------- | ----------------------------------------------------------- |
-| `uri`                            | Network URL or React Native asset reference                 |
-| `headers`                        | Request headers                                             |
-| `metadata`                       | Title, subtitle, description, artist, artwork URI           |
-| `initialization`                 | `'eager'` or `'lazy'`                                       |
-| `lifecycle`                      | `'balanced'`, `'feed'`, `'immersive'`                       |
-| `advanced.buffer`                | Low-level buffer tuning                                     |
-| `advanced.lifecycle`             | Explicit preload, offscreen retention, trim delay overrides |
-| `advanced.transport.useHlsProxy` | Opt out of HLS proxying                                     |
+| Field | Type | Purpose |
+| --- | --- | --- |
+| `uri` | `string \| number` | Network URL or React Native asset |
+| `headers` | `Record<string,string>` | Request headers |
+| `metadata` | `NitroSourceMetadata` | Title, subtitle, description, artist, image |
+| `startup` | `'eager' \| 'lazy'` | Startup strategy |
+| `buffer` | `BufferConfig` | Explicit buffering policy |
+| `retention` | `NitroSourceRetentionConfig` | Preload, offscreen retention, trim, feed eligibility |
+| `transport` | `NitroSourceTransportConfig` | `auto`, `direct`, `proxy` |
+| `preview` | `NitroSourcePreviewConfig` | Automatic first-frame policy |
 
-## Lifecycle Presets
+## Runtime Contract
 
-Lifecycle controls how many resources a player allocates before, during, and after playback. See [docs/lifecycle-guide.md](docs/lifecycle-guide.md) for the full guide.
+| Area | Behavior |
+| --- | --- |
+| Early play | `play()` before `onLoad` is canonical |
+| Playback state | Built from native readiness, buffering, and actual playing state |
+| HLS startup | Native runtime uses lazy startup and bounded startup recovery |
+| Proxy fallback | `transport.mode='auto'` may fall back to direct URL if proxy is unavailable |
+| First frame | `onFirstFrame` is sticky per active source generation |
+| Preview policy | `preview.mode='listener'` auto-captures for attached views when `autoThumbnail !== false`; `always` warms preview automatically; `manual` disables background auto-warmup |
+| Mounted-view reveal | Attached `NitroPlayerView` owns native auto-thumbnail/first-frame placeholder by default; app code should not require JS poster swapping for active playback surfaces |
+| Manual preview | `videoPreview.getFirstFrame(source)` returns cached/generated frame path |
+| Stream/preview identity | `{ uri, headers }` is the canonical identity for cache stats and preview artifacts |
+| Stream cache | `streamCache.prefetch(source)` is safe to call repeatedly |
 
-| Lifecycle   | Preload  | Retention | Trim delay | Use case                               |
-| ----------- | -------- | --------- | ---------- | -------------------------------------- |
-| `feed`      | metadata | metadata  | 3 s        | Scrollable feeds with dozens of videos |
-| `balanced`  | buffered | hot       | 10 s       | Single player (default)                |
-| `immersive` | buffered | hot       | never      | Fullscreen, long-form playback         |
+## Player Events
 
-**Feed lifecycle**: with `feed` the playerItem is not created during eager init - only metadata. `play()` handles initialization automatically on first call. The native hot pool keeps a maximum of 2 feed players in hot state.
+| Event | Payload |
+| --- | --- |
+| `onPlaybackState` | `PlaybackState` |
+| `onLoadStart` | `onLoadStartData` |
+| `onLoad` | `onLoadData` |
+| `onError` | `PlaybackError` |
+| `onFirstFrame` | `onFirstFrameData` |
+| `onBandwidthUpdate` | `BandwidthData` |
+| `onVolumeChange` | `onVolumeChangeData` |
 
-## Defaults
+`PlaybackState` exposes `isVisualReady` as the visual readiness flag.
 
-| Area                        | Default                                            |
-| --------------------------- | -------------------------------------------------- |
-| `NitroPlayerView` lifecycle | `balanced`                                         |
-| `feed` lifecycle            | metadata preload, metadata retention, 3000 ms trim |
-| HLS proxy                   | enabled for `.m3u8` unless explicitly disabled     |
-| `initialization`            | `eager`                                            |
+## Example App
 
-## Runtime Model
+The local [example](example/README.md) is a runtime lab, not just a smoke test.
 
-| Area                                                                                   | Owner                                                |
-| -------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Playback progress and buffering state                                                  | Native snapshot emission                             |
-| HLS proxy singleton, lazy startup on first playback-facing use, and prefetch deduplication | Native runtime                                       |
-| HLS manifest routing                                                                   | Native source factory                                |
-| Declarative source updates                                                             | Long-lived player with native `replaceSourceAsync()` |
-| `playerDefaults` application in `NitroPlayerView`                                      | Native view manager                                  |
+It covers:
+- hero playback switching between `transport.mode='auto'`, header-isolated HLS, and direct MP4
+- `streamCache.prefetch/getStats/clear` and `videoPreview.getFirstFrame/clear`
+- a three-player feed stress block with the same HLS URL under different headers
+- live observation of `onLoad`, `onError`, `onFirstFrame`, bandwidth, attach state, and `isVisualReady`
+
+## Documentation
+
+| File | Purpose |
+| --- | --- |
+| [docs/player-api.md](docs/player-api.md) | Public player, view, events, hooks |
+| [docs/source-config.md](docs/source-config.md) | Source DSL and normalized source model |
+| [docs/buffer-config.md](docs/buffer-config.md) | `buffer` tuning |
+| [docs/lifecycle-guide.md](docs/lifecycle-guide.md) | `retention` model and startup intent |
+| [docs/memory-management.md](docs/memory-management.md) | Retention states, snapshots, feed pool |
+| [docs/stream-runtime.md](docs/stream-runtime.md) | Shared transport runtime, `streamCache`, `videoPreview` |
+| [docs/migration-1.0.md](docs/migration-1.0.md) | Migration to the current beta DSL |
 
 ## Requirements
 
-| Dependency                 | Version     |
-| -------------------------- | ----------- |
-| React Native               | `>= 0.77.0` |
+| Dependency | Version |
+| --- | --- |
+| React Native | `>= 0.77.0` |
 | react-native-nitro-modules | `>= 0.35.0` |
 
 ## License

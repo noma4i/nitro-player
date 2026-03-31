@@ -18,8 +18,8 @@ public extension PlaybackState {
   /**
    * Create a new instance of `PlaybackState`.
    */
-  init(status: NitroPlayerStatus, currentTime: Double, duration: Double, bufferDuration: Double, bufferedPosition: Double, rate: Double, isPlaying: Bool, isBuffering: Bool, isReadyToDisplay: Bool, error: Variant_NullType_PlaybackError?, nativeTimestampMs: Double) {
-    self.init(status, currentTime, duration, bufferDuration, bufferedPosition, rate, isPlaying, isBuffering, isReadyToDisplay, { () -> bridge.std__optional_std__variant_nitro__NullType__PlaybackError__ in
+  init(status: NitroPlayerStatus, currentTime: Double, duration: Double, bufferDuration: Double, bufferedPosition: Double, rate: Double, isPlaying: Bool, isBuffering: Bool, isVisualReady: Bool, error: Variant_NullType_PlaybackError?, nativeTimestampMs: Double) {
+    self.init(status, currentTime, duration, bufferDuration, bufferedPosition, rate, isPlaying, isBuffering, isVisualReady, { () -> bridge.std__optional_std__variant_nitro__NullType__PlaybackError__ in
       if let __unwrappedValue = error {
         return bridge.create_std__optional_std__variant_nitro__NullType__PlaybackError__({ () -> bridge.std__variant_nitro__NullType__PlaybackError_ in
           switch __unwrappedValue {
@@ -76,8 +76,8 @@ public extension PlaybackState {
   }
   
   @inline(__always)
-  var isReadyToDisplay: Bool {
-    return self.__isReadyToDisplay
+  var isVisualReady: Bool {
+    return self.__isVisualReady
   }
   
   @inline(__always)

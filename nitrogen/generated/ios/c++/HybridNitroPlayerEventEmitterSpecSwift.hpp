@@ -26,14 +26,16 @@ namespace margelo::nitro::video { struct onLoadStartData; }
 namespace margelo::nitro::video { enum class SourceType; }
 // Forward declaration of `HybridNitroPlayerSourceSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridNitroPlayerSourceSpec; }
-// Forward declaration of `PlaybackState` to properly resolve imports.
-namespace margelo::nitro::video { struct PlaybackState; }
-// Forward declaration of `NitroPlayerStatus` to properly resolve imports.
-namespace margelo::nitro::video { enum class NitroPlayerStatus; }
+// Forward declaration of `onFirstFrameData` to properly resolve imports.
+namespace margelo::nitro::video { struct onFirstFrameData; }
 // Forward declaration of `PlaybackError` to properly resolve imports.
 namespace margelo::nitro::video { struct PlaybackError; }
 // Forward declaration of `NitroPlayerErrorCode` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroPlayerErrorCode; }
+// Forward declaration of `PlaybackState` to properly resolve imports.
+namespace margelo::nitro::video { struct PlaybackState; }
+// Forward declaration of `NitroPlayerStatus` to properly resolve imports.
+namespace margelo::nitro::video { enum class NitroPlayerStatus; }
 // Forward declaration of `onVolumeChangeData` to properly resolve imports.
 namespace margelo::nitro::video { struct onVolumeChangeData; }
 
@@ -47,13 +49,14 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "SourceType.hpp"
 #include <memory>
 #include "HybridNitroPlayerSourceSpec.hpp"
+#include "onFirstFrameData.hpp"
+#include <string>
+#include "PlaybackError.hpp"
+#include "NitroPlayerErrorCode.hpp"
 #include "PlaybackState.hpp"
 #include "NitroPlayerStatus.hpp"
 #include <NitroModules/Null.hpp>
-#include "PlaybackError.hpp"
 #include <variant>
-#include "NitroPlayerErrorCode.hpp"
-#include <string>
 #include "onVolumeChangeData.hpp"
 
 #include "NitroPlay-Swift-Cxx-Umbrella.hpp"
@@ -124,6 +127,22 @@ namespace margelo::nitro::video {
     }
     inline ListenerSubscription addOnLoadStartListener(const std::function<void(const onLoadStartData& /* data */)>& listener) override {
       auto __result = _swiftPart.addOnLoadStartListener(listener);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline ListenerSubscription addOnFirstFrameListener(const std::function<void(const onFirstFrameData& /* data */)>& listener) override {
+      auto __result = _swiftPart.addOnFirstFrameListener(listener);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline ListenerSubscription addOnErrorListener(const std::function<void(const PlaybackError& /* error */)>& listener) override {
+      auto __result = _swiftPart.addOnErrorListener(listener);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

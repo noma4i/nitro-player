@@ -16,6 +16,7 @@ extension HybridNitroPlayer {
       }
 
       self.cancelPendingTrim()
+      self.cancelStartupRecovery()
       self.initTask?.cancel()
       self.initTask = nil
 
@@ -45,6 +46,7 @@ extension HybridNitroPlayer {
     lastError = nil
 
     cancelPendingTrim()
+    cancelStartupRecovery()
     sourceLoader.cancelSync()
     initTask?.cancel()
     initTask = nil
@@ -127,6 +129,7 @@ extension HybridNitroPlayer {
 
   func replaceSourceAsync(source: any HybridNitroPlayerSourceSpec) throws -> Promise<Void> {
     wantsToPlay = false
+    cancelStartupRecovery()
     let promise = Promise<Void>()
     Task.detached(priority: .userInitiated) { [weak self] in
       guard let self else {
@@ -149,6 +152,7 @@ extension HybridNitroPlayer {
       self.artworkTask = nil
       self.source = source
       self.hasActiveSource = true
+      self.beginSourceGeneration()
       self.resumePositionSeconds = 0
       self.resetPlaybackError()
 
@@ -234,41 +238,18 @@ extension HybridNitroPlayer {
     guard hasActiveSource else {
       return .none
     }
-    return currentSourceConfig()?.advanced?.lifecycle?.preloadLevel ?? {
-      switch currentSourceConfig()?.lifecycle ?? .balanced {
-      case .feed:
-        return .metadata
-      case .balanced, .immersive:
-        return .buffered
-      }
-    }()
+    return currentSourceConfig()?.retention?.preload ?? .buffered
   }
 
   func resolvedOffscreenRetention() -> OffscreenRetention {
     guard hasActiveSource else {
       return .hot
     }
-    return currentSourceConfig()?.advanced?.lifecycle?.offscreenRetention ?? {
-      switch currentSourceConfig()?.lifecycle ?? .balanced {
-      case .feed:
-        return .metadata
-      case .balanced, .immersive:
-        return .hot
-      }
-    }()
+    return currentSourceConfig()?.retention?.offscreen ?? .hot
   }
 
   func resolvedPauseTrimDelayMs() -> Double? {
-    let delayMs = currentSourceConfig()?.advanced?.lifecycle?.trimDelayMs ?? {
-      switch currentSourceConfig()?.lifecycle ?? .balanced {
-      case .feed:
-        return 3000.0
-      case .balanced:
-        return 10000.0
-      case .immersive:
-        return Double.infinity
-      }
-    }()
+    let delayMs = currentSourceConfig()?.retention?.trimDelayMs ?? 10000.0
     if delayMs.isInfinite {
       return nil
     }
@@ -285,6 +266,8 @@ extension HybridNitroPlayer {
   func clearCurrentSource() {
     guard !isReleased else { return }
     wantsToPlay = false
+    cancelStartupRecovery()
+    beginSourceGeneration()
 
     cancelPendingTrim()
     sourceLoader.cancelSync()
@@ -407,7 +390,7 @@ extension HybridNitroPlayer {
     guard hasActiveSource else {
       return false
     }
-    return currentSourceConfig()?.lifecycle == .feed
+    return currentSourceConfig()?.retention?.feedPoolEligible == true
   }
 
   func shouldStayHotInFeedPool() -> Bool {

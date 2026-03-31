@@ -55,6 +55,24 @@ abstract class HybridNitroPlayerEventEmitterSpec: HybridObject() {
     return __result
   }
   
+  abstract fun addOnFirstFrameListener(listener: (data: onFirstFrameData) -> Unit): ListenerSubscription
+  
+  @DoNotStrip
+  @Keep
+  private fun addOnFirstFrameListener_cxx(listener: Func_void_onFirstFrameData): ListenerSubscription {
+    val __result = addOnFirstFrameListener(listener)
+    return __result
+  }
+  
+  abstract fun addOnErrorListener(listener: (error: PlaybackError) -> Unit): ListenerSubscription
+  
+  @DoNotStrip
+  @Keep
+  private fun addOnErrorListener_cxx(listener: Func_void_PlaybackError): ListenerSubscription {
+    val __result = addOnErrorListener(listener)
+    return __result
+  }
+  
   abstract fun addOnPlaybackStateListener(listener: (state: PlaybackState) -> Unit): ListenerSubscription
   
   @DoNotStrip

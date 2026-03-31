@@ -2,6 +2,7 @@ import type { PlaybackState } from './PlaybackState';
 import type { NitroPlayerSource } from '../../spec/nitro/NitroPlayerSource.nitro';
 import type { NitroPlayerOrientation } from './NitroPlayerOrientation';
 import type { NitroPlayer } from '../NitroPlayer';
+import type { PlaybackError } from './PlaybackError';
 export interface NitroPlayerEvents {
     /**
      * Called when the bandwidth of the video changes.
@@ -21,6 +22,14 @@ export interface NitroPlayerEvents {
      * Called when the player playback snapshot changes.
      */
     onPlaybackState: (state: PlaybackState) => void;
+    /**
+     * Called when the active source reaches its first visual frame.
+     */
+    onFirstFrame: (data: onFirstFrameData) => void;
+    /**
+     * Called when playback fails for the active source generation.
+     */
+    onError: (error: PlaybackError) => void;
     /**
      * Called when the volume of the player changes.
      */
@@ -81,6 +90,13 @@ export interface onLoadStartData {
 export interface onVolumeChangeData {
     volume: number;
     muted: boolean;
+}
+export interface onFirstFrameData {
+    uri: string;
+    width: number;
+    height: number;
+    sourceUri: string;
+    fromCache: boolean;
 }
 export declare const ALL_PLAYER_EVENTS: (keyof AllNitroPlayerEvents)[];
 export declare const ALL_VIEW_EVENTS: (keyof NitroPlayerViewEvents)[];

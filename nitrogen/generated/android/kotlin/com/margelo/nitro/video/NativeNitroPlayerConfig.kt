@@ -28,13 +28,19 @@ data class NativeNitroPlayerConfig(
   val metadata: NitroSourceMetadata?,
   @DoNotStrip
   @Keep
-  val lifecycle: MemoryProfile?,
+  val startup: NitroSourceStartup?,
   @DoNotStrip
   @Keep
-  val initialization: NitroSourceInitialization?,
+  val buffer: BufferConfig?,
   @DoNotStrip
   @Keep
-  val advanced: NitroSourceAdvancedConfig?
+  val retention: NitroSourceRetentionConfig?,
+  @DoNotStrip
+  @Keep
+  val transport: NitroSourceTransportConfig?,
+  @DoNotStrip
+  @Keep
+  val preview: NitroSourcePreviewConfig?
 ) {
   /* primary constructor */
 
@@ -46,8 +52,8 @@ data class NativeNitroPlayerConfig(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(uri: String, headers: Map<String, String>?, metadata: NitroSourceMetadata?, lifecycle: MemoryProfile?, initialization: NitroSourceInitialization?, advanced: NitroSourceAdvancedConfig?): NativeNitroPlayerConfig {
-      return NativeNitroPlayerConfig(uri, headers, metadata, lifecycle, initialization, advanced)
+    private fun fromCpp(uri: String, headers: Map<String, String>?, metadata: NitroSourceMetadata?, startup: NitroSourceStartup?, buffer: BufferConfig?, retention: NitroSourceRetentionConfig?, transport: NitroSourceTransportConfig?, preview: NitroSourcePreviewConfig?): NativeNitroPlayerConfig {
+      return NativeNitroPlayerConfig(uri, headers, metadata, startup, buffer, retention, transport, preview)
     }
   }
 }

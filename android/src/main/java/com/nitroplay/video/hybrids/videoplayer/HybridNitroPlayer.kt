@@ -1,5 +1,6 @@
 package com.margelo.nitro.video
 
+import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.media3.common.C
@@ -14,6 +15,8 @@ import androidx.media3.ui.PlayerView
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
+import com.nitroplay.hls.HlsProxyRuntime
+import com.nitroplay.hls.VideoPreviewRuntime
 import com.nitroplay.video.core.LibraryError
 import com.nitroplay.video.core.PlayerError
 import com.nitroplay.video.core.NitroPlayerManager
@@ -50,14 +53,31 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   private var cachedMuted = false
   private var cachedRate = 1.0
   internal var pendingTrimRunnable: Runnable? = null
+  internal var pendingStartupRecoveryRunnable: Runnable? = null
   internal var hasActiveSource = false
   internal var lastError: PlaybackError? = null
+  internal var sourceGeneration = 0
+  internal var startupRecoveryAttempts = 0
+  internal var hasLoadedCurrentSource = false
+  internal var firstFrame: onFirstFrameData? = null
+  internal var pendingFirstFrameGeneration = -1
+  internal var firstFrameContext: FirstFrameContext? = null
 
   var wasAutoPaused = false
+  private val startupRecoveryHandler = Handler(Looper.getMainLooper())
+  private val startupRecoveryDelayMs = 250L
+  private val maxStartupRecoveryAttempts = 1
+
+  internal data class FirstFrameContext(
+    val sourceUri: String,
+    val headers: Map<String, String>?,
+    val width: Double,
+    val height: Double
+  )
 
   // Buffer Config
   internal var bufferConfig: BufferConfig? = null
-    get() = currentSourceConfig()?.advanced?.buffer
+    get() = currentSourceConfig()?.buffer
 
   // Delegates
   internal val listenerBridge = NitroPlayerListenerBridge(this)
@@ -199,7 +219,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     get = { isCurrentlyBuffering }
   )
 
-  override val isReadyToDisplay: Boolean by mainThreadProperty(
+  override val isVisualReady: Boolean by mainThreadProperty(
     get = { readyToDisplay }
   )
 
@@ -229,8 +249,8 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     return (source as? HybridNitroPlayerSource)?.config
   }
 
-  private fun resolvedInitialization(): NitroSourceInitialization {
-    return currentSourceConfig()?.initialization ?: NitroSourceInitialization.EAGER
+  private fun resolvedInitialization(): NitroSourceStartup {
+    return currentSourceConfig()?.startup ?: NitroSourceStartup.EAGER
   }
 
   internal fun toPlaybackError(code: NitroPlayerErrorCode, message: String): PlaybackError {
@@ -241,6 +261,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     return Promise.async {
       runOnMainThreadSync {
         if (isReleased || loadedWithSource || !hasActiveSource) return@runOnMainThreadSync
+        cancelStartupRecovery()
         lifecycle.initializePlayer()
         player.prepare()
       }
@@ -253,10 +274,11 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     this.cachedMuted = false
     this.cachedRate = 1.0
     this.hasActiveSource = true
+    beginSourceGeneration()
 
     runOnMainThread {
       if (isReleased) return@runOnMainThread
-      if (resolvedInitialization() == NitroSourceInitialization.EAGER) {
+      if (resolvedInitialization() == NitroSourceStartup.EAGER) {
         when (lifecycle.resolvedPreloadLevel()) {
           PreloadLevel.BUFFERED -> {
             lifecycle.initializePlayer()
@@ -273,6 +295,14 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     }
 
     NitroPlayerManager.registerPlayer(this)
+  }
+
+  init {
+    eventEmitter.onFirstFrameListenerAdded = {
+      runOnMainThread {
+        requestFirstFrameIfNeeded()
+      }
+    }
   }
 
   override fun play() {
@@ -296,7 +326,11 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       NitroPlayerManager.touchFeedHotCandidate(this)
       wantsToPlay = true
       player.play()
-      status = NitroPlayerStatus.PLAYING
+      status = when {
+        player.isPlaying -> NitroPlayerStatus.PLAYING
+        player.playbackState == Player.STATE_BUFFERING -> NitroPlayerStatus.BUFFERING
+        else -> NitroPlayerStatus.LOADING
+      }
       emitPlaybackState()
     }
   }
@@ -305,6 +339,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     runOnMainThread {
       if (isReleased) return@runOnMainThread
       wantsToPlay = false
+      cancelStartupRecovery()
       player.pause()
 
       if (status != NitroPlayerStatus.ENDED && status != NitroPlayerStatus.IDLE) {
@@ -332,6 +367,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   override fun replaceSourceAsync(source: HybridNitroPlayerSourceSpec): Promise<Unit> {
     wantsToPlay = false
+    cancelStartupRecovery()
     return Promise.async {
       val hybridSource = source as? HybridNitroPlayerSource ?: throw PlayerError.InvalidSource
       val oldSource = if (::source.isInitialized) {
@@ -347,6 +383,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
         if (isReleased) return@runOnMainThreadSync
         this.source = source
         hasActiveSource = true
+        beginSourceGeneration()
         desiredCurrentTimeMs = 0L
         status = NitroPlayerStatus.LOADING
         readyToDisplay = false
@@ -421,6 +458,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
         NitroPlayerManager.unregisterPlayer(this)
         listenerBridge.stopProgressUpdates()
         lifecycle.cancelPendingTrim()
+        cancelStartupRecovery()
         loadedWithSource = false
         hasActiveSource = false
 
@@ -495,7 +533,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     if (isReleased) return PlaybackState(
       status = NitroPlayerStatus.IDLE, currentTime = 0.0, duration = 0.0,
       bufferDuration = 0.0, bufferedPosition = 0.0, rate = 0.0,
-      isPlaying = false, isBuffering = false, isReadyToDisplay = false, error = null,
+      isPlaying = false, isBuffering = false, isVisualReady = false, error = null,
       nativeTimestampMs = System.currentTimeMillis().toDouble()
     )
     return PlaybackState(
@@ -507,7 +545,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       rate = player.playbackParameters.speed.toDouble(),
       isPlaying = player.isPlaying,
       isBuffering = isCurrentlyBuffering,
-      isReadyToDisplay = readyToDisplay,
+      isVisualReady = readyToDisplay,
       error = lastError?.let { Variant_NullType_PlaybackError.Second(it) },
       nativeTimestampMs = System.currentTimeMillis().toDouble()
     )
@@ -537,9 +575,188 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     eventEmitter.onPlaybackState(buildPlaybackState())
   }
 
+  internal fun beginSourceGeneration() {
+    sourceGeneration += 1
+    startupRecoveryAttempts = 0
+    hasLoadedCurrentSource = false
+    firstFrame = null
+    pendingFirstFrameGeneration = -1
+    firstFrameContext = null
+    cancelStartupRecovery()
+    eventEmitter.resetStickyState()
+  }
+
+  internal fun markCurrentSourceLoaded() {
+    hasLoadedCurrentSource = true
+    startupRecoveryAttempts = 0
+    cancelStartupRecovery()
+  }
+
+  internal fun cancelStartupRecovery() {
+    pendingStartupRecoveryRunnable?.let { startupRecoveryHandler.removeCallbacks(it) }
+    pendingStartupRecoveryRunnable = null
+  }
+
+  internal fun currentHybridSource(): HybridNitroPlayerSource? {
+    return source as? HybridNitroPlayerSource
+  }
+
+  internal fun shouldAttemptStartupRecovery(): Boolean {
+    if (isReleased || !hasActiveSource || !wantsToPlay || hasLoadedCurrentSource) {
+      return false
+    }
+    if (startupRecoveryAttempts >= maxStartupRecoveryAttempts) {
+      return false
+    }
+    return currentHybridSource()?.supportsStartupRecovery() == true
+  }
+
+  internal fun attemptStartupRecoveryIfNeeded(message: String): Boolean {
+    if (!shouldAttemptStartupRecovery()) {
+      return false
+    }
+
+    startupRecoveryAttempts += 1
+    val generation = sourceGeneration
+    readyToDisplay = false
+    isCurrentlyBuffering = false
+    lastError = null
+    status = NitroPlayerStatus.LOADING
+    emitPlaybackState()
+
+    cancelStartupRecovery()
+    val runnable = Runnable {
+      pendingStartupRecoveryRunnable = null
+      if (isReleased || !hasActiveSource || !wantsToPlay || sourceGeneration != generation) {
+        return@Runnable
+      }
+
+      HlsProxyRuntime.restartForPlaybackRecovery()
+      currentHybridSource()?.refreshPlaybackRouteForStartupRecovery()
+      lifecycle.initializePlayer()
+      player.prepare()
+      player.play()
+    }
+    pendingStartupRecoveryRunnable = runnable
+    startupRecoveryHandler.postDelayed(runnable, startupRecoveryDelayMs)
+    return true
+  }
+
+  internal fun failPlayback(message: String) {
+    cancelStartupRecovery()
+    wantsToPlay = false
+    isCurrentlyBuffering = false
+    status = NitroPlayerStatus.ERROR
+    readyToDisplay = false
+    pendingFirstFrameGeneration = -1
+    lastError = toPlaybackError(NitroPlayerErrorCode.UNKNOWN_UNKNOWN, message)
+    lastError?.let { eventEmitter.onError(it) }
+    listenerBridge.stopProgressUpdates()
+    emitPlaybackState()
+  }
+
+  internal fun cacheFirstFrameContext(sourceUri: String, width: Double, height: Double) {
+    firstFrameContext = FirstFrameContext(
+      sourceUri = sourceUri,
+      headers = currentSourceConfig()?.headers,
+      width = width,
+      height = height
+    )
+  }
+
+  internal fun emitFirstFrame(uri: String, width: Double, height: Double, sourceUri: String, fromCache: Boolean) {
+    val data = onFirstFrameData(
+      uri = uri,
+      width = width,
+      height = height,
+      sourceUri = sourceUri,
+      fromCache = fromCache
+    )
+    firstFrame = data
+    eventEmitter.onFirstFrame(data)
+  }
+
+  internal fun requestFirstFrameIfNeeded() {
+    if (isReleased || !hasActiveSource || !readyToDisplay || firstFrame != null) {
+      return
+    }
+    val autoThumbnailEnabled = currentAutoThumbnailEnabled()
+
+    when (currentPreviewMode()) {
+      NitroSourcePreviewMode.MANUAL -> {
+        if (!autoThumbnailEnabled) {
+          return
+        }
+      }
+      NitroSourcePreviewMode.LISTENER -> {
+        if (!autoThumbnailEnabled && !eventEmitter.hasOnFirstFrameListeners()) {
+          return
+        }
+      }
+      NitroSourcePreviewMode.ALWAYS -> Unit
+    }
+
+    val context = firstFrameContext ?: return
+    val generation = sourceGeneration
+    if (pendingFirstFrameGeneration == generation) {
+      return
+    }
+    pendingFirstFrameGeneration = generation
+    val previewConfig = currentSourceConfig()?.preview
+
+    Thread {
+      val preview = VideoPreviewRuntime.getFirstFrame(
+        context.sourceUri,
+        context.headers,
+        previewConfig
+      )
+
+      Handler(Looper.getMainLooper()).post {
+        if (
+          isReleased ||
+          sourceGeneration != generation ||
+          !hasActiveSource ||
+          !readyToDisplay ||
+          firstFrame != null
+        ) {
+          return@post
+        }
+
+        if (pendingFirstFrameGeneration == generation) {
+          pendingFirstFrameGeneration = -1
+        }
+
+        preview?.let {
+          emitFirstFrame(
+            uri = it.uri,
+            width = context.width,
+            height = context.height,
+            sourceUri = context.sourceUri,
+            fromCache = it.fromCache
+          )
+        }
+      }
+    }.start()
+  }
+
+  private fun currentPreviewMode(): NitroSourcePreviewMode {
+    return currentSourceConfig()?.preview?.mode ?: NitroSourcePreviewMode.LISTENER
+  }
+
+  private fun currentAutoThumbnailEnabled(): Boolean {
+    return currentSourceConfig()?.preview?.autoThumbnail ?: true
+  }
+
   internal fun resolvePlayPauseStatus(): NitroPlayerStatus {
     if (player.isPlaying) return NitroPlayerStatus.PLAYING
-    if (wantsToPlay) return status
+    if (wantsToPlay) {
+      return when (status) {
+        NitroPlayerStatus.BUFFERING,
+        NitroPlayerStatus.LOADING,
+        NitroPlayerStatus.PLAYING -> status
+        else -> NitroPlayerStatus.LOADING
+      }
+    }
     return NitroPlayerStatus.PAUSED
   }
 
@@ -556,6 +773,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   fun notifyViewAttached() {
     lifecycle.cancelPendingTrim()
+    requestFirstFrameIfNeeded()
     NitroPlayerManager.touchFeedHotCandidate(this)
   }
 

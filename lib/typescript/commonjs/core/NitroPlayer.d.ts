@@ -23,17 +23,14 @@ declare class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
      * @internal
      */
     __getNativePlayer(): NitroPlayerImpl;
-    private throwError;
+    private parseError;
     /**
      * Updates the memory size of the player and its source. Should be called after any operation that changes the memory size of the player or its source.
      * @internal
      */
-    private updateMemorySize;
-    /**
-     * Wraps a promise to try parsing native errors to NitroPlayerRuntimeError
-     * @internal
-     */
-    private wrapPromise;
+    private refreshMemorySize;
+    private runSync;
+    private runAsync;
     get source(): NitroPlayerSource;
     get status(): NitroPlayerStatus;
     get playbackState(): PlaybackState;
@@ -61,7 +58,7 @@ declare class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     set playWhenInactive(value: boolean);
     get isPlaying(): boolean;
     get isBuffering(): boolean;
-    get isReadyToDisplay(): boolean;
+    get isVisualReady(): boolean;
     initialize(): Promise<void>;
     preload(): Promise<void>;
     /**

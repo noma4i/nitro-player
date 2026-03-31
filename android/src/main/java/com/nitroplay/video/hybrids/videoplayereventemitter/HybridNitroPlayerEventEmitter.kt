@@ -4,9 +4,22 @@ import com.nitroplay.video.core.ListenerRegistry
 
 class HybridNitroPlayerEventEmitter : HybridNitroPlayerEventEmitterSpec() {
   private val registry = ListenerRegistry()
+  private var latestFirstFrame: onFirstFrameData? = null
+  var onFirstFrameListenerAdded: (() -> Unit)? = null
 
   override fun addOnBandwidthUpdateListener(listener: (BandwidthData) -> Unit) =
     registry.add("onBandwidthUpdate", listener)
+
+  override fun addOnErrorListener(listener: (PlaybackError) -> Unit) =
+    registry.add("onError", listener)
+
+  override fun addOnFirstFrameListener(listener: (onFirstFrameData) -> Unit) =
+    registry.add("onFirstFrame", listener).also {
+      latestFirstFrame?.let(listener)
+      if (latestFirstFrame == null) {
+        onFirstFrameListenerAdded?.invoke()
+      }
+    }
 
   override fun addOnLoadListener(listener: (onLoadData) -> Unit) =
     registry.add("onLoad", listener)
@@ -27,6 +40,14 @@ class HybridNitroPlayerEventEmitter : HybridNitroPlayerEventEmitterSpec() {
   fun onBandwidthUpdate(data: BandwidthData) =
     registry.emit<(BandwidthData) -> Unit>("onBandwidthUpdate") { it(data) }
 
+  fun onError(error: PlaybackError) =
+    registry.emit<(PlaybackError) -> Unit>("onError") { it(error) }
+
+  fun onFirstFrame(data: onFirstFrameData) {
+    latestFirstFrame = data
+    registry.emit<(onFirstFrameData) -> Unit>("onFirstFrame") { it(data) }
+  }
+
   fun onLoad(data: onLoadData) =
     registry.emit<(onLoadData) -> Unit>("onLoad") { it(data) }
 
@@ -38,4 +59,12 @@ class HybridNitroPlayerEventEmitter : HybridNitroPlayerEventEmitterSpec() {
 
   fun onVolumeChange(data: onVolumeChangeData) =
     registry.emit<(onVolumeChangeData) -> Unit>("onVolumeChange") { it(data) }
+
+  fun resetStickyState() {
+    latestFirstFrame = null
+  }
+
+  fun hasOnFirstFrameListeners(): Boolean {
+    return registry.hasListeners("onFirstFrame")
+  }
 }

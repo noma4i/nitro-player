@@ -97,6 +97,8 @@ internal class NitroPlayerLifecycle(
   fun clearCurrentSourceState(sourceToTrim: HybridNitroPlayerSource?) {
     host.wantsToPlay = false
     cancelPendingTrim()
+    host.cancelStartupRecovery()
+    host.beginSourceGeneration()
     host.listenerBridge.stopProgressUpdates()
     sourceToTrim?.sourceLoader?.cancel()
     sourceToTrim?.trimToCold()
@@ -116,28 +118,18 @@ internal class NitroPlayerLifecycle(
     if (!host.hasActiveSource) {
       return PreloadLevel.NONE
     }
-    return host.currentSourceConfig()?.advanced?.lifecycle?.preloadLevel ?: when (host.currentSourceConfig()?.lifecycle ?: MemoryProfile.BALANCED) {
-      MemoryProfile.FEED -> PreloadLevel.METADATA
-      MemoryProfile.IMMERSIVE, MemoryProfile.BALANCED -> PreloadLevel.BUFFERED
-    }
+    return host.currentSourceConfig()?.retention?.preload ?: PreloadLevel.BUFFERED
   }
 
   fun resolvedOffscreenRetention(): OffscreenRetention {
     if (!host.hasActiveSource) {
       return OffscreenRetention.HOT
     }
-    return host.currentSourceConfig()?.advanced?.lifecycle?.offscreenRetention ?: when (host.currentSourceConfig()?.lifecycle ?: MemoryProfile.BALANCED) {
-      MemoryProfile.FEED -> OffscreenRetention.METADATA
-      MemoryProfile.IMMERSIVE, MemoryProfile.BALANCED -> OffscreenRetention.HOT
-    }
+    return host.currentSourceConfig()?.retention?.offscreen ?: OffscreenRetention.HOT
   }
 
   fun resolvedPauseTrimDelayMs(): Long? {
-    val delay = host.currentSourceConfig()?.advanced?.lifecycle?.trimDelayMs ?: when (host.currentSourceConfig()?.lifecycle ?: MemoryProfile.BALANCED) {
-      MemoryProfile.FEED -> 3000.0
-      MemoryProfile.IMMERSIVE -> Double.POSITIVE_INFINITY
-      MemoryProfile.BALANCED -> 10000.0
-    }
+    val delay = host.currentSourceConfig()?.retention?.trimDelayMs ?: 10000.0
     if (delay.isInfinite()) {
       return null
     }
@@ -157,7 +149,7 @@ internal class NitroPlayerLifecycle(
     if (!host.hasActiveSource) {
       return false
     }
-    return host.currentSourceConfig()?.lifecycle == MemoryProfile.FEED
+    return host.currentSourceConfig()?.retention?.feedPoolEligible == true
   }
 
   fun shouldStayHotInFeedPool(): Boolean {

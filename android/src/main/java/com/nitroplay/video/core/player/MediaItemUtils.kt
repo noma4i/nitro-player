@@ -17,7 +17,7 @@ fun createMediaItemFromVideoConfig(
 
   mediaItemBuilder.setUri(source.config.uri)
 
-  source.config.advanced?.buffer?.livePlayback?.let { livePlaybackParams ->
+  source.config.buffer?.livePlayback?.let { livePlaybackParams ->
     mediaItemBuilder.setLiveConfiguration(getLiveConfiguration(livePlaybackParams))
   }
 

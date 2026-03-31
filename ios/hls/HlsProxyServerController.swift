@@ -46,11 +46,20 @@ final class HlsProxyServerController: NSObject {
       return nil
     }
 
-    return manifestRewriter.manifestProxyUrl(url: url, headers: headers, port: port, streamKey: url)
+    return manifestRewriter.manifestProxyUrl(
+      url: url,
+      headers: headers,
+      port: port,
+      streamKey: HlsIdentity.sourceKey(url: url, headers: headers)
+    )
   }
 
   func prefetchFirstSegment(url: String, headers: [String: String]?) async throws {
-    try await prefetchFirstSegment(url: url, headers: headers, streamKey: url)
+    try await prefetchFirstSegment(
+      url: url,
+      headers: headers,
+      streamKey: HlsIdentity.sourceKey(url: url, headers: headers)
+    )
   }
 
   private func prefetchFirstSegment(url: String, headers: [String: String]?, streamKey: String) async throws {
@@ -66,17 +75,19 @@ final class HlsProxyServerController: NSObject {
     let (initSegment, firstSegment) = manifestRewriter.extractInitAndFirstSegment(manifest)
     if let initSegment {
       let resolved = manifestRewriter.resolveUrl(base: url, relative: initSegment)
-      if !cache.has(url: resolved) {
+      let resourceKey = HlsIdentity.resourceKey(url: resolved, headers: headers)
+      if !cache.has(url: resourceKey) {
         let data = try await networkClient.fetchData(url: resolved, headers: headers)
-        cache.put(url: resolved, data: data, streamKey: streamKey)
+        cache.put(url: resourceKey, data: data, streamKey: streamKey)
       }
     }
 
     if let firstSegment {
       let resolved = manifestRewriter.resolveUrl(base: url, relative: firstSegment)
-      if !cache.has(url: resolved) {
+      let resourceKey = HlsIdentity.resourceKey(url: resolved, headers: headers)
+      if !cache.has(url: resourceKey) {
         let data = try await networkClient.fetchData(url: resolved, headers: headers)
-        cache.put(url: resolved, data: data, streamKey: streamKey)
+        cache.put(url: resourceKey, data: data, streamKey: streamKey)
       }
     }
   }
@@ -90,32 +101,7 @@ final class HlsProxyServerController: NSObject {
   }
 
   func getThumbnailUrl(for url: String, headers: [String: String]?) async -> String? {
-    if let cached = cache.getThumbnailPath(url: url) {
-      return cached.absoluteString
-    }
-
-    guard let assetUrl = URL(string: url) else { return nil }
-
-    var options: [String: Any] = [:]
-    if let headers, !headers.isEmpty {
-      options["AVURLAssetHTTPHeaderFieldsKey"] = headers
-    }
-
-    let asset = AVURLAsset(url: assetUrl, options: options)
-    let generator = AVAssetImageGenerator(asset: asset)
-    generator.appliesPreferredTrackTransform = true
-    generator.maximumSize = CGSize(width: 480, height: 480)
-    generator.requestedTimeToleranceBefore = .zero
-    generator.requestedTimeToleranceAfter = .zero
-
-    do {
-      let cgImage = try generator.copyCGImage(at: .zero, actualTime: nil)
-      let uiImage = UIImage(cgImage: cgImage)
-      guard let jpegData = uiImage.jpegData(compressionQuality: 0.7) else { return nil }
-      return cache.putThumbnail(url: url, data: jpegData)?.absoluteString
-    } catch {
-      return nil
-    }
+    return await VideoPreviewRuntime.shared.getFirstFrame(url: url, headers: headers, preview: nil)?.uri
   }
 
   func clearCache() {
@@ -262,8 +248,8 @@ final class HlsProxyServerController: NSObject {
       return
     }
 
-    let streamKey = request.query?["streamKey"] ?? url
     let headers = manifestRewriter.decodeHeaders(request.query?["headers"])
+    let streamKey = request.query?["streamKey"] ?? HlsIdentity.sourceKey(url: url, headers: headers)
 
     Task.detached { [weak self] in
       guard let self else {
@@ -273,6 +259,7 @@ final class HlsProxyServerController: NSObject {
 
       do {
         let manifest = try await self.networkClient.fetchText(url: url, headers: headers, cachePolicy: .reloadIgnoringLocalCacheData)
+        try self.validateManifest(manifest)
         let rewritten = self.manifestRewriter.rewriteManifest(
           manifest: manifest,
           baseUrl: url,
@@ -280,6 +267,7 @@ final class HlsProxyServerController: NSObject {
           port: self.port,
           streamKey: streamKey
         )
+        try self.validateManifest(rewritten)
         let response = GCDWebServerDataResponse(
           data: rewritten.data(using: .utf8) ?? Data(),
           contentType: "application/vnd.apple.mpegurl"
@@ -289,7 +277,7 @@ final class HlsProxyServerController: NSObject {
         response.setValue("0", forAdditionalHeader: "Expires")
         completion(response)
       } catch {
-        completion(GCDWebServerDataResponse(statusCode: 500))
+        completion(GCDWebServerDataResponse(statusCode: 503))
       }
     }
   }
@@ -302,6 +290,7 @@ final class HlsProxyServerController: NSObject {
 
     let streamKey = request.query?["streamKey"]
     let headers = manifestRewriter.decodeHeaders(request.query?["headers"])
+    let resourceKey = HlsIdentity.resourceKey(url: url, headers: headers)
 
     Task.detached { [weak self] in
       guard let self else {
@@ -309,7 +298,7 @@ final class HlsProxyServerController: NSObject {
         return
       }
 
-      if let filePath = self.cache.getFilePath(url: url) {
+      if let filePath = self.cache.getFilePath(url: resourceKey) {
         let response = GCDWebServerFileResponse(file: filePath.path)
         response?.contentType = self.manifestRewriter.guessContentType(url: url)
         completion(response ?? GCDWebServerDataResponse(statusCode: 500))
@@ -318,7 +307,7 @@ final class HlsProxyServerController: NSObject {
 
       do {
         let data = try await self.networkClient.fetchData(url: url, headers: headers)
-        self.cache.put(url: url, data: data, streamKey: streamKey)
+        self.cache.put(url: resourceKey, data: data, streamKey: streamKey)
         completion(
           GCDWebServerDataResponse(
             data: data,
@@ -326,13 +315,22 @@ final class HlsProxyServerController: NSObject {
           )
         )
       } catch {
-        completion(GCDWebServerDataResponse(statusCode: 500))
+        completion(GCDWebServerDataResponse(statusCode: 503))
       }
+    }
+  }
+
+  private func validateManifest(_ manifest: String) throws {
+    let trimmed = manifest.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty, trimmed.contains("#EXTM3U") else {
+      throw NSError(domain: "hls", code: 6, userInfo: [NSLocalizedDescriptionKey: "Invalid HLS manifest"])
     }
   }
 }
 
 final class HlsNetworkClient {
+  private let retryDelaysNs: [UInt64] = [100_000_000, 300_000_000]
+
   func fetchText(url: String, headers: [String: String]?, cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy) async throws -> String {
     let data = try await fetchData(url: url, headers: headers, cachePolicy: cachePolicy)
     guard let text = String(data: data, encoding: .utf8) else {
@@ -342,6 +340,28 @@ final class HlsNetworkClient {
   }
 
   func fetchData(url: String, headers: [String: String]?, cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy) async throws -> Data {
+    var lastError: Error?
+
+    for attempt in 0...retryDelaysNs.count {
+      do {
+        let data = try await performFetchData(url: url, headers: headers, cachePolicy: cachePolicy)
+        guard !data.isEmpty else {
+          throw NSError(domain: "hls", code: 4, userInfo: [NSLocalizedDescriptionKey: "Empty response body"])
+        }
+        return data
+      } catch {
+        lastError = error
+        guard attempt < retryDelaysNs.count, shouldRetry(error) else {
+          throw error
+        }
+        try await Task.sleep(nanoseconds: retryDelaysNs[attempt])
+      }
+    }
+
+    throw lastError ?? NSError(domain: "hls", code: 5)
+  }
+
+  private func performFetchData(url: String, headers: [String: String]?, cachePolicy: URLRequest.CachePolicy) async throws -> Data {
     guard let requestUrl = URL(string: url) else {
       throw NSError(domain: "hls", code: 2)
     }
@@ -350,9 +370,37 @@ final class HlsNetworkClient {
     request.cachePolicy = cachePolicy
     headers?.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
     let (data, response) = try await URLSession.shared.data(for: request)
-    guard let http = response as? HTTPURLResponse, http.statusCode < 400 else {
+    guard let http = response as? HTTPURLResponse else {
       throw NSError(domain: "hls", code: 3)
     }
+    if http.statusCode >= 500 {
+      throw NSError(domain: "hls", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: "Upstream unavailable (\(http.statusCode))"])
+    }
+    guard http.statusCode < 400 else {
+      throw NSError(domain: "hls", code: http.statusCode)
+    }
     return data
+  }
+
+  private func shouldRetry(_ error: Error) -> Bool {
+    if error is CancellationError {
+      return false
+    }
+
+    let nsError = error as NSError
+    if nsError.domain == NSURLErrorDomain {
+      switch nsError.code {
+      case NSURLErrorTimedOut,
+        NSURLErrorCannotConnectToHost,
+        NSURLErrorNetworkConnectionLost,
+        NSURLErrorNotConnectedToInternet,
+        NSURLErrorCannotFindHost:
+        return true
+      default:
+        break
+      }
+    }
+
+    return nsError.domain == "hls" && nsError.code >= 4
   }
 }

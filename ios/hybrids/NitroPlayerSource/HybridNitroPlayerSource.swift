@@ -12,7 +12,11 @@ import NitroModules
 class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSourceSpec {
   private var _asset: AVURLAsset?
   private var _retentionState: MemoryRetentionState = .cold
+  private var _config: NativeNitroPlayerConfig
+  private var _url: URL
+  private var _isProxyRouteActive: Bool
   private let stateLock = NSLock()
+  let originalConfig: NativeNitroPlayerConfig
 
   var asset: AVURLAsset? {
     get { stateLock.lock(); defer { stateLock.unlock() }; return _asset }
@@ -24,21 +28,52 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
     set { stateLock.lock(); _retentionState = newValue; stateLock.unlock() }
   }
 
-  var uri: String
-  let config: NativeNitroPlayerConfig
+  var uri: String {
+    get { stateLock.lock(); defer { stateLock.unlock() }; return _config.uri }
+    set {
+      guard let nextUrl = URL(string: newValue) else { return }
+      stateLock.lock()
+      _config = NativeNitroPlayerConfig(
+        uri: newValue,
+        headers: _config.headers,
+        metadata: _config.metadata,
+        startup: _config.startup,
+        buffer: _config.buffer,
+        retention: _config.retention,
+        transport: _config.transport,
+        preview: _config.preview
+      )
+      _url = nextUrl
+      stateLock.unlock()
+    }
+  }
+  var config: NativeNitroPlayerConfig {
+    get { stateLock.lock(); defer { stateLock.unlock() }; return _config }
+  }
 
-  let url: URL
+  var url: URL {
+    get { stateLock.lock(); defer { stateLock.unlock() }; return _url }
+  }
   private let sourceLoader = SourceLoader()
 
-  init(config: NativeNitroPlayerConfig) throws {
-    self.uri = config.uri
-    self.config = config
+  var isProxyRouteActive: Bool {
+    get { stateLock.lock(); defer { stateLock.unlock() }; return _isProxyRouteActive }
+  }
 
-    guard let url = URL(string: uri) else {
-      throw SourceError.invalidUri(uri: uri).error()
+  init(
+    config: NativeNitroPlayerConfig,
+    originalConfig: NativeNitroPlayerConfig? = nil,
+    isProxyRouteActive: Bool? = nil
+  ) throws {
+    self.originalConfig = originalConfig ?? config
+    self._config = config
+
+    guard let url = URL(string: config.uri) else {
+      throw SourceError.invalidUri(uri: config.uri).error()
     }
 
-    self.url = url
+    self._url = url
+    self._isProxyRouteActive = isProxyRouteActive ?? false
 
     super.init()
   }
@@ -169,6 +204,54 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
     sourceLoader.cancelSync()
     asset = nil
     retentionState = .cold
+  }
+
+  func supportsStartupRecovery() -> Bool {
+    guard originalConfig.transport?.mode != .direct else {
+      return false
+    }
+    let withoutFragment = originalConfig.uri.split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? originalConfig.uri
+    let withoutQuery = withoutFragment.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? withoutFragment
+    return withoutQuery.lowercased().hasSuffix(".m3u8")
+  }
+
+  func previewSourceUri() -> String {
+    originalConfig.uri
+  }
+
+  @discardableResult
+  func refreshPlaybackRouteForStartupRecovery() -> Bool {
+    guard supportsStartupRecovery() else {
+      return false
+    }
+
+    releaseAsset()
+
+    let resolution = HlsProxyRuntime.shared.resolvePlaybackRoute(
+      url: originalConfig.uri,
+      headers: originalConfig.headers
+    )
+
+    guard let nextUrl = URL(string: resolution.url) else {
+      return false
+    }
+
+    stateLock.lock()
+    _config = NativeNitroPlayerConfig(
+      uri: resolution.url,
+      headers: originalConfig.headers,
+      metadata: originalConfig.metadata,
+      startup: originalConfig.startup,
+      buffer: originalConfig.buffer,
+      retention: originalConfig.retention,
+      transport: originalConfig.transport,
+      preview: originalConfig.preview
+    )
+    _url = nextUrl
+    _isProxyRouteActive = resolution.isProxying
+    stateLock.unlock()
+
+    return resolution.isProxying
   }
 
   var memorySize: Int {

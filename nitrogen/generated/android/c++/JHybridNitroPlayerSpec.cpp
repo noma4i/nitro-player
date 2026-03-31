@@ -224,8 +224,8 @@ namespace margelo::nitro::video {
     auto __result = method(_javaPart);
     return static_cast<bool>(__result);
   }
-  bool JHybridNitroPlayerSpec::getIsReadyToDisplay() {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("isReadyToDisplay");
+  bool JHybridNitroPlayerSpec::getIsVisualReady() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jboolean()>("isVisualReady");
     auto __result = method(_javaPart);
     return static_cast<bool>(__result);
   }

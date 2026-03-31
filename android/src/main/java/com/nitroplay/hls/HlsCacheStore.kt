@@ -104,6 +104,13 @@ class HlsCacheStore(context: Context) {
         saveIndex()
     }
 
+    fun clearThumbnails() {
+        cacheDir
+            .listFiles()
+            ?.filter { it.name.endsWith(".thumb") }
+            ?.forEach { it.delete() }
+    }
+
     fun close() {
         pendingSave?.cancel(false)
         pendingSave = null

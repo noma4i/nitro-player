@@ -122,7 +122,7 @@ abstract class HybridNitroPlayerSpec: HybridObject() {
   
   @get:DoNotStrip
   @get:Keep
-  abstract val isReadyToDisplay: Boolean
+  abstract val isVisualReady: Boolean
 
   // Methods
   @DoNotStrip

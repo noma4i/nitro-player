@@ -1,10 +1,12 @@
 import type { HybridObject } from 'react-native-nitro-modules';
 import type {
   BandwidthData,
+  onFirstFrameData,
   onLoadData,
   onLoadStartData,
   onVolumeChangeData,
 } from '../../core/types/Events';
+import type { PlaybackError } from '../../core/types/PlaybackError';
 import type { PlaybackState } from '../../core/types/PlaybackState';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -24,6 +26,14 @@ export interface NitroPlayerEventEmitter
 
   addOnLoadStartListener(
     listener: (data: onLoadStartData) => void
+  ): ListenerSubscription;
+
+  addOnFirstFrameListener(
+    listener: (data: onFirstFrameData) => void
+  ): ListenerSubscription;
+
+  addOnErrorListener(
+    listener: (error: PlaybackError) => void
   ): ListenerSubscription;
 
   addOnPlaybackStateListener(

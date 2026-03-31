@@ -19,7 +19,7 @@ describe('sourceFactory', () => {
     fromNitroPlayerConfig.mockClear();
   });
 
-  it('passes raw source config to native factory without JS-side lifecycle resolution', () => {
+  it('passes raw source config to native factory without JS-side resolution', () => {
     const { createNitroSource } = require('../core/utils/sourceFactory');
 
     createNitroSource({
@@ -30,60 +30,79 @@ describe('sourceFactory', () => {
       uri: 'https://cdn.example.com/video.mp4',
       headers: undefined,
       metadata: undefined,
-      initialization: undefined,
-      lifecycle: undefined,
-      advanced: undefined
+      startup: undefined,
+      buffer: undefined,
+      retention: undefined,
+      transport: undefined,
+      preview: undefined
     });
   });
 
-  it('preserves explicit lifecycle config for native resolution', () => {
+  it('preserves explicit startup and retention config for native resolution', () => {
     const { createNitroSource } = require('../core/utils/sourceFactory');
 
     createNitroSource({
       uri: 'https://cdn.example.com/feed-item.mp4',
-      lifecycle: 'feed'
+      startup: 'lazy',
+      retention: {
+        preload: 'metadata',
+        offscreen: 'metadata',
+        trimDelayMs: 3000,
+        feedPoolEligible: true
+      }
     });
 
     expect(fromNitroPlayerConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        lifecycle: 'feed',
-        advanced: undefined
+        startup: 'lazy',
+        retention: {
+          preload: 'metadata',
+          offscreen: 'metadata',
+          trimDelayMs: 3000,
+          feedPoolEligible: true
+        }
       })
     );
   });
 
-  it('maps advanced lifecycle and transport overrides', () => {
+  it('maps buffer, transport and preview overrides', () => {
     const { createNitroSource } = require('../core/utils/sourceFactory');
 
     createNitroSource({
       uri: 'https://cdn.example.com/live.m3u8',
-      initialization: 'lazy',
-      advanced: {
-        transport: {
-          useHlsProxy: false
-        },
-        lifecycle: {
-          preloadLevel: 'none',
-          offscreenRetention: 'cold',
-          trimDelayMs: 500
-        }
+      startup: 'lazy',
+      buffer: {
+        minBufferMs: 5000
+      },
+      transport: {
+        mode: 'direct'
+      },
+      preview: {
+        mode: 'always',
+        autoThumbnail: false,
+        maxWidth: 320,
+        maxHeight: 180,
+        quality: 60
       }
     });
 
     expect(fromNitroPlayerConfig).toHaveBeenCalledWith(
       expect.objectContaining({
         uri: 'https://cdn.example.com/live.m3u8',
-        initialization: 'lazy',
-        advanced: expect.objectContaining({
-          transport: {
-            useHlsProxy: false
-          },
-          lifecycle: {
-            preloadLevel: 'none',
-            offscreenRetention: 'cold',
-            trimDelayMs: 500
-          }
-        })
+        startup: 'lazy',
+        buffer: {
+          minBufferMs: 5000
+        },
+        transport: {
+          mode: 'direct'
+        },
+        preview: {
+          mode: 'always',
+          autoThumbnail: false,
+          maxWidth: 320,
+          maxHeight: 180,
+          quality: 60
+        }
       })
     );
   });

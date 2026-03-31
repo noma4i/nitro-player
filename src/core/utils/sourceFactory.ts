@@ -31,9 +31,11 @@ const normalizeSourceConfig = (config: NitroSourceConfig): NativeNitroPlayerConf
     uri: resolveUri(config.uri),
     headers: config.headers,
     metadata: config.metadata,
-    initialization: config.initialization,
-    lifecycle: config.lifecycle,
-    advanced: config.advanced
+    startup: config.startup,
+    buffer: config.buffer,
+    retention: config.retention,
+    transport: config.transport,
+    preview: config.preview
   };
 };
 

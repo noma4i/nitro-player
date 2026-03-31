@@ -78,7 +78,7 @@ namespace margelo::nitro::video {
     void setPlayWhenInactive(bool playWhenInactive) override;
     bool getIsPlaying() override;
     bool getIsBuffering() override;
-    bool getIsReadyToDisplay() override;
+    bool getIsVisualReady() override;
 
   public:
     // Methods

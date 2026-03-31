@@ -55,6 +55,7 @@ internal class NitroPlayerListenerBridge(
           host.enterBuffering()
         }
         Player.STATE_READY -> {
+          host.markCurrentSourceLoaded()
           host.isCurrentlyBuffering = false
           host.lastError = null
           host.status = host.resolvePlayPauseStatus()
@@ -83,8 +84,19 @@ internal class NitroPlayerListenerBridge(
               orientation = NitroPlayerOrientationUtils.fromWHR(width, height, rotationDegrees)
             )
           )
+
+          val sourceUrl = (host.source as? HybridNitroPlayerSource)?.previewSourceUri()
+          if (sourceUrl != null) {
+            host.cacheFirstFrameContext(
+              sourceUri = sourceUrl,
+              width = width.toDouble(),
+              height = height.toDouble()
+            )
+            host.requestFirstFrameIfNeeded()
+          }
         }
         Player.STATE_ENDED -> {
+          host.cancelStartupRecovery()
           host.wantsToPlay = false
           host.isCurrentlyBuffering = false
           host.status = NitroPlayerStatus.ENDED
@@ -114,13 +126,11 @@ internal class NitroPlayerListenerBridge(
     }
 
     override fun onPlayerError(error: PlaybackException) {
-      host.wantsToPlay = false
-      host.isCurrentlyBuffering = false
-      host.status = NitroPlayerStatus.ERROR
-      host.readyToDisplay = false
-      host.lastError = host.toPlaybackError(NitroPlayerErrorCode.UNKNOWN_UNKNOWN, error.message ?: "Unknown playback error")
-      stopProgressUpdates()
-      host.emitPlaybackState()
+      val message = error.message ?: "Unknown playback error"
+      if (host.attemptStartupRecoveryIfNeeded(message)) {
+        return
+      }
+      host.failPlayback(message)
     }
 
     override fun onPositionDiscontinuity(

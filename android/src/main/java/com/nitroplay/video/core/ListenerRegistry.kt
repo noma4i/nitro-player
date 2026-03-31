@@ -32,4 +32,8 @@ class ListenerRegistry {
   fun clearAll() {
     synchronized(lock) { entries.clear() }
   }
+
+  fun hasListeners(event: String): Boolean {
+    return synchronized(lock) { entries.any { it.eventName == event } }
+  }
 }

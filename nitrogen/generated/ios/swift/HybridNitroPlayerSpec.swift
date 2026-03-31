@@ -29,7 +29,7 @@ public protocol HybridNitroPlayerSpec_protocol: HybridObject {
   var playWhenInactive: Bool { get set }
   var isPlaying: Bool { get }
   var isBuffering: Bool { get }
-  var isReadyToDisplay: Bool { get }
+  var isVisualReady: Bool { get }
 
   // Methods
   func replaceSourceAsync(source: (any HybridNitroPlayerSourceSpec)) throws -> Promise<Void>

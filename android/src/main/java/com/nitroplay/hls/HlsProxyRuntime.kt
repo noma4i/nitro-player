@@ -14,7 +14,7 @@ object HlsProxyRuntime {
   private var isRegistered = false
   private var didAutoStart = false
   private var isExplicitlyStopped = false
-  private var server: HlsCacheProxyServer? = null
+  private var server: HlsProxyServer? = null
   private var reactContext: ReactApplicationContext? = null
   private val prefetchTimestamps = LinkedHashMap<String, Long>()
 
@@ -30,6 +30,7 @@ object HlsProxyRuntime {
       this.reactContext = reactContext
       isRegistered = true
     }
+    VideoPreviewRuntime.register(reactContext)
   }
 
   fun start(port: Int?) {
@@ -73,19 +74,33 @@ object HlsProxyRuntime {
   }
 
   fun getProxiedUrl(url: String, headers: Map<String, String>?): String {
+    return resolvePlaybackRoute(url, headers).url
+  }
+
+  internal fun resolvePlaybackRoute(url: String, headers: Map<String, String>?): PlaybackRouteResolution {
     val isStopped = synchronized(lock) { isExplicitlyStopped }
-    if (isStopped) return url
+    if (isStopped) return PlaybackRouteResolution(url = url, isProxying = false)
     ensureStarted()
-    if (!ensureServerRunning()) return url
-    val activeServer = synchronized(lock) { server } ?: return url
-    if (!activeServer.isAlive) return url
+    if (!ensureServerRunning()) {
+      return PlaybackRouteResolution(url = url, isProxying = false)
+    }
+    val activeServer = synchronized(lock) { server }
+      ?: return PlaybackRouteResolution(url = url, isProxying = false)
+    if (!activeServer.isAlive) {
+      return PlaybackRouteResolution(url = url, isProxying = false)
+    }
     val encodedUrl = URLEncoder.encode(url, "UTF-8")
     val encodedHeaders = HlsHeaderCodec.encode(headers)
+    val streamKey = HlsIdentity.sourceKey(url, headers)
     val query = StringBuilder("url=").append(encodedUrl)
     if (encodedHeaders != null) {
       query.append("&headers=").append(URLEncoder.encode(encodedHeaders, "UTF-8"))
     }
-    return "http://127.0.0.1:${activeServer.listeningPort()}/hls/manifest.m3u8?$query"
+    query.append("&streamKey=").append(URLEncoder.encode(streamKey, "UTF-8"))
+    return PlaybackRouteResolution(
+      url = "http://127.0.0.1:${activeServer.listeningPort()}/hls/manifest.m3u8?$query",
+      isProxying = true
+    )
   }
 
   fun prefetchFirstSegment(url: String, headers: ReadableMap?, onComplete: () -> Unit, onError: (Throwable) -> Unit) {
@@ -98,11 +113,12 @@ object HlsProxyRuntime {
 
     val shouldPrefetch = synchronized(lock) {
       val now = System.currentTimeMillis()
-      val last = prefetchTimestamps[url]
+      val dedupKey = HlsIdentity.sourceKey(url, HlsHeaderCodec.decode(headers))
+      val last = prefetchTimestamps[dedupKey]
       if (last != null && now - last < PREFETCH_DEDUP_MS) {
         false
       } else {
-        prefetchTimestamps[url] = now
+        prefetchTimestamps[dedupKey] = now
         if (prefetchTimestamps.size > 500) {
           val iterator = prefetchTimestamps.entries.iterator()
           while (iterator.hasNext()) {
@@ -130,26 +146,7 @@ object HlsProxyRuntime {
   }
 
   fun getThumbnailUrl(url: String, headers: Map<String, String>?): String? {
-    val store = synchronized(lock) { server?.cacheStore } ?: return null
-    store.getThumbnailPath(url)?.let { return it }
-
-    return try {
-      val retriever = android.media.MediaMetadataRetriever()
-      if (headers != null && headers.isNotEmpty()) {
-        retriever.setDataSource(url, headers)
-      } else {
-        retriever.setDataSource(url, HashMap())
-      }
-      val bitmap = retriever.getFrameAtTime(0, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-      retriever.release()
-      if (bitmap != null) {
-        val stream = java.io.ByteArrayOutputStream()
-        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 70, stream)
-        store.putThumbnail(url, stream.toByteArray())
-      } else null
-    } catch (e: Exception) {
-      null
-    }
+    return VideoPreviewRuntime.getFirstFrame(url, headers, null)?.uri
   }
 
   fun getCacheStats() = Arguments.createMap().apply {
@@ -159,8 +156,10 @@ object HlsProxyRuntime {
     putDouble("maxSize", (stats?.get("maxSize") as? Long)?.toDouble() ?: 5368709120.0)
   }
 
-  fun getStreamCacheStats(url: String) = Arguments.createMap().apply {
-    val stats = synchronized(lock) { server?.cacheStore?.getStreamCacheStats(url) }
+  fun getStreamCacheStats(url: String, headers: Map<String, String>? = null) = Arguments.createMap().apply {
+    val stats = synchronized(lock) {
+      server?.cacheStore?.getStreamCacheStats(HlsIdentity.sourceKey(url, headers))
+    }
     putDouble("totalSize", (stats?.get("totalSize") as? Long)?.toDouble() ?: 0.0)
     putInt("fileCount", (stats?.get("fileCount") as? Int) ?: 0)
     putDouble("maxSize", (stats?.get("maxSize") as? Long)?.toDouble() ?: 5368709120.0)
@@ -170,6 +169,10 @@ object HlsProxyRuntime {
 
   fun clearCache() {
     synchronized(lock) { server?.cacheStore }?.clearAll()
+  }
+
+  fun clearPreview() {
+    VideoPreviewRuntime.clear()
   }
 
   internal fun snapshotStateForTests(): RuntimeStateSnapshot {
@@ -199,6 +202,22 @@ object HlsProxyRuntime {
       reactContext = null
       prefetchTimestamps.clear()
     }
+    VideoPreviewRuntime.resetStateForTests()
+  }
+
+  fun restartForPlaybackRecovery() {
+    val (shouldRestart, desiredPort) = synchronized(lock) {
+      if (isExplicitlyStopped) {
+        Pair(false, port)
+      } else {
+        didAutoStart = true
+        Pair(true, port)
+      }
+    }
+    if (!shouldRestart) {
+      return
+    }
+    ensureServerRunning(forceRestart = true, desiredPort = desiredPort)
   }
 
   private fun ensureStarted() {
@@ -219,7 +238,7 @@ object HlsProxyRuntime {
 
     stopServer()
     synchronized(lock) {
-      server = HlsCacheProxyServer(desiredPort, context)
+      server = HlsProxyServer(desiredPort, context)
       try {
         server?.start(NanoHttpdConfig.TIMEOUT_MS, false)
       } catch (_: Exception) {
@@ -236,3 +255,7 @@ object HlsProxyRuntime {
     }
   }
 }
+  internal data class PlaybackRouteResolution(
+    val url: String,
+    val isProxying: Boolean
+  )

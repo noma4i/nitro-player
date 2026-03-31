@@ -16,6 +16,8 @@ public protocol HybridNitroPlayerEventEmitterSpec_protocol: HybridObject {
   func addOnBandwidthUpdateListener(listener: @escaping (_ data: BandwidthData) -> Void) throws -> ListenerSubscription
   func addOnLoadListener(listener: @escaping (_ data: onLoadData) -> Void) throws -> ListenerSubscription
   func addOnLoadStartListener(listener: @escaping (_ data: onLoadStartData) -> Void) throws -> ListenerSubscription
+  func addOnFirstFrameListener(listener: @escaping (_ data: onFirstFrameData) -> Void) throws -> ListenerSubscription
+  func addOnErrorListener(listener: @escaping (_ error: PlaybackError) -> Void) throws -> ListenerSubscription
   func addOnPlaybackStateListener(listener: @escaping (_ state: PlaybackState) -> Void) throws -> ListenerSubscription
   func addOnVolumeChangeListener(listener: @escaping (_ data: onVolumeChangeData) -> Void) throws -> ListenerSubscription
   func clearAllListeners() throws -> Void
