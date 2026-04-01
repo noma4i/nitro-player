@@ -70,6 +70,14 @@ class NitroPlayStreamRuntimeModule(private val reactContext: ReactApplicationCon
         }.start()
     }
 
+    @ReactMethod
+    fun peekThumbnailUrl(url: String, headers: ReadableMap?, promise: Promise) {
+        Thread {
+            val result = HlsProxyRuntime.peekThumbnailUrl(url, com.nitroplay.hls.HlsHeaderCodec.decode(headers))
+            promise.resolve(result)
+        }.start()
+    }
+
     // LifecycleEventListener — self-heal on foreground return
     override fun onHostResume() {
         HlsProxyRuntime.onHostResume()

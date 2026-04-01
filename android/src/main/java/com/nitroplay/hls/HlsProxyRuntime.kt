@@ -149,6 +149,10 @@ object HlsProxyRuntime {
     return VideoPreviewRuntime.getFirstFrame(url, headers, null)?.uri
   }
 
+  fun peekThumbnailUrl(url: String, headers: Map<String, String>?): String? {
+    return VideoPreviewRuntime.peekFirstFrame(url, headers, null)?.uri
+  }
+
   fun getCacheStats() = Arguments.createMap().apply {
     val stats = synchronized(lock) { server?.cacheStore?.getCacheStats() }
     putDouble("totalSize", (stats?.get("totalSize") as? Long)?.toDouble() ?: 0.0)

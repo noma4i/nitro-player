@@ -2,11 +2,11 @@
 
 Native-first video player for React Native with shared HLS transport, stream cache, and first-frame preview utilities.
 
-Current prerelease: `1.0.0-beta.10`
+Current prerelease: `1.0.0-beta.11`
 
 ## Installation
 
-Install from GitHub tag `v1.0.0-beta.10`.
+Install from GitHub tag `v1.0.0-beta.11`.
 
 Peer dependency: `react-native-nitro-modules >= 0.35.0`
 
@@ -46,7 +46,7 @@ export function FeedCard() {
 | `NitroPlayer` | Imperative player object |
 | `createNitroSource(config)` | Canonical reusable source factory |
 | `streamCache` | Prefetch, cache stats, cache clearing |
-| `videoPreview` | Manual first-frame lookup |
+| `videoPreview` | Generated and cache-only first-frame lookup |
 | `usePlaybackState(player)` | Raw native playback snapshot |
 | `useEvent(target, event, listener)` | Event subscription helper |
 
@@ -75,6 +75,7 @@ export function FeedCard() {
 | Preview policy | `preview.mode='listener'` auto-captures for attached views when `autoThumbnail !== false`; `always` warms preview automatically; `manual` disables background auto-warmup |
 | Mounted-view reveal | Attached `NitroPlayerView` owns native auto-thumbnail/first-frame placeholder by default; app code should not require JS poster swapping for active playback surfaces |
 | Manual preview | `videoPreview.getFirstFrame(source)` returns cached/generated frame path |
+| Cached preview reuse | `videoPreview.peekFirstFrame(source)` returns only an existing cached frame path and never starts generation |
 | Stream/preview identity | `{ uri, headers }` is the canonical identity for cache stats and preview artifacts |
 | Stream cache | `streamCache.prefetch(source)` is safe to call repeatedly |
 
@@ -100,7 +101,7 @@ The local [example](example/README.md) is a runtime lab, not just a smoke test.
 
 It covers:
 - hero playback switching between `transport.mode='auto'`, header-isolated HLS, and direct MP4
-- `streamCache.prefetch/getStats/clear` and `videoPreview.getFirstFrame/clear`
+- `streamCache.prefetch/getStats/clear` and `videoPreview.getFirstFrame/peekFirstFrame/clear`
 - a three-player feed stress block with the same HLS URL under different headers
 - live observation of `onLoad`, `onError`, `onFirstFrame`, bandwidth, attach state, and `isVisualReady`
 

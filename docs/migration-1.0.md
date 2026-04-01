@@ -40,7 +40,7 @@ This beta removes the preset-based source DSL. Sources must use the explicit v2 
 | Source objects | No `lifecycle`, `initialization`, or `advanced.*` fields remain |
 | UI listeners | `isVisualReady`, `onError`, and `onFirstFrame` are wired |
 | Cache calls | `streamCache` is used instead of public `hlsCacheProxy` helpers |
-| Preview calls | `videoPreview.getFirstFrame(source)` is used for manual lookup |
+| Preview calls | `videoPreview.getFirstFrame(source)` is used for manual lookup with generation on miss; `videoPreview.peekFirstFrame(source)` is the cache-only variant |
 | Feed screens | Feed-specific behavior is described through `retention`, not presets |
 
 ## Example rewrite

@@ -12,6 +12,7 @@ const nativeGetStreamCacheStats = jest.fn(async () => ({
   streamFileCount: 0
 }));
 const nativeGetThumbnailUrl = jest.fn(async () => 'file:///tmp/frame.jpg');
+const nativePeekThumbnailUrl = jest.fn(async () => 'file:///tmp/cached-frame.jpg');
 const nativeClearCache = jest.fn(async () => true);
 const nativeClearPreview = jest.fn(async () => true);
 
@@ -22,6 +23,7 @@ jest.mock('react-native', () => ({
       getCacheStats: nativeGetCacheStats,
       getStreamCacheStats: nativeGetStreamCacheStats,
       getThumbnailUrl: nativeGetThumbnailUrl,
+      peekThumbnailUrl: nativePeekThumbnailUrl,
       clearCache: nativeClearCache,
       clearPreview: nativeClearPreview
     }
@@ -35,6 +37,7 @@ describe('streamCache', () => {
     nativeGetCacheStats.mockReset();
     nativeGetStreamCacheStats.mockReset();
     nativeGetThumbnailUrl.mockReset();
+    nativePeekThumbnailUrl.mockReset();
     nativeClearCache.mockReset();
     nativeClearPreview.mockReset();
 
@@ -52,6 +55,7 @@ describe('streamCache', () => {
       streamFileCount: 0
     });
     nativeGetThumbnailUrl.mockResolvedValue('file:///tmp/frame.jpg');
+    nativePeekThumbnailUrl.mockResolvedValue('file:///tmp/cached-frame.jpg');
     nativeClearCache.mockResolvedValue(true);
     nativeClearPreview.mockResolvedValue(true);
   });
@@ -135,8 +139,10 @@ describe('videoPreview', () => {
   beforeEach(() => {
     jest.resetModules();
     nativeGetThumbnailUrl.mockReset();
+    nativePeekThumbnailUrl.mockReset();
     nativeClearPreview.mockReset();
     nativeGetThumbnailUrl.mockResolvedValue('file:///tmp/frame.jpg');
+    nativePeekThumbnailUrl.mockResolvedValue('file:///tmp/cached-frame.jpg');
     nativeClearPreview.mockResolvedValue(true);
   });
 
@@ -162,6 +168,22 @@ describe('videoPreview', () => {
     const frame = await videoPreview.getFirstFrame('https://cdn.example.com/live.m3u8');
 
     expect(frame).toBeNull();
+  });
+
+  it('delegates peekFirstFrame(source) to native cached thumbnail lookup', async () => {
+    const { videoPreview } = require('../preview/videoPreview');
+
+    const frame = await videoPreview.peekFirstFrame({
+      uri: 'https://cdn.example.com/live.m3u8',
+      headers: { Authorization: 'Bearer token' }
+    });
+
+    expect(nativePeekThumbnailUrl).toHaveBeenCalledWith(
+      'https://cdn.example.com/live.m3u8',
+      { Authorization: 'Bearer token' }
+    );
+    expect(nativeGetThumbnailUrl).not.toHaveBeenCalled();
+    expect(frame).toBe('file:///tmp/cached-frame.jpg');
   });
 
   it('clear() delegates to native preview cleanup when available', async () => {

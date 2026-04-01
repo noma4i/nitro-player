@@ -85,6 +85,10 @@ final class HlsProxyRuntime {
     return await VideoPreviewRuntime.shared.getFirstFrame(url: url, headers: headers, preview: nil)?.uri
   }
 
+  func peekThumbnailUrl(url: String, headers: [String: String]?) -> String? {
+    return VideoPreviewRuntime.shared.peekFirstFrame(url: url, headers: headers, preview: nil)?.uri
+  }
+
   func clearCache() {
     runOnMainSync {
       controller.clearCache()

@@ -141,10 +141,11 @@ Mounted `NitroPlayerView` surfaces do not need JS orchestration just to reveal t
 | `streamCache.prefetch(source)` | Warm transport and first segment cache |
 | `streamCache.getStats(source?)` | Total or per-source stream cache stats, header-aware |
 | `streamCache.clear()` | Clear disk cache |
-| `videoPreview.getFirstFrame(source)` | Manual first-frame lookup |
+| `videoPreview.getFirstFrame(source)` | Manual first-frame lookup with generation on miss |
+| `videoPreview.peekFirstFrame(source)` | Cached-only first-frame lookup |
 | `videoPreview.clear()` | Clear cached preview artifacts |
 
-`streamCache.getStats(source)` and `videoPreview.getFirstFrame(source)` both accept either a URL string or `{ uri, headers }`. Use the object form whenever headers are part of the request identity.
+`streamCache.getStats(source)`, `videoPreview.getFirstFrame(source)`, and `videoPreview.peekFirstFrame(source)` all accept either a URL string or `{ uri, headers }`. Use the object form whenever headers are part of the request identity.
 
 ## Hooks
 

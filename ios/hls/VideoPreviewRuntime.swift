@@ -66,6 +66,21 @@ final class VideoPreviewRuntime {
     return result
   }
 
+  func peekFirstFrame(
+    url: String,
+    headers: [String: String]?,
+    preview: NitroSourcePreviewConfig?
+  ) -> VideoPreviewResult? {
+    let profile = VideoPreviewProfile.from(config: preview)
+    let cacheKey = HlsIdentity.previewKey(url: url, headers: headers, profile: profile)
+
+    guard let cached = store.getThumbnailPath(url: cacheKey) else {
+      return nil
+    }
+
+    return VideoPreviewResult(uri: cached.absoluteString, fromCache: true)
+  }
+
   func clear() {
     store.clearThumbnails()
   }

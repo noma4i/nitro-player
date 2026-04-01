@@ -74,6 +74,13 @@ object VideoPreviewRuntime {
     }
   }
 
+  fun peekFirstFrame(url: String, headers: Map<String, String>?, preview: NitroSourcePreviewConfig?): VideoPreviewResult? {
+    val store = ensureStore() ?: return null
+    val cacheKey = HlsIdentity.previewKey(url, headers, preview)
+    val cached = store.getThumbnailPath(cacheKey) ?: return null
+    return VideoPreviewResult(uri = cached, fromCache = true)
+  }
+
   fun clear() {
     synchronized(lock) {
       previewStore?.clearThumbnails()

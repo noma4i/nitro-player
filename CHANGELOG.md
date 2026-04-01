@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0-beta.11
+
+### Added
+
+- `videoPreview.peekFirstFrame(source)` for cache-only first-frame lookup when consumers need to reuse an already generated preview without triggering a new thumbnail job
+
+### Changed
+
+- Docs now distinguish generated preview lookup (`getFirstFrame`) from cache-only lookup (`peekFirstFrame`) across README, player API, stream runtime contract, and library rules
+
+### Fixed
+
+- iOS + Android: preview runtime now exposes a dedicated cached-preview read path so app-level poster resolution can reveal an already cached first frame immediately instead of briefly falling back to a model poster while active playback warms up
+
 ## 1.0.0-beta.10
 
 ### Changed

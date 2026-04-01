@@ -56,6 +56,11 @@ class NitroPlayStreamRuntime: NSObject, RCTBridgeModule {
   }
 
   @objc
+  func peekThumbnailUrl(_ url: String, headers: NSDictionary?, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+    resolver(HlsProxyRuntime.shared.peekThumbnailUrl(url: url, headers: headers as? [String: String]))
+  }
+
+  @objc
   func clearCache(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
     HlsProxyRuntime.shared.clearCache()
     resolver(true)

@@ -64,4 +64,4 @@ The JS layer does not resolve presets. Use explicit retention values so the conf
 | --- | --- |
 | Autoplay feed card | `startup: 'lazy'`, `retention.preload: 'metadata'`, `retention.offscreen: 'metadata'`, `preview.mode: 'listener'` |
 | Hero player above the fold | `startup: 'eager'`, `retention.preload: 'buffered'`, `retention.offscreen: 'hot'`, `preview.mode: 'always'` |
-| Pull-only thumbnail workflow | `preview.mode: 'manual'`; use `videoPreview.getFirstFrame(source)` explicitly |
+| Pull-only thumbnail workflow | `preview.mode: 'manual'`; use `videoPreview.getFirstFrame(source)` explicitly, or `videoPreview.peekFirstFrame(source)` when only a cache hit should be accepted |
