@@ -14,6 +14,7 @@ First stable release. Promotes the `1.0.0-beta.1` through `1.0.0-beta.11` line t
 - Declarative `NitroPlayerView` with `playerDefaults`, attach/detach events, fullscreen hooks, and an imperative `NitroPlayer` ref surface
 - Absolute local file paths normalized to `file://` on both platforms
 - `PlaybackState.isVisualReady` as the canonical visual-readiness flag; errors surface through `PlaybackState.error` and `onError`
+- Published to npm as `@noma4i/nitro-play`
 
 ### Docs
 

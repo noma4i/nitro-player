@@ -4,17 +4,36 @@ Native-first video player for React Native with shared HLS transport, stream cac
 
 ## Installation
 
+```sh
+yarn add @noma4i/nitro-play react-native-nitro-modules
+```
 
-### yarn
+```sh
+npm install @noma4i/nitro-play react-native-nitro-modules
+```
+
+```sh
+pnpm add @noma4i/nitro-play react-native-nitro-modules
+```
+
+`react-native-nitro-modules >= 0.35.0` is a required peer dependency. React and React Native come from your app.
+
+### iOS
+
+```sh
+cd ios && pod install
+```
+
+### Android
+
+No extra steps - standard React Native 0.77+ autolinking handles the module.
+
+### Installing a specific tag from GitHub
+
+If you need a tag or branch before it is published to npm:
 
 ```sh
 yarn add @noma4i/nitro-play@github:noma4i/nitro-player#v1.0.0
-```
-
-### npm
-
-```sh
-npm install @noma4i/nitro-play@github:noma4i/nitro-player#v1.0.0
 ```
 
 ## Quick Start
