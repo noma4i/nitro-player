@@ -2,13 +2,20 @@
 
 Native-first video player for React Native with shared HLS transport, stream cache, and first-frame preview utilities.
 
-Current version: `1.0.0`
-
 ## Installation
 
-Install from GitHub tag `v1.0.0`.
 
-Peer dependency: `react-native-nitro-modules >= 0.35.0`
+### yarn
+
+```sh
+yarn add @noma4i/nitro-play@github:noma4i/nitro-player#v1.0.0
+```
+
+### npm
+
+```sh
+npm install @noma4i/nitro-play@github:noma4i/nitro-player#v1.0.0
+```
 
 ## Quick Start
 
