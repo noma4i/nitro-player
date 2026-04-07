@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.0.0
+
+First stable release. Promotes the `1.0.0-beta.1` through `1.0.0-beta.11` line to stable with no new runtime changes.
+
+### Highlights
+
+- Native-first player on AVPlayer (iOS) and ExoPlayer (Android) with shared HLS transport runtime, lazy startup, and bounded startup recovery
+- v2 source DSL: `uri`, `headers`, `metadata`, `startup`, `buffer`, `retention`, `transport`, `preview`
+- Header-aware stream cache and preview identity (`{ uri, headers }`)
+- `streamCache.prefetch / getStats / clear` and `videoPreview.getFirstFrame / peekFirstFrame / clear` as the canonical public transport and preview surfaces
+- Sticky `onFirstFrame` per active source generation and native auto-thumbnail reveal for attached views
+- Declarative `NitroPlayerView` with `playerDefaults`, attach/detach events, fullscreen hooks, and an imperative `NitroPlayer` ref surface
+- Absolute local file paths normalized to `file://` on both platforms
+- `PlaybackState.isVisualReady` as the canonical visual-readiness flag; errors surface through `PlaybackState.error` and `onError`
+
+### Docs
+
+- README now documents the full public API surface: source DSL subfields, `NitroPlayer` properties and methods (including `addEventListener`), `NitroPlayerView` props and ref, `PlaybackState` fields, stream cache and preview signatures, hooks, `createNitroSource`, and common types
+- `docs/source-config.md` marks `NitroSourceMetadata` fields as optional
+- `docs/player-api.md` documents `NitroPlayer.addEventListener` alongside view-ref event subscription
+
 ## 1.0.0-beta.11
 
 ### Added
