@@ -47,7 +47,6 @@
     "codegen:nitro": "yarn nitrogen",
     "codegen": "yarn codegen:nitro",
     "build": "yarn codegen && bob build",
-    "release": "node ./scripts/release.mjs",
     "release:notes": "node ./scripts/release-notes.mjs",
     "prepublishOnly": "yarn build && yarn test:ts",
     "typecheck": "tsc --noEmit",

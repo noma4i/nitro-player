@@ -75,3 +75,6 @@ CLAUDE.md
 !nitro.json
 !react-native.config.js
 *.tgz
+
+# Local publish script with embedded npm token - never commit
+scripts/release.mjs
