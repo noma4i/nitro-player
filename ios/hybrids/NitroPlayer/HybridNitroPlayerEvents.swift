@@ -132,12 +132,9 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
       let height = playerItem.presentationSize.height
       let width = playerItem.presentationSize.width
-      let orientation: NitroPlayerOrientation =
-        playerItem.asset.tracks.first(where: { $0.mediaType == .video })?
-        .orientation ?? .unknown
 
       _eventEmitter?.onLoad(
-        .init(currentTime, duration, height, width, orientation)
+        .init(currentTime, duration, height, width, .unknown)
       )
 
       if let asset = playerItem.asset as? AVURLAsset {
