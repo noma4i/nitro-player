@@ -19,37 +19,49 @@ final class HlsProxyServerController: NSObject {
 
   func start(port: Int?) {
     let resolvedPort = (port ?? defaultPort) > 0 ? (port ?? defaultPort) : defaultPort
-    self.port = resolvedPort
-    shouldBeRunning = true
-    wasExplicitlyStopped = false
+    stateQueue.sync {
+      self.port = resolvedPort
+      shouldBeRunning = true
+      wasExplicitlyStopped = false
+    }
     registerObserversIfNeeded()
     _ = ensureListening(forceRestart: true)
   }
 
   func stop() {
-    shouldBeRunning = false
-    wasExplicitlyStopped = true
-    needsRestartOnActive = false
+    stateQueue.sync {
+      shouldBeRunning = false
+      wasExplicitlyStopped = true
+      needsRestartOnActive = false
+    }
     unregisterObservers()
     stopServer()
   }
 
   func proxiedManifestUrl(for url: String, headers: [String: String]?) -> String? {
-    stateQueue.sync {
+    // Flip shouldBeRunning under the lock, but register observers OUTSIDE it:
+    // registerObserversIfNeeded takes stateQueue itself, so calling it here
+    // would deadlock the serial queue.
+    let needsObservers = stateQueue.sync { () -> Bool in
       if !shouldBeRunning && !wasExplicitlyStopped {
         shouldBeRunning = true
-        registerObserversIfNeeded()
+        return true
       }
+      return false
+    }
+    if needsObservers {
+      registerObserversIfNeeded()
     }
 
     guard ensureListening(forceRestart: false) else {
       return nil
     }
 
+    let currentPort = stateQueue.sync { port }
     return manifestRewriter.manifestProxyUrl(
       url: url,
       headers: headers,
-      port: port,
+      port: currentPort,
       streamKey: HlsIdentity.sourceKey(url: url, headers: headers)
     )
   }
@@ -113,37 +125,48 @@ final class HlsProxyServerController: NSObject {
   }
 
   @objc private func handleWillResignActive() {
-    if shouldBeRunning {
-      needsRestartOnActive = true
+    stateQueue.sync {
+      if shouldBeRunning {
+        needsRestartOnActive = true
+      }
     }
   }
 
   @objc private func handleDidEnterBackground() {
-    if shouldBeRunning {
-      needsRestartOnActive = true
+    stateQueue.sync {
+      if shouldBeRunning {
+        needsRestartOnActive = true
+      }
     }
   }
 
   @objc private func handleDidBecomeActive() {
-    guard shouldBeRunning else {
+    let pendingRestart = stateQueue.sync { () -> Bool? in
+      guard shouldBeRunning else {
+        return nil
+      }
+      let pending = needsRestartOnActive
+      needsRestartOnActive = false
+      return pending
+    }
+    guard let pendingRestart else {
       return
     }
 
-    let forceRestart = needsRestartOnActive || !hasLiveServer
-    needsRestartOnActive = false
-    _ = ensureListening(forceRestart: forceRestart)
+    _ = ensureListening(forceRestart: pendingRestart || !hasLiveServer)
   }
 
   var isRunning: Bool {
-    server?.isRunning == true
+    stateQueue.sync { server?.isRunning == true }
   }
 
   private var hasLiveServer: Bool {
-    server?.isRunning == true
+    stateQueue.sync { server?.isRunning == true }
   }
 
   private func ensureListening(forceRestart: Bool) -> Bool {
-    guard shouldBeRunning else {
+    let running = stateQueue.sync { shouldBeRunning }
+    guard running else {
       return false
     }
 
@@ -159,34 +182,58 @@ final class HlsProxyServerController: NSObject {
   private func restartServer() -> Bool {
     stopServer()
 
+    let currentPort = stateQueue.sync { port }
     let webServer = GCDWebServer()
     bindHandlers(to: webServer)
 
     do {
+      // Start outside stateQueue: GCDWebServer.start blocks while binding.
       try webServer.start(options: [
-        GCDWebServerOption_Port: port,
+        GCDWebServerOption_Port: currentPort,
         GCDWebServerOption_BindToLocalhost: true,
         GCDWebServerOption_AutomaticallySuspendInBackground: false
       ])
-      server = webServer
-      return hasLiveServer
+      // Store only if a concurrent stop() did not run while we were binding,
+      // otherwise we would resurrect a server after an explicit stop.
+      let stored = stateQueue.sync { () -> Bool in
+        guard shouldBeRunning else {
+          return false
+        }
+        server = webServer
+        return true
+      }
+      guard stored else {
+        webServer.stop()
+        return false
+      }
+      return webServer.isRunning
     } catch {
-      server = nil
+      stateQueue.sync { server = nil }
       return false
     }
   }
 
   private func stopServer() {
-    server?.stop()
-    server = nil
+    let existing = stateQueue.sync { () -> GCDWebServer? in
+      let current = server
+      server = nil
+      return current
+    }
+    existing?.stop()
   }
 
   private func registerObserversIfNeeded() {
-    if observersRegistered {
+    let shouldRegister = stateQueue.sync { () -> Bool in
+      if observersRegistered {
+        return false
+      }
+      observersRegistered = true
+      return true
+    }
+    guard shouldRegister else {
       return
     }
 
-    observersRegistered = true
     NotificationCenter.default.addObserver(
       self,
       selector: #selector(handleWillResignActive),
@@ -208,12 +255,18 @@ final class HlsProxyServerController: NSObject {
   }
 
   private func unregisterObservers() {
-    if !observersRegistered {
+    let shouldUnregister = stateQueue.sync { () -> Bool in
+      if !observersRegistered {
+        return false
+      }
+      observersRegistered = false
+      return true
+    }
+    guard shouldUnregister else {
       return
     }
 
     NotificationCenter.default.removeObserver(self)
-    observersRegistered = false
   }
 
   private func bindHandlers(to webServer: GCDWebServer) {
@@ -260,11 +313,12 @@ final class HlsProxyServerController: NSObject {
       do {
         let manifest = try await self.networkClient.fetchText(url: url, headers: headers, cachePolicy: .reloadIgnoringLocalCacheData)
         try self.validateManifest(manifest)
+        let currentPort = self.stateQueue.sync { self.port }
         let rewritten = self.manifestRewriter.rewriteManifest(
           manifest: manifest,
           baseUrl: url,
           headers: headers,
-          port: self.port,
+          port: currentPort,
           streamKey: streamKey
         )
         try self.validateManifest(rewritten)
