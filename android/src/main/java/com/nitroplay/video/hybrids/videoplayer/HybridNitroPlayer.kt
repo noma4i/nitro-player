@@ -326,6 +326,9 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       NitroPlayerManager.touchFeedHotCandidate(this)
       wantsToPlay = true
       player.play()
+      // Cleared only here, after a successful start: if initializePlayer()
+      // above throws, the flag survives so the next foreground resume retries.
+      wasAutoPaused = false
       status = when {
         player.isPlaying -> NitroPlayerStatus.PLAYING
         player.playbackState == Player.STATE_BUFFERING -> NitroPlayerStatus.BUFFERING

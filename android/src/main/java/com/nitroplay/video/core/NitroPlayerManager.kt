@@ -160,7 +160,8 @@ object NitroPlayerManager : LifecycleEventListener {
   private fun onAppEnterForeground() {
     players.keys.forEach { player ->
       if (player.wasAutoPaused) {
-        player.wasAutoPaused = false
+        // play() clears wasAutoPaused only after a successful start, so a
+        // throwing initializePlayer() leaves the flag set for the next resume.
         player.play()
       }
     }
