@@ -114,6 +114,7 @@ internal class NitroPlayerListenerBridge(
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
+      if (host.isReleased) return
       super.onIsPlayingChanged(isPlaying)
       if (isPlaying) host.isCurrentlyBuffering = false
       if (host.player.playbackState == Player.STATE_READY) {
@@ -131,6 +132,7 @@ internal class NitroPlayerListenerBridge(
     }
 
     override fun onPlayerError(error: PlaybackException) {
+      if (host.isReleased) return
       val message = error.message ?: "Unknown playback error"
       if (host.attemptStartupRecoveryIfNeeded(message)) {
         return
@@ -143,6 +145,7 @@ internal class NitroPlayerListenerBridge(
       newPosition: Player.PositionInfo,
       reason: Int
     ) {
+      if (host.isReleased) return
       if (
         (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) &&
         host.status == NitroPlayerStatus.ENDED
@@ -153,10 +156,12 @@ internal class NitroPlayerListenerBridge(
     }
 
     override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
+      if (host.isReleased) return
       host.emitPlaybackState()
     }
 
     override fun onVolumeChanged(volume: Float) {
+      if (host.isReleased) return
       if (!host.muted && !NitroPlayerManager.audioFocusManager.isDucking()) {
         host.volume = volume.toDouble()
       }

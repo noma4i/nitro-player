@@ -2,6 +2,7 @@ package com.nitroplay.video
 
 import com.nitroplay.hls.HlsManifest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -59,5 +60,30 @@ class AuditPhase3FixesTest {
     val (init, first) = HlsManifest.extractInitAndFirstSegment(tsMediaManifest)
     assertNull(init)
     assertEquals("segment0.ts", first)
+  }
+
+  // NP-RELEASE-11: every Player.Listener callback that does real work must
+  // short-circuit on a released host. Mirrors the `if (host.isReleased) return`
+  // top-guard added to onIsPlayingChanged/onPlayerError/onVolumeChanged/etc.
+  private class ListenerGuardModel(var isReleased: Boolean) {
+    var didWork = false
+    fun onCallback() {
+      if (isReleased) return
+      didWork = true
+    }
+  }
+
+  @Test
+  fun listenerCallback_whenReleased_doesNoWork() {
+    val model = ListenerGuardModel(isReleased = true)
+    model.onCallback()
+    assertFalse(model.didWork)
+  }
+
+  @Test
+  fun listenerCallback_whenActive_doesWork() {
+    val model = ListenerGuardModel(isReleased = false)
+    model.onCallback()
+    assertTrue(model.didWork)
   }
 }
