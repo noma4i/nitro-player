@@ -8,6 +8,7 @@ import java.net.URLEncoder
 object HlsProxyRuntime {
   private const val DEFAULT_PORT = 18181
   private const val PREFETCH_DEDUP_MS = 60_000L
+  private const val PREFETCH_MAX_ENTRIES = 500
 
   private val lock = Any()
   private var port: Int = DEFAULT_PORT
@@ -119,11 +120,22 @@ object HlsProxyRuntime {
         false
       } else {
         prefetchTimestamps[dedupKey] = now
-        if (prefetchTimestamps.size > 500) {
+        if (prefetchTimestamps.size > PREFETCH_MAX_ENTRIES) {
           val iterator = prefetchTimestamps.entries.iterator()
           while (iterator.hasNext()) {
             if (now - iterator.next().value > PREFETCH_DEDUP_MS) {
               iterator.remove()
+            }
+          }
+          // Hard cap: if churn outpaces the dedup window every entry is still
+          // fresh, so drop the oldest (LinkedHashMap keeps insertion order).
+          var overBudget = prefetchTimestamps.size - PREFETCH_MAX_ENTRIES
+          if (overBudget > 0) {
+            val oldest = prefetchTimestamps.entries.iterator()
+            while (oldest.hasNext() && overBudget > 0) {
+              oldest.next()
+              oldest.remove()
+              overBudget -= 1
             }
           }
         }

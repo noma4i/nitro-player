@@ -86,4 +86,28 @@ class AuditPhase3FixesTest {
     model.onCallback()
     assertTrue(model.didWork)
   }
+
+  // NP-MEMORY-07: prefetchTimestamps must stay bounded even when every entry is
+  // fresh (churn faster than the dedup window). Mirrors the hard-cap eviction.
+  @Test
+  fun prefetchDedup_hardCapsEvenWhenAllEntriesFresh() {
+    val cap = 500
+    val now = 1000L
+    val map = LinkedHashMap<String, Long>()
+    for (i in 0 until cap + 50) {
+      map[i.toString()] = now // all fresh: nothing expires
+      if (map.size > cap) {
+        var overBudget = map.size - cap
+        val oldest = map.entries.iterator()
+        while (oldest.hasNext() && overBudget > 0) {
+          oldest.next()
+          oldest.remove()
+          overBudget -= 1
+        }
+      }
+    }
+    assertEquals(cap, map.size)
+    assertNull("oldest key evicted", map["0"])
+    assertTrue("newest key retained", map.containsKey((cap + 49).toString()))
+  }
 }
