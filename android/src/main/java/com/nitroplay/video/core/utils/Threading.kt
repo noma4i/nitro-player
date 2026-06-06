@@ -6,9 +6,15 @@ import com.margelo.nitro.NitroModules
 import com.nitroplay.video.core.LibraryError
 import java.util.concurrent.Callable
 import java.util.concurrent.FutureTask
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import kotlin.reflect.KProperty
 
 object Threading {
+  // Bounds the cross-thread wait so a blocked main thread surfaces as an error
+  // instead of an indefinite block (ANR). Generous: only trips on a real hang.
+  private const val MAIN_THREAD_SYNC_TIMEOUT_MS = 5_000L
+
   @JvmStatic
   fun runOnMainThread(action: () -> Unit) {
     // We are already on the main thread, run and return
@@ -34,10 +40,19 @@ object Threading {
       // Already on the main thread, run and return the result
       action.call()
     } else {
-      // Post the action to the main thread and wait for the result
+      // Post the action to the main thread and wait for the result, bounded so
+      // a blocked main thread fails fast instead of hanging this thread forever.
       val futureTask = FutureTask(action)
       Handler(Looper.getMainLooper()).post(futureTask)
-      futureTask.get()
+      try {
+        futureTask.get(MAIN_THREAD_SYNC_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+      } catch (e: TimeoutException) {
+        futureTask.cancel(true)
+        throw IllegalStateException(
+          "runOnMainThreadSync timed out after ${MAIN_THREAD_SYNC_TIMEOUT_MS}ms (main thread blocked)",
+          e
+        )
+      }
     }
   }
 
