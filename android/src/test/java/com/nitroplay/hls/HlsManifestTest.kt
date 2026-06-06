@@ -207,4 +207,24 @@ class HlsManifestTest {
   fun guessContentType_unknown() {
     assertEquals("video/MP2T", HlsManifest.guessContentType("something.xyz"))
   }
+
+  // -- CRLF parity (NP-PARITY-02): a \r from a CRLF manifest must never leak
+  // into a proxied URL. URLEncoder would encode it as %0D and break the request.
+  // Mirrors the same fixture in HlsManifestRewriterTests.swift on iOS.
+
+  @Test
+  fun rewriteMedia_crlfDoesNotLeakCarriageReturn() {
+    val crlf = mediaManifest.replace("\n", "\r\n")
+    val result = HlsManifest.rewriteMedia(crlf, "https://cdn.example.com/", null, 18181, "s1")
+    assertFalse(result.contains("%0D"))
+    assertTrue(result.contains("http://127.0.0.1:18181/hls/segment?"))
+  }
+
+  @Test
+  fun rewriteMaster_crlfDoesNotLeakCarriageReturn() {
+    val crlf = masterManifest.replace("\n", "\r\n")
+    val result = HlsManifest.rewriteMaster(crlf, "https://cdn.example.com/", null, 18181, "s1")
+    assertFalse(result.contains("%0D"))
+    assertTrue(result.contains("http://127.0.0.1:18181/hls/manifest.m3u8?"))
+  }
 }

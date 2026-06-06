@@ -31,8 +31,16 @@ final class HlsManifestRewriter {
     manifest.contains("#EXT-X-STREAM-INF")
   }
 
+  // In Swift "\r\n" is a single grapheme-cluster Character, so splitting on the
+  // "\n" Character leaves a CRLF manifest as one unbroken line. Splitting on any
+  // Unicode newline (isNewline matches "\n", "\r" and the "\r\n" cluster) restores
+  // parity with Android's line-based processing.
+  private func splitLines(_ manifest: String, keepEmpty: Bool) -> [Substring] {
+    manifest.split(omittingEmptySubsequences: !keepEmpty, whereSeparator: { $0.isNewline })
+  }
+
   func extractVariantUrls(_ manifest: String) -> [String] {
-    let lines = manifest.split(separator: "\n")
+    let lines = splitLines(manifest, keepEmpty: false)
     var urls: [String] = []
     var index = 0
     while index < lines.count {
@@ -50,7 +58,7 @@ final class HlsManifestRewriter {
   }
 
   func extractInitAndFirstSegment(_ manifest: String) -> (String?, String?) {
-    let lines = manifest.split(separator: "\n")
+    let lines = splitLines(manifest, keepEmpty: false)
     var initSegment: String?
     var firstSegment: String?
 
@@ -87,13 +95,13 @@ final class HlsManifestRewriter {
 
   private func rewriteMaster(manifest: String, baseUrl: String, headers: [String: String]?, port: Int, streamKey: String?) -> String {
     var output: [String] = []
-    let lines = manifest.split(separator: "\n", omittingEmptySubsequences: false)
+    let lines = splitLines(manifest, keepEmpty: true)
     var index = 0
     while index < lines.count {
       let line = String(lines[index])
       output.append(line)
-      if line.hasPrefix("#EXT-X-STREAM-INF") && index + 1 < lines.count {
-        let next = String(lines[index + 1])
+      if line.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("#EXT-X-STREAM-INF") && index + 1 < lines.count {
+        let next = String(lines[index + 1]).trimmingCharacters(in: .whitespacesAndNewlines)
         if !next.hasPrefix("#") && !next.isEmpty {
           let resolved = resolveUrl(base: baseUrl, relative: next)
           output.append(manifestProxyUrl(url: resolved, headers: headers, port: port, streamKey: streamKey ?? baseUrl) ?? resolved)
@@ -108,24 +116,27 @@ final class HlsManifestRewriter {
   private func rewriteMedia(manifest: String, baseUrl: String, headers: [String: String]?, port: Int, streamKey: String?) -> String {
     let resolvedStreamKey = streamKey ?? baseUrl
     var output: [String] = []
-    let lines = manifest.split(separator: "\n", omittingEmptySubsequences: false)
+    let lines = splitLines(manifest, keepEmpty: true)
 
     for raw in lines {
-      let line = String(raw)
+      let rawLine = String(raw)
+      // Trim before every check and URL resolution so CRLF line endings (\r) do
+      // not leak into proxied segment URLs. Matches Android's raw.trim() policy.
+      let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
       if line.hasPrefix("#EXT-X-MAP"), let uri = extractUri(from: line) {
         let resolved = resolveUrl(base: baseUrl, relative: uri)
         let proxy = segmentProxyUrl(url: resolved, headers: headers, port: port, streamKey: resolvedStreamKey, flags: nil) ?? resolved
-        output.append(line.replacingOccurrences(of: uri, with: proxy))
+        output.append(rawLine.replacingOccurrences(of: uri, with: proxy))
         continue
       }
       if line.hasPrefix("#EXT-X-KEY"), let uri = extractUri(from: line) {
         let resolved = resolveUrl(base: baseUrl, relative: uri)
         let proxy = segmentProxyUrl(url: resolved, headers: headers, port: port, streamKey: resolvedStreamKey, flags: nil) ?? resolved
-        output.append(line.replacingOccurrences(of: uri, with: proxy))
+        output.append(rawLine.replacingOccurrences(of: uri, with: proxy))
         continue
       }
       if line.hasPrefix("#") || line.isEmpty {
-        output.append(line)
+        output.append(rawLine)
         continue
       }
       let resolved = resolveUrl(base: baseUrl, relative: line)

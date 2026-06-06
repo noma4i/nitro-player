@@ -125,4 +125,34 @@ final class HlsManifestRewriterTests: XCTestCase {
   func testDecodeHeaders_nilForNil() {
     XCTAssertNil(rewriter.decodeHeaders(nil))
   }
+
+  // -- CRLF parity (NP-PARITY-02): a \r from a CRLF manifest must never leak
+  // into a proxied URL. It would be percent-encoded as %0D and break the
+  // segment/variant request. Mirrors the same fixture on Android.
+
+  func testRewriteMedia_crlfDoesNotLeakCarriageReturn() {
+    let crlf = mediaManifest.replacingOccurrences(of: "\n", with: "\r\n")
+    let result = rewriter.rewriteManifest(
+      manifest: crlf,
+      baseUrl: "https://cdn.example.com/",
+      headers: nil,
+      port: 18181,
+      streamKey: "s1"
+    )
+    XCTAssertFalse(result.contains("%0D"), "CR leaked into a proxied URL")
+    XCTAssertTrue(result.contains("http://127.0.0.1:18181/hls/segment"))
+  }
+
+  func testRewriteMaster_crlfDoesNotLeakCarriageReturn() {
+    let crlf = masterManifest.replacingOccurrences(of: "\n", with: "\r\n")
+    let result = rewriter.rewriteManifest(
+      manifest: crlf,
+      baseUrl: "https://cdn.example.com/",
+      headers: nil,
+      port: 18181,
+      streamKey: "s1"
+    )
+    XCTAssertFalse(result.contains("%0D"), "CR leaked into a proxied URL")
+    XCTAssertTrue(result.contains("http://127.0.0.1:18181/hls/manifest"))
+  }
 }
