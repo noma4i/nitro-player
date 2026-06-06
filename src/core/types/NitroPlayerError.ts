@@ -1,13 +1,20 @@
-export type LibraryError = 'library/deallocated' | 'library/application-context-not-found';
+export type LibraryError = 'library/deallocated' | 'library/application-context-not-found' | 'library/method-not-supported';
 
-export type PlayerError = 'player/released' | 'player/not-initialized' | 'player/asset-not-initialized' | 'player/invalid-source';
+export type PlayerError =
+  | 'player/released'
+  | 'player/not-initialized'
+  | 'player/asset-not-initialized'
+  | 'player/invalid-source'
+  | 'player/invalid-track-url'
+  | 'player/cancelled';
 
 export type SourceError =
   | 'source/invalid-uri'
   | 'source/missing-read-file-permission'
   | 'source/file-does-not-exist'
   | 'source/failed-to-initialize-asset'
-  | 'source/unsupported-content-type';
+  | 'source/unsupported-content-type'
+  | 'source/cancelled';
 
 export type NitroPlayerViewError = 'view/not-found' | 'view/deallocated' | 'view/picture-in-picture-not-supported';
 
@@ -20,15 +27,19 @@ type RuntimeErrorCode = LibraryError | PlayerError | SourceError | UnknownError;
 const RUNTIME_ERROR_CODES: ReadonlySet<string> = new Set<RuntimeErrorCode>([
   'library/deallocated',
   'library/application-context-not-found',
+  'library/method-not-supported',
   'player/released',
   'player/not-initialized',
   'player/asset-not-initialized',
   'player/invalid-source',
+  'player/invalid-track-url',
+  'player/cancelled',
   'source/invalid-uri',
   'source/missing-read-file-permission',
   'source/file-does-not-exist',
   'source/failed-to-initialize-asset',
   'source/unsupported-content-type',
+  'source/cancelled',
   'unknown/unknown'
 ]);
 

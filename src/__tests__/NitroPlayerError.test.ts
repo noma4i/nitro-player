@@ -76,6 +76,19 @@ describe('NitroPlayerError', () => {
       expect((result as NitroPlayerRuntimeError).message).toBe('Something the JS layer does not know');
     });
 
+    it.each([
+      'library/method-not-supported',
+      'player/cancelled',
+      'player/invalid-track-url',
+      'source/cancelled',
+    ])('preserves the native runtime code %s instead of collapsing to unknown/unknown', (code) => {
+      const nativeError = { message: `{%@${code}::native detail@%}` };
+      const result = tryParseNativeNitroPlayerError(nativeError);
+      expect(result).toBeInstanceOf(NitroPlayerRuntimeError);
+      expect((result as NitroPlayerRuntimeError).code).toBe(code);
+      expect((result as NitroPlayerRuntimeError).message).toBe('native detail');
+    });
+
     it('does not coerce an unknown view-prefixed code into a typed component error', () => {
       const nativeError = {
         message: '{%@view/holographic::Unsupported view error@%}',
