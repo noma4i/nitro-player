@@ -1,4 +1,5 @@
 import { NativeModules } from 'react-native';
+import { resolveSource } from '../core/utils/resolveSource';
 import type { StreamHeaders } from '../transport/types';
 
 interface VideoPreviewNativeModule {
@@ -11,15 +12,6 @@ const NativePreview = NativeModules?.NitroPlayStreamRuntime as VideoPreviewNativ
 
 class VideoPreview {
   private didWarnUnavailable = false;
-
-  private resolveSource(
-    source: { uri: string; headers?: StreamHeaders } | string,
-    headers?: StreamHeaders
-  ): { uri: string; headers?: StreamHeaders } {
-    return typeof source === 'string'
-      ? { uri: source, headers }
-      : source;
-  }
 
   private warnUnavailable(): void {
     if (this.didWarnUnavailable) {
@@ -36,10 +28,10 @@ class VideoPreview {
       return null;
     }
 
-    const resolved = this.resolveSource(source, headers);
+    const resolved = resolveSource(source, headers);
 
     try {
-      const result = await NativePreview.getThumbnailUrl(resolved.uri, resolved.headers ?? {});
+      const result = await NativePreview.getThumbnailUrl(resolved.uri, resolved.headers);
       return result ?? null;
     } catch {
       return null;
@@ -51,10 +43,10 @@ class VideoPreview {
       return null;
     }
 
-    const resolved = this.resolveSource(source, headers);
+    const resolved = resolveSource(source, headers);
 
     try {
-      const result = await NativePreview.peekThumbnailUrl(resolved.uri, resolved.headers ?? {});
+      const result = await NativePreview.peekThumbnailUrl(resolved.uri, resolved.headers);
       return result ?? null;
     } catch {
       return null;

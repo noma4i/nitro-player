@@ -1,4 +1,5 @@
 import { NativeModules } from 'react-native';
+import { resolveSource } from '../core/utils/resolveSource';
 import type {
   StreamCacheNativeModule,
   StreamCacheStats,
@@ -38,9 +39,7 @@ class StreamCache {
       return;
     }
 
-    const resolved = typeof source === 'string'
-      ? { uri: source, headers }
-      : source;
+    const resolved = resolveSource(source, headers);
 
     try {
       await NativeStreamCache.prefetchFirstSegment(resolved.uri, resolved.headers);
@@ -67,9 +66,7 @@ class StreamCache {
       return DEFAULT_STREAM_CACHE_STATS;
     }
 
-    const resolved = typeof source === 'string'
-      ? { uri: source, headers }
-      : source;
+    const resolved = resolveSource(source, headers);
     try {
       return await NativeStreamCache.getStreamCacheStats(resolved.uri, resolved.headers);
     } catch {
