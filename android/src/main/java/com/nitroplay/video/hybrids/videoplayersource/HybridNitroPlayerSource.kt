@@ -23,6 +23,9 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
   private var mediaSource: MediaSource? = null
   private val stateLock = Any()
   var retentionState: MemoryRetentionState = MemoryRetentionState.COLD
+    // Read under stateLock for visibility: writers mutate it inside
+    // synchronized(stateLock); the monitor is reentrant so writer paths are fine.
+    get() = synchronized(stateLock) { field }
     private set
 
   internal val sourceLoader = SourceLoader()
@@ -165,12 +168,16 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
     get() {
       var size = estimateConfigMemoryBytes()
 
-      if (mediaItem != null) {
-        size += 4L * 1024L
-      }
+      // mediaItem/mediaSource are mutated only under stateLock; read them under
+      // the same lock to avoid a torn/stale view from another thread.
+      synchronized(stateLock) {
+        if (mediaItem != null) {
+          size += 4L * 1024L
+        }
 
-      if (mediaSource != null) {
-        size += 32L * 1024L
+        if (mediaSource != null) {
+          size += 32L * 1024L
+        }
       }
 
       return size
