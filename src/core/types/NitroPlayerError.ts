@@ -15,6 +15,25 @@ export type UnknownError = 'unknown/unknown';
 
 export type NitroPlayerErrorCode = LibraryError | PlayerError | SourceError | NitroPlayerViewError | UnknownError;
 
+type RuntimeErrorCode = LibraryError | PlayerError | SourceError | UnknownError;
+
+const RUNTIME_ERROR_CODES: ReadonlySet<string> = new Set<RuntimeErrorCode>([
+  'library/deallocated',
+  'library/application-context-not-found',
+  'player/released',
+  'player/not-initialized',
+  'player/asset-not-initialized',
+  'player/invalid-source',
+  'source/invalid-uri',
+  'source/missing-read-file-permission',
+  'source/file-does-not-exist',
+  'source/failed-to-initialize-asset',
+  'source/unsupported-content-type',
+  'unknown/unknown'
+]);
+
+const VIEW_ERROR_CODES: ReadonlySet<string> = new Set<NitroPlayerViewError>(['view/not-found', 'view/deallocated', 'view/picture-in-picture-not-supported']);
+
 export class NitroPlayerError<TCode extends NitroPlayerErrorCode> extends Error {
   private readonly _code: TCode;
   private readonly _message: string;
@@ -111,16 +130,15 @@ export const tryParseNativeNitroPlayerError = <T>(nativeError: T): (NitroPlayerR
 
     maybeFixErrorStack(nativeError);
 
-    if (code.startsWith('view')) {
-      return new NitroPlayerComponentError(code as NitroPlayerViewError, message, hasStack(nativeError) ? nativeError.stack : undefined);
+    const stack = hasStack(nativeError) ? nativeError.stack : undefined;
+
+    if (VIEW_ERROR_CODES.has(code)) {
+      return new NitroPlayerComponentError(code as NitroPlayerViewError, message, stack);
     }
 
-    return new NitroPlayerRuntimeError(
-      // @ts-expect-error the code is string, we narrow it down to TS union.
-      code,
-      message,
-      hasStack(nativeError) ? nativeError.stack : undefined
-    );
+    const runtimeCode: RuntimeErrorCode = RUNTIME_ERROR_CODES.has(code) ? (code as RuntimeErrorCode) : 'unknown/unknown';
+
+    return new NitroPlayerRuntimeError(runtimeCode, message, stack);
   }
 
   return nativeError;

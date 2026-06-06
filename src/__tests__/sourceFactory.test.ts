@@ -121,4 +121,31 @@ describe('sourceFactory', () => {
     );
   });
 
+  it('rejects an unknown startup value before reaching the native factory', () => {
+    const { createNitroSource } = require('../core/utils/sourceFactory');
+
+    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', startup: 'turbo' as never })).toThrow(/Invalid startup/);
+    expect(fromNitroPlayerConfig).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unknown transport mode', () => {
+    const { createNitroSource } = require('../core/utils/sourceFactory');
+
+    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', transport: { mode: 'tunnel' as never } })).toThrow(/Invalid transport\.mode/);
+    expect(fromNitroPlayerConfig).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unknown preview mode and retention preload level', () => {
+    const { createNitroSource } = require('../core/utils/sourceFactory');
+
+    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', preview: { mode: 'eager' as never } })).toThrow(/Invalid preview\.mode/);
+    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', retention: { preload: 'all' as never } })).toThrow(/Invalid retention\.preload/);
+  });
+
+  it('rejects a malformed headers shape', () => {
+    const { createNitroSource } = require('../core/utils/sourceFactory');
+
+    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', headers: ['x'] as never })).toThrow(/Invalid headers/);
+  });
+
 });

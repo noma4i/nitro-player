@@ -66,6 +66,25 @@ describe('NitroPlayerError', () => {
       expect(tryParseNativeNitroPlayerError(null)).toBe(null);
     });
 
+    it('falls back to unknown/unknown for an unrecognized native code, preserving the message', () => {
+      const nativeError = {
+        message: '{%@player/teleported::Something the JS layer does not know@%}',
+      };
+      const result = tryParseNativeNitroPlayerError(nativeError);
+      expect(result).toBeInstanceOf(NitroPlayerRuntimeError);
+      expect((result as NitroPlayerRuntimeError).code).toBe('unknown/unknown');
+      expect((result as NitroPlayerRuntimeError).message).toBe('Something the JS layer does not know');
+    });
+
+    it('does not coerce an unknown view-prefixed code into a typed component error', () => {
+      const nativeError = {
+        message: '{%@view/holographic::Unsupported view error@%}',
+      };
+      const result = tryParseNativeNitroPlayerError(nativeError);
+      expect(result).toBeInstanceOf(NitroPlayerRuntimeError);
+      expect((result as NitroPlayerRuntimeError).code).toBe('unknown/unknown');
+    });
+
     it('replaces error stack when regex matches', () => {
       const nativeError = {
         message: '{%@player/released::Player released@%}',
