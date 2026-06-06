@@ -197,11 +197,13 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   var duration: Double {
-    Double(player.currentItem?.duration.seconds ?? Double.nan)
+    guard !isReleased else { return Double.nan }
+    return Double(player.currentItem?.duration.seconds ?? Double.nan)
   }
 
   var bufferDuration: Double {
-    player.currentItem?.getBufferDuration() ?? 0
+    guard !isReleased else { return 0 }
+    return player.currentItem?.getBufferDuration() ?? 0
   }
 
   var bufferedPosition: Double {
