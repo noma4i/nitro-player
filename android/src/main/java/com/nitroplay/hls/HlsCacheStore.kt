@@ -105,6 +105,9 @@ class HlsCacheStore(context: Context) {
     }
 
     fun clearThumbnails() {
+        // Drop indexed thumbnails (deletes file + index entry) ...
+        index.values.filter { it.fileName.endsWith(".thumb") }.forEach { remove(it.url) }
+        // ... and sweep any legacy/un-indexed thumbnail files left on disk.
         cacheDir
             .listFiles()
             ?.filter { it.name.endsWith(".thumb") }
@@ -201,12 +204,23 @@ class HlsCacheStore(context: Context) {
         return digest.joinToString("") { "%02x".format(it) }
     }
 
+    // Thumbnails share the segment index so they participate in the same TTL and
+    // size eviction. They are keyed under a "thumb:" namespace to avoid colliding
+    // with a segment cached under the same URL; the on-disk file keeps the plain
+    // sha256(url).thumb name so previously written thumbnails still resolve.
+    private fun thumbnailKey(url: String): String = "thumb:$url"
+
     fun putThumbnail(url: String, data: ByteArray): String? {
         if (!cacheDir.exists()) cacheDir.mkdirs()
+        evictIfNeeded()
         val name = "${sha256(url)}.thumb"
         val file = File(cacheDir, name)
         return try {
             file.writeBytes(data)
+            val now = System.currentTimeMillis()
+            val key = thumbnailKey(url)
+            index[key] = HlsCacheEntry(key, name, data.size.toLong(), null, now, now)
+            scheduleSave()
             file.absolutePath
         } catch (_: Exception) {
             null
@@ -216,10 +230,33 @@ class HlsCacheStore(context: Context) {
     fun getThumbnailPath(url: String): String? {
         val name = "${sha256(url)}.thumb"
         val file = File(cacheDir, name)
-        return if (file.exists()) file.absolutePath else null
+        val key = thumbnailKey(url)
+        val entry = index[key]
+        if (entry != null) {
+            if (isExpired(entry) || !file.exists()) {
+                remove(key)
+                return null
+            }
+            entry.lastAccess = System.currentTimeMillis()
+            scheduleSave()
+            return file.absolutePath
+        }
+        // Legacy thumbnail written before indexing: register it lazily so it now
+        // participates in TTL/size eviction.
+        if (!file.exists()) return null
+        val now = System.currentTimeMillis()
+        index[key] = HlsCacheEntry(key, name, file.length(), null, now, now)
+        scheduleSave()
+        return file.absolutePath
     }
 
     fun hasThumbnail(url: String): Boolean {
+        val key = thumbnailKey(url)
+        val entry = index[key]
+        if (entry != null && isExpired(entry)) {
+            remove(key)
+            return false
+        }
         val name = "${sha256(url)}.thumb"
         return File(cacheDir, name).exists()
     }

@@ -145,6 +145,12 @@ final class HlsCacheStore {
 
   func clearThumbnails() {
     queue.async {
+      // Drop indexed thumbnails (deletes file + index entry) ...
+      let indexedThumbs = self.index.values.filter { $0.fileName.hasSuffix(".thumb") }
+      for entry in indexedThumbs {
+        self.remove(url: entry.url)
+      }
+      // ... and sweep any legacy/un-indexed thumbnail files left on disk.
       let urls = (try? FileManager.default.contentsOfDirectory(at: self.cacheDir, includingPropertiesForKeys: nil)) ?? []
       urls
         .filter { $0.lastPathComponent.hasSuffix(".thumb") }
@@ -236,30 +242,85 @@ final class HlsCacheStore {
     return hash.map { String(format: "%02x", $0) }.joined()
   }
 
+  // Thumbnails share the segment index so they participate in the same TTL and
+  // size eviction. They are keyed under a "thumb:" namespace to avoid colliding
+  // with a segment cached under the same URL; the on-disk file keeps the plain
+  // sha256(url).thumb name so previously written thumbnails still resolve.
+  private func thumbnailKey(_ url: String) -> String { "thumb:\(url)" }
+
   func putThumbnail(url: String, data: Data) -> URL? {
-    let name = sha256(url) + ".thumb"
-    let fileUrl = cacheDir.appendingPathComponent(name)
-    ensureDir()
-    do {
-      try data.write(to: fileUrl, options: .atomic)
-      return fileUrl
-    } catch {
-      cacheLogger.error("Failed to write thumbnail for \(url): \(error.localizedDescription)")
-      return nil
+    queue.sync {
+      ensureDir()
+      evictIfNeeded()
+      let name = sha256(url) + ".thumb"
+      let fileUrl = cacheDir.appendingPathComponent(name)
+      do {
+        try data.write(to: fileUrl, options: .atomic)
+        let now = Date().timeIntervalSince1970
+        let key = thumbnailKey(url)
+        index[key] = HlsCacheEntry(
+          url: key,
+          fileName: name,
+          size: data.count,
+          streamKey: nil,
+          createdAt: now,
+          lastAccess: now
+        )
+        scheduleSave()
+        return fileUrl
+      } catch {
+        cacheLogger.error("Failed to write thumbnail for \(url): \(error.localizedDescription)")
+        return nil
+      }
     }
   }
 
   func getThumbnailPath(url: String) -> URL? {
-    let name = sha256(url) + ".thumb"
-    let fileUrl = cacheDir.appendingPathComponent(name)
-    guard FileManager.default.fileExists(atPath: fileUrl.path) else { return nil }
-    return fileUrl
+    queue.sync {
+      let name = sha256(url) + ".thumb"
+      let fileUrl = cacheDir.appendingPathComponent(name)
+      let key = thumbnailKey(url)
+      if let entry = index[key] {
+        if isExpired(entry) || !FileManager.default.fileExists(atPath: fileUrl.path) {
+          remove(url: key)
+          return nil
+        }
+        var current = entry
+        current.lastAccess = Date().timeIntervalSince1970
+        index[key] = current
+        scheduleSave()
+        return fileUrl
+      }
+      // Legacy thumbnail written before indexing: register it lazily so it now
+      // participates in TTL/size eviction.
+      guard FileManager.default.fileExists(atPath: fileUrl.path) else { return nil }
+      let attrs = try? FileManager.default.attributesOfItem(atPath: fileUrl.path)
+      let size = (attrs?[.size] as? Int) ?? 0
+      let now = Date().timeIntervalSince1970
+      index[key] = HlsCacheEntry(
+        url: key,
+        fileName: name,
+        size: size,
+        streamKey: nil,
+        createdAt: now,
+        lastAccess: now
+      )
+      scheduleSave()
+      return fileUrl
+    }
   }
 
   func hasThumbnail(url: String) -> Bool {
-    let name = sha256(url) + ".thumb"
-    let fileUrl = cacheDir.appendingPathComponent(name)
-    return FileManager.default.fileExists(atPath: fileUrl.path)
+    queue.sync {
+      let key = thumbnailKey(url)
+      if let entry = index[key], isExpired(entry) {
+        remove(url: key)
+        return false
+      }
+      let name = sha256(url) + ".thumb"
+      let fileUrl = cacheDir.appendingPathComponent(name)
+      return FileManager.default.fileExists(atPath: fileUrl.path)
+    }
   }
 }
 
