@@ -71,6 +71,13 @@ internal class FullscreenDialogManager(
   }
 
   fun restore() {
+    val activity = hostView.resolveActivity()
+    if (activity != null && activity.isDestroyed) {
+      // Activity is gone (config change / dismissed late): re-attaching to a dead
+      // host would throw, so bail out and just mark the state inactive.
+      isActive = false
+      return
+    }
     val playerView = hostView.playerView
     val dialogContent = dialog?.findViewById<FrameLayout>(android.R.id.content)
     (playerView.parent as? ViewGroup)?.removeView(playerView)
@@ -80,10 +87,15 @@ internal class FullscreenDialogManager(
   }
 
   fun dismiss() {
-    if (isActive) {
-      restore()
+    try {
+      if (isActive) {
+        restore()
+      }
+    } finally {
+      // Always tear the dialog down, even if restore() threw, so the Activity
+      // is not leaked through a lingering Dialog reference.
+      dialog?.dismiss()
+      dialog = null
     }
-    dialog?.dismiss()
-    dialog = null
   }
 }

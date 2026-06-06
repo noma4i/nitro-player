@@ -238,7 +238,7 @@ class NitroPlayerView @JvmOverloads constructor(
     SmallVideoPlayerOptimizer.applyOptimizations(playerView, context, isFullscreen = false)
   }
 
-  private fun resolveActivity(): Activity? {
+  internal fun resolveActivity(): Activity? {
     var currentContext: Context? = context
     while (currentContext is ContextWrapper) {
       if (currentContext is Activity) {
