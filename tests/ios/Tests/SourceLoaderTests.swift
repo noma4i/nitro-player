@@ -70,9 +70,9 @@ final class SourceLoaderTests: XCTestCase {
     }
   }
 
-  func testCancelSyncTriggersCancel() async throws {
+  func testCancelDetachedTriggersCancel() async throws {
     let loader = SourceLoader()
-    loader.cancelSync()
+    loader.cancelDetached()
     // Should not crash, and next load should work
     let result = try await loader.load { "ok" }
     XCTAssertEqual(result, "ok")

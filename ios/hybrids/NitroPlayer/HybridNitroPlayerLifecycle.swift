@@ -47,7 +47,7 @@ extension HybridNitroPlayer {
 
     cancelPendingTrim()
     cancelStartupRecovery()
-    sourceLoader.cancelSync()
+    sourceLoader.cancelDetached()
     initTask?.cancel()
     initTask = nil
     artworkTask?.cancel()
@@ -270,7 +270,7 @@ extension HybridNitroPlayer {
     beginSourceGeneration()
 
     cancelPendingTrim()
-    sourceLoader.cancelSync()
+    sourceLoader.cancelDetached()
     initTask?.cancel()
     initTask = nil
     artworkTask?.cancel()

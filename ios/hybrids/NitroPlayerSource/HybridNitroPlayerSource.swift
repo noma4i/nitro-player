@@ -201,7 +201,7 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
   }
 
   func releaseAsset() {
-    sourceLoader.cancelSync()
+    sourceLoader.cancelDetached()
     asset = nil
     retentionState = .cold
   }

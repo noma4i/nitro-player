@@ -75,7 +75,10 @@ class SourceLoader {
     await actor.cancel()
   }
 
-  func cancelSync() {
+  /// Fire-and-forget cancellation for non-async callers (release/deinit paths).
+  /// The cancel is dispatched onto a detached task and is not awaited, so it is
+  /// best-effort and not guaranteed to complete before the caller returns.
+  func cancelDetached() {
     Task {
       await actor.cancel()
     }

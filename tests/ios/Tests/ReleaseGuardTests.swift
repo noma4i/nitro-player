@@ -4,7 +4,7 @@ import XCTest
 final class ReleaseGuardTests: XCTestCase {
 
   // Tests SourceLoader cancellation - REAL production code (symlinked).
-  // HybridNitroPlayer.release() calls sourceLoader.cancelSync(),
+  // HybridNitroPlayer.release() calls sourceLoader.cancelDetached(),
   // so SourceLoader cancellation IS the release guard for async operations.
 
   func testConcurrentCancelDuringLoad() async {
