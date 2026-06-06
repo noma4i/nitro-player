@@ -22,12 +22,27 @@ class HlsProxyServer(
     val cacheStore = HlsCacheStore(context)
     private val executor = Executors.newSingleThreadExecutor()
 
+    // Set before tearing down executor/cacheStore so in-flight prefetch/segment
+    // tasks skip cache writes instead of racing a closed store.
+    @Volatile
+    private var closed = false
+
     fun listeningPort(): Int = port
 
     override fun stop() {
+        closed = true
         super.stop()
         executor.shutdownNow()
         cacheStore.close()
+    }
+
+    private fun putToCache(resourceKey: String, data: ByteArray, streamKey: String?) {
+        if (closed) return
+        try {
+            cacheStore.put(resourceKey, data, streamKey)
+        } catch (e: Exception) {
+            Log.w(TAG, "cacheStore.put after close ignored", e)
+        }
     }
 
     override fun serve(session: IHTTPSession): Response {
@@ -72,7 +87,7 @@ class HlsProxyServer(
                     val resourceKey = HlsIdentity.resourceKey(resolved, headers)
                     if (!cacheStore.has(resourceKey)) {
                         val data = fetchData(resolved, headers)
-                        cacheStore.put(resourceKey, data, streamKey)
+                        putToCache(resourceKey, data, streamKey)
                     }
                 }
                 if (firstSeg != null) {
@@ -80,7 +95,7 @@ class HlsProxyServer(
                     val resourceKey = HlsIdentity.resourceKey(resolved, headers)
                     if (!cacheStore.has(resourceKey)) {
                         val data = fetchData(resolved, headers)
-                        cacheStore.put(resourceKey, data, streamKey)
+                        putToCache(resourceKey, data, streamKey)
                     }
                 }
                 onComplete()
@@ -130,7 +145,7 @@ class HlsProxyServer(
 
         return try {
             val data = fetchData(url, headers)
-            cacheStore.put(resourceKey, data, streamKey)
+            putToCache(resourceKey, data, streamKey)
             fixedBinaryResponse(data, contentType)
         } catch (e: Exception) {
             Log.w(TAG, "segment fetch failed", e)
