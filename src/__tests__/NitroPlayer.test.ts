@@ -371,6 +371,46 @@ describe('NitroPlayer async methods', () => {
 
     expect(release).toHaveBeenCalledTimes(1);
   });
+
+  it('replaceSourceAsync resolves even when released during the await (refreshMemorySize is a no-op after release)', async () => {
+    const { NitroPlayer } = require('../core/NitroPlayer');
+    const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
+
+    let resolveNative: (() => void) | undefined;
+    nativeReplaceSourceAsync.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          resolveNative = resolve;
+        })
+    );
+
+    const pending = player.replaceSourceAsync({ uri: 'https://cdn.example.com/video2.mp4' });
+    // Release the JS player while the native promise is still in-flight.
+    player.release();
+    resolveNative?.();
+
+    await expect(pending).resolves.toBeUndefined();
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('clearSourceAsync resolves even when released during the await', async () => {
+    const { NitroPlayer } = require('../core/NitroPlayer');
+    const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
+
+    let resolveNative: (() => void) | undefined;
+    nativeClearSourceAsync.mockImplementation(
+      () =>
+        new Promise<void>(resolve => {
+          resolveNative = resolve;
+        })
+    );
+
+    const pending = player.clearSourceAsync();
+    player.release();
+    resolveNative?.();
+
+    await expect(pending).resolves.toBeUndefined();
+  });
 });
 
 describe('NitroPlayer getters', () => {

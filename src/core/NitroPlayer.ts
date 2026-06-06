@@ -7,10 +7,7 @@ import type { MemorySnapshot } from './types/MemorySnapshot';
 import type { MixAudioMode } from './types/MixAudioMode';
 import type { PlaybackState } from './types/PlaybackState';
 import type { NitroSourceConfig } from './types/NitroPlayerConfig';
-import {
-  tryParseNativeNitroPlayerError,
-  NitroPlayerRuntimeError,
-} from './types/NitroPlayerError';
+import { tryParseNativeNitroPlayerError, NitroPlayerRuntimeError } from './types/NitroPlayerError';
 import type { NitroPlayerBase } from './types/NitroPlayerBase';
 import type { NitroPlayerStatus } from './types/NitroPlayerStatus';
 import { createPlayer } from './utils/playerFactory';
@@ -22,10 +19,7 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
 
   protected get player(): NitroPlayerImpl {
     if (this._player === undefined) {
-      throw new NitroPlayerRuntimeError(
-        'player/released',
-        "You can't access player after it's released"
-      );
+      throw new NitroPlayerRuntimeError('player/released', "You can't access player after it's released");
     }
 
     return this._player;
@@ -86,8 +80,15 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
    * @internal
    */
   private refreshMemorySize() {
-    NitroModules.updateMemorySize(this.player);
-    NitroModules.updateMemorySize(this.player.source);
+    // No-op once released: async paths (initialize/preload/replace/clear) call
+    // this after awaiting a native promise, and release() may have run during
+    // the await — accessing `this.player` would throw `player/released`.
+    if (this._player === undefined) {
+      return;
+    }
+
+    NitroModules.updateMemorySize(this._player);
+    NitroModules.updateMemorySize(this._player.source);
   }
 
   private runSync<T>(operation: () => T): T {
@@ -198,9 +199,7 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
 
   set ignoreSilentSwitchMode(value: IgnoreSilentSwitchMode) {
     if (__DEV__ && !['ios'].includes(Platform.OS)) {
-      console.warn(
-        'ignoreSilentSwitchMode is not supported on this platform, it wont have any effect'
-      );
+      console.warn('ignoreSilentSwitchMode is not supported on this platform, it wont have any effect');
     }
 
     this.player.ignoreSilentSwitchMode = value;
@@ -273,13 +272,9 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     this.runSync(() => this.player.seekTo(time));
   }
 
-  async replaceSourceAsync(
-    source: NitroSourceConfig | NitroPlayerSource
-  ): Promise<void> {
+  async replaceSourceAsync(source: NitroSourceConfig | NitroPlayerSource): Promise<void> {
     this.refreshMemorySize();
-    await this.runAsync(() =>
-      this.player.replaceSourceAsync(createNitroSource(source))
-    );
+    await this.runAsync(() => this.player.replaceSourceAsync(createNitroSource(source)));
     this.refreshMemorySize();
   }
 
@@ -288,7 +283,6 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     await this.runAsync(() => this.player.clearSourceAsync());
     this.refreshMemorySize();
   }
-
 }
 
 export { NitroPlayer };
