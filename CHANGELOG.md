@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.1
+
+### Fixed
+- iOS: load `AVAsset` duration, video tracks, `naturalSize`, `preferredTransform`, and `estimatedDataRate` via async `load(...)` in `getAssetInformation()`, fixing metadata loading under AVFoundation's async property model.
+- iOS: derive video orientation from the preferred transform instead of the removed `AVAssetTrack.orientation`; `onLoad` emits `.unknown` orientation until it is computed.
+- iOS: simplify `AVAsset.estimatedMemoryUsage` to file-size-only for URL assets, dropping unreliable track-based estimation.
+
 ## 1.0.0
 
 First stable release. Promotes the `1.0.0-beta.1` through `1.0.0-beta.11` line to stable with no new runtime changes.
