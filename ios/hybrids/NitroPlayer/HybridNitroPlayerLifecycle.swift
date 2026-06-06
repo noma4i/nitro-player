@@ -47,6 +47,7 @@ extension HybridNitroPlayer {
 
     cancelPendingTrim()
     cancelStartupRecovery()
+    cancelFirstFrameRequest()
     sourceLoader.cancelDetached()
     initTask?.cancel()
     initTask = nil

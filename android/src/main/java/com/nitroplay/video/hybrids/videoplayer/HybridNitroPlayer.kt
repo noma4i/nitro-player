@@ -62,6 +62,8 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   internal var firstFrame: onFirstFrameData? = null
   internal var pendingFirstFrameGeneration = -1
   internal var firstFrameContext: FirstFrameContext? = null
+  // Inflight preview worker, interrupted on release to stop wasted fetch/decode.
+  internal var firstFrameThread: Thread? = null
 
   var wasAutoPaused = false
   private val startupRecoveryHandler = Handler(Looper.getMainLooper())
@@ -466,6 +468,8 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
         listenerBridge.stopProgressUpdates()
         lifecycle.cancelPendingTrim()
         cancelStartupRecovery()
+        firstFrameThread?.interrupt()
+        firstFrameThread = null
         loadedWithSource = false
         hasActiveSource = false
 
@@ -722,7 +726,8 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     pendingFirstFrameGeneration = generation
     val previewConfig = currentSourceConfig()?.preview
 
-    Thread {
+    val thread = Thread {
+      if (isReleased) return@Thread
       val preview = VideoPreviewRuntime.getFirstFrame(
         context.sourceUri,
         context.headers,
@@ -754,7 +759,9 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
           )
         }
       }
-    }.start()
+    }
+    firstFrameThread = thread
+    thread.start()
   }
 
   private fun currentPreviewMode(): NitroSourcePreviewMode {
