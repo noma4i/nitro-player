@@ -240,5 +240,12 @@ class AudioFocusManager() {
   }
 
   fun isDucking(): Boolean = isDucking
+
+  /**
+   * Returns the player's volume captured before the current duck, or null when
+   * the player is not currently ducked. Callers that need to snapshot the real
+   * (non-ducked) volume must prefer this over the live player.volume.
+   */
+  fun preDuckVolume(player: HybridNitroPlayer): Float? = preDuckVolumes[player]
 }
 

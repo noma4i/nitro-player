@@ -156,7 +156,10 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       if (!isReleased) {
         if (value) {
           if (!cachedMuted) {
-            userVolume = volume
+            // Prefer the pre-duck volume: while audio focus is ducking, the live
+            // player.volume is 0.5x, and caching that would make unmute restore
+            // the ducked level instead of the user's real volume.
+            userVolume = NitroPlayerManager.audioFocusManager.preDuckVolume(this)?.toDouble() ?: volume
           }
           player.volume = 0f
         } else {
