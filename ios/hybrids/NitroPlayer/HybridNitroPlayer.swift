@@ -54,6 +54,10 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   var hasLoadedCurrentSource = false
   var firstFrame: onFirstFrameData?
   var firstFrameContext: FirstFrameContext?
+  // Signature of the last emitted PlaybackState (excluding nativeTimestampMs).
+  // PlaybackState is a C++ bridge wrapper and is not Equatable, so the emit gate
+  // compares a string of its meaningful fields instead.
+  private var lastEmittedStateSignature: String?
 
   private let startupRecoveryDelayNs: UInt64 = 250_000_000
   private let maxStartupRecoveryAttempts = 1
@@ -314,7 +318,40 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
 
   func emitPlaybackState() {
-    _eventEmitter?.onPlaybackState(playbackState)
+    let state = playbackState
+    let signature = playbackStateSignature(state)
+    // The 0.25s observer tick rebuilds the state every time, but when nothing
+    // meaningful changed (only the timestamp advanced) there is no reason to
+    // cross the bridge. nativeTimestampMs is excluded from the signature.
+    if signature == lastEmittedStateSignature {
+      return
+    }
+    lastEmittedStateSignature = signature
+    _eventEmitter?.onPlaybackState(state)
+  }
+
+  private func playbackStateSignature(_ state: PlaybackState) -> String {
+    let errorSignature: String
+    switch state.error {
+    case .some(.second(let error)):
+      errorSignature = "\(error.code)|\(error.message)"
+    case .some(.first):
+      errorSignature = "null"
+    case .none:
+      errorSignature = "nil"
+    }
+    return [
+      String(describing: state.status),
+      String(state.currentTime),
+      String(state.duration),
+      String(state.bufferDuration),
+      String(state.bufferedPosition),
+      String(state.rate),
+      String(state.isPlaying),
+      String(state.isBuffering),
+      String(state.isVisualReady),
+      errorSignature
+    ].joined(separator: "|")
   }
 
   func currentSourceConfig() -> NativeNitroPlayerConfig? {
@@ -337,6 +374,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     sourceGeneration += 1
     startupRecoveryAttempts = 0
     hasLoadedCurrentSource = false
+    lastEmittedStateSignature = nil
     firstFrame = nil
     firstFrameContext = nil
     cancelFirstFrameRequest()
