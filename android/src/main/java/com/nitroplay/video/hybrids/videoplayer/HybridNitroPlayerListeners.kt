@@ -55,44 +55,49 @@ internal class NitroPlayerListenerBridge(
           host.enterBuffering()
         }
         Player.STATE_READY -> {
+          // Fire onLoad / first-frame only on the first ready of this source
+          // generation; later READY transitions (rebuffer, seek) must not re-emit.
+          val isFirstLoadForGeneration = !host.hasLoadedCurrentSource
           host.markCurrentSourceLoaded()
           host.isCurrentlyBuffering = false
           host.lastError = null
           host.status = host.resolvePlayPauseStatus()
           host.readyToDisplay = true
 
-          val generalVideoFormat = host.player.videoFormat
-          val currentTracks = host.player.currentTracks
+          if (isFirstLoadForGeneration) {
+            val generalVideoFormat = host.player.videoFormat
+            val currentTracks = host.player.currentTracks
 
-          val selectedVideoTrackGroup = currentTracks.groups.find { group -> group.type == C.TRACK_TYPE_VIDEO && group.isSelected }
-          val selectedVideoTrackFormat = if (selectedVideoTrackGroup != null && selectedVideoTrackGroup.length > 0) {
-            selectedVideoTrackGroup.getTrackFormat(0)
-          } else {
-            null
-          }
+            val selectedVideoTrackGroup = currentTracks.groups.find { group -> group.type == C.TRACK_TYPE_VIDEO && group.isSelected }
+            val selectedVideoTrackFormat = if (selectedVideoTrackGroup != null && selectedVideoTrackGroup.length > 0) {
+              selectedVideoTrackGroup.getTrackFormat(0)
+            } else {
+              null
+            }
 
-          val width = selectedVideoTrackFormat?.width ?: generalVideoFormat?.width ?: 0
-          val height = selectedVideoTrackFormat?.height ?: generalVideoFormat?.height ?: 0
-          val rotationDegrees = selectedVideoTrackFormat?.rotationDegrees ?: generalVideoFormat?.rotationDegrees
+            val width = selectedVideoTrackFormat?.width ?: generalVideoFormat?.width ?: 0
+            val height = selectedVideoTrackFormat?.height ?: generalVideoFormat?.height ?: 0
+            val rotationDegrees = selectedVideoTrackFormat?.rotationDegrees ?: generalVideoFormat?.rotationDegrees
 
-          host.eventEmitter.onLoad(
-            onLoadData(
-              currentTime = host.player.currentPosition / 1000.0,
-              duration = if (host.player.duration == C.TIME_UNSET) Double.NaN else host.player.duration / 1000.0,
-              width = width.toDouble(),
-              height = height.toDouble(),
-              orientation = NitroPlayerOrientationUtils.fromWHR(width, height, rotationDegrees)
+            host.eventEmitter.onLoad(
+              onLoadData(
+                currentTime = host.player.currentPosition / 1000.0,
+                duration = if (host.player.duration == C.TIME_UNSET) Double.NaN else host.player.duration / 1000.0,
+                width = width.toDouble(),
+                height = height.toDouble(),
+                orientation = NitroPlayerOrientationUtils.fromWHR(width, height, rotationDegrees)
+              )
             )
-          )
 
-          val sourceUrl = (host.source as? HybridNitroPlayerSource)?.previewSourceUri()
-          if (sourceUrl != null) {
-            host.cacheFirstFrameContext(
-              sourceUri = sourceUrl,
-              width = width.toDouble(),
-              height = height.toDouble()
-            )
-            host.requestFirstFrameIfNeeded()
+            val sourceUrl = (host.source as? HybridNitroPlayerSource)?.previewSourceUri()
+            if (sourceUrl != null) {
+              host.cacheFirstFrameContext(
+                sourceUri = sourceUrl,
+                width = width.toDouble(),
+                height = height.toDouble()
+              )
+              host.requestFirstFrameIfNeeded()
+            }
           }
         }
         Player.STATE_ENDED -> {

@@ -127,24 +127,29 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
     case .readyToPlay:
       guard let playerItem else { return }
+      // Fire onLoad / first-frame only on the first ready of this source
+      // generation; later READY transitions (rebuffer, seek) must not re-emit.
+      let isFirstLoadForGeneration = !hasLoadedCurrentSource
       markCurrentSourceLoaded()
       resetPlaybackError()
 
-      let height = playerItem.presentationSize.height
-      let width = playerItem.presentationSize.width
+      if isFirstLoadForGeneration {
+        let height = playerItem.presentationSize.height
+        let width = playerItem.presentationSize.width
 
-      _eventEmitter?.onLoad(
-        .init(currentTime, duration, height, width, .unknown)
-      )
-
-      if let asset = playerItem.asset as? AVURLAsset {
-        let sourceUrl = currentHybridSource()?.previewSourceUri() ?? asset.url.absoluteString
-        cacheFirstFrameContext(
-          sourceUri: sourceUrl,
-          width: width,
-          height: height
+        _eventEmitter?.onLoad(
+          .init(currentTime, duration, height, width, .unknown)
         )
-        requestFirstFrameIfNeeded()
+
+        if let asset = playerItem.asset as? AVURLAsset {
+          let sourceUrl = currentHybridSource()?.previewSourceUri() ?? asset.url.absoluteString
+          cacheFirstFrameContext(
+            sourceUri: sourceUrl,
+            width: width,
+            height: height
+          )
+          requestFirstFrameIfNeeded()
+        }
       }
 
       if playerItem.isPlaybackLikelyToKeepUp
