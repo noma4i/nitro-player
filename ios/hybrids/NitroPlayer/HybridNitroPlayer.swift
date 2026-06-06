@@ -601,18 +601,21 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     resetPlaybackError()
     emitPlaybackState()
 
+    let generation = sourceGeneration
     Task.detached(priority: .userInitiated) { [weak self] in
       guard let self else { return }
 
       do {
         try await self.prepareBufferedState()
         DispatchQueue.main.async { [weak self] in
-          guard let self, !self.isReleased, self.wantsToPlay else { return }
+          guard let self, !self.isReleased, self.sourceGeneration == generation, self.wantsToPlay else { return }
           self.player.play()
         }
       } catch {
         DispatchQueue.main.async { [weak self] in
-          guard let self, !self.isReleased else { return }
+          // Guard the generation: if the source was replaced while preparing,
+          // a stale failure must not fail/recover the new source.
+          guard let self, !self.isReleased, self.sourceGeneration == generation else { return }
           if self.attemptStartupRecoveryIfNeeded(message: error.localizedDescription) {
             return
           }
