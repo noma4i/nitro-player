@@ -124,11 +124,23 @@ object VideoPreviewRuntime {
 
       val rawBitmap = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
         ?: return null
-      val bitmap = scaleBitmap(rawBitmap, profile)
+      var scaled: Bitmap? = null
       val stream = ByteArrayOutputStream()
-      bitmap.compress(Bitmap.CompressFormat.JPEG, profile.quality, stream)
-      val storedUri = store.putThumbnail(cacheKey, stream.toByteArray()) ?: return null
-      return VideoPreviewResult(uri = storedUri, fromCache = false)
+      try {
+        scaled = scaleBitmap(rawBitmap, profile)
+        scaled.compress(Bitmap.CompressFormat.JPEG, profile.quality, stream)
+        val storedUri = store.putThumbnail(cacheKey, stream.toByteArray()) ?: return null
+        return VideoPreviewResult(uri = storedUri, fromCache = false)
+      } finally {
+        if (scaled != null && scaled !== rawBitmap) {
+          scaled.recycle()
+        }
+        rawBitmap.recycle()
+        try {
+          stream.close()
+        } catch (_: Exception) {
+        }
+      }
     } catch (_: Exception) {
       return null
     } finally {
@@ -139,7 +151,7 @@ object VideoPreviewRuntime {
     }
   }
 
-  private fun scaleBitmap(bitmap: Bitmap, profile: VideoPreviewProfile): Bitmap {
+  internal fun scaleBitmap(bitmap: Bitmap, profile: VideoPreviewProfile): Bitmap {
     if (bitmap.width <= profile.maxWidth && bitmap.height <= profile.maxHeight) {
       return bitmap
     }
