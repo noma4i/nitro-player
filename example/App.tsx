@@ -27,7 +27,7 @@ import {
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 const HLS_URL = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
-const MP4_URL = 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+const MP4_URL = 'https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4';
 
 const EMPTY_CACHE_STATS: StreamCacheStats = {
   totalSize: 0,
