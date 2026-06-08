@@ -125,8 +125,14 @@ object VideoPreviewRuntime {
       return storeBitmap(store, cacheKey, raw, profile)
     }
     // 2) MediaMetadataRetriever cannot open an HLS .m3u8 manifest, so decode the
-    //    first media segment directly into a Bitmap (no surface/overlay involved,
-    //    unlike PixelCopy which returns black under emulator GPUs).
+    //    first media segment directly into a Bitmap.
+    //    Emulator caveat: SwiftShader/goldfish GPUs read back a BLACK frame for an
+    //    MPEG-TS segment here, even though ExoPlayer renders the real video on its
+    //    hardware overlay. The frame decodes correctly on real devices (progressive
+    //    MP4 reads back fine even on the emulator -- this is TS-readback specific).
+    //    No in-app readback path (this, PixelCopy, TextureView.getBitmap) avoids the
+    //    emulator limitation, so we keep the lightweight segment decode rather than
+    //    pulling in media3-transformer's ExperimentalFrameExtractor for no emulator gain.
     decodeFirstHlsSegment(url, headers)?.let { raw ->
       return storeBitmap(store, cacheKey, raw, profile)
     }

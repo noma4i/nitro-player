@@ -79,6 +79,13 @@ For stream cache accounting, request context currently means the normalized head
 | Isolation | Preview failures do not change playback status |
 | Identity | Preview entries are keyed by URL, headers, and preview profile |
 
+> **Emulator caveat (Android):** HLS first-frame extraction decodes the first media
+> segment off-player. On emulators with a software GPU (SwiftShader/goldfish) the
+> decoded MPEG-TS frame reads back black, even though playback renders the real video
+> on the hardware overlay — an emulator readback limitation, not a library bug. First
+> frames are real on physical devices; progressive (MP4) previews read back correctly
+> even on the emulator.
+
 ## Operational notes
 
 | Case | Expected behavior |
