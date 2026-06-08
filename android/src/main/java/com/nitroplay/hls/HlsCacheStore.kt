@@ -101,6 +101,12 @@ class HlsCacheStore(context: Context) {
             if (file.exists()) file.delete()
         }
         index.clear()
+        // Sweep any orphan files (written but never indexed, or left by a crash) so
+        // the directory matches the now-empty index.
+        cacheDir
+            .listFiles()
+            ?.filter { it.name != indexFile.name }
+            ?.forEach { it.delete() }
         saveIndex()
     }
 
@@ -112,6 +118,12 @@ class HlsCacheStore(context: Context) {
             .listFiles()
             ?.filter { it.name.endsWith(".thumb") }
             ?.forEach { it.delete() }
+        // Reconcile: drop any index entry whose backing file no longer exists.
+        index.values
+            .filter { !File(cacheDir, it.fileName).exists() }
+            .forEach { index.remove(it.url) }
+        // Persist immediately so the on-disk index never lags the cleared state.
+        saveIndex()
     }
 
     fun close() {

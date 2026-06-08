@@ -64,4 +64,33 @@ final class HlsThumbnailCacheTests: XCTestCase {
     XCTAssertNotNil(store.getFilePath(url: url))
     XCTAssertNotNil(store.getThumbnailPath(url: url))
   }
+
+  func testClearThumbnails_persistsClearedIndexToDisk() {
+    _ = store.putThumbnail(url: "https://cdn.example.com/poster.jpg", data: Data(count: 64))
+    store.clearThumbnails()
+    _ = store.getCacheStats()  // drains the serial queue so the async clear + saveIndex finished
+
+    // A fresh store reloads index.json from disk; the cleared state must already
+    // be persisted (clearThumbnails flushes immediately, not on the 5s debounce).
+    let reloaded = HlsCacheStore()
+    XCTAssertEqual(reloaded.getCacheStats()["fileCount"] as? Int, 0)
+    XCTAssertFalse(reloaded.hasThumbnail(url: "https://cdn.example.com/poster.jpg"))
+  }
+
+  func testClearAll_sweepsOrphanFilesFromDisk() {
+    _ = store.getCacheStats()  // ensure setUp's async clears completed before planting the orphan
+
+    let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+      .appendingPathComponent("hls-cache", isDirectory: true)
+    try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+    let orphan = cacheDir.appendingPathComponent("orphan.bin")
+    try? Data(count: 16).write(to: orphan)
+    store.put(url: "https://cdn.example.com/clip.ts", data: Data(count: 40), streamKey: "s1")
+
+    store.clearAll()
+    _ = store.getCacheStats()  // drain the queue
+
+    XCTAssertFalse(FileManager.default.fileExists(atPath: orphan.path), "orphan must be swept")
+    XCTAssertEqual(store.getCacheStats()["fileCount"] as? Int, 0)
+  }
 }

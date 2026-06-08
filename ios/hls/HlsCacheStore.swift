@@ -139,6 +139,12 @@ final class HlsCacheStore {
         try? FileManager.default.removeItem(at: fileUrl)
       }
       self.index.removeAll()
+      // Sweep any orphan files (written but never indexed, or left by a crash) so
+      // the directory matches the now-empty index.
+      let urls = (try? FileManager.default.contentsOfDirectory(at: self.cacheDir, includingPropertiesForKeys: nil)) ?? []
+      for url in urls where url.lastPathComponent != self.indexUrl.lastPathComponent {
+        try? FileManager.default.removeItem(at: url)
+      }
       self.saveIndex()
     }
   }
@@ -155,6 +161,13 @@ final class HlsCacheStore {
       urls
         .filter { $0.lastPathComponent.hasSuffix(".thumb") }
         .forEach { try? FileManager.default.removeItem(at: $0) }
+      // Reconcile: drop any index entry whose backing file no longer exists.
+      for entry in Array(self.index.values)
+      where !FileManager.default.fileExists(atPath: self.cacheDir.appendingPathComponent(entry.fileName).path) {
+        self.index.removeValue(forKey: entry.url)
+      }
+      // Persist immediately so the on-disk index never lags the cleared state.
+      self.saveIndex()
     }
   }
 

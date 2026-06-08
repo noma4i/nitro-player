@@ -1,7 +1,9 @@
 package com.nitroplay.hls
 
+import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import java.io.File
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -84,5 +86,37 @@ class HlsThumbnailCacheTest {
     assertEquals(150L, stats["totalSize"])
     assertNotNull(store.getFilePath(url))
     assertNotNull(store.getThumbnailPath(url))
+  }
+
+  @Test
+  fun clearThumbnails_persistsClearedIndexToDisk() {
+    store.putThumbnail("https://cdn.example.com/poster.jpg", ByteArray(64) { 2 })
+    store.clearThumbnails()
+
+    // A fresh store reloads index.json from disk; the cleared state must already
+    // be persisted (clearThumbnails flushes immediately, not on the 5s debounce).
+    val reloaded = HlsCacheStore(ApplicationProvider.getApplicationContext())
+    try {
+      assertEquals(0, reloaded.getCacheStats()["fileCount"])
+      assertFalse(reloaded.hasThumbnail("https://cdn.example.com/poster.jpg"))
+    } finally {
+      reloaded.close()
+    }
+  }
+
+  @Test
+  fun clearAll_sweepsOrphanFilesFromDisk() {
+    val ctx = ApplicationProvider.getApplicationContext<Context>()
+    val cacheDir = File(ctx.cacheDir, "hls-cache").apply { mkdirs() }
+    val orphan = File(cacheDir, "orphan.bin")
+    orphan.writeBytes(ByteArray(16))
+    store.put("https://cdn.example.com/clip.ts", ByteArray(40) { 7 }, "s1")
+
+    store.clearAll()
+
+    assertFalse("orphan file (never indexed) must be swept", orphan.exists())
+    assertEquals(0, store.getCacheStats()["fileCount"])
+    val remaining = cacheDir.listFiles()?.map { it.name }?.toSet() ?: emptySet()
+    assertEquals(setOf("index.json"), remaining)
   }
 }
