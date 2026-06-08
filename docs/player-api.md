@@ -44,6 +44,12 @@ export function Demo() {
 | `willEnterFullscreen` | `() => void`                    | Pre-enter callback        |
 | `willExitFullscreen`  | `() => void`                    | Pre-exit callback         |
 
+> **`surfaceType` (Android):** `'surface'` (default) uses a `SurfaceView` — best for a
+> single or fullscreen player. Inside a scrolling list/feed prefer `'texture'`: a
+> `TextureView` composites in the view hierarchy and stays in sync while scrolling,
+> whereas a `SurfaceView`'s separate overlay layer can briefly desync its bounds
+> during scroll/seek.
+
 ## `NitroPlayerViewRef`
 
 | Member                              | Type                   | Notes               |

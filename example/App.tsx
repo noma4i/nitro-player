@@ -375,6 +375,9 @@ function PlayerWorkbench({
       </View>
 
       <View style={styles.playerFrame}>
+        {/* surfaceType="texture": these cards live in a ScrollView feed. TextureView
+            renders inside the view hierarchy so it stays in sync while scrolling; a
+            SurfaceView overlay can briefly desync its bounds during scroll/seek. */}
         <NitroPlayerView
           ref={instance => {
             viewRef.current = instance;
@@ -386,7 +389,7 @@ function PlayerWorkbench({
           controls={allowControls || isFullscreen}
           resizeMode="contain"
           keepScreenAwake
-          surfaceType="surface"
+          surfaceType="texture"
           onAttached={() => setIsAttached(true)}
           onDetached={() => setIsAttached(false)}
           onFullscreenChange={setIsFullscreen}
