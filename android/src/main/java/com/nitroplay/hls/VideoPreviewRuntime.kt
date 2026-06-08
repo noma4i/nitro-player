@@ -239,7 +239,7 @@ object VideoPreviewRuntime {
     return fallback
   }
 
-  private fun isMostlyBlack(bitmap: Bitmap): Boolean {
+  internal fun isMostlyBlack(bitmap: Bitmap): Boolean {
     val width = bitmap.width
     val height = bitmap.height
     if (width <= 0 || height <= 0) return true

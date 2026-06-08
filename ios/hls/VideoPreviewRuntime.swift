@@ -25,9 +25,6 @@ final class VideoPreviewRuntime {
   static let shared = VideoPreviewRuntime()
 
   private static let httpTimeout: TimeInterval = 8
-  // Sample a few timestamps and keep the first non-black frame, so an intro fade
-  // does not yield a black thumbnail. Mirrors the Android FRAME_SAMPLE_OFFSETS_US.
-  private static let frameSampleOffsets: [Double] = [0, 0.5, 1, 2, 3]
 
   private let store = HlsCacheStore()
   private let manifestParser = HlsManifestRewriter()
@@ -153,7 +150,7 @@ final class VideoPreviewRuntime {
     return decodeLocalSegment(
       initBytes: initBytes,
       segmentBytes: segmentBytes,
-      fileExtension: tempExtension(segmentUrl: segment.segmentUrl, hasInit: segment.initUrl != nil),
+      fileExtension: PreviewFrameHeuristics.tempExtension(segmentUrl: segment.segmentUrl, hasInit: segment.initUrl != nil),
       profile: profile
     )
   }
@@ -216,11 +213,11 @@ final class VideoPreviewRuntime {
     generator.requestedTimeToleranceAfter = .positiveInfinity
 
     var fallback: CGImage?
-    for offset in Self.frameSampleOffsets {
+    for offset in PreviewFrameHeuristics.frameSampleOffsets {
       if Task.isCancelled { break }
       let time = CMTime(seconds: offset, preferredTimescale: 600)
       guard let image = try? generator.copyCGImage(at: time, actualTime: nil) else { continue }
-      if !isMostlyBlack(image) {
+      if !PreviewFrameHeuristics.isMostlyBlack(image) {
         return image
       }
       if fallback == nil {
@@ -243,58 +240,6 @@ final class VideoPreviewRuntime {
       return nil
     }
     return VideoPreviewResult(uri: stored.absoluteString, fromCache: false)
-  }
-
-  // Downsamples the frame to an 8x8 grid and treats it as black when the peak luma
-  // stays below a small threshold. Mirrors the Android isMostlyBlack heuristic.
-  private func isMostlyBlack(_ image: CGImage) -> Bool {
-    let side = 8
-    var pixels = [UInt8](repeating: 0, count: side * side * 4)
-    let colorSpace = CGColorSpaceCreateDeviceRGB()
-    guard let context = CGContext(
-      data: &pixels,
-      width: side,
-      height: side,
-      bitsPerComponent: 8,
-      bytesPerRow: side * 4,
-      space: colorSpace,
-      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-    ) else {
-      return false
-    }
-
-    context.draw(image, in: CGRect(x: 0, y: 0, width: side, height: side))
-
-    var maxLuma = 0
-    var index = 0
-    while index < pixels.count {
-      let r = Int(pixels[index])
-      let g = Int(pixels[index + 1])
-      let b = Int(pixels[index + 2])
-      let luma = (r * 30 + g * 59 + b * 11) / 100
-      if luma > maxLuma {
-        maxLuma = luma
-      }
-      index += 4
-    }
-    return maxLuma < 18
-  }
-
-  private func tempExtension(segmentUrl: String, hasInit: Bool) -> String {
-    // fMP4 (CMAF): init (ftyp+moov) + media (moof+mdat) concatenate into a valid
-    // fragmented MP4, so a .mp4 extension lets AVURLAsset infer the container.
-    if hasInit {
-      return "mp4"
-    }
-    let ext = (URL(string: segmentUrl)?.pathExtension ?? "").lowercased()
-    switch ext {
-    case "m4s", "cmfv", "mp4", "m4v":
-      return "mp4"
-    case "":
-      return "ts"
-    default:
-      return ext
-    }
   }
 
   private func httpGet(_ urlString: String, headers: [String: String]?) async -> Data? {
