@@ -45,20 +45,4 @@ final class PreviewFrameHeuristicsTests: XCTestCase {
   func testIsMostlyBlack_falseForWhiteFrame() {
     XCTAssertFalse(PreviewFrameHeuristics.isMostlyBlack(solidImage(255, 255, 255)))
   }
-
-  func testTempExtension_fmp4WhenHasInit() {
-    XCTAssertEqual(PreviewFrameHeuristics.tempExtension(segmentUrl: "https://x/seg.m4s", hasInit: true), "mp4")
-  }
-
-  func testTempExtension_tsSegment() {
-    XCTAssertEqual(PreviewFrameHeuristics.tempExtension(segmentUrl: "https://x/seg.ts", hasInit: false), "ts")
-  }
-
-  func testTempExtension_m4sMapsToMp4() {
-    XCTAssertEqual(PreviewFrameHeuristics.tempExtension(segmentUrl: "https://x/seg.m4s", hasInit: false), "mp4")
-  }
-
-  func testTempExtension_noExtensionDefaultsToTs() {
-    XCTAssertEqual(PreviewFrameHeuristics.tempExtension(segmentUrl: "https://x/segmentdata", hasInit: false), "ts")
-  }
 }

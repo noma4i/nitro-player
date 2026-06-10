@@ -42,22 +42,4 @@ enum PreviewFrameHeuristics {
     }
     return maxLuma < 18
   }
-
-  // Picks a temp-file extension so AVURLAsset can infer the container of a
-  // downloaded HLS segment. fMP4 (CMAF): init (ftyp+moov) + media (moof+mdat)
-  // concatenate into a valid fragmented MP4, so a .mp4 extension is used.
-  static func tempExtension(segmentUrl: String, hasInit: Bool) -> String {
-    if hasInit {
-      return "mp4"
-    }
-    let ext = (URL(string: segmentUrl)?.pathExtension ?? "").lowercased()
-    switch ext {
-    case "m4s", "cmfv", "mp4", "m4v":
-      return "mp4"
-    case "":
-      return "ts"
-    default:
-      return ext
-    }
-  }
 }

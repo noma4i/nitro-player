@@ -1,5 +1,7 @@
 import AVFoundation
+import CoreImage
 import Foundation
+import QuartzCore
 import UIKit
 
 struct VideoPreviewProfile {
@@ -24,10 +26,11 @@ struct VideoPreviewResult {
 final class VideoPreviewRuntime {
   static let shared = VideoPreviewRuntime()
 
-  private static let httpTimeout: TimeInterval = 8
+  // Total wall-clock budget for the AVPlayer-based HLS frame grab.
+  private static let hlsGrabBudget: TimeInterval = 5
+  private static let ciContext = CIContext()
 
   private let store = HlsCacheStore()
-  private let manifestParser = HlsManifestRewriter()
   private let stateQueue = DispatchQueue(label: "com.nitroplay.preview.runtime")
   private var inflight: [String: Task<VideoPreviewResult?, Never>] = [:]
 
@@ -101,10 +104,11 @@ final class VideoPreviewRuntime {
       return persistThumbnail(image, cacheKey: cacheKey, profile: profile)
     }
 
-    // 2) AVAssetImageGenerator cannot open an HLS .m3u8 manifest (it fails fast with
-    //    -11800/-12782), so download the first media segment and decode it from a
-    //    local temp file. Mirrors Android VideoPreviewRuntime.decodeFirstHlsSegment.
-    if let image = await decodeFirstHlsSegment(url: url, headers: headers, profile: profile) {
+    // 2) HLS: AVAssetImageGenerator cannot open an HLS .m3u8 manifest, and iOS has
+    //    no standalone MPEG-TS file importer, so decoding a downloaded bare .ts
+    //    segment fails with AVError -11828 (FileFormatNotRecognized). Grab a frame
+    //    through AVPlayer's HLS pipeline instead, which handles both .ts and fMP4.
+    if let image = await decodeHlsViaPlayer(url: url, headers: headers, profile: profile) {
       return persistThumbnail(image, cacheKey: cacheKey, profile: profile)
     }
 
@@ -125,86 +129,153 @@ final class VideoPreviewRuntime {
     return representativeImage(asset: asset, profile: profile)
   }
 
-  private struct HlsFirstSegment {
-    let initUrl: String?
-    let segmentUrl: String
-  }
-
-  private func decodeFirstHlsSegment(
+  // Grabs the first non-black frame from an HLS stream through AVPlayer +
+  // AVPlayerItemVideoOutput. Runs on the main actor (no AVPlayerLayer is attached,
+  // so nothing renders on screen); the sampling loops yield via Task.sleep.
+  @MainActor
+  private func decodeHlsViaPlayer(
     url: String,
     headers: [String: String]?,
     profile: VideoPreviewProfile
   ) async -> CGImage? {
-    guard let segment = await resolveFirstSegment(manifestUrl: url, headers: headers),
-          let segmentBytes = await httpGet(segment.segmentUrl, headers: headers) else {
+    guard let assetUrl = URL(string: url) else { return nil }
+    var options: [String: Any] = [:]
+    if let headers, !headers.isEmpty {
+      options["AVURLAssetHTTPHeaderFieldsKey"] = headers
+    }
+
+    let asset = AVURLAsset(url: assetUrl, options: options)
+    let item = AVPlayerItem(asset: asset)
+    let output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
+      kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+      kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+    ])
+    item.add(output)
+
+    let player = AVPlayer(playerItem: item)
+    player.isMuted = true
+    player.automaticallyWaitsToMinimizeStalling = false
+
+    defer {
+      player.pause()
+      player.replaceCurrentItem(with: nil)
+    }
+
+    let deadline = Date().addingTimeInterval(Self.hlsGrabBudget)
+    guard await waitUntilReady(item: item, deadline: deadline) else {
       return nil
     }
 
-    // Fragmented MP4 segments need the init segment (ftyp+moov) prepended.
-    var initBytes: Data?
-    if let initUrl = segment.initUrl {
-      initBytes = await httpGet(initUrl, headers: headers)
+    let isLive = item.duration.isIndefinite
+    var fallback: CGImage?
+    for offset in PreviewFrameHeuristics.frameSampleOffsets {
+      if Task.isCancelled || Date() >= deadline { break }
+      guard let image = await grabFrame(
+        player: player,
+        output: output,
+        offset: offset,
+        isLive: isLive,
+        deadline: deadline,
+        profile: profile
+      ) else {
+        continue
+      }
+      if !PreviewFrameHeuristics.isMostlyBlack(image) {
+        return image
+      }
+      if fallback == nil {
+        fallback = image
+      }
     }
-    if Task.isCancelled { return nil }
-
-    return decodeLocalSegment(
-      initBytes: initBytes,
-      segmentBytes: segmentBytes,
-      fileExtension: PreviewFrameHeuristics.tempExtension(segmentUrl: segment.segmentUrl, hasInit: segment.initUrl != nil),
-      profile: profile
-    )
+    return fallback
   }
 
-  // Resolves the master -> media -> first-segment chain into absolute URLs. The
-  // playlist fetch is required to read nested manifests; the parsing primitives it
-  // relies on are covered by HlsManifestRewriterTests / HlsPreviewSegmentResolutionTests.
-  private func resolveFirstSegment(manifestUrl: String, headers: [String: String]?) async -> HlsFirstSegment? {
-    guard let manifest = await httpGetString(manifestUrl, headers: headers) else { return nil }
-
-    var mediaUrl = manifestUrl
-    var mediaManifest = manifest
-    if manifestParser.isMasterPlaylist(manifest) {
-      guard let variant = manifestParser.extractVariantUrls(manifest).first else { return nil }
-      mediaUrl = manifestParser.resolveUrl(base: manifestUrl, relative: variant)
-      guard let media = await httpGetString(mediaUrl, headers: headers) else { return nil }
-      mediaManifest = media
+  @MainActor
+  private func waitUntilReady(item: AVPlayerItem, deadline: Date) async -> Bool {
+    while Date() < deadline {
+      if Task.isCancelled { return false }
+      switch item.status {
+      case .readyToPlay:
+        return true
+      case .failed:
+        return false
+      default:
+        break
+      }
+      try? await Task.sleep(nanoseconds: 50_000_000)
     }
-
-    let (initRef, firstRef) = manifestParser.extractInitAndFirstSegment(mediaManifest)
-    guard let firstRef else { return nil }
-    return HlsFirstSegment(
-      initUrl: initRef.map { manifestParser.resolveUrl(base: mediaUrl, relative: $0) },
-      segmentUrl: manifestParser.resolveUrl(base: mediaUrl, relative: firstRef)
-    )
+    return false
   }
 
-  // Writes init+segment into a temp file with a container-appropriate extension so
-  // AVURLAsset can infer the type, then decodes a representative frame from it.
-  private func decodeLocalSegment(
-    initBytes: Data?,
-    segmentBytes: Data,
-    fileExtension: String,
+  @MainActor
+  private func grabFrame(
+    player: AVPlayer,
+    output: AVPlayerItemVideoOutput,
+    offset: Double,
+    isLive: Bool,
+    deadline: Date,
     profile: VideoPreviewProfile
-  ) -> CGImage? {
-    let tempUrl = FileManager.default.temporaryDirectory
-      .appendingPathComponent("nitroplay-preview-\(UUID().uuidString)")
-      .appendingPathExtension(fileExtension)
-    defer { try? FileManager.default.removeItem(at: tempUrl) }
-
-    var blob = Data()
-    if let initBytes {
-      blob.append(initBytes)
+  ) async -> CGImage? {
+    if !isLive {
+      let target = CMTime(seconds: offset, preferredTimescale: 600)
+      await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+        player.seek(to: target, toleranceBefore: .positiveInfinity, toleranceAfter: .positiveInfinity) { _ in
+          continuation.resume()
+        }
+      }
     }
-    blob.append(segmentBytes)
-    guard (try? blob.write(to: tempUrl)) != nil else { return nil }
 
-    return representativeImage(asset: AVURLAsset(url: tempUrl), profile: profile)
+    // A paused player rarely yields a buffer, so try a cheap copy first and then
+    // briefly play (muted, off-screen) to force the decoder to emit a frame.
+    if let buffer = await pollPixelBuffer(output: output, timeout: 0.3) {
+      return convert(buffer, profile: profile)
+    }
+
+    player.play()
+    let buffer = await pollPixelBuffer(
+      output: output,
+      timeout: min(1.5, max(0, deadline.timeIntervalSinceNow))
+    )
+    player.pause()
+
+    guard let buffer else { return nil }
+    return convert(buffer, profile: profile)
+  }
+
+  @MainActor
+  private func pollPixelBuffer(
+    output: AVPlayerItemVideoOutput,
+    timeout: TimeInterval
+  ) async -> CVPixelBuffer? {
+    let end = Date().addingTimeInterval(max(0, timeout))
+    while Date() < end {
+      if Task.isCancelled { return nil }
+      let itemTime = output.itemTime(forHostTime: CACurrentMediaTime())
+      if output.hasNewPixelBuffer(forItemTime: itemTime),
+         let buffer = output.copyPixelBuffer(forItemTime: itemTime, itemTimeForDisplay: nil) {
+        return buffer
+      }
+      try? await Task.sleep(nanoseconds: 16_000_000)
+    }
+    return nil
+  }
+
+  private func convert(_ pixelBuffer: CVPixelBuffer, profile: VideoPreviewProfile) -> CGImage? {
+    let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+    let extent = ciImage.extent
+    guard extent.width > 0, extent.height > 0 else { return nil }
+
+    let scale = min(profile.maxWidth / extent.width, profile.maxHeight / extent.height, 1.0)
+    let scaled = scale < 1.0
+      ? ciImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+      : ciImage
+    return Self.ciContext.createCGImage(scaled, from: scaled.extent)
   }
 
   // Builds the image generator and returns the first non-black sampled frame
   // (falling back to the earliest decoded frame). Generous time tolerance is used
-  // because MPEG-TS segments often start at a non-zero PTS, where an exact request
-  // at time 0 would fail; nearest-keyframe is ideal for a thumbnail anyway.
+  // because progressive containers may start at a non-zero PTS, where an exact
+  // request at time 0 would fail; nearest-keyframe is ideal for a thumbnail anyway.
   private func representativeImage(asset: AVURLAsset, profile: VideoPreviewProfile) -> CGImage? {
     let generator = AVAssetImageGenerator(asset: asset)
     generator.appliesPreferredTrackTransform = true
@@ -240,25 +311,5 @@ final class VideoPreviewRuntime {
       return nil
     }
     return VideoPreviewResult(uri: stored.absoluteString, fromCache: false)
-  }
-
-  private func httpGet(_ urlString: String, headers: [String: String]?) async -> Data? {
-    guard let url = URL(string: urlString) else { return nil }
-    var request = URLRequest(url: url, timeoutInterval: Self.httpTimeout)
-    headers?.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
-    do {
-      let (data, response) = try await URLSession.shared.data(for: request)
-      if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
-        return nil
-      }
-      return data
-    } catch {
-      return nil
-    }
-  }
-
-  private func httpGetString(_ urlString: String, headers: [String: String]?) async -> String? {
-    guard let data = await httpGet(urlString, headers: headers) else { return nil }
-    return String(data: data, encoding: .utf8)
   }
 }
