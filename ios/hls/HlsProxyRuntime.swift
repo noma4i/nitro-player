@@ -8,12 +8,14 @@ struct HlsProxyRouteResolution {
 final class HlsProxyRuntime {
   static let shared = HlsProxyRuntime()
 
-  private let defaultPort: Int = 18181
+  // 0 = OS-assigned ephemeral port (avoids loopback port collisions); the
+  // controller reads back the actual bound port for proxied URLs.
+  private let defaultPort: Int = 0
   private let prefetchDedupMs: TimeInterval = 60
   private let stateQueue = DispatchQueue(label: "com.nitroplay.hls.runtime-state")
   private let controller = HlsProxyServerController()
 
-  private var port: Int = 18181
+  private var port: Int = 0
   private var didAutoStart = false
   private var isExplicitlyStopped = false
   private var prefetchTimestamps: [String: Date] = [:]

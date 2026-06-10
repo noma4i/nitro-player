@@ -4,13 +4,17 @@ import GCDWebServer
 import UIKit
 
 final class HlsProxyServerController: NSObject {
-  private let defaultPort: Int = 18181
+  // 0 = OS-assigned ephemeral port. A fixed port collides when more than one
+  // proxy shares the loopback (e.g. several simulators on one host), which made
+  // start() fail to bind and silently fall back to direct playback. The actual
+  // bound port is read back from the server after start.
+  private let defaultPort: Int = 0
   private let cache = HlsCacheStore()
   private let manifestRewriter = HlsManifestRewriter()
   private let networkClient = HlsNetworkClient()
 
   private let stateQueue = DispatchQueue(label: "com.nitroplay.hls.proxy-state")
-  private var port: Int = 18181
+  private var port: Int = 0
   private var server: GCDWebServer?
   private var shouldBeRunning = false
   private var wasExplicitlyStopped = false
@@ -182,24 +186,39 @@ final class HlsProxyServerController: NSObject {
   private func restartServer() -> Bool {
     stopServer()
 
-    let currentPort = stateQueue.sync { port }
+    let requestedPort = stateQueue.sync { port }
+    if startServer(on: requestedPort) {
+      return true
+    }
+    // A fixed/explicit port can already be taken (e.g. several proxies sharing the
+    // loopback). Retry once on an OS-assigned ephemeral port so a conflict never
+    // silently disables the proxy and forces direct playback.
+    if requestedPort != 0 {
+      return startServer(on: 0)
+    }
+    return false
+  }
+
+  private func startServer(on requestedPort: Int) -> Bool {
     let webServer = GCDWebServer()
     bindHandlers(to: webServer)
 
     do {
       // Start outside stateQueue: GCDWebServer.start blocks while binding.
       try webServer.start(options: [
-        GCDWebServerOption_Port: currentPort,
+        GCDWebServerOption_Port: requestedPort,
         GCDWebServerOption_BindToLocalhost: true,
         GCDWebServerOption_AutomaticallySuspendInBackground: false
       ])
       // Store only if a concurrent stop() did not run while we were binding,
-      // otherwise we would resurrect a server after an explicit stop.
+      // otherwise we would resurrect a server after an explicit stop. Capture the
+      // actual bound port so proxied URLs target the OS-assigned port.
       let stored = stateQueue.sync { () -> Bool in
         guard shouldBeRunning else {
           return false
         }
         server = webServer
+        port = Int(webServer.port)
         return true
       }
       guard stored else {

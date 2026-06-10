@@ -6,7 +6,10 @@ import com.facebook.react.bridge.ReadableMap
 import java.net.URLEncoder
 
 object HlsProxyRuntime {
-  private const val DEFAULT_PORT = 18181
+  // 0 = OS-assigned ephemeral port. A fixed port collides when several proxies
+  // share the loopback, making the bind fail and silently fall back to direct
+  // playback; the actual bound port is read back via HlsProxyServer.listeningPort().
+  private const val DEFAULT_PORT = 0
   private const val PREFETCH_DEDUP_MS = 60_000L
   private const val PREFETCH_MAX_ENTRIES = 500
 

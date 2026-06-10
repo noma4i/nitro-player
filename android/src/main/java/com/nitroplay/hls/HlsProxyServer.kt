@@ -27,7 +27,9 @@ class HlsProxyServer(
     @Volatile
     private var closed = false
 
-    fun listeningPort(): Int = port
+    // The OS-assigned bound port (NanoHTTPD resolves port 0 to an ephemeral port),
+    // not the requested one, so proxied URLs target the actual listening socket.
+    fun listeningPort(): Int = getListeningPort()
 
     override fun stop() {
         closed = true
@@ -114,9 +116,9 @@ class HlsProxyServer(
             val manifest = fetchText(url, headers, useCaches = false)
             validateManifest(manifest)
             val rewritten = if (HlsManifest.isMaster(manifest)) {
-                HlsManifest.rewriteMaster(manifest, url, headers, port, streamKey)
+                HlsManifest.rewriteMaster(manifest, url, headers, listeningPort(), streamKey)
             } else {
-                HlsManifest.rewriteMedia(manifest, url, headers, port, streamKey)
+                HlsManifest.rewriteMedia(manifest, url, headers, listeningPort(), streamKey)
             }
             validateManifest(rewritten)
             val data = rewritten.toByteArray(Charsets.UTF_8)
