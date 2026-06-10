@@ -180,6 +180,24 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
     )
   }
 
+  // A fatal HTTP error on the initial HLS load (e.g. 401) is reported through the
+  // AVPlayerItem error log without ever flipping AVPlayerItem.status to .failed,
+  // so the status-based handlers above never fire. Surface it through the same
+  // recovery/failPlayback path so onError and PlaybackState.error are emitted.
+  func onPlayerItemErrorLogEntry(statusCode: Int, comment: String?) {
+    guard HlsStartupErrorPolicy.isFatalStartupHttpError(
+      statusCode: statusCode,
+      hasLoaded: hasLoadedCurrentSource
+    ) else {
+      return
+    }
+    let message = HlsStartupErrorPolicy.describe(statusCode: statusCode, comment: comment)
+    if attemptStartupRecoveryIfNeeded(message: message) {
+      return
+    }
+    failPlayback(message: message)
+  }
+
   func onPlayerItemWillChange(hasNewPlayerItem: Bool) {
     if hasNewPlayerItem {
       // Set initial buffering state when playerItem is assigned

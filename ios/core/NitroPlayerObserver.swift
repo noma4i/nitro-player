@@ -21,6 +21,7 @@ protocol NitroPlayerObserverDelegate: AnyObject {
   func onPlayerItemStatusChanged(status: AVPlayerItem.Status)
   func onBandwidthUpdate(bitrate: Double)
   func onProgressUpdate(currentTime: Double, bufferDuration: Double)
+  func onPlayerItemErrorLogEntry(statusCode: Int, comment: String?)
 }
 
 extension NitroPlayerObserverDelegate {
@@ -36,6 +37,7 @@ extension NitroPlayerObserverDelegate {
   func onPlayerItemStatusChanged(status: AVPlayerItem.Status) {}
   func onBandwidthUpdate(bitrate: Double) {}
   func onProgressUpdate(currentTime: Double, bufferDuration: Double) {}
+  func onPlayerItemErrorLogEntry(statusCode: Int, comment: String?) {}
 }
 
 class NitroPlayerObserver: NSObject {
@@ -60,6 +62,7 @@ class NitroPlayerObserver: NSObject {
   var playbackBufferFullObserver: NSKeyValueObservation?
   var playerItemStatusObserver: NSKeyValueObservation?
   var playerItemAccessLogObserver: NSObjectProtocol?
+  var playerItemErrorLogObserver: NSObjectProtocol?
   
   var observedPlayerItem: AVPlayerItem?
   
@@ -137,7 +140,16 @@ class NitroPlayerObserver: NSObject {
       guard let playerItem else { return }
       self?.onPlayerAccessLog(playerItem: playerItem)
     }
-    
+
+    playerItemErrorLogObserver = NotificationCenter.default.addObserver(
+      forName: .AVPlayerItemNewErrorLogEntry,
+      object: playerItem,
+      queue: .main
+    ) { [weak self, weak playerItem] notification in
+      guard let playerItem else { return }
+      self?.onPlayerErrorLog(playerItem: playerItem)
+    }
+
     setupBufferObservers(for: playerItem)
     
     playerItemStatusObserver = playerItem.observe(\.status, options: [.new]) { [weak self, weak playerItem] _, change in
@@ -157,6 +169,10 @@ class NitroPlayerObserver: NSObject {
     if let playerItemAccessLogObserver = playerItemAccessLogObserver {
       NotificationCenter.default.removeObserver(playerItemAccessLogObserver)
       self.playerItemAccessLogObserver = nil
+    }
+    if let playerItemErrorLogObserver = playerItemErrorLogObserver {
+      NotificationCenter.default.removeObserver(playerItemErrorLogObserver)
+      self.playerItemErrorLogObserver = nil
     }
     // Invalidate KVO observers
     clearBufferObservers()
@@ -208,8 +224,15 @@ class NitroPlayerObserver: NSObject {
   func onPlayerAccessLog(playerItem: AVPlayerItem) {
     guard let accessLog = playerItem.accessLog() else { return }
     guard let lastEvent = accessLog.events.last else { return }
-    
+
     delegate?.onBandwidthUpdate(bitrate: lastEvent.indicatedBitrate)
+  }
+
+  func onPlayerErrorLog(playerItem: AVPlayerItem) {
+    guard let errorLog = playerItem.errorLog() else { return }
+    guard let lastEvent = errorLog.events.last else { return }
+
+    delegate?.onPlayerItemErrorLogEntry(statusCode: lastEvent.errorStatusCode, comment: lastEvent.errorComment)
   }
   
   // MARK: - Buffer State Management
