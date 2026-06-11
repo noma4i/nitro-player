@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.1.0-beta.1
+
+### Added
+
+- iOS: HLS first-frame extraction now decodes through the `AVPlayer` + `AVPlayerItemVideoOutput` pipeline, so bare MPEG-TS (`.ts`) HLS streams produce a real preview frame where `AVAssetImageGenerator` cannot open a standalone `.ts` segment
+- Fatal HTTP errors during HLS startup (e.g. `401`) now surface through `onError` and `PlaybackState.error` on iOS instead of leaving the player silently stalled
+
+### Changed
+
+- HLS proxy now binds an OS-assigned ephemeral port instead of a fixed one, avoiding loopback port collisions when several players or processes share the host (both platforms)
+- Thumbnail cache now participates in the same TTL and size eviction as stream segments
+- Extracted a shared `resolveSource` util for `streamCache` and `videoPreview`, and host-testable preview frame heuristics
+- example: the scrolling player feed uses a `TextureView` surface on Android to stay in sync during scroll
+
+### Fixed
+
+- Stream cache index is reconciled with disk on every clear: clears persist immediately and an orphan sweep removes unindexed files
+- Emit `onLoad` and first-frame once per source generation; skip redundant `PlaybackState` emits when only the timestamp changes
+- Cancel inflight first-frame preview work on `release`; recycle preview bitmaps and close the stream in `generatePreview`
+- Validate source config enums and preserve all native error codes at the JS boundary
+- Split HLS manifests on any newline so CRLF parsing matches across iOS and Android; serialize the iOS HLS proxy controller state through its state queue
+- Hard-cap the prefetch dedup map so it cannot grow unbounded under churn
+- Android: guard all player listener callbacks, state reads, and the muted/volume path against a released host; bound `runOnMainThreadSync` with a timeout; keep `wasAutoPaused` until a successful resume; skip HLS cache writes after the proxy stops
+- Android: guard fullscreen restore against a destroyed activity and always dismiss the dialog
+- iOS: `isReleased` fallback for `duration` / `bufferDuration` getters; guard `play()` detached completion against a replaced source generation; make `refreshMemorySize` a no-op after release
+- example: replace a stale `403` demo MP4 URL with a reachable one
+
 ## 1.0.1
 
 ### Fixed
