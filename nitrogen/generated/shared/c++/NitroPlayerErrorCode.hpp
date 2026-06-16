@@ -31,19 +31,23 @@ namespace margelo::nitro::video {
   enum class NitroPlayerErrorCode {
     LIBRARY_DEALLOCATED      SWIFT_NAME(libraryDeallocated) = 0,
     LIBRARY_APPLICATION_CONTEXT_NOT_FOUND      SWIFT_NAME(libraryApplicationContextNotFound) = 1,
-    PLAYER_RELEASED      SWIFT_NAME(playerReleased) = 2,
-    PLAYER_NOT_INITIALIZED      SWIFT_NAME(playerNotInitialized) = 3,
-    PLAYER_ASSET_NOT_INITIALIZED      SWIFT_NAME(playerAssetNotInitialized) = 4,
-    PLAYER_INVALID_SOURCE      SWIFT_NAME(playerInvalidSource) = 5,
-    SOURCE_INVALID_URI      SWIFT_NAME(sourceInvalidUri) = 6,
-    SOURCE_MISSING_READ_FILE_PERMISSION      SWIFT_NAME(sourceMissingReadFilePermission) = 7,
-    SOURCE_FILE_DOES_NOT_EXIST      SWIFT_NAME(sourceFileDoesNotExist) = 8,
-    SOURCE_FAILED_TO_INITIALIZE_ASSET      SWIFT_NAME(sourceFailedToInitializeAsset) = 9,
-    SOURCE_UNSUPPORTED_CONTENT_TYPE      SWIFT_NAME(sourceUnsupportedContentType) = 10,
-    VIEW_NOT_FOUND      SWIFT_NAME(viewNotFound) = 11,
-    VIEW_DEALLOCATED      SWIFT_NAME(viewDeallocated) = 12,
-    VIEW_PICTURE_IN_PICTURE_NOT_SUPPORTED      SWIFT_NAME(viewPictureInPictureNotSupported) = 13,
-    UNKNOWN_UNKNOWN      SWIFT_NAME(unknownUnknown) = 14,
+    LIBRARY_METHOD_NOT_SUPPORTED      SWIFT_NAME(libraryMethodNotSupported) = 2,
+    PLAYER_RELEASED      SWIFT_NAME(playerReleased) = 3,
+    PLAYER_NOT_INITIALIZED      SWIFT_NAME(playerNotInitialized) = 4,
+    PLAYER_ASSET_NOT_INITIALIZED      SWIFT_NAME(playerAssetNotInitialized) = 5,
+    PLAYER_INVALID_SOURCE      SWIFT_NAME(playerInvalidSource) = 6,
+    PLAYER_INVALID_TRACK_URL      SWIFT_NAME(playerInvalidTrackUrl) = 7,
+    PLAYER_CANCELLED      SWIFT_NAME(playerCancelled) = 8,
+    SOURCE_INVALID_URI      SWIFT_NAME(sourceInvalidUri) = 9,
+    SOURCE_MISSING_READ_FILE_PERMISSION      SWIFT_NAME(sourceMissingReadFilePermission) = 10,
+    SOURCE_FILE_DOES_NOT_EXIST      SWIFT_NAME(sourceFileDoesNotExist) = 11,
+    SOURCE_FAILED_TO_INITIALIZE_ASSET      SWIFT_NAME(sourceFailedToInitializeAsset) = 12,
+    SOURCE_UNSUPPORTED_CONTENT_TYPE      SWIFT_NAME(sourceUnsupportedContentType) = 13,
+    SOURCE_CANCELLED      SWIFT_NAME(sourceCancelled) = 14,
+    VIEW_NOT_FOUND      SWIFT_NAME(viewNotFound) = 15,
+    VIEW_DEALLOCATED      SWIFT_NAME(viewDeallocated) = 16,
+    VIEW_PICTURE_IN_PICTURE_NOT_SUPPORTED      SWIFT_NAME(viewPictureInPictureNotSupported) = 17,
+    UNKNOWN_UNKNOWN      SWIFT_NAME(unknownUnknown) = 18,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::video
@@ -58,15 +62,19 @@ namespace margelo::nitro {
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("library/deallocated"): return margelo::nitro::video::NitroPlayerErrorCode::LIBRARY_DEALLOCATED;
         case hashString("library/application-context-not-found"): return margelo::nitro::video::NitroPlayerErrorCode::LIBRARY_APPLICATION_CONTEXT_NOT_FOUND;
+        case hashString("library/method-not-supported"): return margelo::nitro::video::NitroPlayerErrorCode::LIBRARY_METHOD_NOT_SUPPORTED;
         case hashString("player/released"): return margelo::nitro::video::NitroPlayerErrorCode::PLAYER_RELEASED;
         case hashString("player/not-initialized"): return margelo::nitro::video::NitroPlayerErrorCode::PLAYER_NOT_INITIALIZED;
         case hashString("player/asset-not-initialized"): return margelo::nitro::video::NitroPlayerErrorCode::PLAYER_ASSET_NOT_INITIALIZED;
         case hashString("player/invalid-source"): return margelo::nitro::video::NitroPlayerErrorCode::PLAYER_INVALID_SOURCE;
+        case hashString("player/invalid-track-url"): return margelo::nitro::video::NitroPlayerErrorCode::PLAYER_INVALID_TRACK_URL;
+        case hashString("player/cancelled"): return margelo::nitro::video::NitroPlayerErrorCode::PLAYER_CANCELLED;
         case hashString("source/invalid-uri"): return margelo::nitro::video::NitroPlayerErrorCode::SOURCE_INVALID_URI;
         case hashString("source/missing-read-file-permission"): return margelo::nitro::video::NitroPlayerErrorCode::SOURCE_MISSING_READ_FILE_PERMISSION;
         case hashString("source/file-does-not-exist"): return margelo::nitro::video::NitroPlayerErrorCode::SOURCE_FILE_DOES_NOT_EXIST;
         case hashString("source/failed-to-initialize-asset"): return margelo::nitro::video::NitroPlayerErrorCode::SOURCE_FAILED_TO_INITIALIZE_ASSET;
         case hashString("source/unsupported-content-type"): return margelo::nitro::video::NitroPlayerErrorCode::SOURCE_UNSUPPORTED_CONTENT_TYPE;
+        case hashString("source/cancelled"): return margelo::nitro::video::NitroPlayerErrorCode::SOURCE_CANCELLED;
         case hashString("view/not-found"): return margelo::nitro::video::NitroPlayerErrorCode::VIEW_NOT_FOUND;
         case hashString("view/deallocated"): return margelo::nitro::video::NitroPlayerErrorCode::VIEW_DEALLOCATED;
         case hashString("view/picture-in-picture-not-supported"): return margelo::nitro::video::NitroPlayerErrorCode::VIEW_PICTURE_IN_PICTURE_NOT_SUPPORTED;
@@ -79,15 +87,19 @@ namespace margelo::nitro {
       switch (arg) {
         case margelo::nitro::video::NitroPlayerErrorCode::LIBRARY_DEALLOCATED: return JSIConverter<std::string>::toJSI(runtime, "library/deallocated");
         case margelo::nitro::video::NitroPlayerErrorCode::LIBRARY_APPLICATION_CONTEXT_NOT_FOUND: return JSIConverter<std::string>::toJSI(runtime, "library/application-context-not-found");
+        case margelo::nitro::video::NitroPlayerErrorCode::LIBRARY_METHOD_NOT_SUPPORTED: return JSIConverter<std::string>::toJSI(runtime, "library/method-not-supported");
         case margelo::nitro::video::NitroPlayerErrorCode::PLAYER_RELEASED: return JSIConverter<std::string>::toJSI(runtime, "player/released");
         case margelo::nitro::video::NitroPlayerErrorCode::PLAYER_NOT_INITIALIZED: return JSIConverter<std::string>::toJSI(runtime, "player/not-initialized");
         case margelo::nitro::video::NitroPlayerErrorCode::PLAYER_ASSET_NOT_INITIALIZED: return JSIConverter<std::string>::toJSI(runtime, "player/asset-not-initialized");
         case margelo::nitro::video::NitroPlayerErrorCode::PLAYER_INVALID_SOURCE: return JSIConverter<std::string>::toJSI(runtime, "player/invalid-source");
+        case margelo::nitro::video::NitroPlayerErrorCode::PLAYER_INVALID_TRACK_URL: return JSIConverter<std::string>::toJSI(runtime, "player/invalid-track-url");
+        case margelo::nitro::video::NitroPlayerErrorCode::PLAYER_CANCELLED: return JSIConverter<std::string>::toJSI(runtime, "player/cancelled");
         case margelo::nitro::video::NitroPlayerErrorCode::SOURCE_INVALID_URI: return JSIConverter<std::string>::toJSI(runtime, "source/invalid-uri");
         case margelo::nitro::video::NitroPlayerErrorCode::SOURCE_MISSING_READ_FILE_PERMISSION: return JSIConverter<std::string>::toJSI(runtime, "source/missing-read-file-permission");
         case margelo::nitro::video::NitroPlayerErrorCode::SOURCE_FILE_DOES_NOT_EXIST: return JSIConverter<std::string>::toJSI(runtime, "source/file-does-not-exist");
         case margelo::nitro::video::NitroPlayerErrorCode::SOURCE_FAILED_TO_INITIALIZE_ASSET: return JSIConverter<std::string>::toJSI(runtime, "source/failed-to-initialize-asset");
         case margelo::nitro::video::NitroPlayerErrorCode::SOURCE_UNSUPPORTED_CONTENT_TYPE: return JSIConverter<std::string>::toJSI(runtime, "source/unsupported-content-type");
+        case margelo::nitro::video::NitroPlayerErrorCode::SOURCE_CANCELLED: return JSIConverter<std::string>::toJSI(runtime, "source/cancelled");
         case margelo::nitro::video::NitroPlayerErrorCode::VIEW_NOT_FOUND: return JSIConverter<std::string>::toJSI(runtime, "view/not-found");
         case margelo::nitro::video::NitroPlayerErrorCode::VIEW_DEALLOCATED: return JSIConverter<std::string>::toJSI(runtime, "view/deallocated");
         case margelo::nitro::video::NitroPlayerErrorCode::VIEW_PICTURE_IN_PICTURE_NOT_SUPPORTED: return JSIConverter<std::string>::toJSI(runtime, "view/picture-in-picture-not-supported");
@@ -105,15 +117,19 @@ namespace margelo::nitro {
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("library/deallocated"):
         case hashString("library/application-context-not-found"):
+        case hashString("library/method-not-supported"):
         case hashString("player/released"):
         case hashString("player/not-initialized"):
         case hashString("player/asset-not-initialized"):
         case hashString("player/invalid-source"):
+        case hashString("player/invalid-track-url"):
+        case hashString("player/cancelled"):
         case hashString("source/invalid-uri"):
         case hashString("source/missing-read-file-permission"):
         case hashString("source/file-does-not-exist"):
         case hashString("source/failed-to-initialize-asset"):
         case hashString("source/unsupported-content-type"):
+        case hashString("source/cancelled"):
         case hashString("view/not-found"):
         case hashString("view/deallocated"):
         case hashString("view/picture-in-picture-not-supported"):

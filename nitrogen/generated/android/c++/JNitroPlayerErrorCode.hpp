@@ -48,6 +48,9 @@ namespace margelo::nitro::video {
         case NitroPlayerErrorCode::LIBRARY_APPLICATION_CONTEXT_NOT_FOUND:
           static const auto fieldLIBRARY_APPLICATION_CONTEXT_NOT_FOUND = clazz->getStaticField<JNitroPlayerErrorCode>("LIBRARY_APPLICATION_CONTEXT_NOT_FOUND");
           return clazz->getStaticFieldValue(fieldLIBRARY_APPLICATION_CONTEXT_NOT_FOUND);
+        case NitroPlayerErrorCode::LIBRARY_METHOD_NOT_SUPPORTED:
+          static const auto fieldLIBRARY_METHOD_NOT_SUPPORTED = clazz->getStaticField<JNitroPlayerErrorCode>("LIBRARY_METHOD_NOT_SUPPORTED");
+          return clazz->getStaticFieldValue(fieldLIBRARY_METHOD_NOT_SUPPORTED);
         case NitroPlayerErrorCode::PLAYER_RELEASED:
           static const auto fieldPLAYER_RELEASED = clazz->getStaticField<JNitroPlayerErrorCode>("PLAYER_RELEASED");
           return clazz->getStaticFieldValue(fieldPLAYER_RELEASED);
@@ -60,6 +63,12 @@ namespace margelo::nitro::video {
         case NitroPlayerErrorCode::PLAYER_INVALID_SOURCE:
           static const auto fieldPLAYER_INVALID_SOURCE = clazz->getStaticField<JNitroPlayerErrorCode>("PLAYER_INVALID_SOURCE");
           return clazz->getStaticFieldValue(fieldPLAYER_INVALID_SOURCE);
+        case NitroPlayerErrorCode::PLAYER_INVALID_TRACK_URL:
+          static const auto fieldPLAYER_INVALID_TRACK_URL = clazz->getStaticField<JNitroPlayerErrorCode>("PLAYER_INVALID_TRACK_URL");
+          return clazz->getStaticFieldValue(fieldPLAYER_INVALID_TRACK_URL);
+        case NitroPlayerErrorCode::PLAYER_CANCELLED:
+          static const auto fieldPLAYER_CANCELLED = clazz->getStaticField<JNitroPlayerErrorCode>("PLAYER_CANCELLED");
+          return clazz->getStaticFieldValue(fieldPLAYER_CANCELLED);
         case NitroPlayerErrorCode::SOURCE_INVALID_URI:
           static const auto fieldSOURCE_INVALID_URI = clazz->getStaticField<JNitroPlayerErrorCode>("SOURCE_INVALID_URI");
           return clazz->getStaticFieldValue(fieldSOURCE_INVALID_URI);
@@ -75,6 +84,9 @@ namespace margelo::nitro::video {
         case NitroPlayerErrorCode::SOURCE_UNSUPPORTED_CONTENT_TYPE:
           static const auto fieldSOURCE_UNSUPPORTED_CONTENT_TYPE = clazz->getStaticField<JNitroPlayerErrorCode>("SOURCE_UNSUPPORTED_CONTENT_TYPE");
           return clazz->getStaticFieldValue(fieldSOURCE_UNSUPPORTED_CONTENT_TYPE);
+        case NitroPlayerErrorCode::SOURCE_CANCELLED:
+          static const auto fieldSOURCE_CANCELLED = clazz->getStaticField<JNitroPlayerErrorCode>("SOURCE_CANCELLED");
+          return clazz->getStaticFieldValue(fieldSOURCE_CANCELLED);
         case NitroPlayerErrorCode::VIEW_NOT_FOUND:
           static const auto fieldVIEW_NOT_FOUND = clazz->getStaticField<JNitroPlayerErrorCode>("VIEW_NOT_FOUND");
           return clazz->getStaticFieldValue(fieldVIEW_NOT_FOUND);

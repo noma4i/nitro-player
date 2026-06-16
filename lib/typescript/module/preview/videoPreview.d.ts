@@ -1,7 +1,6 @@
 import type { StreamHeaders } from '../transport/types';
 declare class VideoPreview {
     private didWarnUnavailable;
-    private resolveSource;
     private warnUnavailable;
     getFirstFrame(source: {
         uri: string;

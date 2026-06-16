@@ -21,6 +21,8 @@ public extension NitroPlayerErrorCode {
         self = .libraryDeallocated
       case "library/application-context-not-found":
         self = .libraryApplicationContextNotFound
+      case "library/method-not-supported":
+        self = .libraryMethodNotSupported
       case "player/released":
         self = .playerReleased
       case "player/not-initialized":
@@ -29,6 +31,10 @@ public extension NitroPlayerErrorCode {
         self = .playerAssetNotInitialized
       case "player/invalid-source":
         self = .playerInvalidSource
+      case "player/invalid-track-url":
+        self = .playerInvalidTrackUrl
+      case "player/cancelled":
+        self = .playerCancelled
       case "source/invalid-uri":
         self = .sourceInvalidUri
       case "source/missing-read-file-permission":
@@ -39,6 +45,8 @@ public extension NitroPlayerErrorCode {
         self = .sourceFailedToInitializeAsset
       case "source/unsupported-content-type":
         self = .sourceUnsupportedContentType
+      case "source/cancelled":
+        self = .sourceCancelled
       case "view/not-found":
         self = .viewNotFound
       case "view/deallocated":
@@ -61,6 +69,8 @@ public extension NitroPlayerErrorCode {
         return "library/deallocated"
       case .libraryApplicationContextNotFound:
         return "library/application-context-not-found"
+      case .libraryMethodNotSupported:
+        return "library/method-not-supported"
       case .playerReleased:
         return "player/released"
       case .playerNotInitialized:
@@ -69,6 +79,10 @@ public extension NitroPlayerErrorCode {
         return "player/asset-not-initialized"
       case .playerInvalidSource:
         return "player/invalid-source"
+      case .playerInvalidTrackUrl:
+        return "player/invalid-track-url"
+      case .playerCancelled:
+        return "player/cancelled"
       case .sourceInvalidUri:
         return "source/invalid-uri"
       case .sourceMissingReadFilePermission:
@@ -79,6 +93,8 @@ public extension NitroPlayerErrorCode {
         return "source/failed-to-initialize-asset"
       case .sourceUnsupportedContentType:
         return "source/unsupported-content-type"
+      case .sourceCancelled:
+        return "source/cancelled"
       case .viewNotFound:
         return "view/not-found"
       case .viewDeallocated:
