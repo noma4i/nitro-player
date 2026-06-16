@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.1.0-beta.2
+
+### Added
+
+- Example paged consumer lab for page append, active window mounting, pool reuse, stream prefetch, preview warmup, and reset verification
+
+### Changed
+
+- Example app now starts on the direct MP4 preview scenario and uses release-like feed/profile naming with harmless `X-Nitro-Scenario` headers
+- Example runtime utility controls now expose clearer stream-prefetch and preview-generation states
+
+### Fixed
+
+- `streamCache.prefetch()` now no-ops for non-HLS sources across JS, iOS, and Android, preventing direct MP4 sources from entering the HLS prefetch path
+- Android cached thumbnails now return `file://` URIs so React Native `Image` previews render correctly
+- Example app button layout and paged lab controls remain readable and tappable on Android emulator widths
+
 ## 1.1.0-beta.1
 
 ### Added
