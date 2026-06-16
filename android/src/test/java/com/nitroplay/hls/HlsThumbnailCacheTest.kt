@@ -1,6 +1,7 @@
 package com.nitroplay.hls
 
 import android.content.Context
+import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.io.File
@@ -45,6 +46,7 @@ class HlsThumbnailCacheTest {
     val path = store.putThumbnail("https://cdn.example.com/poster.jpg", data)
 
     assertNotNull(path)
+    assertTrue(path!!.startsWith("file://"))
     val stats = store.getCacheStats()
     assertEquals(1, stats["fileCount"])
     assertEquals(128L, stats["totalSize"])
@@ -71,6 +73,7 @@ class HlsThumbnailCacheTest {
 
     assertNotNull(resolved)
     assertEquals(written, resolved)
+    assertEquals("file", Uri.parse(resolved).scheme)
     assertTrue(store.hasThumbnail(url))
   }
 

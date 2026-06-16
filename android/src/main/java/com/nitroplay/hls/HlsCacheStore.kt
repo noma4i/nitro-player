@@ -1,6 +1,7 @@
 package com.nitroplay.hls
 
 import android.content.Context
+import android.net.Uri
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
@@ -233,7 +234,7 @@ class HlsCacheStore(context: Context) {
             val key = thumbnailKey(url)
             index[key] = HlsCacheEntry(key, name, data.size.toLong(), null, now, now)
             scheduleSave()
-            file.absolutePath
+            Uri.fromFile(file).toString()
         } catch (_: Exception) {
             null
         }
@@ -251,7 +252,7 @@ class HlsCacheStore(context: Context) {
             }
             entry.lastAccess = System.currentTimeMillis()
             scheduleSave()
-            return file.absolutePath
+            return Uri.fromFile(file).toString()
         }
         // Legacy thumbnail written before indexing: register it lazily so it now
         // participates in TTL/size eviction.
@@ -259,7 +260,7 @@ class HlsCacheStore(context: Context) {
         val now = System.currentTimeMillis()
         index[key] = HlsCacheEntry(key, name, file.length(), null, now, now)
         scheduleSave()
-        return file.absolutePath
+        return Uri.fromFile(file).toString()
     }
 
     fun hasThumbnail(url: String): Boolean {
