@@ -74,6 +74,17 @@ describe('streamCache', () => {
     );
   });
 
+  it('does not prefetch non-HLS sources', async () => {
+    const { streamCache } = require('../transport/streamCache');
+
+    await streamCache.prefetch({
+      uri: 'https://cdn.example.com/movie.mp4',
+      headers: { Authorization: 'Bearer token' }
+    });
+
+    expect(nativePrefetchFirstSegment).not.toHaveBeenCalled();
+  });
+
   it('getStats() returns total cache stats when source is omitted', async () => {
     const { streamCache } = require('../transport/streamCache');
 

@@ -22,6 +22,11 @@ final class HlsProxyRuntime {
 
   private init() {}
 
+  private func isHlsManifestUrl(_ url: String) -> Bool {
+    let withoutQuery = url.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? url
+    return withoutQuery.lowercased().hasSuffix(".m3u8")
+  }
+
   func start(port: Int?) {
     let resolvedPort = (port ?? defaultPort) > 0 ? (port ?? defaultPort) : defaultPort
     stateQueue.sync {
@@ -49,6 +54,10 @@ final class HlsProxyRuntime {
   }
 
   func prefetchFirstSegment(url: String, headers: [String: String]?) async throws {
+    guard isHlsManifestUrl(url) else {
+      return
+    }
+
     ensureStarted()
 
     let shouldPrefetch = stateQueue.sync { () -> Bool in

@@ -22,6 +22,10 @@ object HlsProxyRuntime {
   private var reactContext: ReactApplicationContext? = null
   private val prefetchTimestamps = LinkedHashMap<String, Long>()
 
+  private fun isHlsManifestUrl(url: String): Boolean {
+    return url.substringBefore('?').lowercase().endsWith(".m3u8")
+  }
+
   internal data class RuntimeStateSnapshot(
     val isRegistered: Boolean,
     val didAutoStart: Boolean,
@@ -110,6 +114,10 @@ object HlsProxyRuntime {
   fun prefetchFirstSegment(url: String, headers: ReadableMap?, onComplete: () -> Unit, onError: (Throwable) -> Unit) {
     val isStopped = synchronized(lock) { isExplicitlyStopped }
     if (isStopped) {
+      onComplete()
+      return
+    }
+    if (!isHlsManifestUrl(url)) {
       onComplete()
       return
     }

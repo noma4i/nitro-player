@@ -21,6 +21,11 @@ const DEFAULT_STREAM_CACHE_STATS: StreamSourceCacheStats = {
 
 const NativeStreamCache = NativeModules?.NitroPlayStreamRuntime as StreamCacheNativeModule | undefined;
 
+const isHlsManifestUrl = (uri: string): boolean => {
+  const withoutQuery = uri.split('?')[0]?.toLowerCase() ?? uri.toLowerCase();
+  return withoutQuery.endsWith('.m3u8');
+};
+
 class StreamCache {
   private didWarnUnavailable = false;
 
@@ -40,6 +45,9 @@ class StreamCache {
     }
 
     const resolved = resolveSource(source, headers);
+    if (!isHlsManifestUrl(resolved.uri)) {
+      return;
+    }
 
     try {
       await NativeStreamCache.prefetchFirstSegment(resolved.uri, resolved.headers);
