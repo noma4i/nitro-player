@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   Pressable,
@@ -41,18 +41,26 @@ const EMPTY_SOURCE_CACHE_STATS: StreamSourceCacheStats = {
   streamFileCount: 0,
 };
 
+const isHlsManifestSource = (source: NitroSourceConfig): boolean => {
+  if (typeof source.uri !== 'string') {
+    return false;
+  }
+
+  return source.uri.split('?')[0]?.toLowerCase().endsWith('.m3u8') === true;
+};
+
 const HERO_SOURCES = {
   startupProxy: {
     key: 'startupProxy',
-    label: 'HLS Auto Proxy',
-    chip: 'Startup Recovery',
-    note: 'Lazy startup, proxy auto-route, preview always. Useful for cold launch and first-play validation.',
+    label: 'Feed HLS Stream',
+    chip: 'Proxy Route',
+    note: 'Lazy HLS startup with automatic proxy routing. This is the stream-cache and playback recovery scenario.',
     source: {
       uri: HLS_URL,
       startup: 'lazy',
       metadata: {
-        title: 'Cold start HLS',
-        subtitle: 'Proxy auto',
+        title: 'Feed stream',
+        subtitle: 'Auto proxy',
       },
       transport: { mode: 'auto' },
       retention: {
@@ -69,21 +77,20 @@ const HERO_SOURCES = {
       },
     } satisfies NitroSourceConfig,
   },
-  headerAlpha: {
-    key: 'headerAlpha',
-    label: 'HLS Header Alpha',
-    chip: 'Header Identity',
-    note: 'Same HLS URL with Authorization=alpha. Cache and preview must stay isolated from other header variants.',
+  profileStream: {
+    key: 'profileStream',
+    label: 'Profile HLS Stream',
+    chip: 'Header Scope',
+    note: 'Same HLS URL with harmless scenario headers. Cache identity should stay scoped without breaking playback.',
     source: {
       uri: HLS_URL,
       headers: {
-        Authorization: 'Bearer alpha',
-        'X-Demo-Track': 'alpha',
+        'X-Nitro-Scenario': 'profile-feed',
       },
       startup: 'lazy',
       metadata: {
-        title: 'Header alpha',
-        subtitle: 'Shared URL, isolated identity',
+        title: 'Profile stream',
+        subtitle: 'Scoped headers',
       },
       transport: { mode: 'auto' },
       retention: {
@@ -102,15 +109,15 @@ const HERO_SOURCES = {
   },
   directMp4: {
     key: 'directMp4',
-    label: 'Direct MP4 Manual Preview',
-    chip: 'Direct + Manual',
-    note: 'Direct transport, eager startup, manual preview extraction. Good for pull-only preview testing.',
+    label: 'Direct MP4 Preview',
+    chip: 'Preview Path',
+    note: 'Direct transport with explicit preview generation. This is the reliable emulator thumbnail scenario.',
     source: {
       uri: MP4_URL,
       startup: 'eager',
       metadata: {
-        title: 'Direct MP4',
-        subtitle: 'Manual preview',
+        title: 'Direct clip',
+        subtitle: 'Generated preview',
       },
       transport: { mode: 'direct' },
       retention: {
@@ -131,25 +138,24 @@ const HERO_SOURCES = {
 
 const FEED_SOURCES = [
   {
-    key: 'feed-alpha',
-    title: 'Feed Alpha',
+    key: 'feed-home',
+    title: 'Home Feed Stream',
     tone: '#ec5f67',
-    source: HERO_SOURCES.headerAlpha.source,
-    description: 'Header-aware HLS in listener mode.',
+    source: HERO_SOURCES.profileStream.source,
+    description: 'Header-scoped HLS in listener mode, matching a home feed cell.',
   },
   {
-    key: 'feed-beta',
-    title: 'Feed Beta',
+    key: 'feed-creator',
+    title: 'Creator Feed Stream',
     tone: '#4cb3ff',
     source: {
-      ...HERO_SOURCES.headerAlpha.source,
+      ...HERO_SOURCES.profileStream.source,
       headers: {
-        Authorization: 'Bearer beta',
-        'X-Demo-Track': 'beta',
+        'X-Nitro-Scenario': 'creator-feed',
       },
       metadata: {
-        title: 'Header beta',
-        subtitle: 'Parallel sibling',
+        title: 'Creator stream',
+        subtitle: 'Parallel feed cell',
       },
       preview: {
         mode: 'always',
@@ -158,21 +164,144 @@ const FEED_SOURCES = [
         quality: 76,
       },
     } satisfies NitroSourceConfig,
-    description: 'Same URL, different headers. Must not poison alpha cache or preview.',
+    description: 'Same playable HLS URL with a different harmless header identity.',
   },
   {
     key: 'feed-direct',
-    title: 'Feed Direct',
+    title: 'Inline MP4 Preview',
     tone: '#66d19e',
     source: HERO_SOURCES.directMp4.source,
-    description: 'Direct MP4 alongside streaming cards to check mixed transport coexistence.',
+    description: 'Direct MP4 alongside streaming cards to check mixed transport and preview coexistence.',
   },
 ] as const;
+
+const CONSUMER_PAGE_SIZE = 3;
+const CONSUMER_PREFETCH_WINDOW = 1;
+
+type ConsumerFeedItem = {
+  key: string;
+  title: string;
+  page: number;
+  reuseGroup: string;
+  source: NitroSourceConfig;
+  note: string;
+};
+
+const CONSUMER_FEED_ITEMS: ConsumerFeedItem[] = [
+  {
+    key: 'page-1-home-active',
+    title: 'Page 1 Home Stream',
+    page: 1,
+    reuseGroup: 'home-stream-object',
+    source: HERO_SOURCES.profileStream.source,
+    note: 'Same object as the profile/home stream. Verifies value-based reuse across surfaces.',
+  },
+  {
+    key: 'page-1-creator-header',
+    title: 'Page 1 Creator Stream',
+    page: 1,
+    reuseGroup: 'creator-stream-header',
+    source: FEED_SOURCES[1].source,
+    note: 'Same HLS URL, different harmless header. Cache identity must stay isolated.',
+  },
+  {
+    key: 'page-1-direct',
+    title: 'Page 1 MP4 Preview',
+    page: 1,
+    reuseGroup: 'direct-mp4',
+    source: HERO_SOURCES.directMp4.source,
+    note: 'Direct MP4 in the same pool as proxied HLS cards.',
+  },
+  {
+    key: 'page-2-home-copy',
+    title: 'Page 2 Home Reuse',
+    page: 2,
+    reuseGroup: 'home-stream-object',
+    source: HERO_SOURCES.profileStream.source,
+    note: 'Reuses the exact home stream object after page append.',
+  },
+  {
+    key: 'page-2-topic-header',
+    title: 'Page 2 Topic Stream',
+    page: 2,
+    reuseGroup: 'topic-stream-header',
+    source: {
+      ...HERO_SOURCES.profileStream.source,
+      headers: {
+        'X-Nitro-Scenario': 'topic-feed',
+      },
+      metadata: {
+        title: 'Topic stream',
+        subtitle: 'Page 2 variant',
+      },
+      retention: {
+        preload: 'metadata',
+        offscreen: 'metadata',
+        trimDelayMs: 6000,
+        feedPoolEligible: true,
+      },
+    } satisfies NitroSourceConfig,
+    note: 'Header identity churn while keeping the playable URL stable.',
+  },
+  {
+    key: 'page-2-startup-proxy',
+    title: 'Page 2 Proxy Startup',
+    page: 2,
+    reuseGroup: 'startup-proxy',
+    source: HERO_SOURCES.startupProxy.source,
+    note: 'Lazy HLS startup source mounted after pagination.',
+  },
+  {
+    key: 'page-3-direct-reuse',
+    title: 'Page 3 MP4 Reuse',
+    page: 3,
+    reuseGroup: 'direct-mp4',
+    source: HERO_SOURCES.directMp4.source,
+    note: 'Direct MP4 source reused after multiple active-index changes.',
+  },
+  {
+    key: 'page-3-home-new-metadata',
+    title: 'Page 3 Home Metadata',
+    page: 3,
+    reuseGroup: 'home-stream-metadata',
+    source: {
+      ...HERO_SOURCES.profileStream.source,
+      metadata: {
+        title: 'Home stream',
+        subtitle: 'Metadata identity variant',
+      },
+    } satisfies NitroSourceConfig,
+    note: 'Same URL/header with metadata changed to stress source signature.',
+  },
+  {
+    key: 'page-3-notification-header',
+    title: 'Page 3 Notification Stream',
+    page: 3,
+    reuseGroup: 'notification-stream-header',
+    source: {
+      ...HERO_SOURCES.profileStream.source,
+      headers: {
+        'X-Nitro-Scenario': 'notification-feed',
+      },
+      metadata: {
+        title: 'Notification stream',
+        subtitle: 'Page 3 variant',
+      },
+      preview: {
+        mode: 'listener',
+        maxWidth: 320,
+        maxHeight: 320,
+        quality: 68,
+      },
+    } satisfies NitroSourceConfig,
+    note: 'Late-page header variant with smaller preview target.',
+  },
+];
 
 type HeroSourceKey = keyof typeof HERO_SOURCES;
 
 function App() {
-  const [activeHeroKey, setActiveHeroKey] = useState<HeroSourceKey>('startupProxy');
+  const [activeHeroKey, setActiveHeroKey] = useState<HeroSourceKey>('directMp4');
   const [globalCacheStats, setGlobalCacheStats] = useState<StreamCacheStats>(EMPTY_CACHE_STATS);
   const [sourceCacheStats, setSourceCacheStats] = useState<StreamSourceCacheStats>(EMPTY_SOURCE_CACHE_STATS);
   const [manualPreviewUri, setManualPreviewUri] = useState<string | null>(null);
@@ -217,9 +346,9 @@ function App() {
         <StatusBar barStyle="light-content" />
         <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
           <Text style={styles.eyebrow}>NitroPlay Example Lab</Text>
-          <Text style={styles.headline}>Startup, multi-player feed, preview, cache, and source churn in one screen.</Text>
+          <Text style={styles.headline}>Playback, stream cache, preview generation, and paged feed reuse in one screen.</Text>
 
-          <SectionTitle title="Hero Playback" subtitle="Switch the same surface across transport and preview modes." />
+          <SectionTitle title="Hero Playback" subtitle="Switch one surface across direct preview, HLS proxy, and header-scoped stream modes." />
 
           <View style={styles.selectorRow}>
             {Object.values(HERO_SOURCES).map(item => (
@@ -248,10 +377,15 @@ function App() {
             sourceCacheStats={sourceCacheStats}
             manualPreviewUri={manualPreviewUri}
             onPrefetch={() =>
-              runAction('prefetch', async () => {
+              runAction('prefetch stream', async () => {
+                if (!isHlsManifestSource(activeHero.source)) {
+                  await refreshStats(activeHero.source);
+                  setActionMessage('stream prefetch skipped for direct source');
+                  return;
+                }
                 await streamCache.prefetch(activeHero.source);
                 await refreshStats(activeHero.source);
-                setActionMessage('prefetch complete');
+                setActionMessage('stream prefetch complete');
               })
             }
             onRefreshStats={() =>
@@ -261,10 +395,10 @@ function App() {
               })
             }
             onFetchPreview={() =>
-              runAction('preview', async () => {
+              runAction('generate preview', async () => {
                 const next = await videoPreview.getFirstFrame(activeHero.source);
                 setManualPreviewUri(next);
-                setActionMessage(next ? 'preview artifact resolved' : 'preview unavailable');
+                setActionMessage(next ? 'preview image ready' : 'preview unavailable');
               })
             }
             onClearPreview={() =>
@@ -287,7 +421,7 @@ function App() {
 
           <SectionTitle
             title="Feed Stress"
-            subtitle="Three players mounted together: same HLS URL with different headers plus direct MP4."
+            subtitle="Three players mounted together: reusable HLS feed streams plus direct MP4 preview."
           />
 
           <View style={styles.feedColumn}>
@@ -303,9 +437,256 @@ function App() {
               />
             ))}
           </View>
+
+          <SectionTitle
+            title="Paged Consumer Lab"
+            subtitle="Consumer-like page append, active window mounting, stream prefetch, preview warmup, and source reuse."
+          />
+
+          <PagedConsumerLab />
         </ScrollView>
       </SafeAreaView>
     </SafeAreaProvider>
+  );
+}
+
+function PagedConsumerLab() {
+  const [pageIndex, setPageIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [poolRadius, setPoolRadius] = useState(1);
+  const [eventLog, setEventLog] = useState('idle');
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [globalCacheStats, setGlobalCacheStats] = useState<StreamCacheStats>(EMPTY_CACHE_STATS);
+  const [activeSourceStats, setActiveSourceStats] = useState<StreamSourceCacheStats>(EMPTY_SOURCE_CACHE_STATS);
+  const [previewWindowHits, setPreviewWindowHits] = useState(0);
+  const [prefetchedStreams, setPrefetchedStreams] = useState(0);
+
+  const visibleItems = useMemo(() => CONSUMER_FEED_ITEMS.slice(0, (pageIndex + 1) * CONSUMER_PAGE_SIZE), [pageIndex]);
+  const maxPageIndex = Math.ceil(CONSUMER_FEED_ITEMS.length / CONSUMER_PAGE_SIZE) - 1;
+  const activeItem = visibleItems[Math.min(activeIndex, visibleItems.length - 1)] ?? visibleItems[0];
+  const mountedItems = useMemo(
+    () => visibleItems.filter((_, index) => Math.abs(index - activeIndex) <= poolRadius),
+    [activeIndex, poolRadius, visibleItems]
+  );
+  const coldItems = visibleItems.length - mountedItems.length;
+  const reuseGroups = useMemo(() => new Set(visibleItems.map(item => item.reuseGroup)).size, [visibleItems]);
+  const sharedUriCount = useMemo(() => visibleItems.filter(item => item.source.uri === HLS_URL).length, [visibleItems]);
+
+  useEffect(() => {
+    if (activeIndex >= visibleItems.length) {
+      setActiveIndex(Math.max(0, visibleItems.length - 1));
+    }
+  }, [activeIndex, visibleItems.length]);
+
+  const runConsumerAction = async (label: string, action: () => Promise<void>) => {
+    setBusyAction(label);
+    try {
+      await action();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setEventLog(`${label}: ${message}`);
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const refreshConsumerStats = async () => {
+    if (!activeItem) {
+      return;
+    }
+
+    const [globalStats, sourceStats] = await Promise.all([
+      streamCache.getStats(),
+      streamCache.getStats({ uri: activeItem.source.uri as string, headers: activeItem.source.headers }),
+    ]);
+    setGlobalCacheStats(globalStats as StreamCacheStats);
+    setActiveSourceStats(sourceStats as StreamSourceCacheStats);
+  };
+
+  const getActiveWindow = () => {
+    return visibleItems.filter((_, index) => Math.abs(index - activeIndex) <= CONSUMER_PREFETCH_WINDOW);
+  };
+
+  const moveActiveIndex = (direction: 1 | -1) => {
+    setActiveIndex(current => {
+      const next = Math.min(Math.max(current + direction, 0), visibleItems.length - 1);
+      setEventLog(`active item ${next + 1}/${visibleItems.length}`);
+      return next;
+    });
+  };
+
+  const appendPage = () => {
+    setPageIndex(current => {
+      const next = Math.min(current + 1, maxPageIndex);
+      setEventLog(next === current ? 'all pages already mounted' : `page ${next + 1} appended`);
+      return next;
+    });
+  };
+
+  const resetPages = () => {
+    setPageIndex(0);
+    setActiveIndex(0);
+    setPreviewWindowHits(0);
+    setPrefetchedStreams(0);
+    setEventLog('reset to page 1');
+  };
+
+  return (
+    <View style={styles.consumerPanel}>
+      <View style={styles.consumerSummaryRow}>
+        <Metric label="page" value={`${pageIndex + 1}/${maxPageIndex + 1}`} />
+        <Metric label="active" value={`${activeIndex + 1}/${visibleItems.length}`} />
+        <Metric label="mounted pool" value={`${mountedItems.length} on / ${coldItems} cold`} />
+        <Metric label="reuse groups" value={String(reuseGroups)} />
+        <Metric label="HLS items" value={String(sharedUriCount)} />
+        <Metric label="preview ready" value={String(previewWindowHits)} />
+      </View>
+
+      <View style={styles.buttonRow}>
+        <ActionButton label="Prev Active" disabled={activeIndex === 0} onPress={() => moveActiveIndex(-1)} />
+        <ActionButton label="Next Active" disabled={activeIndex >= visibleItems.length - 1} onPress={() => moveActiveIndex(1)} />
+        <ActionButton label="Append Page" disabled={pageIndex >= maxPageIndex} onPress={appendPage} />
+      </View>
+
+      <View style={styles.buttonRow}>
+        <ActionButton
+          label={poolRadius === 1 ? 'Pool ±1' : 'Pool ±2'}
+          active={poolRadius === 2}
+          onPress={() => setPoolRadius(value => (value === 1 ? 2 : 1))}
+        />
+        <ActionButton
+          label="Prefetch Streams"
+          active={busyAction === 'prefetch visible streams'}
+          onPress={() =>
+            runConsumerAction('prefetch visible streams', async () => {
+              const hlsItems = getActiveWindow().filter(item => isHlsManifestSource(item.source));
+              await Promise.all(hlsItems.map(item => streamCache.prefetch(item.source)));
+              await refreshConsumerStats();
+              setPrefetchedStreams(value => value + hlsItems.length);
+              setEventLog(`prefetched ${hlsItems.length} HLS streams`);
+            })
+          }
+        />
+        <ActionButton
+          label="Generate Previews"
+          active={busyAction === 'generate visible previews'}
+          onPress={() =>
+            runConsumerAction('generate visible previews', async () => {
+              const previews = await Promise.all(getActiveWindow().map(item => videoPreview.getFirstFrame(item.source)));
+              setPreviewWindowHits(value => value + previews.filter(Boolean).length);
+              setEventLog(`preview ready ${previews.filter(Boolean).length}/${previews.length}`);
+            })
+          }
+        />
+      </View>
+
+      <View style={styles.buttonRow}>
+        <ActionButton
+          label="Refresh Stats"
+          active={busyAction === 'consumer stats'}
+          onPress={() =>
+            runConsumerAction('consumer stats', async () => {
+              await refreshConsumerStats();
+              setEventLog('consumer stats refreshed');
+            })
+          }
+        />
+        <ActionButton label="Reset Pages" onPress={resetPages} />
+      </View>
+
+      <View style={styles.metricsGrid}>
+        <Metric label="status" value={busyAction ?? eventLog} />
+        <Metric label="active source" value={activeItem ? truncate(activeItem.reuseGroup, 24) : '-'} />
+        <Metric label="global cache" value={formatBytes(globalCacheStats.totalSize)} />
+        <Metric label="prefetched HLS" value={String(prefetchedStreams)} />
+        <Metric label="active cache" value={formatBytes(activeSourceStats.streamSize)} />
+      </View>
+
+      <View style={styles.consumerList}>
+        {visibleItems.map((item, index) => {
+          const isActive = index === activeIndex;
+          const isPooled = Math.abs(index - activeIndex) <= poolRadius;
+          return (
+            <ConsumerFeedCard
+              key={item.key}
+              item={item}
+              index={index}
+              isActive={isActive}
+              isPooled={isPooled}
+            />
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function ConsumerFeedCard({
+  item,
+  index,
+  isActive,
+  isPooled,
+}: {
+  item: ConsumerFeedItem;
+  index: number;
+  isActive: boolean;
+  isPooled: boolean;
+}) {
+  const activeSource = useMemo((): NitroSourceConfig => {
+    const distanceRetention = isActive
+      ? { preload: 'buffered' as const, offscreen: 'hot' as const, trimDelayMs: 12000, feedPoolEligible: true }
+      : { preload: 'metadata' as const, offscreen: 'metadata' as const, trimDelayMs: 5000, feedPoolEligible: true };
+
+    return {
+      ...item.source,
+      startup: isActive ? 'eager' : 'lazy',
+      retention: {
+        ...distanceRetention,
+        ...(item.source.retention ?? {}),
+      },
+      transport: {
+        mode: item.source.transport?.mode ?? 'auto',
+        ...(item.source.transport ?? {}),
+      },
+      preview: {
+        mode: isActive ? 'always' : 'listener',
+        maxWidth: 512,
+        maxHeight: 512,
+        quality: 72,
+        ...(item.source.preview ?? {}),
+      },
+      metadata: {
+        ...(item.source.metadata ?? {}),
+        title: item.title,
+        subtitle: `page ${item.page}, row ${index + 1}`,
+      },
+    };
+  }, [index, isActive, item]);
+
+  if (!isPooled) {
+    return (
+      <View style={styles.consumerColdRow}>
+        <View style={styles.consumerColdIndex}>
+          <Text style={styles.consumerColdIndexText}>{index + 1}</Text>
+        </View>
+        <View style={styles.consumerColdContent}>
+          <Text style={styles.consumerColdTitle}>{item.title}</Text>
+          <Text style={styles.consumerColdText}>{item.note}</Text>
+          <Text style={styles.consumerColdText}>cold placeholder: player unmounted, source data retained</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <PlayerWorkbench
+      title={`${isActive ? 'Active' : 'Pooled'} • ${item.title}`}
+      chip={`page ${item.page}`}
+      description={`${item.note} Pool policy: ${isActive ? 'hot active' : 'metadata neighbour'}.`}
+      source={activeSource}
+      accent={isActive ? '#f7b955' : '#8cc7ff'}
+      compact
+    />
   );
 }
 
@@ -511,9 +892,9 @@ function UtilityPanel({
       </View>
 
       <View style={styles.buttonRow}>
-        <ActionButton label="Prefetch" active={busyAction === 'prefetch'} onPress={onPrefetch} />
+        <ActionButton label="Prefetch Stream" active={busyAction === 'prefetch stream'} onPress={onPrefetch} />
         <ActionButton label="Refresh Stats" active={busyAction === 'stats'} onPress={onRefreshStats} />
-        <ActionButton label="Manual Preview" active={busyAction === 'preview'} onPress={onFetchPreview} />
+        <ActionButton label="Generate Preview" active={busyAction === 'generate preview'} onPress={onFetchPreview} />
       </View>
 
       <View style={styles.buttonRow}>
@@ -522,13 +903,14 @@ function UtilityPanel({
       </View>
 
       <View style={styles.metricsGrid}>
-        <Metric label="uri" value={truncate(String(source.uri), 42)} />
+        <Metric label="source" value={isHlsManifestSource(source) ? 'HLS stream' : 'direct media'} />
         <Metric label="headers" value={source.headers ? String(Object.keys(source.headers).length) : '0'} />
         <Metric label="global cache" value={formatBytes(globalCacheStats.totalSize)} />
         <Metric label="global files" value={String(globalCacheStats.fileCount)} />
         <Metric label="source cache" value={formatBytes(sourceCacheStats.streamSize)} />
         <Metric label="source files" value={String(sourceCacheStats.streamFileCount)} />
         <Metric label="preview mode" value={source.preview?.mode ?? 'listener'} />
+        <Metric label="uri" value={truncate(String(source.uri), 42)} />
       </View>
 
       {manualPreviewUri ? (
@@ -538,7 +920,7 @@ function UtilityPanel({
         </View>
       ) : (
         <View style={styles.utilityPreviewPlaceholder}>
-          <Text style={styles.utilityPreviewPlaceholderText}>manual preview artifact will appear here</Text>
+          <Text style={styles.utilityPreviewPlaceholderText}>generated preview image will appear here</Text>
         </View>
       )}
     </View>
@@ -702,7 +1084,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#0d1d25',
-    borderRadius: 24,
+    borderRadius: 8,
     padding: 16,
     gap: 14,
     borderWidth: 1,
@@ -713,6 +1095,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
     alignItems: 'flex-start',
+    flexWrap: 'wrap',
   },
   cardTitleBlock: {
     flex: 1,
@@ -747,7 +1130,7 @@ const styles = StyleSheet.create({
   playerView: {
     width: '100%',
     aspectRatio: 16 / 9,
-    borderRadius: 18,
+    borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: '#000',
   },
@@ -778,16 +1161,20 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   actionButton: {
     flex: 1,
-    minHeight: 46,
-    borderRadius: 14,
+    flexBasis: '30%',
+    minWidth: 96,
+    minHeight: 50,
+    borderRadius: 8,
     backgroundColor: '#164157',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
+    paddingVertical: 9,
   },
   actionButtonActive: {
     backgroundColor: '#2d7aad',
@@ -799,7 +1186,10 @@ const styles = StyleSheet.create({
   actionButtonLabel: {
     color: '#ffffff',
     fontSize: 14,
+    lineHeight: 17,
     fontWeight: '800',
+    textAlign: 'center',
+    flexShrink: 1,
   },
   actionButtonLabelDisabled: {
     color: '#89a5b2',
@@ -810,10 +1200,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   metricCell: {
-    minWidth: '31%',
+    flexBasis: '47%',
     flexGrow: 1,
+    minWidth: 126,
     padding: 12,
-    borderRadius: 16,
+    borderRadius: 8,
     backgroundColor: '#10262f',
     gap: 4,
   },
@@ -827,11 +1218,13 @@ const styles = StyleSheet.create({
   metricValue: {
     color: '#f2fbff',
     fontSize: 14,
+    lineHeight: 18,
     fontWeight: '700',
+    flexShrink: 1,
   },
   utilityPanel: {
     backgroundColor: '#0b1a21',
-    borderRadius: 24,
+    borderRadius: 8,
     padding: 16,
     gap: 14,
     borderWidth: 1,
@@ -846,7 +1239,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   utilityPreview: {
-    borderRadius: 18,
+    borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: '#09161c',
     borderWidth: 1,
@@ -867,7 +1260,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 120,
-    borderRadius: 18,
+    borderRadius: 8,
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: '#274651',
@@ -880,6 +1273,57 @@ const styles = StyleSheet.create({
   },
   feedColumn: {
     gap: 16,
+  },
+  consumerPanel: {
+    gap: 14,
+  },
+  consumerSummaryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  consumerList: {
+    gap: 14,
+    marginTop: 2,
+  },
+  consumerColdRow: {
+    flexDirection: 'row',
+    gap: 12,
+    padding: 14,
+    borderRadius: 8,
+    backgroundColor: '#091821',
+    borderWidth: 1,
+    borderColor: '#1a3541',
+  },
+  consumerColdIndex: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#122b36',
+    borderWidth: 1,
+    borderColor: '#244756',
+  },
+  consumerColdIndexText: {
+    color: '#8ed6ff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  consumerColdContent: {
+    flex: 1,
+    gap: 4,
+  },
+  consumerColdTitle: {
+    color: '#eaf6fb',
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '800',
+  },
+  consumerColdText: {
+    color: '#8faebe',
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
 

@@ -8,7 +8,8 @@ What `App.tsx` covers:
 - live `onLoad`, `onError`, `onFirstFrame`, bandwidth, attach state, and `isVisualReady`
 - direct exercise of `streamCache.prefetch/getStats/clear`
 - direct exercise of `videoPreview.getFirstFrame/clear`
-- feed stress with multiple mounted players, including the same HLS URL under different headers
+- feed stress with multiple mounted players, direct MP4 preview reuse, and the same HLS URL under isolated harmless scenario headers
+- paged consumer lab with page append, active window mounting, stream prefetch, preview warmup, and source reuse
 
 ## Setup
 
@@ -47,4 +48,4 @@ yarn android:build
 - because of `portal:..`, run `yarn build` in the repo root after changing public TS exports or type surfaces so the example sees updated `lib/*`
 - `metro.config.js` hard-pins single React resolution from `example/node_modules`
 - the HLS demo path uses `https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8`
-- per-source cache and preview identity in the demo are keyed by `{ uri, headers }`, so the alpha/beta feed cards must stay isolated from each other
+- per-source cache and preview identity in the demo are keyed by `{ uri, headers }`, so the Home Feed and Creator Feed scenarios must stay isolated from each other
