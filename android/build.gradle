@@ -97,22 +97,22 @@ ExoplayerDependenciesList.each { propertyName ->
 
 android {
   if (supportsNamespace()) {
-    namespace "com.nitroplay.video"
+    namespace = "com.nitroplay.video"
 
     sourceSets {
       main {
-        manifest.srcFile "src/main/AndroidManifestNew.xml"
+        manifest.srcFile("src/main/AndroidManifestNew.xml")
       }
     }
   }
 
-  ndkVersion getExtOrDefault("ndkVersion")
-  compileSdkVersion getExtOrIntegerDefault("compileSdkVersion")
+  ndkVersion = getExtOrDefault("ndkVersion")
+  compileSdk = getExtOrIntegerDefault("compileSdkVersion")
 
   defaultConfig {
-    minSdkVersion getExtOrIntegerDefault("minSdkVersion")
-    targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
-    testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    minSdk = getExtOrIntegerDefault("minSdkVersion")
+    targetSdk = getExtOrIntegerDefault("targetSdkVersion")
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
     buildConfigField "boolean", "IS_NEW_ARCHITECTURE_ENABLED", isNewArchitectureEnabled().toString()
     buildConfigField "boolean", "USE_EXOPLAYER_DASH", ExoplayerDependencies.useExoplayerDash.toString()
@@ -155,13 +155,13 @@ android {
   }
 
   buildFeatures {
-    buildConfig true
-    prefab true
+    buildConfig = true
+    prefab = true
   }
 
   buildTypes {
     release {
-      minifyEnabled false
+      minifyEnabled = false
     }
   }
 
@@ -174,8 +174,8 @@ android {
     }
   }
 
-  lintOptions {
-    disable "GradleCompatible"
+  lint {
+    disable += "GradleCompatible"
   }
 
   compileOptions {
