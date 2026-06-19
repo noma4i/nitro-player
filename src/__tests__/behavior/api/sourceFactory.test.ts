@@ -107,6 +107,86 @@ describe('sourceFactory', () => {
     );
   });
 
+  it('preserves the complete v2 source DSL for native source ownership', () => {
+    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+
+    createNitroSource({
+      uri: 'https://cdn.example.com/live.m3u8',
+      headers: {
+        Authorization: 'Bearer token',
+        'X-Feed': 'home'
+      },
+      metadata: {
+        title: 'Home Stream',
+        subtitle: 'feed row',
+        description: 'consumer feed playback',
+        artist: 'creator',
+        imageUri: 'https://cdn.example.com/poster.jpg'
+      },
+      startup: 'lazy',
+      buffer: {
+        minBufferMs: 2500,
+        maxBufferMs: 30000,
+        bufferForPlaybackMs: 800,
+        bufferForPlaybackAfterRebufferMs: 1500
+      },
+      retention: {
+        preload: 'metadata',
+        offscreen: 'metadata',
+        trimDelayMs: 6000,
+        feedPoolEligible: true
+      },
+      transport: {
+        mode: 'auto'
+      },
+      preview: {
+        mode: 'always',
+        autoThumbnail: true,
+        maxWidth: 512,
+        maxHeight: 512,
+        quality: 76
+      }
+    });
+
+    expect(fromNitroPlayerConfig).toHaveBeenCalledWith({
+      uri: 'https://cdn.example.com/live.m3u8',
+      headers: {
+        Authorization: 'Bearer token',
+        'X-Feed': 'home'
+      },
+      metadata: {
+        title: 'Home Stream',
+        subtitle: 'feed row',
+        description: 'consumer feed playback',
+        artist: 'creator',
+        imageUri: 'https://cdn.example.com/poster.jpg'
+      },
+      startup: 'lazy',
+      buffer: {
+        minBufferMs: 2500,
+        maxBufferMs: 30000,
+        bufferForPlaybackMs: 800,
+        bufferForPlaybackAfterRebufferMs: 1500
+      },
+      retention: {
+        preload: 'metadata',
+        offscreen: 'metadata',
+        trimDelayMs: 6000,
+        feedPoolEligible: true
+      },
+      transport: {
+        mode: 'auto'
+      },
+      preview: {
+        mode: 'always',
+        autoThumbnail: true,
+        maxWidth: 512,
+        maxHeight: 512,
+        quality: 76
+      }
+    });
+  });
+
   it('supports React Native asset sources inside NitroSourceConfig', () => {
     const { createNitroSource } = require('../../../core/utils/sourceFactory');
 
@@ -140,6 +220,18 @@ describe('sourceFactory', () => {
 
     expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', preview: { mode: 'eager' as never } })).toThrow(/Invalid preview\.mode/);
     expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', retention: { preload: 'all' as never } })).toThrow(/Invalid retention\.preload/);
+  });
+
+  it('rejects malformed nested source config before native factory ownership', () => {
+    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+
+    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', metadata: 'title' as never })).toThrow(/Invalid metadata/);
+    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', buffer: ['fast'] as never })).toThrow(/Invalid buffer/);
+    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', retention: true as never })).toThrow(/Invalid retention/);
+    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', retention: { offscreen: 'warm' as never } })).toThrow(/Invalid retention\.offscreen/);
+    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', transport: 'proxy' as never })).toThrow(/Invalid transport/);
+    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', preview: 1 as never })).toThrow(/Invalid preview/);
+    expect(fromNitroPlayerConfig).not.toHaveBeenCalled();
   });
 
   it('rejects a malformed headers shape', () => {

@@ -74,6 +74,20 @@ describe('streamCache', () => {
     );
   });
 
+  it('prefetches HLS manifest URLs with query strings and second-arg headers', async () => {
+    const { streamCache } = require('../../../transport/streamCache');
+
+    await streamCache.prefetch('https://cdn.example.com/live.m3u8?token=abc', {
+      Authorization: 'Bearer token',
+      'X-Variant': 'home'
+    });
+
+    expect(nativePrefetchFirstSegment).toHaveBeenCalledWith(
+      'https://cdn.example.com/live.m3u8?token=abc',
+      { Authorization: 'Bearer token', 'X-Variant': 'home' }
+    );
+  });
+
   it('does not prefetch non-HLS sources', async () => {
     const { streamCache } = require('../../../transport/streamCache');
 
@@ -117,6 +131,30 @@ describe('streamCache', () => {
       streamSize: 0,
       streamFileCount: 0
     });
+  });
+
+  it('keeps cache stats identity scoped by source headers', async () => {
+    const { streamCache } = require('../../../transport/streamCache');
+
+    await streamCache.getStats({
+      uri: 'https://cdn.example.com/live.m3u8',
+      headers: { 'X-Feed': 'home' }
+    });
+    await streamCache.getStats({
+      uri: 'https://cdn.example.com/live.m3u8',
+      headers: { 'X-Feed': 'creator' }
+    });
+
+    expect(nativeGetStreamCacheStats).toHaveBeenNthCalledWith(
+      1,
+      'https://cdn.example.com/live.m3u8',
+      { 'X-Feed': 'home' }
+    );
+    expect(nativeGetStreamCacheStats).toHaveBeenNthCalledWith(
+      2,
+      'https://cdn.example.com/live.m3u8',
+      { 'X-Feed': 'creator' }
+    );
   });
 
   it('getStats(source) falls back to defaults when native throws', async () => {
@@ -172,6 +210,30 @@ describe('videoPreview', () => {
     expect(frame).toBe('file:///tmp/frame.jpg');
   });
 
+  it('preserves header identity for repeated getFirstFrame calls on the same URL', async () => {
+    const { videoPreview } = require('../../../preview/videoPreview');
+
+    await videoPreview.getFirstFrame({
+      uri: 'https://cdn.example.com/live.m3u8',
+      headers: { 'X-Feed': 'home' }
+    });
+    await videoPreview.getFirstFrame({
+      uri: 'https://cdn.example.com/live.m3u8',
+      headers: { 'X-Feed': 'creator' }
+    });
+
+    expect(nativeGetThumbnailUrl).toHaveBeenNthCalledWith(
+      1,
+      'https://cdn.example.com/live.m3u8',
+      { 'X-Feed': 'home' }
+    );
+    expect(nativeGetThumbnailUrl).toHaveBeenNthCalledWith(
+      2,
+      'https://cdn.example.com/live.m3u8',
+      { 'X-Feed': 'creator' }
+    );
+  });
+
   it('returns null when native preview lookup fails', async () => {
     nativeGetThumbnailUrl.mockRejectedValueOnce(new Error('fail'));
     const { videoPreview } = require('../../../preview/videoPreview');
@@ -195,6 +257,29 @@ describe('videoPreview', () => {
     );
     expect(nativeGetThumbnailUrl).not.toHaveBeenCalled();
     expect(frame).toBe('file:///tmp/cached-frame.jpg');
+  });
+
+  it('preserves header identity for cache-only preview peeks', async () => {
+    const { videoPreview } = require('../../../preview/videoPreview');
+
+    await videoPreview.peekFirstFrame('https://cdn.example.com/live.m3u8', {
+      'X-Feed': 'home'
+    });
+    await videoPreview.peekFirstFrame('https://cdn.example.com/live.m3u8', {
+      'X-Feed': 'creator'
+    });
+
+    expect(nativePeekThumbnailUrl).toHaveBeenNthCalledWith(
+      1,
+      'https://cdn.example.com/live.m3u8',
+      { 'X-Feed': 'home' }
+    );
+    expect(nativePeekThumbnailUrl).toHaveBeenNthCalledWith(
+      2,
+      'https://cdn.example.com/live.m3u8',
+      { 'X-Feed': 'creator' }
+    );
+    expect(nativeGetThumbnailUrl).not.toHaveBeenCalled();
   });
 
   it('clear() delegates to native preview cleanup when available', async () => {
