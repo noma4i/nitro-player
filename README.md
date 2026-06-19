@@ -33,7 +33,7 @@ No extra steps - standard React Native 0.77+ autolinking handles the module.
 If you need a tag or branch before it is published to npm:
 
 ```sh
-yarn add @noma4i/nitro-play@github:noma4i/nitro-player#v1.1.0-beta.2
+yarn add @noma4i/nitro-play@github:noma4i/nitro-player#v1.1.0-beta.3
 ```
 
 ## Quick Start

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0-beta.3
+
+### Added
+
+- iOS and Android regression tests for player threading contracts around buffered preload, observer callback marshalling, bounded main-thread waits, and startup recovery
+
+### Fixed
+
+- iOS: move buffered preload `AVPlayerItem` replacement off `MainActor.run`, preventing synchronous AVFoundation item swaps from fully blocking the main thread during preload/startup
+- iOS: marshal AVPlayer and AVPlayerItem observer callbacks back to the main queue after off-main player mutations, preserving playback state and event thread safety
+
 ## 1.1.0-beta.2
 
 ### Added
