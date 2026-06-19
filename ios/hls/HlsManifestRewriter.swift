@@ -21,9 +21,11 @@ final class HlsManifestRewriter {
   }
 
   func guessContentType(url: String) -> String {
-    if url.hasSuffix(".m3u8") { return "application/vnd.apple.mpegurl" }
-    if url.hasSuffix(".m4s") { return "video/iso.segment" }
-    if url.hasSuffix(".mp4") { return "video/mp4" }
+    let path = url.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)[0]
+      .split(separator: "#", maxSplits: 1, omittingEmptySubsequences: false)[0]
+    if path.hasSuffix(".m3u8") { return "application/vnd.apple.mpegurl" }
+    if path.hasSuffix(".m4s") { return "video/iso.segment" }
+    if path.hasSuffix(".mp4") { return "video/mp4" }
     return "video/MP2T"
   }
 

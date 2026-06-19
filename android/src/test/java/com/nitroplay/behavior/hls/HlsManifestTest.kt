@@ -189,6 +189,11 @@ class HlsManifestTest {
   }
 
   @Test
+  fun guessContentType_m3u8WithQueryAndFragment() {
+    assertEquals("application/vnd.apple.mpegurl", HlsManifest.guessContentType("index.m3u8?token=abc#rendition"))
+  }
+
+  @Test
   fun guessContentType_m4s() {
     assertEquals("video/iso.segment", HlsManifest.guessContentType("init.m4s"))
   }

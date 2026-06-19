@@ -119,10 +119,11 @@ object HlsManifest {
     }
 
     fun guessContentType(url: String): String {
+        val path = url.substringBefore('?').substringBefore('#')
         return when {
-            url.endsWith(".m3u8") -> "application/vnd.apple.mpegurl"
-            url.endsWith(".m4s") -> "video/iso.segment"
-            url.endsWith(".mp4") -> "video/mp4"
+            path.endsWith(".m3u8") -> "application/vnd.apple.mpegurl"
+            path.endsWith(".m4s") -> "video/iso.segment"
+            path.endsWith(".mp4") -> "video/mp4"
             else -> "video/MP2T"
         }
     }

@@ -88,6 +88,10 @@ final class HlsManifestRewriterTests: XCTestCase {
     XCTAssertEqual(rewriter.guessContentType(url: "index.m3u8"), "application/vnd.apple.mpegurl")
   }
 
+  func testGuessContentType_m3u8WithQueryAndFragment() {
+    XCTAssertEqual(rewriter.guessContentType(url: "index.m3u8?token=abc#rendition"), "application/vnd.apple.mpegurl")
+  }
+
   func testGuessContentType_m4s() {
     XCTAssertEqual(rewriter.guessContentType(url: "init.m4s"), "video/iso.segment")
   }
