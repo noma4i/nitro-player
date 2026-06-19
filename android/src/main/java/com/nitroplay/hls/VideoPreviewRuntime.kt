@@ -10,9 +10,7 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Callable
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
-import java.util.concurrent.Future
 import kotlin.math.roundToInt
 
 data class VideoPreviewProfile(
@@ -37,9 +35,17 @@ data class VideoPreviewResult(
 )
 
 object VideoPreviewRuntime {
+  private class CachedPreviewRequest(
+    private val result: VideoPreviewResult
+  ) : PreviewRequest<VideoPreviewResult> {
+    override val isCancelled: Boolean = false
+    override fun await(): VideoPreviewResult = result
+    override fun cancel() = Unit
+  }
+
   private val lock = Any()
   private val executor = Executors.newCachedThreadPool()
-  private val inflight = ConcurrentHashMap<String, Future<VideoPreviewResult?>>()
+  private val requestCoordinator = PreviewRequestCoordinator<String, VideoPreviewResult>()
   private var previewStore: HlsCacheStore? = null
   private var appContext: Context? = null
   private const val HTTP_TIMEOUT_MS = 8000
@@ -55,28 +61,29 @@ object VideoPreviewRuntime {
   }
 
   fun getFirstFrame(url: String, headers: Map<String, String>?, preview: NitroSourcePreviewConfig?): VideoPreviewResult? {
+    val request = startFirstFrameRequest(url, headers, preview) ?: return null
+    return try {
+      request.await()
+    } finally {
+      request.cancel()
+    }
+  }
+
+  internal fun startFirstFrameRequest(url: String, headers: Map<String, String>?, preview: NitroSourcePreviewConfig?): PreviewRequest<VideoPreviewResult>? {
     val store = ensureStore() ?: return null
     val cacheKey = HlsIdentity.previewKey(url, headers, preview)
-    store.getThumbnailPath(cacheKey)?.let { return VideoPreviewResult(uri = it, fromCache = true) }
+    store.getThumbnailPath(cacheKey)?.let { return CachedPreviewRequest(VideoPreviewResult(uri = it, fromCache = true)) }
 
-    val future = synchronized(lock) {
+    return synchronized(lock) {
       store.getThumbnailPath(cacheKey)?.let { cached ->
-        return VideoPreviewResult(uri = cached, fromCache = true)
+        return@synchronized CachedPreviewRequest(VideoPreviewResult(uri = cached, fromCache = true))
       }
 
-      inflight[cacheKey] ?: executor.submit(Callable {
-        generatePreview(store, cacheKey, url, headers, VideoPreviewProfile.from(preview))
-      }).also { created ->
-        inflight[cacheKey] = created
+      requestCoordinator.acquire(cacheKey) {
+        executor.submit(Callable {
+          generatePreview(store, cacheKey, url, headers, VideoPreviewProfile.from(preview))
+        })
       }
-    }
-
-    return try {
-      future.get()
-    } catch (_: Exception) {
-      null
-    } finally {
-      inflight.remove(cacheKey, future)
     }
   }
 
@@ -95,8 +102,7 @@ object VideoPreviewRuntime {
 
   fun resetStateForTests() {
     synchronized(lock) {
-      inflight.values.forEach { it.cancel(true) }
-      inflight.clear()
+      requestCoordinator.cancelAll()
       previewStore?.close()
       previewStore = null
       appContext = null

@@ -55,10 +55,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   var hasLoadedCurrentSource = false
   var firstFrame: onFirstFrameData?
   var firstFrameContext: FirstFrameContext?
-  // Signature of the last emitted PlaybackState (excluding nativeTimestampMs).
-  // PlaybackState is a C++ bridge wrapper and is not Equatable, so the emit gate
-  // compares a string of its meaningful fields instead.
-  private var lastEmittedStateSignature: String?
+  private let playbackStateEmissionGate = PlaybackStateEmissionGate()
 
   private let startupRecoveryDelayNs: UInt64 = 250_000_000
   private let maxStartupRecoveryAttempts = 1
@@ -324,10 +321,9 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     // The 0.25s observer tick rebuilds the state every time, but when nothing
     // meaningful changed (only the timestamp advanced) there is no reason to
     // cross the bridge. nativeTimestampMs is excluded from the signature.
-    if signature == lastEmittedStateSignature {
+    if !playbackStateEmissionGate.shouldEmit(signature: signature) {
       return
     }
-    lastEmittedStateSignature = signature
     _eventEmitter?.onPlaybackState(state)
   }
 
@@ -375,7 +371,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
     sourceGeneration += 1
     startupRecoveryAttempts = 0
     hasLoadedCurrentSource = false
-    lastEmittedStateSignature = nil
+    playbackStateEmissionGate.reset()
     firstFrame = nil
     firstFrameContext = nil
     cancelFirstFrameRequest()

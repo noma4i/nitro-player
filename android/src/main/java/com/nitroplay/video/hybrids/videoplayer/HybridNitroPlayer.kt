@@ -16,6 +16,8 @@ import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
 import com.nitroplay.hls.HlsProxyRuntime
+import com.nitroplay.hls.PreviewRequest
+import com.nitroplay.hls.VideoPreviewResult
 import com.nitroplay.hls.VideoPreviewRuntime
 import com.nitroplay.video.core.LibraryError
 import com.nitroplay.video.core.PlayerError
@@ -62,7 +64,8 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   internal var firstFrame: onFirstFrameData? = null
   internal var pendingFirstFrameGeneration = -1
   internal var firstFrameContext: FirstFrameContext? = null
-  // Inflight preview worker, interrupted on release to stop wasted fetch/decode.
+  // Inflight preview worker, cancelled on source generation changes to stop wasted fetch/decode.
+  internal var firstFrameRequest: PreviewRequest<VideoPreviewResult>? = null
   internal var firstFrameThread: Thread? = null
 
   var wasAutoPaused = false
@@ -468,8 +471,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
         listenerBridge.stopProgressUpdates()
         lifecycle.cancelPendingTrim()
         cancelStartupRecovery()
-        firstFrameThread?.interrupt()
-        firstFrameThread = null
+        cancelFirstFrameRequest()
         loadedWithSource = false
         hasActiveSource = false
 
@@ -602,10 +604,18 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     hasLoadedCurrentSource = false
     lastEmittedState = null
     firstFrame = null
-    pendingFirstFrameGeneration = -1
+    cancelFirstFrameRequest()
     firstFrameContext = null
     cancelStartupRecovery()
     eventEmitter.resetStickyState()
+  }
+
+  internal fun cancelFirstFrameRequest() {
+    firstFrameRequest?.cancel()
+    firstFrameRequest = null
+    firstFrameThread?.interrupt()
+    firstFrameThread = null
+    pendingFirstFrameGeneration = -1
   }
 
   internal fun markCurrentSourceLoaded() {
@@ -666,11 +676,11 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   internal fun failPlayback(message: String) {
     cancelStartupRecovery()
+    cancelFirstFrameRequest()
     wantsToPlay = false
     isCurrentlyBuffering = false
     status = NitroPlayerStatus.ERROR
     readyToDisplay = false
-    pendingFirstFrameGeneration = -1
     lastError = toPlaybackError(NitroPlayerErrorCode.UNKNOWN_UNKNOWN, message)
     lastError?.let { eventEmitter.onError(it) }
     listenerBridge.stopProgressUpdates()
@@ -725,14 +735,26 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     }
     pendingFirstFrameGeneration = generation
     val previewConfig = currentSourceConfig()?.preview
+    val request = VideoPreviewRuntime.startFirstFrameRequest(
+      context.sourceUri,
+      context.headers,
+      previewConfig
+    ) ?: run {
+      pendingFirstFrameGeneration = -1
+      return
+    }
+    firstFrameRequest = request
 
     val thread = Thread {
-      if (isReleased) return@Thread
-      val preview = VideoPreviewRuntime.getFirstFrame(
-        context.sourceUri,
-        context.headers,
-        previewConfig
-      )
+      val preview = try {
+        if (isReleased) {
+          null
+        } else {
+          request.await()
+        }
+      } finally {
+        request.cancel()
+      }
 
       Handler(Looper.getMainLooper()).post {
         if (
@@ -747,6 +769,9 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
         if (pendingFirstFrameGeneration == generation) {
           pendingFirstFrameGeneration = -1
+        }
+        if (firstFrameRequest === request) {
+          firstFrameRequest = null
         }
 
         preview?.let {

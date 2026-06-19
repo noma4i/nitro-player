@@ -213,6 +213,10 @@ object HlsProxyRuntime {
     }
   }
 
+  internal fun prefetchTimestampCountForTests(): Int {
+    return synchronized(lock) { prefetchTimestamps.size }
+  }
+
   internal fun registerForTests() {
     synchronized(lock) {
       isRegistered = true

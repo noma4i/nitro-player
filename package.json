@@ -50,7 +50,8 @@
     "release:notes": "node ./scripts/release-notes.mjs",
     "prepublishOnly": "yarn build && yarn test:ts",
     "typecheck": "tsc --noEmit",
-    "test": "yarn test:ts && yarn test:android && yarn test:ios",
+    "test": "yarn test:behavior:audit && yarn test:ts && yarn test:android && yarn test:ios",
+    "test:behavior:audit": "node ./scripts/check-behavior-tests.mjs",
     "test:ts": "jest --runInBand",
     "test:android": "cd example/android && ./gradlew :noma4i_nitro-play:test",
     "test:ios": "cd tests/ios && swift test"
