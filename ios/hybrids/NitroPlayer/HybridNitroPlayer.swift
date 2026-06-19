@@ -38,6 +38,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
   }
   var playerObserver: NitroPlayerObserver?
   let sourceLoader = SourceLoader()
+  let playerMutationExecutor = PlayerMutationExecutor()
   var artworkTask: Task<Void, Never>?
   var initTask: Task<Void, Never>?
   var isReleased = false

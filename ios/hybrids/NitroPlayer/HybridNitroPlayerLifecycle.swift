@@ -307,7 +307,7 @@ extension HybridNitroPlayer {
       try await self.initializePlayerItem()
     }
     let resumeSeconds = resumePositionSeconds
-    await MainActor.run { [weak self] in
+    await playerMutationExecutor.runAndWait { [weak self] in
       guard let self else {
         return
       }

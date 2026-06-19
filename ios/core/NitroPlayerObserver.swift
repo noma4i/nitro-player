@@ -96,22 +96,22 @@ class NitroPlayerObserver: NSObject {
     
     playerRateObserver = player.observe(\.rate, options: [.new]) { [weak self] _, change in
       guard let rate = change.newValue else { return }
-      self?.delegate?.onRateChanged(rate: rate)
+      self?.notifyDelegate { $0.onRateChanged(rate: rate) }
     }
     
     playerTimeControlStatusObserver = player.observe(\.timeControlStatus, options: [.new]) { [weak self] _, change in
       guard let status = change.newValue else { return }
-      self?.delegate?.onTimeControlStatusChanged(status: status)
+      self?.notifyDelegate { $0.onTimeControlStatusChanged(status: status) }
     }
     
     playerVolumeObserver = player.observe(\.volume, options: [.new]) { [weak self] _, change in
       guard let volume = change.newValue else { return }
-      self?.delegate?.onVolumeChanged(volume: volume)
+      self?.notifyDelegate { $0.onVolumeChanged(volume: volume) }
     }
     
     playerStatusObserver = player.observe(\.status, options: [.new]) { [weak self] _, change in
       guard let status = change.newValue else { return }
-      self?.delegate?.onPlayerStatusChanged(status: status)
+      self?.notifyDelegate { $0.onPlayerStatusChanged(status: status) }
     }
     
     let interval = CMTime(seconds: 0.25, preferredTimescale: 600)
@@ -129,7 +129,7 @@ class NitroPlayerObserver: NSObject {
       queue: .main
     ) { [weak self, weak player] notification in
       guard let player else { return }
-      self?.delegate?.onPlayedToEnd(player: player)
+      self?.notifyDelegate { $0.onPlayedToEnd(player: player) }
     }
     
     playerItemAccessLogObserver = NotificationCenter.default.addObserver(
@@ -154,7 +154,7 @@ class NitroPlayerObserver: NSObject {
     
     playerItemStatusObserver = playerItem.observe(\.status, options: [.new]) { [weak self, weak playerItem] _, change in
       guard let playerItem else { return }
-      self?.delegate?.onPlayerItemStatusChanged(status: playerItem.status)
+      self?.notifyDelegate { $0.onPlayerItemStatusChanged(status: playerItem.status) }
     }
     
     observedPlayerItem = playerItem
@@ -210,13 +210,13 @@ class NitroPlayerObserver: NSObject {
     invalidatePlayerItemObservers()
     
     // Notify delegate about player item state change
-    delegate?.onPlayerItemWillChange(hasNewPlayerItem: newPlayerItem != nil)
+    notifyDelegate { $0.onPlayerItemWillChange(hasNewPlayerItem: newPlayerItem != nil) }
     
     if let playerItem = newPlayerItem {
       // Initialize observers for new player item
       initializePlayerItemObservers(player: player, playerItem: playerItem)
       
-      delegate?.onPlayerItemChange(player: player, playerItem: playerItem)
+      notifyDelegate { $0.onPlayerItemChange(player: player, playerItem: playerItem) }
     }
   }
   
@@ -225,14 +225,14 @@ class NitroPlayerObserver: NSObject {
     guard let accessLog = playerItem.accessLog() else { return }
     guard let lastEvent = accessLog.events.last else { return }
 
-    delegate?.onBandwidthUpdate(bitrate: lastEvent.indicatedBitrate)
+    notifyDelegate { $0.onBandwidthUpdate(bitrate: lastEvent.indicatedBitrate) }
   }
 
   func onPlayerErrorLog(playerItem: AVPlayerItem) {
     guard let errorLog = playerItem.errorLog() else { return }
     guard let lastEvent = errorLog.events.last else { return }
 
-    delegate?.onPlayerItemErrorLogEntry(statusCode: lastEvent.errorStatusCode, comment: lastEvent.errorComment)
+    notifyDelegate { $0.onPlayerItemErrorLogEntry(statusCode: lastEvent.errorStatusCode, comment: lastEvent.errorComment) }
   }
   
   // MARK: - Buffer State Management
@@ -251,9 +251,9 @@ class NitroPlayerObserver: NSObject {
 
   func setupBufferObservers(for playerItem: AVPlayerItem) {
     clearBufferObservers()
-    playbackBufferEmptyObserver = observeBoolProperty(playerItem, keyPath: \.isPlaybackBufferEmpty) { [weak self] in self?.delegate?.onPlaybackBufferEmpty() }
-    playbackLikelyToKeepUpObserver = observeBoolProperty(playerItem, keyPath: \.isPlaybackLikelyToKeepUp) { [weak self] in self?.delegate?.onPlaybackLikelyToKeepUp() }
-    playbackBufferFullObserver = observeBoolProperty(playerItem, keyPath: \.isPlaybackBufferFull) { [weak self] in self?.delegate?.onPlaybackLikelyToKeepUp() }
+    playbackBufferEmptyObserver = observeBoolProperty(playerItem, keyPath: \.isPlaybackBufferEmpty) { [weak self] in self?.notifyDelegate { $0.onPlaybackBufferEmpty() } }
+    playbackLikelyToKeepUpObserver = observeBoolProperty(playerItem, keyPath: \.isPlaybackLikelyToKeepUp) { [weak self] in self?.notifyDelegate { $0.onPlaybackLikelyToKeepUp() } }
+    playbackBufferFullObserver = observeBoolProperty(playerItem, keyPath: \.isPlaybackBufferFull) { [weak self] in self?.notifyDelegate { $0.onPlaybackLikelyToKeepUp() } }
   }
   
   func clearBufferObservers() {
@@ -264,5 +264,12 @@ class NitroPlayerObserver: NSObject {
     playbackBufferEmptyObserver = nil
     playbackBufferFullObserver = nil
     playbackLikelyToKeepUpObserver = nil
+  }
+
+  private func notifyDelegate(_ handler: @escaping (HybridNitroPlayer) -> Void) {
+    DispatchQueue.main.async { [weak self] in
+      guard let delegate = self?.delegate else { return }
+      handler(delegate)
+    }
   }
 }
