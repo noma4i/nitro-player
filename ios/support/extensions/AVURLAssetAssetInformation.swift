@@ -20,7 +20,7 @@ extension AVURLAsset {
     var height = Double.nan
     var bitrate = Double.nan
     var orientation: NitroPlayerOrientation = .unknown
-    var isHDR = false
+    let isHDR = false
 
     if let videoTrack = try await loadTracks(withMediaType: .video).first {
       let naturalSize = try await videoTrack.load(.naturalSize)

@@ -2,7 +2,7 @@ import { renderHook } from '@testing-library/react';
 
 jest.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
 jest.mock('react-native-nitro-modules', () => ({ NitroModules: { createHybridObject: jest.fn(), updateMemorySize: jest.fn() } }));
-jest.mock('../../../source/sourceFactory', () => ({ createNitroSource: jest.fn(() => ({ id: 'source' })) }));
+jest.mock('../../../source/sourceFactory', () => ({ createNativeNitroSource: jest.fn(() => ({ id: 'source' })) }));
 jest.mock('../../../player/playerFactory', () => ({ createPlayer: jest.fn() }));
 
 describe('useManagedInstance', () => {

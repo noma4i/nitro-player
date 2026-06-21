@@ -1,14 +1,9 @@
+import type { ResolvableSource } from '../source/resolveSource';
 import type { StreamCacheStats, StreamHeaders, StreamSourceCacheStats } from './types';
 declare class StreamCache {
     private readonly warnUnavailable;
-    prefetch(source: {
-        uri: string;
-        headers?: StreamHeaders;
-    } | string, headers?: StreamHeaders): Promise<void>;
-    getStats(source?: {
-        uri: string;
-        headers?: StreamHeaders;
-    } | string, headers?: StreamHeaders): Promise<StreamCacheStats | StreamSourceCacheStats>;
+    prefetch(source: ResolvableSource, headers?: StreamHeaders): Promise<void>;
+    getStats(source?: ResolvableSource, headers?: StreamHeaders): Promise<StreamCacheStats | StreamSourceCacheStats>;
     clear(): Promise<boolean>;
 }
 export declare const streamCache: StreamCache;

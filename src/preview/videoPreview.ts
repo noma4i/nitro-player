@@ -1,4 +1,5 @@
 import { resolveSource } from '../source/resolveSource';
+import type { ResolvableSource } from '../source/resolveSource';
 import { createUnavailableWarner, getNativeStreamRuntime } from '../support/nativeStreamRuntime';
 import type { StreamHeaders } from '../streaming/types';
 
@@ -13,7 +14,7 @@ const NativePreview = getNativeStreamRuntime<VideoPreviewNativeModule>();
 class VideoPreview {
   private readonly warnUnavailable = createUnavailableWarner('VideoPreview');
 
-  async getFirstFrame(source: { uri: string; headers?: StreamHeaders } | string, headers?: StreamHeaders): Promise<string | null> {
+  async getFirstFrame(source: ResolvableSource, headers?: StreamHeaders): Promise<string | null> {
     if (!NativePreview?.getThumbnailUrl) {
       this.warnUnavailable();
       return null;
@@ -29,7 +30,7 @@ class VideoPreview {
     }
   }
 
-  async peekFirstFrame(source: { uri: string; headers?: StreamHeaders } | string, headers?: StreamHeaders): Promise<string | null> {
+  async peekFirstFrame(source: ResolvableSource, headers?: StreamHeaders): Promise<string | null> {
     if (!NativePreview?.peekThumbnailUrl) {
       return null;
     }

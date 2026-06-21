@@ -82,15 +82,15 @@ namespace margelo::nitro::video {
 
   public:
     // Methods
-    std::shared_ptr<Promise<void>> replaceSourceAsync(const std::shared_ptr<HybridNitroPlayerSourceSpec>& source) override;
-    std::shared_ptr<Promise<void>> clearSourceAsync() override;
-    void release() override;
     std::shared_ptr<Promise<void>> initialize() override;
     std::shared_ptr<Promise<void>> preload() override;
     void play() override;
     void pause() override;
     void seekBy(double time) override;
     void seekTo(double time) override;
+    std::shared_ptr<Promise<void>> replaceSourceAsync(const std::shared_ptr<HybridNitroPlayerSourceSpec>& source) override;
+    std::shared_ptr<Promise<void>> clearSourceAsync() override;
+    void release() override;
 
   private:
     jni::global_ref<JHybridNitroPlayerSpec::JavaPart> _javaPart;

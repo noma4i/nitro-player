@@ -17,7 +17,7 @@ class HybridNitroPlayerEventEmitter: HybridNitroPlayerEventEmitterSpec {
   func addOnFirstFrameListener(listener: @escaping (onFirstFrameData) -> Void) throws -> ListenerSubscription {
     let subscription = registry.add(event: "onFirstFrame", listener: listener)
     if let latestFirstFrame {
-      try? listener(latestFirstFrame)
+      listener(latestFirstFrame)
     } else {
       onFirstFrameListenerAdded?()
     }

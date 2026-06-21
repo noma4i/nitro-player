@@ -165,6 +165,19 @@ internal class NitroPlayerLifecycle(
     return currentView?.isAttachedToWindow == true
   }
 
+  fun shouldStayHotUnderResourcePressure(): Boolean {
+    if (host.isReleased) {
+      return false
+    }
+
+    if (host.isPlaying || host.wantsToPlay) {
+      return true
+    }
+
+    val currentView = host.currentPlayerView?.get()
+    return currentView?.isAttachedToWindow == true
+  }
+
   fun trimForFeedHotPool() {
     runOnMainThread {
       if (
@@ -177,6 +190,16 @@ internal class NitroPlayerLifecycle(
       }
 
       trimToMetadataRetention()
+    }
+  }
+
+  fun trimForResourcePressure() {
+    runOnMainThread {
+      if (shouldStayHotUnderResourcePressure()) {
+        return@runOnMainThread
+      }
+
+      trimToColdRetention()
     }
   }
 

@@ -1,10 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppState, ScrollView, Text, View, type AppStateStatus } from 'react-native';
 import {
   NitroPlayerView,
   usePlaybackState,
   type NitroPlayer,
-  type NitroPlayerViewRef,
 } from '@noma4i/nitro-play';
 import { LONG_HLS_SOURCE } from '../scenarioModel';
 import {
@@ -16,6 +15,7 @@ import {
   styles,
   toErrorMessage,
   truncate,
+  usePlayerViewHandle,
 } from '../shared';
 
 const SCREEN_KEY = 'bg-lifecycle';
@@ -24,7 +24,6 @@ const SCREEN_KEY = 'bg-lifecycle';
 // transitions. The playInBackground toggle exercises the background-audio path
 // and the suspend/resume teardown ordering.
 export function BackgroundLifecycleScreen() {
-  const viewRef = useRef<NitroPlayerViewRef | null>(null);
   const [player, setPlayer] = useState<NitroPlayer | null>(null);
   const [appStateValue, setAppStateValue] = useState<AppStateStatus>(AppState.currentState);
   const [playInBackground, setPlayInBackground] = useState(false);
@@ -33,6 +32,8 @@ export function BackgroundLifecycleScreen() {
 
   const playbackState = usePlaybackState(player);
   const status = playbackState?.status ?? 'idle';
+  const handlePlayerChange = React.useCallback((nextPlayer: NitroPlayer | null) => setPlayer(nextPlayer), []);
+  const { viewRef, ref: playerViewRef } = usePlayerViewHandle({ onPlayerChange: handlePlayerChange });
 
   const pushLog = (line: string) => setLog(current => appendLog(current, line));
 
@@ -90,10 +91,7 @@ export function BackgroundLifecycleScreen() {
         </View>
 
         <NitroPlayerView
-          ref={instance => {
-            viewRef.current = instance;
-            setPlayer(instance?.player ?? null);
-          }}
+          ref={playerViewRef}
           source={LONG_HLS_SOURCE}
           playerDefaults={{ loop: true }}
           resizeMode="contain"

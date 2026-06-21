@@ -6,19 +6,17 @@ Access the imperative player as `ref.current.player`. View attachment is exposed
 
 ```tsx
 import React, { useRef } from 'react';
-import { NitroPlayerView, type NitroPlayerViewRef } from '@noma4i/nitro-play';
+import { NitroVideo, type NitroPlayerViewRef } from '@noma4i/nitro-play';
 
 export function Demo() {
   const ref = useRef<NitroPlayerViewRef>(null);
 
   return (
-    <NitroPlayerView
+    <NitroVideo
       ref={ref}
       source={{
         uri: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-        startup: 'lazy',
-        transport: { mode: 'auto' },
-        preview: { mode: 'listener' }
+        policy: 'feed'
       }}
       onAttached={player => player.play()}
       resizeMode="contain"
@@ -28,11 +26,11 @@ export function Demo() {
 }
 ```
 
-## `NitroPlayerView`
+## `NitroVideo`
 
 | Prop                  | Type                            | Notes                     |
 | --------------------- | ------------------------------- | ------------------------- |
-| `source`              | `NitroSourceConfig`             | Required                  |
+| `source`              | `NitroSourceInput`              | URL, asset, config, or prepared source |
 | `playerDefaults`      | `NitroPlayerDefaults`           | Declarative startup state |
 | `controls`            | `boolean`                       | Native controls           |
 | `resizeMode`          | `ResizeMode`                    | View scaling              |
@@ -50,6 +48,8 @@ export function Demo() {
 > whereas a `SurfaceView`'s separate overlay layer can briefly desync its bounds
 > during scroll/seek.
 
+`NitroPlayerView` is a compatibility alias for `NitroVideo`.
+
 ## `NitroPlayerViewRef`
 
 | Member                              | Type                   | Notes               |
@@ -64,7 +64,7 @@ export function Demo() {
 
 | Property                 | Type                     | Get | Set |
 | ------------------------ | ------------------------ | --- | --- |
-| `source`                 | `NitroPlayerSource`      | yes | no  |
+| `source`                 | `NitroSourceDescriptor \| null` | yes | no  |
 | `playbackState`          | `PlaybackState`          | yes | no  |
 | `memorySnapshot`         | `MemorySnapshot`         | yes | no  |
 | `status`                 | `NitroPlayerStatus`      | yes | no  |
@@ -94,7 +94,7 @@ export function Demo() {
 | `seekBy(seconds)`                   | `void`                 | Relative seek                                                     |
 | `initialize()`                      | `Promise<void>`        | Manual initialization                                             |
 | `preload()`                         | `Promise<void>`        | Preload without starting playback                                 |
-| `replaceSourceAsync(source)`        | `Promise<void>`        | Replace with `NitroSourceConfig` or `NitroPlayerSource`           |
+| `replaceSourceAsync(source)`        | `Promise<void>`        | Replace with any `NitroSourceInput`; same semantic source is skipped |
 | `clearSourceAsync()`                | `Promise<void>`        | Clear current source and keep player reusable                     |
 | `release()`                         | `void`                 | Terminal teardown                                                 |
 | `addEventListener(event, listener)` | `ListenerSubscription` | Subscribe to a player event. Returned subscription has `remove()` |
@@ -120,12 +120,12 @@ export function Demo() {
 | Event               | Payload              |
 | ------------------- | -------------------- |
 | `onPlaybackState`   | `PlaybackState`      |
-| `onLoad`            | `onLoadData`         |
-| `onLoadStart`       | `onLoadStartData`    |
+| `onLoad`            | `LoadEvent`          |
+| `onLoadStart`       | `LoadStartEvent`     |
 | `onError`           | `PlaybackError`      |
-| `onFirstFrame`      | `onFirstFrameData`   |
+| `onFirstFrame`      | `FirstFrameEvent`    |
 | `onBandwidthUpdate` | `BandwidthData`      |
-| `onVolumeChange`    | `onVolumeChangeData` |
+| `onVolumeChange`    | `VolumeChangeEvent`  |
 
 Subscribe to any of these events directly on the player instance:
 
@@ -164,7 +164,9 @@ Mounted `NitroPlayerView` surfaces do not need JS orchestration just to reveal t
 | `videoPreview.peekFirstFrame(source)` | Cached-only first-frame lookup                       |
 | `videoPreview.clear()`                | Clear cached preview artifacts                       |
 
-`streamCache.getStats(source)`, `videoPreview.getFirstFrame(source)`, and `videoPreview.peekFirstFrame(source)` all accept either a URL string or `{ uri, headers }`. Use the object form whenever headers are part of the request identity.
+`streamCache.getStats(source)`, `videoPreview.getFirstFrame(source)`, and
+`videoPreview.peekFirstFrame(source)` accept the same public source forms as
+`NitroVideo`. Request identity is still `{ uri, headers }`.
 
 ## Hooks
 

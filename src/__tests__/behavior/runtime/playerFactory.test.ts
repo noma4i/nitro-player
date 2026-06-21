@@ -11,7 +11,7 @@ jest.mock('react-native-nitro-modules', () => ({
 }));
 
 jest.mock('../../../source/sourceFactory', () => ({
-  createNitroSource: jest.fn((s: unknown) => ({ uri: s })),
+  createNativeNitroSource: jest.fn((s: unknown) => ({ uri: s })),
   isNitroPlayerSource: jest.fn(
     (s: unknown) =>
       s != null &&
@@ -26,8 +26,8 @@ describe('playerFactory', () => {
   beforeEach(() => {
     nativeCreatePlayer.mockImplementation((source: unknown) => ({ source }));
 
-    const { createNitroSource, isNitroPlayerSource } = require('../../../source/sourceFactory');
-    (createNitroSource as jest.Mock).mockImplementation((s: unknown) => ({ uri: s }));
+    const { createNativeNitroSource, isNitroPlayerSource } = require('../../../source/sourceFactory');
+    (createNativeNitroSource as jest.Mock).mockImplementation((s: unknown) => ({ uri: s }));
     (isNitroPlayerSource as jest.Mock).mockImplementation(
       (s: unknown) =>
         s != null &&
@@ -59,12 +59,12 @@ describe('playerFactory', () => {
 
   it('createPlayer passes NitroPlayerSource directly if isNitroPlayerSource is true', () => {
     const { createPlayer } = require('../../../player/playerFactory');
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
     const nitroSource = { name: 'NitroPlayerSource', uri: 'https://cdn.example.com/video.mp4' };
     createPlayer(nitroSource);
 
-    expect(createNitroSource).not.toHaveBeenCalled();
+    expect(createNativeNitroSource).not.toHaveBeenCalled();
     expect(nativeCreatePlayer).toHaveBeenCalledWith(nitroSource);
   });
 });

@@ -194,28 +194,6 @@ namespace margelo::nitro::video {
 
   public:
     // Methods
-    inline std::shared_ptr<Promise<void>> replaceSourceAsync(const std::shared_ptr<HybridNitroPlayerSourceSpec>& source) override {
-      auto __result = _swiftPart.replaceSourceAsync(source);
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-      auto __value = std::move(__result.value());
-      return __value;
-    }
-    inline std::shared_ptr<Promise<void>> clearSourceAsync() override {
-      auto __result = _swiftPart.clearSourceAsync();
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-      auto __value = std::move(__result.value());
-      return __value;
-    }
-    inline void release() override {
-      auto __result = _swiftPart.release();
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-    }
     inline std::shared_ptr<Promise<void>> initialize() override {
       auto __result = _swiftPart.initialize();
       if (__result.hasError()) [[unlikely]] {
@@ -252,6 +230,28 @@ namespace margelo::nitro::video {
     }
     inline void seekTo(double time) override {
       auto __result = _swiftPart.seekTo(std::forward<decltype(time)>(time));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline std::shared_ptr<Promise<void>> replaceSourceAsync(const std::shared_ptr<HybridNitroPlayerSourceSpec>& source) override {
+      auto __result = _swiftPart.replaceSourceAsync(source);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline std::shared_ptr<Promise<void>> clearSourceAsync() override {
+      auto __result = _swiftPart.clearSourceAsync();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline void release() override {
+      auto __result = _swiftPart.release();
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

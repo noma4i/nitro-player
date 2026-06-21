@@ -66,7 +66,7 @@ final class VideoPreviewRuntime {
     }
 
     let result = await task.value
-    stateQueue.sync {
+    _ = stateQueue.sync {
       inflight.removeValue(forKey: cacheKey)
     }
     return result
@@ -146,9 +146,10 @@ final class VideoPreviewRuntime {
 
     let asset = AVURLAsset(url: assetUrl, options: options)
     let item = AVPlayerItem(asset: asset)
+    let iosurfaceProperties = NSDictionary()
     let output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
       kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-      kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+      kCVPixelBufferIOSurfacePropertiesKey as String: iosurfaceProperties
     ])
     item.add(output)
 

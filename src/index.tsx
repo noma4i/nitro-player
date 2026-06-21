@@ -4,6 +4,10 @@ export type {
   AllNitroPlayerEvents,
   NitroPlayerEvents as NitroPlayerEventsType,
   BandwidthData,
+  FirstFrameEvent,
+  LoadEvent,
+  LoadStartEvent,
+  VolumeChangeEvent,
   onFirstFrameData,
   onLoadData,
   onLoadStartData,
@@ -22,7 +26,11 @@ export type { MixAudioMode } from './player/types/MixAudioMode';
 export type { ResizeMode } from './view/types/ResizeMode';
 export type {
   NitroSourceConfig,
+  NitroSourceDescriptor,
+  NitroSourceIdentity,
+  NitroSourceInput,
   NitroSourceMetadata,
+  NitroSourcePolicy,
   NitroSourcePreviewConfig,
   NitroSourcePreviewMode,
   NitroSourceRetentionConfig,
@@ -46,9 +54,9 @@ export {
   type NitroPlayerViewError
 } from './support/errors/NitroPlayerError';
 export type { NitroPlayerStatus } from './player/types/NitroPlayerStatus';
-export { default as NitroPlayerView, type NitroPlayerViewProps, type NitroPlayerViewRef } from './view/NitroPlayerView';
+export { default as NitroPlayerView, NitroVideo, type NitroPlayerViewProps, type NitroPlayerViewRef } from './view/NitroPlayerView';
 export { NitroPlayer } from './player/NitroPlayer';
-export { createNitroSource } from './source/sourceFactory';
+export { prepareSource, type PreparedNitroSource } from './source/prepareSource';
 export { streamCache } from './streaming/streamCache';
 export { videoPreview } from './preview/videoPreview';
 export type { StreamCacheStats, StreamSourceCacheStats, StreamHeaders } from './streaming/types';

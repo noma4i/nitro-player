@@ -403,6 +403,14 @@ extension HybridNitroPlayer {
     return isPlaying || isAttachedToVideoView || wantsToPlay
   }
 
+  func shouldStayHotUnderResourcePressure() -> Bool {
+    if isReleased {
+      return false
+    }
+
+    return isPlaying || isAttachedToVideoView || wantsToPlay || player.isExternalPlaybackActive == true
+  }
+
   func trimForFeedHotPool() {
     let apply = { [weak self] in
       guard let self else { return }
@@ -416,6 +424,23 @@ extension HybridNitroPlayer {
       }
 
       self.trimToMetadataRetention()
+    }
+
+    if Thread.isMainThread {
+      apply()
+    } else {
+      DispatchQueue.main.async(execute: apply)
+    }
+  }
+
+  func trimForResourcePressure() {
+    let apply = { [weak self] in
+      guard let self else { return }
+      guard !self.shouldStayHotUnderResourcePressure() else {
+        return
+      }
+
+      self.trimToColdRetention()
     }
 
     if Thread.isMainThread {

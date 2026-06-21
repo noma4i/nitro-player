@@ -65,6 +65,39 @@ export function truncate(value: string, max = 56) {
   return `${value.slice(0, max - 1)}...`;
 }
 
+export function usePlayerViewHandle({
+  onPlayerChange,
+  onAttachChange,
+}: {
+  onPlayerChange?: (player: NitroPlayer | null) => void;
+  onAttachChange?: (isAttached: boolean) => void;
+}) {
+  const viewRef = React.useRef<NitroPlayerViewRef | null>(null);
+  const playerRef = React.useRef<NitroPlayer | null>(null);
+  const attachedRef = React.useRef(false);
+
+  const ref = React.useCallback(
+    (instance: NitroPlayerViewRef | null) => {
+      viewRef.current = instance;
+      const nextPlayer = instance?.player ?? null;
+      const nextAttached = instance?.isAttached ?? false;
+
+      if (playerRef.current !== nextPlayer) {
+        playerRef.current = nextPlayer;
+        onPlayerChange?.(nextPlayer);
+      }
+
+      if (attachedRef.current !== nextAttached) {
+        attachedRef.current = nextAttached;
+        onAttachChange?.(nextAttached);
+      }
+    },
+    [onAttachChange, onPlayerChange]
+  );
+
+  return { viewRef, ref };
+}
+
 // ---------------------------------------------------------------------------
 // PlayerWorkbench - the reusable player card used across every screen.
 // `testID`/`accessibilityLabel` is applied to the NitroPlayerView and derived
@@ -96,7 +129,12 @@ export function PlayerWorkbench({
   const [bandwidth, setBandwidth] = useState<BandwidthData | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [allowControls, setAllowControls] = useState(false);
-  const viewRef = React.useRef<NitroPlayerViewRef | null>(null);
+  const handlePlayerChange = React.useCallback((nextPlayer: NitroPlayer | null) => setPlayer(nextPlayer), []);
+  const handleAttachChange = React.useCallback((nextAttached: boolean) => setIsAttached(nextAttached), []);
+  const { viewRef, ref: playerViewRef } = usePlayerViewHandle({
+    onPlayerChange: handlePlayerChange,
+    onAttachChange: handleAttachChange,
+  });
 
   const playbackState = usePlaybackState(player);
   const status = playbackState?.status ?? 'idle';
@@ -146,11 +184,7 @@ export function PlayerWorkbench({
             renders inside the view hierarchy so it stays in sync while scrolling; a
             SurfaceView overlay can briefly desync its bounds during scroll/seek. */}
         <NitroPlayerView
-          ref={instance => {
-            viewRef.current = instance;
-            setPlayer(instance?.player ?? null);
-            setIsAttached(instance?.isAttached ?? false);
-          }}
+          ref={playerViewRef}
           source={source}
           playerDefaults={{ loop: true }}
           controls={allowControls || isFullscreen}
@@ -534,8 +568,6 @@ export const styles = StyleSheet.create({
   playerView: {
     width: '100%',
     aspectRatio: 16 / 9,
-    borderRadius: 8,
-    overflow: 'hidden',
     backgroundColor: '#000',
   },
   firstFramePreview: {

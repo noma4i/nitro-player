@@ -72,7 +72,31 @@ describe('useNitroPlayer', () => {
     });
 
     expect(result.current).toBe(playerInstance);
-    expect(playerInstance.replaceSourceAsync).toHaveBeenCalledWith(nextSource);
+    expect(playerInstance.replaceSourceAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        uri: nextSource.uri,
+        policy: 'auto',
+        identity: expect.objectContaining({
+          playbackKey: expect.any(String)
+        })
+      })
+    );
+  });
+
+  it('does not replace when a new source object has the same semantic identity', async () => {
+    const { useNitroPlayer } = require('../../../player/hooks/useNitroPlayer');
+
+    const { rerender } = renderHook(({ source }: { source: { uri: string; headers?: Record<string, string> } }) => useNitroPlayer(source), {
+      initialProps: {
+        source: { uri: 'https://cdn.example.com/video.mp4', headers: { 'X-Feed': 'home' } }
+      }
+    });
+
+    await act(async () => {
+      rerender({ source: { uri: 'https://cdn.example.com/video.mp4', headers: { 'X-Feed': 'home' } } });
+    });
+
+    expect(playerInstance.replaceSourceAsync).not.toHaveBeenCalled();
   });
 
   it('serializes replaceSourceAsync calls when source changes rapidly', async () => {
@@ -110,7 +134,7 @@ describe('useNitroPlayer', () => {
     });
 
     expect(playerInstance.replaceSourceAsync).toHaveBeenCalledTimes(1);
-    expect(playerInstance.replaceSourceAsync).toHaveBeenCalledWith(secondSource);
+    expect(playerInstance.replaceSourceAsync).toHaveBeenCalledWith(expect.objectContaining({ uri: secondSource.uri }));
 
     await act(async () => {
       rerender({ source: thirdSource });
@@ -125,7 +149,7 @@ describe('useNitroPlayer', () => {
     });
 
     expect(playerInstance.replaceSourceAsync).toHaveBeenCalledTimes(2);
-    expect(playerInstance.replaceSourceAsync).toHaveBeenLastCalledWith(thirdSource);
+    expect(playerInstance.replaceSourceAsync).toHaveBeenLastCalledWith(expect.objectContaining({ uri: thirdSource.uri }));
 
     await act(async () => {
       resolveSecondReplace?.();

@@ -1,10 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import {
   NitroPlayerView,
   usePlaybackState,
   type NitroPlayer,
-  type NitroPlayerViewRef,
 } from '@noma4i/nitro-play';
 import { SWAP_SOURCES } from '../scenarioModel';
 import {
@@ -16,6 +15,7 @@ import {
   styles,
   toErrorMessage,
   truncate,
+  usePlayerViewHandle,
 } from '../shared';
 
 const SCREEN_KEY = 'preload-race';
@@ -24,7 +24,6 @@ const SCREEN_KEY = 'preload-race';
 // replaceSourceAsync() before it resolves. The async preload promise resolving
 // after teardown is the generation-safety race this screen targets.
 export function PreloadRaceScreen() {
-  const viewRef = useRef<NitroPlayerViewRef | null>(null);
   const [player, setPlayer] = useState<NitroPlayer | null>(null);
   const [released, setReleased] = useState(false);
   const [preloadState, setPreloadState] = useState('idle');
@@ -33,6 +32,8 @@ export function PreloadRaceScreen() {
 
   const playbackState = usePlaybackState(player);
   const status = playbackState?.status ?? 'idle';
+  const handlePlayerChange = React.useCallback((nextPlayer: NitroPlayer | null) => setPlayer(nextPlayer), []);
+  const { viewRef, ref: playerViewRef } = usePlayerViewHandle({ onPlayerChange: handlePlayerChange });
 
   const pushLog = (line: string) => setLog(current => appendLog(current, line));
 
@@ -117,10 +118,7 @@ export function PreloadRaceScreen() {
           </View>
         ) : (
           <NitroPlayerView
-            ref={instance => {
-              viewRef.current = instance;
-              setPlayer(instance?.player ?? null);
-            }}
+            ref={playerViewRef}
             source={SWAP_SOURCES[0].source}
             playerDefaults={{ loop: true }}
             resizeMode="contain"

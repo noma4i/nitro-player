@@ -4,14 +4,15 @@ import type { IgnoreSilentSwitchMode } from './types/IgnoreSilentSwitchMode';
 import type { MemorySnapshot } from './types/MemorySnapshot';
 import type { MixAudioMode } from './types/MixAudioMode';
 import type { PlaybackState } from './types/PlaybackState';
-import type { NitroSourceConfig } from '../source/types/NitroPlayerConfig';
+import type { NitroSourceDescriptor, NitroSourceInput } from '../source/types/NitroPlayerConfig';
 import type { NitroPlayerBase } from './types/NitroPlayerBase';
 import type { NitroPlayerStatus } from './types/NitroPlayerStatus';
 import { NitroPlayerEvents } from './NitroPlayerEvents';
 declare class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     private _player;
+    private _source;
     protected get player(): NitroPlayerImpl;
-    constructor(source: NitroSourceConfig | NitroPlayerSource);
+    constructor(source: NitroSourceInput | NitroPlayerSource);
     /**
      * Releases the player's native resources and releases native state.
      * @internal
@@ -31,7 +32,7 @@ declare class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     private refreshMemorySize;
     private runSync;
     private runAsync;
-    get source(): NitroPlayerSource;
+    get source(): NitroSourceDescriptor | null;
     get status(): NitroPlayerStatus;
     get playbackState(): PlaybackState;
     get memorySnapshot(): MemorySnapshot;
@@ -72,7 +73,7 @@ declare class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     pause(): void;
     seekBy(time: number): void;
     seekTo(time: number): void;
-    replaceSourceAsync(source: NitroSourceConfig | NitroPlayerSource): Promise<void>;
+    replaceSourceAsync(source: NitroSourceInput): Promise<void>;
     clearSourceAsync(): Promise<void>;
 }
 export { NitroPlayer };

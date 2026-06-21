@@ -15,24 +15,22 @@ describe('Example App scenario model', () => {
   it('covers hero playback modes used by the lab', () => {
     expect(HERO_SOURCES.startupProxy.source).toEqual(
       expect.objectContaining({
-        startup: 'lazy',
-        transport: { mode: 'auto' },
-        retention: expect.objectContaining({ preload: 'metadata', offscreen: 'metadata', feedPoolEligible: true }),
+        policy: 'feed',
         preview: expect.objectContaining({ mode: 'always' }),
       })
     );
     expect(HERO_SOURCES.profileStream.source).toEqual(
       expect.objectContaining({
         headers: { 'X-Nitro-Scenario': 'profile-feed' },
-        transport: { mode: 'auto' },
+        policy: 'feed',
         preview: expect.objectContaining({ mode: 'listener' }),
       })
     );
     expect(HERO_SOURCES.directMp4.source).toEqual(
       expect.objectContaining({
-        startup: 'eager',
+        policy: 'thumbnail',
         transport: { mode: 'direct' },
-        retention: expect.objectContaining({ preload: 'buffered', offscreen: 'hot', feedPoolEligible: false }),
+        retention: expect.objectContaining({ preload: 'metadata', offscreen: 'hot', feedPoolEligible: false }),
         preview: expect.objectContaining({ mode: 'manual' }),
       })
     );
@@ -65,8 +63,8 @@ describe('Example App scenario model', () => {
 
     expect(active).toEqual(
       expect.objectContaining({
-        startup: 'eager',
-        retention: expect.objectContaining({ preload: 'metadata', offscreen: 'metadata', feedPoolEligible: true }),
+        policy: 'hero',
+        retention: expect.objectContaining({ preload: 'buffered', offscreen: 'hot', feedPoolEligible: true }),
         preview: expect.objectContaining({ mode: 'listener', maxWidth: 512, maxHeight: 512 }),
         metadata: expect.objectContaining({ title: 'Page 1 Home Stream', subtitle: 'page 1, row 1' }),
       })
@@ -74,7 +72,7 @@ describe('Example App scenario model', () => {
 
     expect(pooled).toEqual(
       expect.objectContaining({
-        startup: 'lazy',
+        policy: 'feed',
         headers: { 'X-Nitro-Scenario': 'topic-feed' },
         retention: expect.objectContaining({ preload: 'metadata', offscreen: 'metadata', trimDelayMs: 6000, feedPoolEligible: true }),
         preview: expect.objectContaining({ mode: 'listener' }),

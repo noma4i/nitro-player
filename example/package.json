@@ -9,7 +9,7 @@
     "android:device": "d=$(adb devices -l | grep 'usb:' | awk '{print $1}'); adb -s $d reverse --remove tcp:8081 2>/dev/null || true; adb -s $d reverse tcp:8081 tcp:8081 && react-native run-android",
     "android:emulator": "$ANDROID_HOME/emulator/emulator -avd Pixel_4a -no-snapshot-load & sleep 20 && react-native run-android",
     "ios": "react-native run-ios",
-    "ios:build": "xcodebuild -workspace ios/NitroPlayExample.xcworkspace -scheme NitroPlayExample -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=18.5' build",
+    "ios:build": "xcodebuild -workspace ios/NitroPlayExample.xcworkspace -scheme NitroPlayExample -configuration Debug -destination 'generic/platform=iOS Simulator' build",
     "ios:tunnel": "iproxy 8081 8081",
     "ios:device": "react-native run-ios --device",
     "lint": "eslint .",

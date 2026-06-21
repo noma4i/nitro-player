@@ -19,10 +19,10 @@ describe('sourceFactory', () => {
     fromNitroPlayerConfig.mockClear();
   });
 
-  it('passes raw source config to native factory without JS-side resolution', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+  it('applies safe auto policy defaults before reaching the native factory', () => {
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({
+    createNativeNitroSource({
       uri: 'https://cdn.example.com/video.mp4'
     });
 
@@ -30,18 +30,29 @@ describe('sourceFactory', () => {
       uri: 'https://cdn.example.com/video.mp4',
       headers: undefined,
       metadata: undefined,
-      startup: undefined,
+      startup: 'eager',
       buffer: undefined,
-      retention: undefined,
-      transport: undefined,
-      preview: undefined
+      retention: {
+        preload: 'buffered',
+        offscreen: 'metadata',
+        trimDelayMs: 10000,
+        feedPoolEligible: false
+      },
+      transport: { mode: 'auto' },
+      preview: {
+        mode: 'listener',
+        autoThumbnail: true,
+        maxWidth: 480,
+        maxHeight: 480,
+        quality: 70
+      }
     });
   });
 
   it('preserves explicit startup and retention config for native resolution', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({
+    createNativeNitroSource({
       uri: 'https://cdn.example.com/feed-item.mp4',
       startup: 'lazy',
       retention: {
@@ -65,10 +76,39 @@ describe('sourceFactory', () => {
     );
   });
 
-  it('maps buffer, transport and preview overrides', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+  it('expands feed policy into consumer-safe feed defaults', () => {
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({
+    createNativeNitroSource({
+      uri: 'https://cdn.example.com/feed-item.m3u8',
+      policy: 'feed'
+    });
+
+    expect(fromNitroPlayerConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        startup: 'lazy',
+        transport: { mode: 'auto' },
+        retention: {
+          preload: 'metadata',
+          offscreen: 'metadata',
+          trimDelayMs: 4000,
+          feedPoolEligible: true
+        },
+        preview: {
+          mode: 'listener',
+          autoThumbnail: true,
+          maxWidth: 512,
+          maxHeight: 512,
+          quality: 72
+        }
+      })
+    );
+  });
+
+  it('maps buffer, transport and preview overrides', () => {
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
+
+    createNativeNitroSource({
       uri: 'https://cdn.example.com/live.m3u8',
       startup: 'lazy',
       buffer: {
@@ -108,9 +148,9 @@ describe('sourceFactory', () => {
   });
 
   it('preserves the complete v2 source DSL for native source ownership', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({
+    createNativeNitroSource({
       uri: 'https://cdn.example.com/live.m3u8',
       headers: {
         Authorization: 'Bearer token',
@@ -188,9 +228,9 @@ describe('sourceFactory', () => {
   });
 
   it('supports React Native asset sources inside NitroSourceConfig', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({
+    createNativeNitroSource({
       uri: 42
     });
 
@@ -202,41 +242,41 @@ describe('sourceFactory', () => {
   });
 
   it('rejects an unknown startup value before reaching the native factory', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', startup: 'turbo' as never })).toThrow(/Invalid startup/);
+    expect(() => createNativeNitroSource({ uri: 'https://cdn.example.com/v.mp4', startup: 'turbo' as never })).toThrow(/Invalid startup/);
     expect(fromNitroPlayerConfig).not.toHaveBeenCalled();
   });
 
   it('rejects an unknown transport mode', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', transport: { mode: 'tunnel' as never } })).toThrow(/Invalid transport\.mode/);
+    expect(() => createNativeNitroSource({ uri: 'https://cdn.example.com/v.mp4', transport: { mode: 'tunnel' as never } })).toThrow(/Invalid transport\.mode/);
     expect(fromNitroPlayerConfig).not.toHaveBeenCalled();
   });
 
   it('rejects an unknown preview mode and retention preload level', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', preview: { mode: 'eager' as never } })).toThrow(/Invalid preview\.mode/);
-    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', retention: { preload: 'all' as never } })).toThrow(/Invalid retention\.preload/);
+    expect(() => createNativeNitroSource({ uri: 'https://cdn.example.com/v.mp4', preview: { mode: 'eager' as never } })).toThrow(/Invalid preview\.mode/);
+    expect(() => createNativeNitroSource({ uri: 'https://cdn.example.com/v.mp4', retention: { preload: 'all' as never } })).toThrow(/Invalid retention\.preload/);
   });
 
   it('rejects malformed nested source config before native factory ownership', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', metadata: 'title' as never })).toThrow(/Invalid metadata/);
-    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', buffer: ['fast'] as never })).toThrow(/Invalid buffer/);
-    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', retention: true as never })).toThrow(/Invalid retention/);
-    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', retention: { offscreen: 'warm' as never } })).toThrow(/Invalid retention\.offscreen/);
-    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', transport: 'proxy' as never })).toThrow(/Invalid transport/);
-    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', preview: 1 as never })).toThrow(/Invalid preview/);
+    expect(() => createNativeNitroSource({ uri: 'https://cdn.example.com/v.mp4', metadata: 'title' as never })).toThrow(/Invalid metadata/);
+    expect(() => createNativeNitroSource({ uri: 'https://cdn.example.com/v.mp4', buffer: ['fast'] as never })).toThrow(/Invalid buffer/);
+    expect(() => createNativeNitroSource({ uri: 'https://cdn.example.com/v.mp4', retention: true as never })).toThrow(/Invalid retention/);
+    expect(() => createNativeNitroSource({ uri: 'https://cdn.example.com/v.mp4', retention: { offscreen: 'warm' as never } })).toThrow(/Invalid retention\.offscreen/);
+    expect(() => createNativeNitroSource({ uri: 'https://cdn.example.com/v.mp4', transport: 'proxy' as never })).toThrow(/Invalid transport/);
+    expect(() => createNativeNitroSource({ uri: 'https://cdn.example.com/v.mp4', preview: 1 as never })).toThrow(/Invalid preview/);
     expect(fromNitroPlayerConfig).not.toHaveBeenCalled();
   });
 
   it('rejects a malformed headers shape', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', headers: ['x'] as never })).toThrow(/Invalid headers/);
+    expect(() => createNativeNitroSource({ uri: 'https://cdn.example.com/v.mp4', headers: ['x'] as never })).toThrow(/Invalid headers/);
   });
 });

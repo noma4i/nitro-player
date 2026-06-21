@@ -231,40 +231,6 @@ namespace margelo::nitro::video {
   }
 
   // Methods
-  std::shared_ptr<Promise<void>> JHybridNitroPlayerSpec::replaceSourceAsync(const std::shared_ptr<HybridNitroPlayerSourceSpec>& source) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<JHybridNitroPlayerSourceSpec::JavaPart> /* source */)>("replaceSourceAsync");
-    auto __result = method(_javaPart, std::dynamic_pointer_cast<JHybridNitroPlayerSourceSpec>(source)->getJavaPart());
-    return [&]() {
-      auto __promise = Promise<void>::create();
-      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
-        __promise->resolve();
-      });
-      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
-        jni::JniException __jniError(__throwable);
-        __promise->reject(std::make_exception_ptr(__jniError));
-      });
-      return __promise;
-    }();
-  }
-  std::shared_ptr<Promise<void>> JHybridNitroPlayerSpec::clearSourceAsync() {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("clearSourceAsync");
-    auto __result = method(_javaPart);
-    return [&]() {
-      auto __promise = Promise<void>::create();
-      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
-        __promise->resolve();
-      });
-      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
-        jni::JniException __jniError(__throwable);
-        __promise->reject(std::make_exception_ptr(__jniError));
-      });
-      return __promise;
-    }();
-  }
-  void JHybridNitroPlayerSpec::release() {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<void()>("release");
-    method(_javaPart);
-  }
   std::shared_ptr<Promise<void>> JHybridNitroPlayerSpec::initialize() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("initialize");
     auto __result = method(_javaPart);
@@ -310,6 +276,40 @@ namespace margelo::nitro::video {
   void JHybridNitroPlayerSpec::seekTo(double time) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(double /* time */)>("seekTo");
     method(_javaPart, time);
+  }
+  std::shared_ptr<Promise<void>> JHybridNitroPlayerSpec::replaceSourceAsync(const std::shared_ptr<HybridNitroPlayerSourceSpec>& source) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>(jni::alias_ref<JHybridNitroPlayerSourceSpec::JavaPart> /* source */)>("replaceSourceAsync");
+    auto __result = method(_javaPart, std::dynamic_pointer_cast<JHybridNitroPlayerSourceSpec>(source)->getJavaPart());
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  std::shared_ptr<Promise<void>> JHybridNitroPlayerSpec::clearSourceAsync() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JPromise::javaobject>()>("clearSourceAsync");
+    auto __result = method(_javaPart);
+    return [&]() {
+      auto __promise = Promise<void>::create();
+      __result->cthis()->addOnResolvedListener([=](const jni::alias_ref<jni::JObject>& /* unit */) {
+        __promise->resolve();
+      });
+      __result->cthis()->addOnRejectedListener([=](const jni::alias_ref<jni::JThrowable>& __throwable) {
+        jni::JniException __jniError(__throwable);
+        __promise->reject(std::make_exception_ptr(__jniError));
+      });
+      return __promise;
+    }();
+  }
+  void JHybridNitroPlayerSpec::release() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void()>("release");
+    method(_javaPart);
   }
 
 } // namespace margelo::nitro::video

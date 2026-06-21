@@ -1,4 +1,5 @@
 import { resolveSource } from '../source/resolveSource';
+import type { ResolvableSource } from '../source/resolveSource';
 import { createUnavailableWarner, getNativeStreamRuntime } from '../support/nativeStreamRuntime';
 import type { StreamCacheNativeModule, StreamCacheStats, StreamHeaders, StreamSourceCacheStats } from './types';
 
@@ -24,7 +25,7 @@ const isHlsManifestUrl = (uri: string): boolean => {
 class StreamCache {
   private readonly warnUnavailable = createUnavailableWarner('StreamCache');
 
-  async prefetch(source: { uri: string; headers?: StreamHeaders } | string, headers?: StreamHeaders): Promise<void> {
+  async prefetch(source: ResolvableSource, headers?: StreamHeaders): Promise<void> {
     if (!NativeStreamCache?.prefetchFirstSegment) {
       this.warnUnavailable();
       return;
@@ -42,7 +43,7 @@ class StreamCache {
     }
   }
 
-  async getStats(source?: { uri: string; headers?: StreamHeaders } | string, headers?: StreamHeaders): Promise<StreamCacheStats | StreamSourceCacheStats> {
+  async getStats(source?: ResolvableSource, headers?: StreamHeaders): Promise<StreamCacheStats | StreamSourceCacheStats> {
     if (typeof source === 'undefined') {
       if (!NativeStreamCache?.getCacheStats) {
         this.warnUnavailable();

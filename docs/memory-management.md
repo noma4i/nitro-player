@@ -1,17 +1,18 @@
 # Memory Management
 
-NitroPlay memory policy is driven by `source.retention` and the native feed coordinator.
+NitroPlay memory policy is driven by source policy defaults, advanced
+`retention` overrides, and native resource coordinators.
 
-## Public contract
+## Public Contract
 
-| Field | Location | Purpose |
-| --- | --- | --- |
-| `retention.preload` | `NitroSourceConfig.retention` | Initial preload depth |
-| `retention.offscreen` | `NitroSourceConfig.retention` | Offscreen retention level |
-| `retention.trimDelayMs` | `NitroSourceConfig.retention` | Delayed trim window |
-| `retention.feedPoolEligible` | `NitroSourceConfig.retention` | Feed pool participation |
+| Surface | Purpose |
+| --- | --- |
+| `source.policy` | Consumer scenario defaults (`auto`, `feed`, `hero`, `thumbnail`, `manual`) |
+| `source.retention` | Advanced override for preload/offscreen/trim/feed pool |
+| `player.memorySnapshot` | Current native player/source footprint |
+| `prepareSource()` | Stable playback/request/preview identity |
 
-## Retention states
+## Retention States
 
 | State | Meaning |
 | --- | --- |
@@ -31,32 +32,23 @@ NitroPlay memory policy is driven by `source.retention` and the native feed coor
 | `isAttachedToView` | Bound to a native view |
 | `isPlaying` | Currently playing |
 
-## Feed coordinator
+## Native Coordinator
 
 | Rule | Behavior |
 | --- | --- |
-| Opt-in | Only `retention.feedPoolEligible=true` sources join the pool |
-| Protection | Attached, playing, or warming players are protected |
-| Trimming | Eviction trims player state without killing the whole shared runtime |
-| Shared services | Stream cache, proxy runtime, and preview runtime are not owned by feed trimming |
+| Weak registries | Dead views/players are pruned during rebalancing |
+| Feed pool | `feed`/eligible sources join a bounded hot set |
+| Protection | Visible, playing, play-intent, fullscreen, and external playback stay hot |
+| Offscreen trim | Detached idle players trim after policy delay |
+| Memory pressure | iOS memory warning / Android trim-memory trims unpinned players cold |
+| Shared runtimes | Stream cache, proxy runtime, and preview runtime are not owned by player trim |
 
-## Operational rules
+## Operational Rules
 
 | Case | Expected behavior |
 | --- | --- |
-| `replaceSourceAsync()` | Old source generation cannot rehydrate the new one |
+| Same semantic source | No native source replacement |
+| `replaceSourceAsync()` | Old generation cannot rehydrate the new one |
 | `clearSourceAsync()` | Player returns to reusable idle state |
 | `release()` | Late callbacks and pending work are discarded |
-| Preview generation | Must not affect retention state or playback status |
-
-Memory policy is explicit now. If a screen needs special behavior, set `retention` directly on the source instead of relying on hidden presets.
-
-## What shared runtimes are not trimmed
-
-| Runtime | Ownership |
-| --- | --- |
-| Stream transport runtime | Process-wide singleton |
-| Stream cache | Process-wide singleton |
-| Preview runtime | Process-wide singleton |
-
-Feed trimming can evict player/session state, but it must not tear down these shared runtimes for neighboring players.
+| Preview generation | Does not affect retention state or playback status |

@@ -6,16 +6,18 @@ import type { IgnoreSilentSwitchMode } from './types/IgnoreSilentSwitchMode';
 import type { MemorySnapshot } from './types/MemorySnapshot';
 import type { MixAudioMode } from './types/MixAudioMode';
 import type { PlaybackState } from './types/PlaybackState';
-import type { NitroSourceConfig } from '../source/types/NitroPlayerConfig';
+import type { NitroSourceDescriptor, NitroSourceInput } from '../source/types/NitroPlayerConfig';
 import { tryParseNativeNitroPlayerError, NitroPlayerRuntimeError } from '../support/errors/NitroPlayerError';
 import type { NitroPlayerBase } from './types/NitroPlayerBase';
 import type { NitroPlayerStatus } from './types/NitroPlayerStatus';
 import { createPlayer } from './playerFactory';
-import { createNitroSource } from '../source/sourceFactory';
+import { createNativeNitroSource } from '../source/sourceFactory';
+import { prepareSource } from '../source/prepareSource';
 import { NitroPlayerEvents } from './NitroPlayerEvents';
 
 class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
   private _player: NitroPlayerImpl | undefined;
+  private _source: NitroSourceDescriptor | null;
 
   protected get player(): NitroPlayerImpl {
     if (this._player === undefined) {
@@ -25,13 +27,13 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     return this._player;
   }
 
-  constructor(source: NitroSourceConfig | NitroPlayerSource) {
-    const hybridSource = createNitroSource(source);
-    const player = createPlayer(hybridSource);
+  constructor(source: NitroSourceInput | NitroPlayerSource) {
+    const player = createPlayer(source);
 
     // Initialize events
     super(player.eventEmitter);
     this._player = player;
+    this._source = prepareSource(source);
   }
 
   /**
@@ -108,8 +110,9 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
   }
 
   // Source
-  get source(): NitroPlayerSource {
-    return this.player.source;
+  get source(): NitroSourceDescriptor | null {
+    this.player;
+    return this._source;
   }
 
   // Status
@@ -272,15 +275,22 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     this.runSync(() => this.player.seekTo(time));
   }
 
-  async replaceSourceAsync(source: NitroSourceConfig | NitroPlayerSource): Promise<void> {
+  async replaceSourceAsync(source: NitroSourceInput): Promise<void> {
+    const nextSource = prepareSource(source);
+    if (this._source?.identity.playbackKey === nextSource.identity.playbackKey) {
+      return;
+    }
+
     this.refreshMemorySize();
-    await this.runAsync(() => this.player.replaceSourceAsync(createNitroSource(source)));
+    await this.runAsync(() => this.player.replaceSourceAsync(createNativeNitroSource(nextSource)));
+    this._source = nextSource;
     this.refreshMemorySize();
   }
 
   async clearSourceAsync(): Promise<void> {
     this.refreshMemorySize();
     await this.runAsync(() => this.player.clearSourceAsync());
+    this._source = null;
     this.refreshMemorySize();
   }
 }

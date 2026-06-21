@@ -1,9 +1,9 @@
 /**
  * Source contract tests.
  *
- * These tests lock the v2 JS -> native config boundary:
- * JS must forward the explicit source DSL without lifecycle presets,
- * hidden fallback fields, or transport-side mutation.
+ * These tests lock the JS -> native config boundary:
+ * JS expands consumer policies into safe native defaults, forwards explicit
+ * overrides, and never mutates playback routes on the JS side.
  */
 
 const mockPreload = jest.fn(() => Promise.resolve());
@@ -84,23 +84,23 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe('source factory: v2 passthrough contract', () => {
+describe('source factory: policy expansion contract', () => {
   const STARTUP_VALUES = ['eager', 'lazy'] as const;
   const TRANSPORT_VALUES = ['auto', 'direct', 'proxy'] as const;
   const PREVIEW_VALUES = ['listener', 'always', 'manual'] as const;
 
   it.each(STARTUP_VALUES)('passes startup=%s directly to native', startup => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({ uri: 'https://cdn.example.com/stream.m3u8', startup });
+    createNativeNitroSource({ uri: 'https://cdn.example.com/stream.m3u8', startup });
 
     expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(expect.objectContaining({ startup }));
   });
 
   it.each(TRANSPORT_VALUES)('passes transport.mode=%s directly to native', mode => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({
+    createNativeNitroSource({
       uri: 'https://cdn.example.com/stream.m3u8',
       transport: { mode }
     });
@@ -113,39 +113,39 @@ describe('source factory: v2 passthrough contract', () => {
   });
 
   it.each(PREVIEW_VALUES)('passes preview.mode=%s directly to native', mode => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({
+    createNativeNitroSource({
       uri: 'https://cdn.example.com/video.mp4',
       preview: { mode }
     });
 
     expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        preview: { mode }
+        preview: expect.objectContaining({ mode })
       })
     );
   });
 
   it('passes preview.autoThumbnail directly to native', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({
+    createNativeNitroSource({
       uri: 'https://cdn.example.com/video.mp4',
       preview: { autoThumbnail: false }
     });
 
     expect(mockFromNitroPlayerConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        preview: { autoThumbnail: false }
+        preview: expect.objectContaining({ autoThumbnail: false })
       })
     );
   });
 
-  it('passes explicit retention policy to native without JS-side preset resolution', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+  it('passes explicit retention policy to native over policy defaults', () => {
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({
+    createNativeNitroSource({
       uri: 'https://cdn.example.com/feed-item.m3u8',
       retention: {
         preload: 'metadata',
@@ -167,17 +167,28 @@ describe('source factory: v2 passthrough contract', () => {
     );
   });
 
-  it('defaults to undefined for all optional v2 fields so native owns defaults', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+  it('defaults to safe auto policy fields for consumer ergonomics', () => {
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({ uri: 'https://cdn.example.com/video.mp4' });
+    createNativeNitroSource({ uri: 'https://cdn.example.com/video.mp4' });
 
     const config = mockFromNitroPlayerConfig.mock.calls[0][0];
-    expect(config.startup).toBeUndefined();
+    expect(config.startup).toBe('eager');
     expect(config.buffer).toBeUndefined();
-    expect(config.retention).toBeUndefined();
-    expect(config.transport).toBeUndefined();
-    expect(config.preview).toBeUndefined();
+    expect(config.retention).toEqual({
+      preload: 'buffered',
+      offscreen: 'metadata',
+      trimDelayMs: 10000,
+      feedPoolEligible: false
+    });
+    expect(config.transport).toEqual({ mode: 'auto' });
+    expect(config.preview).toEqual({
+      mode: 'listener',
+      autoThumbnail: true,
+      maxWidth: 480,
+      maxHeight: 480,
+      quality: 70
+    });
     expect(config.headers).toBeUndefined();
     expect(config.metadata).toBeUndefined();
   });
@@ -185,18 +196,18 @@ describe('source factory: v2 passthrough contract', () => {
 
 describe('source factory: route ownership stays native', () => {
   it('does NOT modify HLS URLs on JS side', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({ uri: 'https://cdn.example.com/live.m3u8' });
+    createNativeNitroSource({ uri: 'https://cdn.example.com/live.m3u8' });
 
     const config = mockFromNitroPlayerConfig.mock.calls[0][0];
     expect(config.uri).toBe('https://cdn.example.com/live.m3u8');
   });
 
   it('does NOT modify non-HLS URLs on JS side', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({ uri: 'https://cdn.example.com/video.mp4' });
+    createNativeNitroSource({ uri: 'https://cdn.example.com/video.mp4' });
 
     const config = mockFromNitroPlayerConfig.mock.calls[0][0];
     expect(config.uri).toBe('https://cdn.example.com/video.mp4');
@@ -205,9 +216,9 @@ describe('source factory: route ownership stays native', () => {
 
 describe('source factory: native config structure', () => {
   it('NativeNitroPlayerConfig has exactly the expected v2 fields', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
-    createNitroSource({
+    createNativeNitroSource({
       uri: 'https://cdn.example.com/v.mp4',
       headers: { Authorization: 'Bearer xxx' },
       metadata: { title: 'Test' },
@@ -224,7 +235,7 @@ describe('source factory: native config structure', () => {
   });
 
   it('does NOT pass removed legacy fields to native', () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
 
     const configWithLegacyFields = {
       uri: 'https://cdn.example.com/v.mp4',
@@ -236,7 +247,7 @@ describe('source factory: native config structure', () => {
       useHlsProxy: true,
       bufferConfig: { minBufferMs: 5000 }
     };
-    createNitroSource(configWithLegacyFields as { uri: string });
+    createNativeNitroSource(configWithLegacyFields as { uri: string });
 
     const config = mockFromNitroPlayerConfig.mock.calls[0][0];
     expect(config).not.toHaveProperty('lifecycle');

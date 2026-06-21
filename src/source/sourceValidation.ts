@@ -6,6 +6,7 @@ const VALID_PRELOAD: ReadonlySet<string> = new Set(['none', 'metadata', 'buffere
 const VALID_OFFSCREEN: ReadonlySet<string> = new Set(['cold', 'metadata', 'hot']);
 const VALID_TRANSPORT_MODE: ReadonlySet<string> = new Set(['auto', 'direct', 'proxy']);
 const VALID_PREVIEW_MODE: ReadonlySet<string> = new Set(['listener', 'always', 'manual']);
+const VALID_POLICY: ReadonlySet<string> = new Set(['auto', 'feed', 'hero', 'thumbnail', 'manual']);
 
 const assertEnum = (value: unknown, valid: ReadonlySet<string>, field: string): void => {
   if (value !== undefined && (typeof value !== 'string' || !valid.has(value))) {
@@ -20,6 +21,7 @@ const assertObject = (value: unknown, field: string): void => {
 };
 
 export const validateSourceConfig = (config: NitroSourceConfig): void => {
+  assertEnum(config.policy, VALID_POLICY, 'policy');
   assertEnum(config.startup, VALID_STARTUP, 'startup');
   assertObject(config.headers, 'headers');
   assertObject(config.metadata, 'metadata');

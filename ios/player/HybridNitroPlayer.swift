@@ -9,7 +9,7 @@ import AVFoundation
 import Foundation
 import NitroModules
 
-class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec {
+class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecked Sendable {
   struct FirstFrameContext {
     let sourceUri: String
     let headers: [String: String]?

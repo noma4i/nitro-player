@@ -850,4 +850,8 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   internal fun trimForFeedHotPool() {
     lifecycle.trimForFeedHotPool()
   }
+
+  internal fun trimForResourcePressure() {
+    lifecycle.trimForResourcePressure()
+  }
 }

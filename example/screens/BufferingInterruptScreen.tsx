@@ -1,11 +1,10 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import {
   NitroPlayerView,
   useEvent,
   usePlaybackState,
   type NitroPlayer,
-  type NitroPlayerViewRef,
   type PlaybackError,
 } from '@noma4i/nitro-play';
 import { LONG_HLS_SOURCE } from '../scenarioModel';
@@ -19,6 +18,7 @@ import {
   styles,
   toErrorMessage,
   truncate,
+  usePlayerViewHandle,
 } from '../shared';
 
 const SCREEN_KEY = 'buffer-interrupt';
@@ -27,7 +27,6 @@ const SCREEN_KEY = 'buffer-interrupt';
 // or clearSourceAsync() (and a play-then-immediately-release combo) while it is
 // still buffering. Exercises the buffering -> teardown emit-after-release path.
 export function BufferingInterruptScreen() {
-  const viewRef = useRef<NitroPlayerViewRef | null>(null);
   const [player, setPlayer] = useState<NitroPlayer | null>(null);
   const [released, setReleased] = useState(false);
   const [lastError, setLastError] = useState('none');
@@ -35,6 +34,8 @@ export function BufferingInterruptScreen() {
 
   const playbackState = usePlaybackState(player);
   const status = playbackState?.status ?? 'idle';
+  const handlePlayerChange = React.useCallback((nextPlayer: NitroPlayer | null) => setPlayer(nextPlayer), []);
+  const { viewRef, ref: playerViewRef } = usePlayerViewHandle({ onPlayerChange: handlePlayerChange });
 
   const pushLog = (line: string) => setLog(current => appendLog(current, line));
 
@@ -116,10 +117,7 @@ export function BufferingInterruptScreen() {
           </View>
         ) : (
           <NitroPlayerView
-            ref={instance => {
-              viewRef.current = instance;
-              setPlayer(instance?.player ?? null);
-            }}
+            ref={playerViewRef}
             source={LONG_HLS_SOURCE}
             playerDefaults={{ loop: true }}
             resizeMode="contain"

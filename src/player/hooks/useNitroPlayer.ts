@@ -1,19 +1,21 @@
 import { useEffect, useRef } from 'react';
 import type { NitroPlayerSource } from '../../bridge/nitro/NitroPlayerSource.nitro';
-import type { NitroSourceConfig } from '../../source/types/NitroPlayerConfig';
+import type { NitroSourceInput } from '../../source/types/NitroPlayerConfig';
 import { NitroPlayer } from '../NitroPlayer';
 import { useManagedInstance } from '../../support/useManagedInstance';
+import { prepareSource } from '../../source/prepareSource';
 
 /**
  * Creates a `NitroPlayer` instance and manages its lifecycle.
  * @param source - The source of the video to play
  * @returns The `NitroPlayer` instance
  */
-export const useNitroPlayer = (source: NitroSourceConfig | NitroPlayerSource) => {
+export const useNitroPlayer = (source: NitroSourceInput | NitroPlayerSource) => {
+  const preparedSource = prepareSource(source);
   const player = useManagedInstance(
     {
       factory: () => {
-        return new NitroPlayer(source);
+        return new NitroPlayer(preparedSource);
       },
       cleanup: player => {
         player.__destroy();
@@ -22,16 +24,16 @@ export const useNitroPlayer = (source: NitroSourceConfig | NitroPlayerSource) =>
     []
   );
 
-  const previousSourceRef = useRef(source);
+  const previousSourceRef = useRef(preparedSource);
   const replaceQueueRef = useRef<Promise<void>>(Promise.resolve());
   const sourceUpdateIdRef = useRef(0);
 
   useEffect(() => {
-    if (previousSourceRef.current === source) {
+    if (previousSourceRef.current.identity.playbackKey === preparedSource.identity.playbackKey) {
       return;
     }
 
-    previousSourceRef.current = source;
+    previousSourceRef.current = preparedSource;
 
     const updateId = ++sourceUpdateIdRef.current;
     let isActive = true;
@@ -42,7 +44,7 @@ export const useNitroPlayer = (source: NitroSourceConfig | NitroPlayerSource) =>
           return;
         }
 
-        return player.replaceSourceAsync(source);
+        return player.replaceSourceAsync(preparedSource);
       })
       .catch(error => {
         if (isActive && sourceUpdateIdRef.current === updateId) {
@@ -53,7 +55,7 @@ export const useNitroPlayer = (source: NitroSourceConfig | NitroPlayerSource) =>
     return () => {
       isActive = false;
     };
-  }, [player, source]);
+  }, [player, preparedSource]);
 
   return player;
 };

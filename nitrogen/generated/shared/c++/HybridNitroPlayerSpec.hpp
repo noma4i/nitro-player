@@ -97,15 +97,15 @@ namespace margelo::nitro::video {
 
     public:
       // Methods
-      virtual std::shared_ptr<Promise<void>> replaceSourceAsync(const std::shared_ptr<HybridNitroPlayerSourceSpec>& source) = 0;
-      virtual std::shared_ptr<Promise<void>> clearSourceAsync() = 0;
-      virtual void release() = 0;
       virtual std::shared_ptr<Promise<void>> initialize() = 0;
       virtual std::shared_ptr<Promise<void>> preload() = 0;
       virtual void play() = 0;
       virtual void pause() = 0;
       virtual void seekBy(double time) = 0;
       virtual void seekTo(double time) = 0;
+      virtual std::shared_ptr<Promise<void>> replaceSourceAsync(const std::shared_ptr<HybridNitroPlayerSourceSpec>& source) = 0;
+      virtual std::shared_ptr<Promise<void>> clearSourceAsync() = 0;
+      virtual void release() = 0;
 
     protected:
       // Hybrid Setup

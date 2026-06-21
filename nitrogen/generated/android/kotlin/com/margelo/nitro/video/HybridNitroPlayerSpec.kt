@@ -127,18 +127,6 @@ abstract class HybridNitroPlayerSpec: HybridObject() {
   // Methods
   @DoNotStrip
   @Keep
-  abstract fun replaceSourceAsync(source: HybridNitroPlayerSourceSpec): Promise<Unit>
-  
-  @DoNotStrip
-  @Keep
-  abstract fun clearSourceAsync(): Promise<Unit>
-  
-  @DoNotStrip
-  @Keep
-  abstract fun release(): Unit
-  
-  @DoNotStrip
-  @Keep
   abstract fun initialize(): Promise<Unit>
   
   @DoNotStrip
@@ -160,6 +148,18 @@ abstract class HybridNitroPlayerSpec: HybridObject() {
   @DoNotStrip
   @Keep
   abstract fun seekTo(time: Double): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun replaceSourceAsync(source: HybridNitroPlayerSourceSpec): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun clearSourceAsync(): Promise<Unit>
+  
+  @DoNotStrip
+  @Keep
+  abstract fun release(): Unit
 
   // Default implementation of `HybridObject.toString()`
   override fun toString(): String {

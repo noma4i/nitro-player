@@ -4,7 +4,6 @@ import {
   NitroPlayerView,
   usePlaybackState,
   type NitroPlayer,
-  type NitroPlayerViewRef,
 } from '@noma4i/nitro-play';
 import { SWAP_SOURCES } from '../scenarioModel';
 import {
@@ -17,6 +16,7 @@ import {
   styles,
   toErrorMessage,
   truncate,
+  usePlayerViewHandle,
 } from '../shared';
 
 const SCREEN_KEY = 'source-swap';
@@ -26,7 +26,6 @@ const RAPID_SWAP_COUNT = 10;
 // replaceSourceAsync between two HERO sources, including a rapid x10 loop while
 // playing. replaceSourceAsync mid-playback is a generation-safety crash vector.
 export function SourceSwapStressScreen() {
-  const viewRef = useRef<NitroPlayerViewRef | null>(null);
   const [player, setPlayer] = useState<NitroPlayer | null>(null);
   const [sourceIndex, setSourceIndex] = useState(0);
   const [swaps, setSwaps] = useState(0);
@@ -38,6 +37,8 @@ export function SourceSwapStressScreen() {
   const playbackState = usePlaybackState(player);
   const status = playbackState?.status ?? 'idle';
   const activeSource = SWAP_SOURCES[sourceIndex];
+  const handlePlayerChange = React.useCallback((nextPlayer: NitroPlayer | null) => setPlayer(nextPlayer), []);
+  const { viewRef, ref: playerViewRef } = usePlayerViewHandle({ onPlayerChange: handlePlayerChange });
 
   const pushLog = (line: string) => setLog(current => appendLog(current, line));
 
@@ -124,10 +125,7 @@ export function SourceSwapStressScreen() {
         </View>
 
         <NitroPlayerView
-          ref={instance => {
-            viewRef.current = instance;
-            setPlayer(instance?.player ?? null);
-          }}
+          ref={playerViewRef}
           source={activeSource.source}
           playerDefaults={{ loop: true }}
           resizeMode="contain"

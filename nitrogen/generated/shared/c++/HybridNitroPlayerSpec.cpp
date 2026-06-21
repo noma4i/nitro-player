@@ -43,15 +43,15 @@ namespace margelo::nitro::video {
       prototype.registerHybridGetter("isPlaying", &HybridNitroPlayerSpec::getIsPlaying);
       prototype.registerHybridGetter("isBuffering", &HybridNitroPlayerSpec::getIsBuffering);
       prototype.registerHybridGetter("isVisualReady", &HybridNitroPlayerSpec::getIsVisualReady);
-      prototype.registerHybridMethod("replaceSourceAsync", &HybridNitroPlayerSpec::replaceSourceAsync);
-      prototype.registerHybridMethod("clearSourceAsync", &HybridNitroPlayerSpec::clearSourceAsync);
-      prototype.registerHybridMethod("release", &HybridNitroPlayerSpec::release);
       prototype.registerHybridMethod("initialize", &HybridNitroPlayerSpec::initialize);
       prototype.registerHybridMethod("preload", &HybridNitroPlayerSpec::preload);
       prototype.registerHybridMethod("play", &HybridNitroPlayerSpec::play);
       prototype.registerHybridMethod("pause", &HybridNitroPlayerSpec::pause);
       prototype.registerHybridMethod("seekBy", &HybridNitroPlayerSpec::seekBy);
       prototype.registerHybridMethod("seekTo", &HybridNitroPlayerSpec::seekTo);
+      prototype.registerHybridMethod("replaceSourceAsync", &HybridNitroPlayerSpec::replaceSourceAsync);
+      prototype.registerHybridMethod("clearSourceAsync", &HybridNitroPlayerSpec::clearSourceAsync);
+      prototype.registerHybridMethod("release", &HybridNitroPlayerSpec::release);
     });
   }
 

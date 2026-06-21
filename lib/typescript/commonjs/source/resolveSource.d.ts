@@ -1,8 +1,9 @@
 import type { StreamHeaders } from '../streaming/types';
-export type ResolvableSource = {
+import type { NitroSourceInput } from './types/NitroPlayerConfig';
+export type ResolvableSource = NitroSourceInput | {
     uri: string;
     headers?: StreamHeaders;
-} | string;
+};
 /**
  * Normalizes a string-or-object source into `{ uri, headers }`. Shared by
  * streamCache and videoPreview so both resolve sources identically.

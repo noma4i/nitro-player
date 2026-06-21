@@ -5,7 +5,7 @@ import type { ListenerSubscription } from '../bridge/nitro/NitroPlayerEventEmitt
 import type { SurfaceType, NitroPlayerViewManager, NitroPlayerViewManagerFactory } from '../bridge/nitro/NitroPlayerViewManager.nitro';
 import { type NitroPlayerViewEvents } from './events';
 import type { ResizeMode } from './types/ResizeMode';
-import type { NitroSourceConfig } from '../source/types/NitroPlayerConfig';
+import type { NitroSourceInput } from '../source/types/NitroPlayerConfig';
 import type { NitroPlayerDefaults } from '../player/types/NitroPlayerDefaults';
 import { tryParseNativeNitroPlayerError, NitroPlayerComponentError, NitroPlayerError } from '../support/errors/NitroPlayerError';
 import { NitroPlayer } from '../player/NitroPlayer';
@@ -13,7 +13,7 @@ import { useNitroPlayer } from '../player/hooks/useNitroPlayer';
 import { NativeNitroPlayerView } from './NativeNitroPlayerView';
 
 export interface NitroPlayerViewProps extends Partial<NitroPlayerViewEvents>, ViewProps {
-  source: NitroSourceConfig;
+  source: NitroSourceInput;
   playerDefaults?: NitroPlayerDefaults;
   style?: ViewStyle;
   controls?: boolean;
@@ -246,3 +246,4 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
 NitroPlayerView.displayName = 'NitroPlayerView';
 
 export default React.memo(NitroPlayerView);
+export const NitroVideo = React.memo(NitroPlayerView);

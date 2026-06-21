@@ -46,6 +46,13 @@ class NitroPlayerManager {
       name: UIApplication.willEnterForegroundNotification,
       object: nil
     )
+
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(applicationDidReceiveMemoryWarning(notification:)),
+      name: UIApplication.didReceiveMemoryWarningNotification,
+      object: nil
+    )
   }
 
   deinit {
@@ -139,6 +146,16 @@ class NitroPlayerManager {
       }
       player.wasAutoPaused = false
     }
+  }
+
+  @objc func applicationDidReceiveMemoryWarning(notification: Notification) {
+    for player in players.allObjects {
+      player.trimForResourcePressure()
+    }
+    feedHotActivity = feedHotActivity.filter { id, _ in
+      players.allObjects.contains { ObjectIdentifier($0) == id }
+    }
+    rebalanceFeedHotPlayers()
   }
 
   private func rebalanceFeedHotPlayers() {

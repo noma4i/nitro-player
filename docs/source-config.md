@@ -5,15 +5,28 @@
 | Field       | Type                         | Default        | Purpose                                                                                     |
 | ----------- | ---------------------------- | -------------- | ------------------------------------------------------------------------------------------- |
 | `uri`       | `string \| number`           | required       | Network URL, local `file://` URI, absolute local file path, or React Native asset reference |
+| `policy`    | `auto \| feed \| hero \| thumbnail \| manual` | `auto` | Consumer scenario defaults |
 | `headers`   | `Record<string, string>`     | none           | Request headers                                                                             |
 | `metadata`  | `NitroSourceMetadata`        | none           | Player-facing media metadata                                                                |
-| `startup`   | `'eager' \| 'lazy'`          | native default | Startup strategy                                                                            |
-| `buffer`    | `BufferConfig`               | none           | Explicit buffering policy                                                                   |
-| `retention` | `NitroSourceRetentionConfig` | none           | Preload, offscreen retention, trim policy                                                   |
-| `transport` | `NitroSourceTransportConfig` | none           | Transport routing policy                                                                    |
-| `preview`   | `NitroSourcePreviewConfig`   | none           | First-frame generation policy                                                               |
+| `startup`   | `'eager' \| 'lazy'`          | policy default | Advanced startup override                                                                   |
+| `buffer`    | `BufferConfig`               | policy default | Advanced buffering override                                                                 |
+| `retention` | `NitroSourceRetentionConfig` | policy default | Advanced memory/lifecycle override                                                         |
+| `transport` | `NitroSourceTransportConfig` | policy default | Advanced stream routing override                                                           |
+| `preview`   | `NitroSourcePreviewConfig`   | policy default | Advanced first-frame override                                                               |
 
-Public DSL accepts `NitroSourceConfig` or a pre-created `NitroPlayerSource`. String and number public shorthands are not supported outside the `uri` field.
+Public surfaces accept `NitroSourceInput`: URL string, RN asset number,
+`NitroSourceConfig`, or a `prepareSource()` descriptor. Native hybrid source
+objects are internal bridge details.
+
+## Policies
+
+| Policy | Startup | Retention | Preview | Use case |
+| --- | --- | --- | --- | --- |
+| `auto` | eager | buffered, metadata offscreen | listener | Default balanced player |
+| `feed` | lazy | metadata, bounded hot pool | listener | Scrolling feeds |
+| `hero` | eager | buffered, hot offscreen | always | Primary/long-form player |
+| `thumbnail` | lazy | no preload, cold offscreen | manual | Preview/cache workflows |
+| `manual` | none | none | none | Consumer owns advanced knobs |
 
 ## Runtime defaults
 
@@ -27,7 +40,8 @@ Public DSL accepts `NitroSourceConfig` or a pre-created `NitroPlayerSource`. Str
 | `preview.maxHeight`     | `480`             |
 | `preview.quality`       | `70`              |
 
-Unset `buffer` and `retention` fields are left to native defaults. JS does not expand them into hidden preset values.
+Policy defaults are expanded in JS before native source creation. Explicit
+fields override the selected policy.
 
 ## `NitroSourceMetadata`
 
@@ -77,14 +91,7 @@ All fields are optional. Omit any field you do not need.
 ```ts
 const source = {
   uri: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-  startup: 'lazy',
-  transport: { mode: 'auto' },
-  retention: {
-    preload: 'metadata',
-    offscreen: 'metadata',
-    trimDelayMs: 4000,
-    feedPoolEligible: true
-  },
+  policy: 'feed',
   preview: { mode: 'listener' }
 };
 ```
@@ -98,8 +105,7 @@ const source = {
     Authorization: 'Bearer alpha',
     'X-Variant': 'alpha'
   },
-  startup: 'lazy',
-  transport: { mode: 'auto' },
+  policy: 'feed',
   preview: {
     mode: 'always',
     autoThumbnail: true,
@@ -115,9 +121,9 @@ const source = {
 ```ts
 const source = {
   uri: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-  startup: 'eager',
+  policy: 'thumbnail',
   transport: { mode: 'direct' },
-  retention: { preload: 'buffered', offscreen: 'hot' },
+  retention: { offscreen: 'hot' },
   preview: { mode: 'manual', autoThumbnail: false }
 };
 ```
@@ -129,15 +135,16 @@ const source = {
 | `{ uri }`          | Canonical identity for direct/basic sources                     |
 | `{ uri, headers }` | Canonical identity for stream cache stats and preview artifacts |
 | `preview profile`  | Part of preview identity, not stream-cache identity             |
+| `policy/config`    | Part of playback identity used by `useNitroPlayer`              |
 
-## `NitroPlayerSource`
+## Public source helpers
 
 | API                          | Purpose                                            |
 | ---------------------------- | -------------------------------------------------- |
-| `createNitroSource(config)`  | Canonical factory for reusable source objects      |
-| `player.source`              | Native source currently bound to the player        |
-| `replaceSourceAsync(source)` | Accepts `NitroSourceConfig` or `NitroPlayerSource` |
+| `prepareSource(input)`       | Immutable public descriptor with stable identities |
+| `player.source`              | Current public descriptor, or `null` after clear   |
+| `replaceSourceAsync(source)` | Accepts `NitroSourceInput`                         |
 
-JS forwards this config as-is to native normalization. It does not rewrite HLS URLs, resolve transport, or expand retention presets.
+JS does not rewrite HLS URLs or resolve proxy transport. Route ownership stays native.
 
 For local media, native normalization accepts absolute filesystem paths on both platforms and converts them to canonical `file://` URLs internally. Application code should still prefer `file://` when it creates recorded-media objects itself.

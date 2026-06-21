@@ -18,7 +18,7 @@ jest.mock('react-native-nitro-modules', () => ({
 }));
 
 jest.mock('../../../source/sourceFactory', () => ({
-  createNitroSource: jest.fn(() => ({ id: 'source' }))
+  createNativeNitroSource: jest.fn(() => ({ id: 'source' }))
 }));
 
 jest.mock('../../../player/playerFactory', () => ({
@@ -340,13 +340,13 @@ describe('NitroPlayer async methods', () => {
   });
 
   it('replaceSourceAsync(source) creates source and calls native', async () => {
-    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { createNativeNitroSource } = require('../../../source/sourceFactory');
     const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     await player.replaceSourceAsync({ uri: 'https://cdn.example.com/video2.mp4' });
 
-    expect(createNitroSource).toHaveBeenCalled();
+    expect(createNativeNitroSource).toHaveBeenCalled();
     expect(nativeReplaceSourceAsync).toHaveBeenCalledTimes(1);
   });
 

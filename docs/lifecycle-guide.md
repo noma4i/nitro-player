@@ -1,6 +1,20 @@
 # Retention Guide
 
-NitroPlay no longer uses lifecycle presets. Resource ownership is controlled by explicit `startup` and `retention` fields on each source.
+NitroPlay exposes consumer policies first and keeps low-level lifecycle knobs as
+advanced overrides.
+
+## Policies
+
+| Policy | Startup | Retention | Use case |
+| --- | --- | --- | --- |
+| `auto` | eager | buffered preload, metadata offscreen | Default player |
+| `feed` | lazy | metadata preload, bounded hot pool | Scrolling feeds |
+| `hero` | eager | buffered preload, hot offscreen | Primary player |
+| `thumbnail` | lazy | no preload, cold offscreen | Preview/cache only |
+| `manual` | explicit | explicit | Consumer-owned lifecycle |
+
+Explicit `startup`, `retention`, `transport`, `buffer`, and `preview` fields
+override the selected policy.
 
 ## Startup
 
@@ -8,60 +22,28 @@ NitroPlay no longer uses lifecycle presets. Resource ownership is controlled by 
 | --- | --- | --- |
 | `startup` | `'eager'`, `'lazy'` | When first-load preparation starts |
 
-`play()` before `onLoad` is the canonical contract in both modes.
-
-`lazy` delays preparation until a playback-facing action such as `play()`, `initialize()`, `preload()`, or source replacement requires native work. `eager` starts preparation as soon as the source is bound.
+`play()` before `onLoad` is canonical. `lazy` waits for playback-facing work such
+as `play()`, `initialize()`, `preload()`, or source replacement.
 
 ## Retention
 
 | Field | Values | Purpose |
 | --- | --- | --- |
 | `retention.preload` | `'none'`, `'metadata'`, `'buffered'` | How much to preload |
-| `retention.offscreen` | `'cold'`, `'metadata'`, `'hot'` | How much state survives offscreen |
+| `retention.offscreen` | `'cold'`, `'metadata'`, `'hot'` | What survives offscreen |
 | `retention.trimDelayMs` | `number` | Delayed trim window |
 | `retention.feedPoolEligible` | `boolean` | Opt into native feed hot pool |
 
-## Typical profiles
-
-| Scenario | Recommended config |
-| --- | --- |
-| Feed cell | `startup: 'lazy'`, `retention.preload: 'metadata'`, `retention.offscreen: 'metadata'`, `retention.feedPoolEligible: true` |
-| Standard player | `startup: 'eager'`, `retention.preload: 'buffered'`, `retention.offscreen: 'hot'` |
-| Long-form fullscreen | `startup: 'eager'`, `retention.preload: 'buffered'`, `retention.offscreen: 'hot'`, large `trimDelayMs` |
-
-## Behavioral model
+## Behavioral Model
 
 | Operation | Effect |
 | --- | --- |
 | `initialize()` | Force preparation for the active source |
-| `preload()` | Preload up to the configured `retention.preload` depth |
-| `play()` | Preserves play intent and triggers missing startup work if needed |
-| Offscreen trim | Respects `retention.offscreen` and `retention.trimDelayMs` |
-| Feed pool | Only sources with `retention.feedPoolEligible=true` participate |
+| `preload()` | Preload up to the configured depth |
+| `play()` | Preserves play intent and starts missing preparation |
+| Offscreen trim | Respects retention and trim delay |
+| Feed pool | Keeps a bounded hot set of eligible players |
+| Memory pressure | Trims unpinned players to cold |
 
-## Retention states
-
-| State | Meaning |
-| --- | --- |
-| `cold` | No active native player resources |
-| `metadata` | Metadata retained, heavy playback resources trimmed |
-| `hot` | Player and buffers retained |
-
-## Feed hot pool
-
-| Rule | Behavior |
-| --- | --- |
-| Pool size | Native runtime keeps a bounded hot set |
-| Eligibility | Only `retention.feedPoolEligible=true` sources participate |
-| Protection | Attached, playing, or warming players are protected |
-| Eviction | Least-recent eligible player trims first |
-
-The JS layer does not resolve presets. Use explicit retention values so the config matches the actual native contract.
-
-## Recommended combinations
-
-| Use case | Suggested source shape |
-| --- | --- |
-| Autoplay feed card | `startup: 'lazy'`, `retention.preload: 'metadata'`, `retention.offscreen: 'metadata'`, `preview.mode: 'listener'` |
-| Hero player above the fold | `startup: 'eager'`, `retention.preload: 'buffered'`, `retention.offscreen: 'hot'`, `preview.mode: 'always'` |
-| Pull-only thumbnail workflow | `preview.mode: 'manual'`; use `videoPreview.getFirstFrame(source)` explicitly, or `videoPreview.peekFirstFrame(source)` when only a cache hit should be accepted |
+Pinned players are visible, playing, intending to play, fullscreen, or external
+playback targets.

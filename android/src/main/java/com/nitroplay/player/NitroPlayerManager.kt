@@ -1,5 +1,7 @@
 package com.nitroplay.video.core
 
+import android.content.ComponentCallbacks2
+import android.content.res.Configuration
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
@@ -12,9 +14,11 @@ import com.nitroplay.video.view.NitroPlayerView
 import java.lang.ref.WeakReference
 
 @OptIn(UnstableApi::class)
-object NitroPlayerManager : LifecycleEventListener {
+object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
   private const val TAG = "NitroPlayerManager"
   private const val MAX_HOT_FEED_PLAYERS = 2
+  private const val TRIM_MEMORY_RUNNING_LOW_LEVEL = 10
+  private const val TRIM_MEMORY_COMPLETE_LEVEL = 80
 
   // nitroId -> weak NitroPlayerView
   private val views = mutableMapOf<Int, WeakReference<NitroPlayerView>>()
@@ -30,6 +34,7 @@ object NitroPlayerManager : LifecycleEventListener {
   init {
     NitroModules.applicationContext?.apply {
       addLifecycleEventListener(this@NitroPlayerManager)
+      registerComponentCallbacks(this@NitroPlayerManager)
     }
   }
 
@@ -186,6 +191,25 @@ object NitroPlayerManager : LifecycleEventListener {
   }
 
   override fun onHostDestroy() {}
+
+  override fun onTrimMemory(level: Int) {
+    if (level < TRIM_MEMORY_RUNNING_LOW_LEVEL) {
+      return
+    }
+
+    runOnMainThread {
+      players.keys.toList().forEach { it.trimForResourcePressure() }
+      feedHotActivity.keys.retainAll(players.keys)
+      rebalanceFeedHotPlayersLocked()
+    }
+  }
+
+  @Suppress("OVERRIDE_DEPRECATION")
+  override fun onLowMemory() {
+    onTrimMemory(TRIM_MEMORY_COMPLETE_LEVEL)
+  }
+
+  override fun onConfigurationChanged(newConfig: Configuration) {}
 
   fun getAnyPlayingNitroPlayerView(): NitroPlayerView? {
     return runOnMainThreadSync {

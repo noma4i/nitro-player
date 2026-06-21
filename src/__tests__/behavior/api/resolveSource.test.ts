@@ -12,9 +12,9 @@ describe('resolveSource', () => {
     });
   });
 
-  it('returns an object source as-is (its own headers win, second arg ignored)', () => {
+  it('normalizes an object source (its own headers win, second arg ignored)', () => {
     const source = { uri: 'https://x/v.m3u8', headers: { 'X-A': '1' } };
-    expect(resolveSource(source, { 'X-B': '2' })).toBe(source);
+    expect(resolveSource(source, { 'X-B': '2' })).toEqual(source);
   });
 
   it('preserves undefined headers for an object source without headers', () => {

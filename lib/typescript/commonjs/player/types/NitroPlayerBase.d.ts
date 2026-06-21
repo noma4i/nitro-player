@@ -2,11 +2,10 @@ import type { IgnoreSilentSwitchMode } from './IgnoreSilentSwitchMode';
 import type { MemorySnapshot } from './MemorySnapshot';
 import type { MixAudioMode } from './MixAudioMode';
 import type { PlaybackState } from './PlaybackState';
-import type { NitroSourceConfig } from '../../source/types/NitroPlayerConfig';
-import type { NitroPlayerSourceBase } from '../../source/types/NitroPlayerSourceBase';
+import type { NitroSourceDescriptor, NitroSourceInput } from '../../source/types/NitroPlayerConfig';
 import type { NitroPlayerStatus } from './NitroPlayerStatus';
 export interface NitroPlayerBase {
-    readonly source: NitroPlayerSourceBase;
+    readonly source: NitroSourceDescriptor | null;
     readonly playbackState: PlaybackState;
     readonly memorySnapshot: MemorySnapshot;
     readonly status: NitroPlayerStatus;
@@ -31,7 +30,7 @@ export interface NitroPlayerBase {
     pause(): void;
     seekBy(time: number): void;
     seekTo(time: number): void;
-    replaceSourceAsync(source: NitroSourceConfig | NitroPlayerSourceBase): Promise<void>;
+    replaceSourceAsync(source: NitroSourceInput): Promise<void>;
     clearSourceAsync(): Promise<void>;
 }
 //# sourceMappingURL=NitroPlayerBase.d.ts.map

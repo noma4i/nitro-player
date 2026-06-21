@@ -35,17 +35,10 @@ export const HERO_SOURCES = {
     note: 'Lazy HLS startup with automatic proxy routing. This is the stream-cache and playback recovery scenario.',
     source: {
       uri: HLS_URL,
-      startup: 'lazy',
+      policy: 'feed',
       metadata: {
         title: 'Feed stream',
         subtitle: 'Auto proxy'
-      },
-      transport: { mode: 'auto' },
-      retention: {
-        preload: 'metadata',
-        offscreen: 'metadata',
-        trimDelayMs: 4000,
-        feedPoolEligible: true
       },
       preview: {
         mode: 'always',
@@ -65,17 +58,10 @@ export const HERO_SOURCES = {
       headers: {
         'X-Nitro-Scenario': 'profile-feed'
       },
-      startup: 'lazy',
+      policy: 'feed',
       metadata: {
         title: 'Profile stream',
         subtitle: 'Scoped headers'
-      },
-      transport: { mode: 'auto' },
-      retention: {
-        preload: 'metadata',
-        offscreen: 'metadata',
-        trimDelayMs: 4000,
-        feedPoolEligible: true
       },
       preview: {
         mode: 'listener',
@@ -92,14 +78,14 @@ export const HERO_SOURCES = {
     note: 'Direct transport with explicit preview generation. This is the reliable emulator thumbnail scenario.',
     source: {
       uri: MP4_URL,
-      startup: 'eager',
+      policy: 'thumbnail',
       metadata: {
         title: 'Direct clip',
         subtitle: 'Generated preview'
       },
       transport: { mode: 'direct' },
       retention: {
-        preload: 'buffered',
+        preload: 'metadata',
         offscreen: 'hot',
         trimDelayMs: 12000,
         feedPoolEligible: false
@@ -118,17 +104,10 @@ export const HERO_SOURCES = {
 // screens. Listener preview keeps side jobs from mutating playback state.
 export const LONG_HLS_SOURCE: NitroSourceConfig = {
   uri: LONG_HLS_URL,
-  startup: 'lazy',
+  policy: 'feed',
   metadata: {
     title: 'Long HLS stream',
     subtitle: 'Buffering and background lab'
-  },
-  transport: { mode: 'auto' },
-  retention: {
-    preload: 'metadata',
-    offscreen: 'metadata',
-    trimDelayMs: 4000,
-    feedPoolEligible: true
   },
   preview: {
     mode: 'listener',
@@ -328,7 +307,7 @@ export const buildConsumerCardSource = (item: ConsumerFeedItem, index: number, i
 
   return {
     ...item.source,
-    startup: isActive ? 'eager' : 'lazy',
+    policy: isActive ? 'hero' : 'feed',
     retention: {
       ...distanceRetention,
       ...(item.source.retention ?? {})
@@ -392,7 +371,7 @@ export const CHURN_LIST_ITEMS: ChurnListItem[] = Array.from({ length: CHURN_LIST
 // neighbours stay lazy so the recycling churn keeps creating/releasing players.
 export const buildChurnRowSource = (item: ChurnListItem, isMounted: boolean): NitroSourceConfig => ({
   ...item.source,
-  startup: isMounted ? 'eager' : 'lazy',
+  policy: isMounted ? 'hero' : 'feed',
   metadata: {
     ...(item.source.metadata ?? {}),
     title: item.title,

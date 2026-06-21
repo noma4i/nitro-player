@@ -4,6 +4,7 @@ export type NitroSourceUri = number | string;
 export type NitroSourceStartup = 'eager' | 'lazy';
 export type NitroSourceTransportMode = 'auto' | 'direct' | 'proxy';
 export type NitroSourcePreviewMode = 'listener' | 'always' | 'manual';
+export type NitroSourcePolicy = 'auto' | 'feed' | 'hero' | 'thumbnail' | 'manual';
 export interface NitroSourceMetadata {
     title?: string;
     subtitle?: string;
@@ -33,6 +34,12 @@ export interface NitroSourceConfig {
      * Accepts a network/local URL string or a React Native asset reference.
      */
     uri: NitroSourceUri;
+    /**
+     * Consumer scenario policy. Policy expands to safe defaults and can be
+     * overridden by explicit startup/retention/transport/preview fields.
+     * @default 'auto'
+     */
+    policy?: NitroSourcePolicy;
     /**
      * The headers to be sent with the request.
      */
@@ -64,7 +71,32 @@ export interface NitroSourceConfig {
      */
     preview?: NitroSourcePreviewConfig;
 }
-export interface NativeNitroPlayerConfig extends NitroSourceConfig {
+export type NitroSourceInput = NitroSourceUri | NitroSourceConfig | NitroSourceDescriptor;
+export interface NitroSourceIdentity {
+    playbackKey: string;
+    requestKey: string;
+    previewKey: string;
+}
+export interface NitroSourceDescriptor {
+    readonly uri: string;
+    readonly headers?: Record<string, string>;
+    readonly metadata?: NitroSourceMetadata;
+    readonly startup?: NitroSourceStartup;
+    readonly buffer?: BufferConfig;
+    readonly retention?: NitroSourceRetentionConfig;
+    readonly transport?: NitroSourceTransportConfig;
+    readonly preview?: NitroSourcePreviewConfig;
+    readonly policy: NitroSourcePolicy;
+    readonly identity: NitroSourceIdentity;
+}
+export interface NativeNitroPlayerConfig {
     uri: string;
+    headers?: Record<string, string>;
+    metadata?: NitroSourceMetadata;
+    startup?: NitroSourceStartup;
+    buffer?: BufferConfig;
+    retention?: NitroSourceRetentionConfig;
+    transport?: NitroSourceTransportConfig;
+    preview?: NitroSourcePreviewConfig;
 }
 //# sourceMappingURL=NitroPlayerConfig.d.ts.map
