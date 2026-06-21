@@ -17,46 +17,32 @@ class NitroPlayerManager {
   private var videoView = NSHashTable<NitroPlayerComponentView>.weakObjects()
   private var feedHotActivity: [ObjectIdentifier: UInt64] = [:]
   private var feedHotSequence: UInt64 = 0
+  private var notificationObservers: [NSObjectProtocol] = []
 
   private init() {
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(applicationWillResignActive(notification:)),
-      name: UIApplication.willResignActiveNotification,
-      object: nil
-    )
-
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(applicationDidBecomeActive(notification:)),
-      name: UIApplication.didBecomeActiveNotification,
-      object: nil
-    )
-
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(applicationDidEnterBackground(notification:)),
-      name: UIApplication.didEnterBackgroundNotification,
-      object: nil
-    )
-
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(applicationWillEnterForeground(notification:)),
-      name: UIApplication.willEnterForegroundNotification,
-      object: nil
-    )
-
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(applicationDidReceiveMemoryWarning(notification:)),
-      name: UIApplication.didReceiveMemoryWarningNotification,
-      object: nil
-    )
+    let center = NotificationCenter.default
+    notificationObservers = [
+      center.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+        self?.applicationWillResignActive()
+      },
+      center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+        self?.applicationDidBecomeActive()
+      },
+      center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+        self?.applicationDidEnterBackground()
+      },
+      center.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
+        self?.applicationWillEnterForeground()
+      },
+      center.addObserver(forName: UIApplication.didReceiveMemoryWarningNotification, object: nil, queue: .main) { [weak self] _ in
+        self?.applicationDidReceiveMemoryWarning()
+      }
+    ]
   }
 
   deinit {
-    NotificationCenter.default.removeObserver(self)
+    notificationObservers.forEach(NotificationCenter.default.removeObserver)
+    notificationObservers.removeAll()
   }
 
   // MARK: - public
@@ -110,7 +96,7 @@ class NitroPlayerManager {
 
   // MARK: - App Lifecycle
 
-  @objc func applicationWillResignActive(notification: Notification) {
+  func applicationWillResignActive() {
     for player in players.allObjects {
       if player.playInBackground || player.playWhenInactive || !player.isPlaying || player.player.isExternalPlaybackActive == true {
         continue
@@ -121,14 +107,14 @@ class NitroPlayerManager {
     }
   }
 
-  @objc func applicationDidBecomeActive(notification: Notification) {
+  func applicationDidBecomeActive() {
     // Resume handled in willEnterForeground; clear any remaining flags
     for player in players.allObjects {
       player.wasAutoPaused = false
     }
   }
 
-  @objc func applicationDidEnterBackground(notification: Notification) {
+  func applicationDidEnterBackground() {
     for player in players.allObjects {
       if player.playInBackground || player.player.isExternalPlaybackActive == true || !player.isPlaying {
         continue
@@ -139,7 +125,7 @@ class NitroPlayerManager {
     }
   }
 
-  @objc func applicationWillEnterForeground(notification: Notification) {
+  func applicationWillEnterForeground() {
     for player in players.allObjects {
       if player.wasAutoPaused {
         try? player.play()
@@ -148,7 +134,7 @@ class NitroPlayerManager {
     }
   }
 
-  @objc func applicationDidReceiveMemoryWarning(notification: Notification) {
+  func applicationDidReceiveMemoryWarning() {
     for player in players.allObjects {
       player.trimForResourcePressure()
     }
@@ -168,23 +154,17 @@ class NitroPlayerManager {
     let feedPlayerIds = Set(feedPlayers.map(ObjectIdentifier.init))
     feedHotActivity = feedHotActivity.filter { feedPlayerIds.contains($0.key) }
 
-    let pinnedPlayers = feedPlayers.filter { $0.shouldStayHotInFeedPool() }
-      .sorted {
-        (feedHotActivity[ObjectIdentifier($0)] ?? 0) >
-          (feedHotActivity[ObjectIdentifier($1)] ?? 0)
-      }
-
-    let relaxedPlayers = feedPlayers.filter { !$0.shouldStayHotInFeedPool() }
-      .sorted {
-        (feedHotActivity[ObjectIdentifier($0)] ?? 0) >
-          (feedHotActivity[ObjectIdentifier($1)] ?? 0)
-      }
-
-    var playersToKeepHot = Set(pinnedPlayers.map(ObjectIdentifier.init))
-    let extraHotSlots = max(0, maxHotFeedPlayers - playersToKeepHot.count)
-    for player in relaxedPlayers.prefix(extraHotSlots) {
-      playersToKeepHot.insert(ObjectIdentifier(player))
-    }
+    let playersToKeepHot = PlayerRetentionCoordinator.feedHotIds(
+      players: feedPlayers.map { player in
+        let id = ObjectIdentifier(player)
+        return FeedHotPlayerSnapshot(
+          id: id,
+          activity: feedHotActivity[id] ?? 0,
+          retention: player.retentionSnapshot()
+        )
+      },
+      maxHotPlayers: maxHotFeedPlayers
+    )
 
     for player in feedPlayers where !playersToKeepHot.contains(ObjectIdentifier(player)) {
       player.trimForFeedHotPool()

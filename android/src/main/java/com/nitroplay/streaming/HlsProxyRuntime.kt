@@ -264,22 +264,40 @@ object HlsProxyRuntime {
     }
 
     stopServer()
-    synchronized(lock) {
-      server = HlsProxyServer(desiredPort, context)
-      try {
-        server?.start(NanoHttpdConfig.TIMEOUT_MS, false)
-      } catch (_: Exception) {
-        server = null
-      }
-      return server?.isAlive == true
+    val nextServer = HlsProxyServer(desiredPort, context)
+    val started = try {
+      nextServer.start(NanoHttpdConfig.TIMEOUT_MS, false)
+      nextServer.isAlive
+    } catch (_: Exception) {
+      false
     }
+
+    if (!started) {
+      nextServer.stop()
+      return false
+    }
+
+    val stored = synchronized(lock) {
+      if (isExplicitlyStopped) {
+        false
+      } else {
+        server = nextServer
+        true
+      }
+    }
+    if (!stored) {
+      nextServer.stop()
+    }
+    return stored && nextServer.isAlive
   }
 
   private fun stopServer() {
-    synchronized(lock) {
-      server?.stop()
+    val current = synchronized(lock) {
+      val existing = server
       server = null
+      existing
     }
+    current?.stop()
   }
 }
   internal data class PlaybackRouteResolution(

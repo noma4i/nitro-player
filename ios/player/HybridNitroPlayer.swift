@@ -51,6 +51,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   var pendingTrimWorkItem: DispatchWorkItem?
   var startupRecoveryTask: Task<Void, Never>?
   var firstFrameTask: Task<Void, Never>?
+  var firstFrameRequest: VideoPreviewRequest?
   var sourceGeneration: Int { lifecycleGate.generation }
   var startupRecoveryAttempts: Int = 0
   var hasLoadedCurrentSource = false
@@ -395,6 +396,8 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   }
 
   func cancelFirstFrameRequest() {
+    firstFrameRequest?.cancel()
+    firstFrameRequest = nil
     firstFrameTask?.cancel()
     firstFrameTask = nil
   }
@@ -525,17 +528,28 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
       return
     }
 
+    guard let request = VideoPreviewRuntime.shared.startFirstFrameRequest(
+      url: context.sourceUri,
+      headers: context.headers,
+      preview: currentSourceConfig()?.preview
+    ) else {
+      return
+    }
+    firstFrameRequest = request
+
     firstFrameTask = Task.detached(priority: .utility) { [weak self] in
       guard let self else { return }
-      let result = await VideoPreviewRuntime.shared.getFirstFrame(
-        url: context.sourceUri,
-        headers: context.headers,
-        preview: self.currentSourceConfig()?.preview
-      )
+      let result = await request.value()
+      request.cancel()
 
       DispatchQueue.main.async { [weak self] in
         guard let self else { return }
-        defer { self.firstFrameTask = nil }
+        defer {
+          if self.firstFrameRequest === request {
+            self.firstFrameRequest = nil
+          }
+          self.firstFrameTask = nil
+        }
         guard !self.isReleased, self.sourceGeneration == generation, self.hasActiveSource, self.readyToDisplay, self.firstFrame == nil else {
           return
         }

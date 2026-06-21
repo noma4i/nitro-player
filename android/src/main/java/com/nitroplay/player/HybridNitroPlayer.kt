@@ -23,11 +23,13 @@ import com.nitroplay.video.core.LibraryError
 import com.nitroplay.video.core.PlayerError
 import com.nitroplay.video.core.LifecycleGate
 import com.nitroplay.video.core.NitroPlayerManager
+import com.nitroplay.video.core.PlayerRetentionSnapshot
 import com.nitroplay.video.core.utils.Threading.mainThreadProperty
 import com.nitroplay.video.core.utils.Threading.runOnMainThread
 import com.nitroplay.video.core.utils.Threading.runOnMainThreadSync
 import com.nitroplay.video.view.NitroPlayerView
 import java.lang.ref.WeakReference
+import java.util.concurrent.Future
 import kotlin.math.max
 
 @UnstableApi
@@ -68,7 +70,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   internal var firstFrameContext: FirstFrameContext? = null
   // Inflight preview worker, cancelled on source generation changes to stop wasted fetch/decode.
   internal var firstFrameRequest: PreviewRequest<VideoPreviewResult>? = null
-  internal var firstFrameThread: Thread? = null
+  internal var firstFrameTask: Future<*>? = null
 
   var wasAutoPaused = false
   private val startupRecoveryHandler = Handler(Looper.getMainLooper())
@@ -616,8 +618,8 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   internal fun cancelFirstFrameRequest() {
     firstFrameRequest?.cancel()
     firstFrameRequest = null
-    firstFrameThread?.interrupt()
-    firstFrameThread = null
+    firstFrameTask?.cancel(true)
+    firstFrameTask = null
     pendingFirstFrameGeneration = -1
   }
 
@@ -748,7 +750,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     }
     firstFrameRequest = request
 
-    val thread = Thread {
+    firstFrameTask = VideoPreviewRuntime.dispatchFirstFrameAwait {
       val preview = try {
         if (isReleased) {
           null
@@ -760,6 +762,14 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       }
 
       Handler(Looper.getMainLooper()).post {
+        if (pendingFirstFrameGeneration == generation) {
+          pendingFirstFrameGeneration = -1
+          firstFrameTask = null
+        }
+        if (firstFrameRequest === request) {
+          firstFrameRequest = null
+        }
+
         if (
           isReleased ||
           sourceGeneration != generation ||
@@ -768,13 +778,6 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
           firstFrame != null
         ) {
           return@post
-        }
-
-        if (pendingFirstFrameGeneration == generation) {
-          pendingFirstFrameGeneration = -1
-        }
-        if (firstFrameRequest === request) {
-          firstFrameRequest = null
         }
 
         preview?.let {
@@ -788,8 +791,6 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
         }
       }
     }
-    firstFrameThread = thread
-    thread.start()
   }
 
   private fun currentPreviewMode(): NitroSourcePreviewMode {
@@ -845,6 +846,10 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   internal fun shouldStayHotInFeedPool(): Boolean {
     return lifecycle.shouldStayHotInFeedPool()
+  }
+
+  internal fun retentionSnapshot(): PlayerRetentionSnapshot {
+    return lifecycle.retentionSnapshot()
   }
 
   internal fun trimForFeedHotPool() {

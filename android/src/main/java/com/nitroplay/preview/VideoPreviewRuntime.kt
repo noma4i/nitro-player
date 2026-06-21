@@ -11,6 +11,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import kotlin.math.roundToInt
 
 data class VideoPreviewProfile(
@@ -44,7 +45,8 @@ object VideoPreviewRuntime {
   }
 
   private val lock = Any()
-  private val executor = Executors.newCachedThreadPool()
+  private val executor = Executors.newFixedThreadPool(2)
+  private val callbackExecutor = Executors.newFixedThreadPool(2)
   private val requestCoordinator = PreviewRequestCoordinator<String, VideoPreviewResult>()
   private var previewStore: HlsCacheStore? = null
   private var appContext: Context? = null
@@ -85,6 +87,10 @@ object VideoPreviewRuntime {
         })
       }
     }
+  }
+
+  internal fun dispatchFirstFrameAwait(work: () -> Unit): Future<*> {
+    return callbackExecutor.submit(work)
   }
 
   fun peekFirstFrame(url: String, headers: Map<String, String>?, preview: NitroSourcePreviewConfig?): VideoPreviewResult? {

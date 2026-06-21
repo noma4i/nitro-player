@@ -265,6 +265,19 @@ extension HybridNitroPlayer {
     return (source as? HybridNitroPlayerSource)?.retentionState ?? .cold
   }
 
+  func currentRetentionLevel() -> PlayerRetentionLevel {
+    switch currentRetentionState() {
+    case .cold:
+      return .cold
+    case .metadata:
+      return .metadata
+    case .hot:
+      return .hot
+    @unknown default:
+      return .cold
+    }
+  }
+
   func clearCurrentSource() {
     guard !isReleased else { return }
     wantsToPlay = false
@@ -396,19 +409,11 @@ extension HybridNitroPlayer {
   }
 
   func shouldStayHotInFeedPool() -> Bool {
-    if isReleased {
-      return false
-    }
-
-    return isPlaying || isAttachedToVideoView || wantsToPlay
+    PlayerRetentionCoordinator.isPinnedForFeedPool(retentionSnapshot())
   }
 
   func shouldStayHotUnderResourcePressure() -> Bool {
-    if isReleased {
-      return false
-    }
-
-    return isPlaying || isAttachedToVideoView || wantsToPlay || player.isExternalPlaybackActive == true
+    PlayerRetentionCoordinator.isPinnedForResourcePressure(retentionSnapshot())
   }
 
   func trimForFeedHotPool() {
@@ -417,8 +422,7 @@ extension HybridNitroPlayer {
       guard
         !self.isReleased,
         self.isFeedProfile(),
-        !self.shouldStayHotInFeedPool(),
-        self.currentRetentionState() == .hot
+        PlayerRetentionCoordinator.shouldTrimForFeedHotPool(self.retentionSnapshot())
       else {
         return
       }
@@ -436,7 +440,7 @@ extension HybridNitroPlayer {
   func trimForResourcePressure() {
     let apply = { [weak self] in
       guard let self else { return }
-      guard !self.shouldStayHotUnderResourcePressure() else {
+      guard PlayerRetentionCoordinator.shouldTrimForResourcePressure(self.retentionSnapshot()) else {
         return
       }
 
@@ -448,5 +452,18 @@ extension HybridNitroPlayer {
     } else {
       DispatchQueue.main.async(execute: apply)
     }
+  }
+
+  func retentionSnapshot() -> PlayerRetentionSnapshot {
+    PlayerRetentionSnapshot(
+      isReleased: isReleased,
+      hasActiveSource: hasActiveSource,
+      isPlaying: isPlaying,
+      isAttachedToView: isAttachedToVideoView,
+      wantsToPlay: wantsToPlay,
+      isExternalPlaybackActive: player.isExternalPlaybackActive == true,
+      isFeedPoolEligible: isFeedProfile(),
+      retentionLevel: currentRetentionLevel()
+    )
   }
 }

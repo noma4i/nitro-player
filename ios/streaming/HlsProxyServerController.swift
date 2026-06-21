@@ -20,6 +20,7 @@ final class HlsProxyServerController: NSObject {
   private var wasExplicitlyStopped = false
   private var needsRestartOnActive = false
   private var observersRegistered = false
+  private var notificationObservers: [NSObjectProtocol] = []
 
   func start(port: Int?) {
     let resolvedPort = (port ?? defaultPort) > 0 ? (port ?? defaultPort) : defaultPort
@@ -128,7 +129,7 @@ final class HlsProxyServerController: NSObject {
     unregisterObservers()
   }
 
-  @objc private func handleWillResignActive() {
+  private func handleWillResignActive() {
     stateQueue.sync {
       if shouldBeRunning {
         needsRestartOnActive = true
@@ -136,7 +137,7 @@ final class HlsProxyServerController: NSObject {
     }
   }
 
-  @objc private func handleDidEnterBackground() {
+  private func handleDidEnterBackground() {
     stateQueue.sync {
       if shouldBeRunning {
         needsRestartOnActive = true
@@ -144,7 +145,7 @@ final class HlsProxyServerController: NSObject {
     }
   }
 
-  @objc private func handleDidBecomeActive() {
+  private func handleDidBecomeActive() {
     let pendingRestart = stateQueue.sync { () -> Bool? in
       guard shouldBeRunning else {
         return nil
@@ -253,24 +254,18 @@ final class HlsProxyServerController: NSObject {
       return
     }
 
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(handleWillResignActive),
-      name: UIApplication.willResignActiveNotification,
-      object: nil
-    )
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(handleDidEnterBackground),
-      name: UIApplication.didEnterBackgroundNotification,
-      object: nil
-    )
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(handleDidBecomeActive),
-      name: UIApplication.didBecomeActiveNotification,
-      object: nil
-    )
+    let center = NotificationCenter.default
+    notificationObservers = [
+      center.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+        self?.handleWillResignActive()
+      },
+      center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
+        self?.handleDidEnterBackground()
+      },
+      center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+        self?.handleDidBecomeActive()
+      }
+    ]
   }
 
   private func unregisterObservers() {
@@ -285,7 +280,8 @@ final class HlsProxyServerController: NSObject {
       return
     }
 
-    NotificationCenter.default.removeObserver(self)
+    notificationObservers.forEach(NotificationCenter.default.removeObserver)
+    notificationObservers.removeAll()
   }
 
   private func bindHandlers(to webServer: GCDWebServer) {

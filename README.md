@@ -76,27 +76,27 @@ Deep-dive reference lives in [docs/player-api.md](docs/player-api.md).
 
 Top-level `NitroSourceConfig` fields:
 
-| Field       | Type                         | Purpose                                                                           |
-| ----------- | ---------------------------- | --------------------------------------------------------------------------------- |
-| `uri`       | `string \| number`           | Network URL, local `file://` URI, absolute local file path, or React Native asset |
-| `policy`    | `auto \| feed \| hero \| thumbnail \| manual` | Consumer scenario defaults                                      |
-| `headers`   | `Record<string, string>`     | Request headers (part of cache/preview identity)                                  |
-| `metadata`  | `NitroSourceMetadata`        | Player-facing media metadata                                                      |
-| `startup`   | `'eager' \| 'lazy'`          | Advanced startup override                                                         |
-| `buffer`    | `BufferConfig`               | Advanced buffering override                                                       |
-| `retention` | `NitroSourceRetentionConfig` | Advanced memory/lifecycle override                                                |
-| `transport` | `NitroSourceTransportConfig` | Advanced stream routing override                                                  |
-| `preview`   | `NitroSourcePreviewConfig`   | Advanced first-frame override                                                     |
+| Field       | Type                                          | Purpose                                                                           |
+| ----------- | --------------------------------------------- | --------------------------------------------------------------------------------- |
+| `uri`       | `string \| number`                            | Network URL, local `file://` URI, absolute local file path, or React Native asset |
+| `policy`    | `auto \| feed \| hero \| thumbnail \| manual` | Consumer scenario defaults                                                        |
+| `headers`   | `Record<string, string>`                      | Request headers (part of cache/preview identity)                                  |
+| `metadata`  | `NitroSourceMetadata`                         | Player-facing media metadata                                                      |
+| `startup`   | `'eager' \| 'lazy'`                           | Advanced startup override                                                         |
+| `buffer`    | `BufferConfig`                                | Advanced buffering override                                                       |
+| `retention` | `NitroSourceRetentionConfig`                  | Advanced memory/lifecycle override                                                |
+| `transport` | `NitroSourceTransportConfig`                  | Advanced stream routing override                                                  |
+| `preview`   | `NitroSourcePreviewConfig`                    | Advanced first-frame override                                                     |
 
 Policies are safe defaults. Explicit advanced fields override the selected policy.
 
-| Policy | Use case |
-| --- | --- |
-| `auto` | Default balanced player: eager while visible, metadata trim offscreen |
-| `feed` | Scrolling feeds: lazy startup, metadata preload, bounded hot pool |
-| `hero` | Primary/long-form player: eager startup, buffered preload, hot retention |
-| `thumbnail` | Preview/cache workflows without playback startup |
-| `manual` | No policy defaults; consumer owns initialization and retention knobs |
+| Policy      | Use case                                                                 |
+| ----------- | ------------------------------------------------------------------------ |
+| `auto`      | Default balanced player: eager while visible, metadata trim offscreen    |
+| `feed`      | Scrolling feeds: lazy startup, metadata preload, bounded hot pool        |
+| `hero`      | Primary/long-form player: eager startup, buffered preload, hot retention |
+| `thumbnail` | Preview/cache workflows without playback startup                         |
+| `manual`    | No policy defaults; consumer owns initialization and retention knobs     |
 
 See [docs/source-config.md](docs/source-config.md) for retention, transport,
 preview, metadata, and identity rules. Buffer tuning lives in
@@ -104,20 +104,20 @@ preview, metadata, and identity rules. Buffer tuning lives in
 
 ## `NitroVideo`
 
-| Prop                  | Type                            | Notes                                 |
-| --------------------- | ------------------------------- | ------------------------------------- |
+| Prop                  | Type                            | Notes                                            |
+| --------------------- | ------------------------------- | ------------------------------------------------ |
 | `source`              | `NitroSourceInput`              | String, asset number, config, or prepared source |
-| `playerDefaults`      | `NitroPlayerDefaults`           | Declarative startup state             |
-| `controls`            | `boolean`                       | Native controls                       |
-| `resizeMode`          | `ResizeMode`                    | `contain \| cover \| stretch \| none` |
-| `keepScreenAwake`     | `boolean`                       | Screen wake lock                      |
-| `surfaceType`         | `'surface' \| 'texture'`        | Android only                          |
-| `style`               | `ViewStyle`                     | Inherited from `ViewProps`            |
-| `onAttached`          | `(player: NitroPlayer) => void` | View attached                         |
-| `onDetached`          | `() => void`                    | View detached                         |
-| `onFullscreenChange`  | `(value: boolean) => void`      | Fullscreen state changed              |
-| `willEnterFullscreen` | `() => void`                    | Pre-enter hook                        |
-| `willExitFullscreen`  | `() => void`                    | Pre-exit hook                         |
+| `playerDefaults`      | `NitroPlayerDefaults`           | Declarative startup state                        |
+| `controls`            | `boolean`                       | Native controls                                  |
+| `resizeMode`          | `ResizeMode`                    | `contain \| cover \| stretch \| none`            |
+| `keepScreenAwake`     | `boolean`                       | Screen wake lock                                 |
+| `surfaceType`         | `'surface' \| 'texture'`        | Android only                                     |
+| `style`               | `ViewStyle`                     | Inherited from `ViewProps`                       |
+| `onAttached`          | `(player: NitroPlayer) => void` | View attached                                    |
+| `onDetached`          | `() => void`                    | View detached                                    |
+| `onFullscreenChange`  | `(value: boolean) => void`      | Fullscreen state changed                         |
+| `willEnterFullscreen` | `() => void`                    | Pre-enter hook                                   |
+| `willExitFullscreen`  | `() => void`                    | Pre-exit hook                                    |
 
 ### `NitroPlayerViewRef`
 
@@ -133,27 +133,27 @@ preview, metadata, and identity rules. Buffer tuning lives in
 
 ### Properties
 
-| Property                 | Type                     | Get | Set |
-| ------------------------ | ------------------------ | --- | --- |
+| Property                 | Type                            | Get | Set |
+| ------------------------ | ------------------------------- | --- | --- |
 | `source`                 | `NitroSourceDescriptor \| null` | yes | no  |
-| `status`                 | `NitroPlayerStatus`      | yes | no  |
-| `playbackState`          | `PlaybackState`          | yes | no  |
-| `memorySnapshot`         | `MemorySnapshot`         | yes | no  |
-| `duration`               | `number`                 | yes | no  |
-| `currentTime`            | `number`                 | yes | yes |
-| `volume`                 | `number`                 | yes | yes |
-| `muted`                  | `boolean`                | yes | yes |
-| `loop`                   | `boolean`                | yes | yes |
-| `rate`                   | `number`                 | yes | yes |
-| `isPlaying`              | `boolean`                | yes | no  |
-| `isBuffering`            | `boolean`                | yes | no  |
-| `isVisualReady`          | `boolean`                | yes | no  |
-| `bufferDuration`         | `number`                 | yes | no  |
-| `bufferedPosition`       | `number`                 | yes | no  |
-| `mixAudioMode`           | `MixAudioMode`           | yes | yes |
-| `ignoreSilentSwitchMode` | `IgnoreSilentSwitchMode` | yes | yes |
-| `playInBackground`       | `boolean`                | yes | yes |
-| `playWhenInactive`       | `boolean`                | yes | yes |
+| `status`                 | `NitroPlayerStatus`             | yes | no  |
+| `playbackState`          | `PlaybackState`                 | yes | no  |
+| `memorySnapshot`         | `MemorySnapshot`                | yes | no  |
+| `duration`               | `number`                        | yes | no  |
+| `currentTime`            | `number`                        | yes | yes |
+| `volume`                 | `number`                        | yes | yes |
+| `muted`                  | `boolean`                       | yes | yes |
+| `loop`                   | `boolean`                       | yes | yes |
+| `rate`                   | `number`                        | yes | yes |
+| `isPlaying`              | `boolean`                       | yes | no  |
+| `isBuffering`            | `boolean`                       | yes | no  |
+| `isVisualReady`          | `boolean`                       | yes | no  |
+| `bufferDuration`         | `number`                        | yes | no  |
+| `bufferedPosition`       | `number`                        | yes | no  |
+| `mixAudioMode`           | `MixAudioMode`                  | yes | yes |
+| `ignoreSilentSwitchMode` | `IgnoreSilentSwitchMode`        | yes | yes |
+| `playInBackground`       | `boolean`                       | yes | yes |
+| `playWhenInactive`       | `boolean`                       | yes | yes |
 
 ### Methods
 
@@ -242,15 +242,16 @@ defaults, and returns an immutable public descriptor with stable identities.
 
 ## Runtime Contract
 
-| Area | Behavior |
-| --- | --- |
-| Early play | `play()` before `onLoad` is canonical |
-| Playback state | Built from native readiness, buffering, and actual playing state |
-| HLS startup | Lazy shared runtime with bounded startup recovery and direct fallback |
-| First frame | `onFirstFrame` is sticky per active source generation |
-| Preview | Attached views own native placeholder; manual preview uses `videoPreview` |
-| Source identity | `prepareSource()` creates stable playback/request/preview keys |
-| Resource pressure | Native managers trim unpinned players to cold on iOS/Android pressure |
+| Area              | Behavior                                                                  |
+| ----------------- | ------------------------------------------------------------------------- |
+| Early play        | `play()` before `onLoad` is canonical                                     |
+| Playback state    | Built from native readiness, buffering, and actual playing state          |
+| HLS startup       | Lazy shared runtime with bounded startup recovery and direct fallback     |
+| First frame       | `onFirstFrame` is sticky per active source generation                     |
+| Preview           | Attached views own native placeholder; manual preview uses `videoPreview` |
+| Source identity   | `prepareSource()` creates stable playback/request/preview keys            |
+| Resource pressure | Native managers trim unpinned players to cold on iOS/Android pressure     |
+| Inactive host     | `playWhenInactive` prevents automatic inactive pause on iOS and Android   |
 
 Absolute local file paths are accepted on both iOS and Android and are normalized internally to `file://` URLs. App code should prefer canonical `file://` URIs when it owns freshly recorded media paths.
 

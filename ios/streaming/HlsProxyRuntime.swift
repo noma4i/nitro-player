@@ -29,9 +29,7 @@ final class HlsProxyRuntime {
       self.isExplicitlyStopped = false
       self.didAutoStart = true
     }
-    runOnMainSync {
-      controller.start(port: resolvedPort)
-    }
+    controller.start(port: resolvedPort)
   }
 
   func stop() {
@@ -39,9 +37,7 @@ final class HlsProxyRuntime {
       isExplicitlyStopped = true
       didAutoStart = false
     }
-    runOnMainSync {
-      controller.stop()
-    }
+    controller.stop()
   }
 
   func getProxiedUrl(url: String, headers: [String: String]?) -> String {
@@ -76,15 +72,11 @@ final class HlsProxyRuntime {
   }
 
   func getCacheStats() -> [String: Any] {
-    return runOnMainSync {
-      controller.getCacheStats()
-    }
+    controller.getCacheStats()
   }
 
   func getStreamCacheStats(url: String, headers: [String: String]?) -> [String: Any] {
-    return runOnMainSync {
-      controller.getCacheStats(streamKey: HlsIdentity.sourceKey(url: url, headers: headers))
-    }
+    controller.getCacheStats(streamKey: HlsIdentity.sourceKey(url: url, headers: headers))
   }
 
   func getThumbnailUrl(url: String, headers: [String: String]?) async -> String? {
@@ -96,9 +88,7 @@ final class HlsProxyRuntime {
   }
 
   func clearCache() {
-    runOnMainSync {
-      controller.clearCache()
-    }
+    controller.clearCache()
   }
 
   func clearPreview() {
@@ -107,9 +97,7 @@ final class HlsProxyRuntime {
 
   func resolvePlaybackRoute(url: String, headers: [String: String]?) -> HlsProxyRouteResolution {
     ensureStarted()
-    let proxiedUrl = runOnMainSync {
-      controller.proxiedManifestUrl(for: url, headers: headers)
-    }
+    let proxiedUrl = controller.proxiedManifestUrl(for: url, headers: headers)
     return HlsProxyRouteResolution(
       url: proxiedUrl ?? url,
       isProxying: proxiedUrl != nil
@@ -129,10 +117,8 @@ final class HlsProxyRuntime {
       return
     }
 
-    runOnMainSync {
-      controller.stop()
-      controller.start(port: restartPort)
-    }
+    controller.stop()
+    controller.start(port: restartPort)
   }
 
   private func ensureStarted() {
@@ -148,16 +134,7 @@ final class HlsProxyRuntime {
     }
 
     if shouldStart {
-      runOnMainSync {
-        controller.start(port: port)
-      }
+      controller.start(port: port)
     }
-  }
-
-  private func runOnMainSync<T>(_ work: () -> T) -> T {
-    if Thread.isMainThread {
-      return work()
-    }
-    return DispatchQueue.main.sync(execute: work)
   }
 }

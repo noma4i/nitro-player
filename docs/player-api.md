@@ -28,19 +28,19 @@ export function Demo() {
 
 ## `NitroVideo`
 
-| Prop                  | Type                            | Notes                     |
-| --------------------- | ------------------------------- | ------------------------- |
+| Prop                  | Type                            | Notes                                  |
+| --------------------- | ------------------------------- | -------------------------------------- |
 | `source`              | `NitroSourceInput`              | URL, asset, config, or prepared source |
-| `playerDefaults`      | `NitroPlayerDefaults`           | Declarative startup state |
-| `controls`            | `boolean`                       | Native controls           |
-| `resizeMode`          | `ResizeMode`                    | View scaling              |
-| `keepScreenAwake`     | `boolean`                       | Screen wake lock          |
-| `surfaceType`         | `'surface' \| 'texture'`        | Android only              |
-| `onAttached`          | `(player: NitroPlayer) => void` | View attached             |
-| `onDetached`          | `() => void`                    | View detached             |
-| `onFullscreenChange`  | `(value: boolean) => void`      | Fullscreen changed        |
-| `willEnterFullscreen` | `() => void`                    | Pre-enter callback        |
-| `willExitFullscreen`  | `() => void`                    | Pre-exit callback         |
+| `playerDefaults`      | `NitroPlayerDefaults`           | Declarative startup state              |
+| `controls`            | `boolean`                       | Native controls                        |
+| `resizeMode`          | `ResizeMode`                    | View scaling                           |
+| `keepScreenAwake`     | `boolean`                       | Screen wake lock                       |
+| `surfaceType`         | `'surface' \| 'texture'`        | Android only                           |
+| `onAttached`          | `(player: NitroPlayer) => void` | View attached                          |
+| `onDetached`          | `() => void`                    | View detached                          |
+| `onFullscreenChange`  | `(value: boolean) => void`      | Fullscreen changed                     |
+| `willEnterFullscreen` | `() => void`                    | Pre-enter callback                     |
+| `willExitFullscreen`  | `() => void`                    | Pre-exit callback                      |
 
 > **`surfaceType` (Android):** `'surface'` (default) uses a `SurfaceView` — best for a
 > single or fullscreen player. Inside a scrolling list/feed prefer `'texture'`: a
@@ -62,42 +62,45 @@ export function Demo() {
 
 ## `NitroPlayer` properties
 
-| Property                 | Type                     | Get | Set |
-| ------------------------ | ------------------------ | --- | --- |
+| Property                 | Type                            | Get | Set |
+| ------------------------ | ------------------------------- | --- | --- |
 | `source`                 | `NitroSourceDescriptor \| null` | yes | no  |
-| `playbackState`          | `PlaybackState`          | yes | no  |
-| `memorySnapshot`         | `MemorySnapshot`         | yes | no  |
-| `status`                 | `NitroPlayerStatus`      | yes | no  |
-| `duration`               | `number`                 | yes | no  |
-| `currentTime`            | `number`                 | yes | yes |
-| `volume`                 | `number`                 | yes | yes |
-| `muted`                  | `boolean`                | yes | yes |
-| `loop`                   | `boolean`                | yes | yes |
-| `rate`                   | `number`                 | yes | yes |
-| `isPlaying`              | `boolean`                | yes | no  |
-| `isBuffering`            | `boolean`                | yes | no  |
-| `isVisualReady`          | `boolean`                | yes | no  |
-| `bufferDuration`         | `number`                 | yes | no  |
-| `bufferedPosition`       | `number`                 | yes | no  |
-| `mixAudioMode`           | `MixAudioMode`           | yes | yes |
-| `ignoreSilentSwitchMode` | `IgnoreSilentSwitchMode` | yes | yes |
-| `playInBackground`       | `boolean`                | yes | yes |
-| `playWhenInactive`       | `boolean`                | yes | yes |
+| `playbackState`          | `PlaybackState`                 | yes | no  |
+| `memorySnapshot`         | `MemorySnapshot`                | yes | no  |
+| `status`                 | `NitroPlayerStatus`             | yes | no  |
+| `duration`               | `number`                        | yes | no  |
+| `currentTime`            | `number`                        | yes | yes |
+| `volume`                 | `number`                        | yes | yes |
+| `muted`                  | `boolean`                       | yes | yes |
+| `loop`                   | `boolean`                       | yes | yes |
+| `rate`                   | `number`                        | yes | yes |
+| `isPlaying`              | `boolean`                       | yes | no  |
+| `isBuffering`            | `boolean`                       | yes | no  |
+| `isVisualReady`          | `boolean`                       | yes | no  |
+| `bufferDuration`         | `number`                        | yes | no  |
+| `bufferedPosition`       | `number`                        | yes | no  |
+| `mixAudioMode`           | `MixAudioMode`                  | yes | yes |
+| `ignoreSilentSwitchMode` | `IgnoreSilentSwitchMode`        | yes | yes |
+| `playInBackground`       | `boolean`                       | yes | yes |
+| `playWhenInactive`       | `boolean`                       | yes | yes |
+
+`playWhenInactive` prevents library auto-pause while the host is inactive on
+both native platforms. Use `playInBackground` for actual background playback.
 
 ## `NitroPlayer` methods
 
-| Method                              | Returns                | Notes                                                             |
-| ----------------------------------- | ---------------------- | ----------------------------------------------------------------- |
-| `play()`                            | `void`                 | Start playback; valid before `onLoad`                             |
-| `pause()`                           | `void`                 | Pause playback                                                    |
-| `seekTo(seconds)`                   | `void`                 | Absolute seek                                                     |
-| `seekBy(seconds)`                   | `void`                 | Relative seek                                                     |
-| `initialize()`                      | `Promise<void>`        | Manual initialization                                             |
-| `preload()`                         | `Promise<void>`        | Preload without starting playback                                 |
+| Method                              | Returns                | Notes                                                                |
+| ----------------------------------- | ---------------------- | -------------------------------------------------------------------- |
+| `play()`                            | `void`                 | Start playback; valid before `onLoad`                                |
+| `pause()`                           | `void`                 | Pause playback                                                       |
+| `seekTo(seconds)`                   | `void`                 | Absolute seek                                                        |
+| `seekBy(seconds)`                   | `void`                 | Relative seek                                                        |
+| `initialize()`                      | `Promise<void>`        | Manual initialization                                                |
+| `preload()`                         | `Promise<void>`        | Preload without starting playback                                    |
 | `replaceSourceAsync(source)`        | `Promise<void>`        | Replace with any `NitroSourceInput`; same semantic source is skipped |
-| `clearSourceAsync()`                | `Promise<void>`        | Clear current source and keep player reusable                     |
-| `release()`                         | `void`                 | Terminal teardown                                                 |
-| `addEventListener(event, listener)` | `ListenerSubscription` | Subscribe to a player event. Returned subscription has `remove()` |
+| `clearSourceAsync()`                | `Promise<void>`        | Clear current source and keep player reusable                        |
+| `release()`                         | `void`                 | Terminal teardown                                                    |
+| `addEventListener(event, listener)` | `ListenerSubscription` | Subscribe to a player event. Returned subscription has `remove()`    |
 
 ## `PlaybackState`
 
@@ -117,15 +120,15 @@ export function Demo() {
 
 ## Player events
 
-| Event               | Payload              |
-| ------------------- | -------------------- |
-| `onPlaybackState`   | `PlaybackState`      |
-| `onLoad`            | `LoadEvent`          |
-| `onLoadStart`       | `LoadStartEvent`     |
-| `onError`           | `PlaybackError`      |
-| `onFirstFrame`      | `FirstFrameEvent`    |
-| `onBandwidthUpdate` | `BandwidthData`      |
-| `onVolumeChange`    | `VolumeChangeEvent`  |
+| Event               | Payload             |
+| ------------------- | ------------------- |
+| `onPlaybackState`   | `PlaybackState`     |
+| `onLoad`            | `LoadEvent`         |
+| `onLoadStart`       | `LoadStartEvent`    |
+| `onError`           | `PlaybackError`     |
+| `onFirstFrame`      | `FirstFrameEvent`   |
+| `onBandwidthUpdate` | `BandwidthData`     |
+| `onVolumeChange`    | `VolumeChangeEvent` |
 
 Subscribe to any of these events directly on the player instance:
 

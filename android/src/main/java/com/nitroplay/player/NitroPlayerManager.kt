@@ -1,8 +1,8 @@
 package com.nitroplay.video.core
 
 import android.content.ComponentCallbacks2
+import android.content.Context
 import android.content.res.Configuration
-import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import com.facebook.react.bridge.LifecycleEventListener
@@ -15,7 +15,6 @@ import java.lang.ref.WeakReference
 
 @OptIn(UnstableApi::class)
 object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
-  private const val TAG = "NitroPlayerManager"
   private const val MAX_HOT_FEED_PLAYERS = 2
   private const val TRIM_MEMORY_RUNNING_LOW_LEVEL = 10
   private const val TRIM_MEMORY_COMPLETE_LEVEL = 80
@@ -30,12 +29,28 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
   var audioFocusManager = AudioFocusManager()
 
   private var lastPlayedNitroId: Int? = null
+  private var registeredContext: Context? = null
 
   init {
-    NitroModules.applicationContext?.apply {
-      addLifecycleEventListener(this@NitroPlayerManager)
-      registerComponentCallbacks(this@NitroPlayerManager)
+    ensureRegistered()
+  }
+
+  fun ensureRegistered() {
+    NitroModules.applicationContext?.let { ensureRegistered(it) }
+  }
+
+  fun ensureRegistered(context: Context) {
+    val appContext = context.applicationContext
+    if (registeredContext === appContext) {
+      return
     }
+
+    registeredContext?.unregisterComponentCallbacks(this@NitroPlayerManager)
+    NitroModules.applicationContext?.removeLifecycleEventListener(this@NitroPlayerManager)
+
+    NitroModules.applicationContext?.addLifecycleEventListener(this@NitroPlayerManager)
+    appContext.registerComponentCallbacks(this@NitroPlayerManager)
+    registeredContext = appContext
   }
 
   fun maybePassPlayerToView(player: HybridNitroPlayer) {
@@ -46,6 +61,7 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
   }
 
   fun registerView(view: NitroPlayerView) {
+    ensureRegistered(view.context)
     runOnMainThread {
       views[view.nitroId] = WeakReference<NitroPlayerView>(view)
       view.hybridPlayer?.let { touchFeedHotCandidate(it) }
@@ -88,6 +104,7 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
   }
 
   fun registerPlayer(player: HybridNitroPlayer) {
+    ensureRegistered()
     runOnMainThread {
       if (!players.containsKey(player)) {
         players[player] = mutableListOf()
@@ -175,7 +192,7 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
 
   private fun onAppEnterBackground() {
     players.keys.forEach { player ->
-      if (!player.playInBackground && player.isPlaying) {
+      if (!player.playInBackground && !player.playWhenInactive && player.isPlaying) {
         player.wasAutoPaused = true
         player.pause()
       }
@@ -240,19 +257,16 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
     val feedPlayerSet = feedPlayers.toSet()
     feedHotActivity.keys.retainAll(feedPlayerSet)
 
-    val pinnedPlayers = feedPlayers
-      .filter { it.shouldStayHotInFeedPool() }
-      .sortedByDescending { feedHotActivity[it] ?: 0L }
-
-    val relaxedPlayers = feedPlayers
-      .filterNot { pinnedPlayers.contains(it) }
-      .sortedByDescending { feedHotActivity[it] ?: 0L }
-
-    val playersToKeepHot = linkedSetOf<HybridNitroPlayer>()
-    playersToKeepHot.addAll(pinnedPlayers)
-
-    val extraHotSlots = (MAX_HOT_FEED_PLAYERS - playersToKeepHot.size).coerceAtLeast(0)
-    relaxedPlayers.take(extraHotSlots).forEach { playersToKeepHot.add(it) }
+    val playersToKeepHot = PlayerRetentionCoordinator.feedHotIds(
+      players = feedPlayers.map {
+        FeedHotPlayerSnapshot(
+          id = it,
+          activity = feedHotActivity[it] ?: 0L,
+          retention = it.retentionSnapshot()
+        )
+      },
+      maxHotPlayers = MAX_HOT_FEED_PLAYERS
+    )
 
     feedPlayers
       .filterNot { playersToKeepHot.contains(it) }

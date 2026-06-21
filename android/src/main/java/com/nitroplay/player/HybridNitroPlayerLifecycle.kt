@@ -10,6 +10,9 @@ import androidx.media3.exoplayer.upstream.DefaultAllocator
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
 import com.nitroplay.video.core.LibraryError
+import com.nitroplay.video.core.PlayerRetentionCoordinator
+import com.nitroplay.video.core.PlayerRetentionLevel
+import com.nitroplay.video.core.PlayerRetentionSnapshot
 import com.nitroplay.video.core.PlayerError
 import com.nitroplay.video.core.utils.Threading.runOnMainThread
 
@@ -145,6 +148,14 @@ internal class NitroPlayerLifecycle(
       ?: MemoryRetentionState.COLD
   }
 
+  fun currentRetentionLevel(): PlayerRetentionLevel {
+    return when (currentRetentionState()) {
+      MemoryRetentionState.COLD -> PlayerRetentionLevel.COLD
+      MemoryRetentionState.METADATA -> PlayerRetentionLevel.METADATA
+      MemoryRetentionState.HOT -> PlayerRetentionLevel.HOT
+    }
+  }
+
   fun isFeedProfile(): Boolean {
     if (!host.hasActiveSource) {
       return false
@@ -153,29 +164,11 @@ internal class NitroPlayerLifecycle(
   }
 
   fun shouldStayHotInFeedPool(): Boolean {
-    if (host.isReleased) {
-      return false
-    }
-
-    if (host.isPlaying || host.wantsToPlay) {
-      return true
-    }
-
-    val currentView = host.currentPlayerView?.get()
-    return currentView?.isAttachedToWindow == true
+    return PlayerRetentionCoordinator.isPinnedForFeedPool(retentionSnapshot())
   }
 
   fun shouldStayHotUnderResourcePressure(): Boolean {
-    if (host.isReleased) {
-      return false
-    }
-
-    if (host.isPlaying || host.wantsToPlay) {
-      return true
-    }
-
-    val currentView = host.currentPlayerView?.get()
-    return currentView?.isAttachedToWindow == true
+    return PlayerRetentionCoordinator.isPinnedForResourcePressure(retentionSnapshot())
   }
 
   fun trimForFeedHotPool() {
@@ -183,8 +176,7 @@ internal class NitroPlayerLifecycle(
       if (
         host.isReleased ||
         !isFeedProfile() ||
-        shouldStayHotInFeedPool() ||
-        currentRetentionState() != MemoryRetentionState.HOT
+        !PlayerRetentionCoordinator.shouldTrimForFeedHotPool(retentionSnapshot())
       ) {
         return@runOnMainThread
       }
@@ -195,7 +187,7 @@ internal class NitroPlayerLifecycle(
 
   fun trimForResourcePressure() {
     runOnMainThread {
-      if (shouldStayHotUnderResourcePressure()) {
+      if (!PlayerRetentionCoordinator.shouldTrimForResourcePressure(retentionSnapshot())) {
         return@runOnMainThread
       }
 
@@ -235,6 +227,19 @@ internal class NitroPlayerLifecycle(
       OffscreenRetention.METADATA -> trimToMetadataRetention()
       OffscreenRetention.COLD -> trimToColdRetention()
     }
+  }
+
+  fun retentionSnapshot(): PlayerRetentionSnapshot {
+    return PlayerRetentionSnapshot(
+      isReleased = host.isReleased,
+      hasActiveSource = host.hasActiveSource,
+      isPlaying = host.isPlaying,
+      isAttachedToView = host.isAttachedToView(),
+      wantsToPlay = host.wantsToPlay,
+      isExternalPlaybackActive = false,
+      isFeedPoolEligible = isFeedProfile(),
+      retentionLevel = currentRetentionLevel()
+    )
   }
 
   fun trimToMetadataRetention() {
