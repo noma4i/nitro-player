@@ -1,5 +1,5 @@
-import type { NitroPlayerEventEmitter } from '../../../spec/nitro/NitroPlayerEventEmitter.nitro';
-import { NitroPlayerEvents } from '../../../core/NitroPlayerEvents';
+import type { NitroPlayerEventEmitter } from '../../../bridge/nitro/NitroPlayerEventEmitter.nitro';
+import { NitroPlayerEvents } from '../../../player/NitroPlayerEvents';
 
 function makeMockEventEmitter(): NitroPlayerEventEmitter {
   const listeners: Record<string, Array<(...args: unknown[]) => void>> = {};
@@ -128,5 +128,4 @@ describe('NitroPlayerEvents', () => {
       events.addEventListener('onNonExistent', jest.fn());
     }).toThrow(/Unsupported event/);
   });
-
 });

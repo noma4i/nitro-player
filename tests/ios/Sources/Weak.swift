@@ -1,1 +1,1 @@
-../../../ios/core/Utils/Weak.swift
+../../../ios/support/Weak.swift

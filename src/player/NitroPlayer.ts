@@ -1,0 +1,288 @@
+import { Platform } from 'react-native';
+import { NitroModules } from 'react-native-nitro-modules';
+import { type NitroPlayer as NitroPlayerImpl } from '../bridge/nitro/NitroPlayer.nitro';
+import type { NitroPlayerSource } from '../bridge/nitro/NitroPlayerSource.nitro';
+import type { IgnoreSilentSwitchMode } from './types/IgnoreSilentSwitchMode';
+import type { MemorySnapshot } from './types/MemorySnapshot';
+import type { MixAudioMode } from './types/MixAudioMode';
+import type { PlaybackState } from './types/PlaybackState';
+import type { NitroSourceConfig } from '../source/types/NitroPlayerConfig';
+import { tryParseNativeNitroPlayerError, NitroPlayerRuntimeError } from '../support/errors/NitroPlayerError';
+import type { NitroPlayerBase } from './types/NitroPlayerBase';
+import type { NitroPlayerStatus } from './types/NitroPlayerStatus';
+import { createPlayer } from './playerFactory';
+import { createNitroSource } from '../source/sourceFactory';
+import { NitroPlayerEvents } from './NitroPlayerEvents';
+
+class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
+  private _player: NitroPlayerImpl | undefined;
+
+  protected get player(): NitroPlayerImpl {
+    if (this._player === undefined) {
+      throw new NitroPlayerRuntimeError('player/released', "You can't access player after it's released");
+    }
+
+    return this._player;
+  }
+
+  constructor(source: NitroSourceConfig | NitroPlayerSource) {
+    const hybridSource = createNitroSource(source);
+    const player = createPlayer(hybridSource);
+
+    // Initialize events
+    super(player.eventEmitter);
+    this._player = player;
+  }
+
+  /**
+   * Releases the player's native resources and releases native state.
+   * @internal
+   */
+  __destroy() {
+    const nativePlayer = this._player;
+    if (nativePlayer === undefined) return;
+
+    const nativeSource = nativePlayer.source;
+    this._player = undefined;
+
+    this.clearAllEvents();
+
+    try {
+      nativePlayer.release();
+    } catch (error) {
+      // Best effort cleanup: teardown must never crash app unmount.
+      console.error('Failed to cleanup native player resources', error);
+    }
+
+    try {
+      NitroModules.updateMemorySize(nativePlayer);
+      NitroModules.updateMemorySize(nativeSource);
+    } catch {
+      // Best effort memory accounting for released hybrid objects.
+    }
+  }
+
+  /**
+   * Returns the native (hybrid) player instance.
+   * Should not be used outside of the module.
+   * @internal
+   */
+  __getNativePlayer() {
+    return this.player;
+  }
+
+  private parseError(error: unknown) {
+    return tryParseNativeNitroPlayerError(error);
+  }
+
+  /**
+   * Updates the memory size of the player and its source. Should be called after any operation that changes the memory size of the player or its source.
+   * @internal
+   */
+  private refreshMemorySize() {
+    // No-op once released: async paths (initialize/preload/replace/clear) call
+    // this after awaiting a native promise, and release() may have run during
+    // the await — accessing `this.player` would throw `player/released`.
+    if (this._player === undefined) {
+      return;
+    }
+
+    NitroModules.updateMemorySize(this._player);
+    NitroModules.updateMemorySize(this._player.source);
+  }
+
+  private runSync<T>(operation: () => T): T {
+    try {
+      return operation();
+    } catch (error) {
+      throw this.parseError(error);
+    }
+  }
+
+  private async runAsync<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      throw this.parseError(error);
+    }
+  }
+
+  // Source
+  get source(): NitroPlayerSource {
+    return this.player.source;
+  }
+
+  // Status
+  get status(): NitroPlayerStatus {
+    return this.playbackState.status;
+  }
+
+  get playbackState(): PlaybackState {
+    return this.player.playbackState;
+  }
+
+  get memorySnapshot(): MemorySnapshot {
+    return this.player.memorySnapshot;
+  }
+
+  // Duration
+  get duration(): number {
+    return this.playbackState.duration;
+  }
+
+  // Volume
+  get volume(): number {
+    return this.player.volume;
+  }
+
+  set volume(value: number) {
+    this.player.volume = value;
+  }
+
+  // Current Time
+  get currentTime(): number {
+    return this.playbackState.currentTime;
+  }
+
+  set currentTime(value: number) {
+    this.player.currentTime = value;
+  }
+
+  get bufferDuration(): number {
+    return this.playbackState.bufferDuration;
+  }
+
+  get bufferedPosition(): number {
+    return this.playbackState.bufferedPosition;
+  }
+
+  // Muted
+  get muted(): boolean {
+    return this.player.muted;
+  }
+
+  set muted(value: boolean) {
+    this.player.muted = value;
+  }
+
+  // Loop
+  get loop(): boolean {
+    return this.player.loop;
+  }
+
+  set loop(value: boolean) {
+    this.player.loop = value;
+  }
+
+  // Rate
+  get rate(): number {
+    return this.playbackState.rate;
+  }
+
+  set rate(value: number) {
+    this.player.rate = value;
+  }
+
+  // Mix Audio Mode
+  get mixAudioMode(): MixAudioMode {
+    return this.player.mixAudioMode;
+  }
+
+  set mixAudioMode(value: MixAudioMode) {
+    this.player.mixAudioMode = value;
+  }
+
+  // Ignore Silent Switch Mode
+  get ignoreSilentSwitchMode(): IgnoreSilentSwitchMode {
+    return this.player.ignoreSilentSwitchMode;
+  }
+
+  set ignoreSilentSwitchMode(value: IgnoreSilentSwitchMode) {
+    if (__DEV__ && !['ios'].includes(Platform.OS)) {
+      console.warn('ignoreSilentSwitchMode is not supported on this platform, it wont have any effect');
+    }
+
+    this.player.ignoreSilentSwitchMode = value;
+  }
+
+  // Play In Background
+  get playInBackground(): boolean {
+    return this.player.playInBackground;
+  }
+
+  set playInBackground(value: boolean) {
+    this.player.playInBackground = value;
+  }
+
+  // Play When Inactive
+  get playWhenInactive(): boolean {
+    return this.player.playWhenInactive;
+  }
+
+  set playWhenInactive(value: boolean) {
+    this.player.playWhenInactive = value;
+  }
+
+  // Is Playing
+  get isPlaying(): boolean {
+    return this.playbackState.isPlaying;
+  }
+
+  get isBuffering(): boolean {
+    return this.playbackState.isBuffering;
+  }
+
+  get isVisualReady(): boolean {
+    return this.playbackState.isVisualReady;
+  }
+
+  async initialize(): Promise<void> {
+    await this.runAsync(() => this.player.initialize());
+    this.refreshMemorySize();
+  }
+
+  async preload(): Promise<void> {
+    await this.runAsync(() => this.player.preload());
+    this.refreshMemorySize();
+  }
+
+  /**
+   * Releases the player's native resources and releases native state.
+   * After calling this method, the player is no longer usable.
+   * Accessing any properties or methods of the player after calling this method will throw an error.
+   * If you want to clear the current source and keep the player reusable, use `clearSourceAsync()`.
+   */
+  release(): void {
+    this.__destroy();
+  }
+
+  play(): void {
+    this.runSync(() => this.player.play());
+  }
+
+  pause(): void {
+    this.runSync(() => this.player.pause());
+  }
+
+  seekBy(time: number): void {
+    this.runSync(() => this.player.seekBy(time));
+  }
+
+  seekTo(time: number): void {
+    this.runSync(() => this.player.seekTo(time));
+  }
+
+  async replaceSourceAsync(source: NitroSourceConfig | NitroPlayerSource): Promise<void> {
+    this.refreshMemorySize();
+    await this.runAsync(() => this.player.replaceSourceAsync(createNitroSource(source)));
+    this.refreshMemorySize();
+  }
+
+  async clearSourceAsync(): Promise<void> {
+    this.refreshMemorySize();
+    await this.runAsync(() => this.player.clearSourceAsync());
+    this.refreshMemorySize();
+  }
+}
+
+export { NitroPlayer };

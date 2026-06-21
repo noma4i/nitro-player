@@ -26,16 +26,16 @@ const playerInstance = {
     status: 'idle'
   },
   replaceSourceAsync: jest.fn(() => Promise.resolve()),
-  __destroy: destroy,
+  __destroy: destroy
 };
 
-jest.mock('../../../core/hooks/useManagedInstance', () => ({
+jest.mock('../../../support/useManagedInstance', () => ({
   useManagedInstance: jest.fn(() => playerInstance)
 }));
 
 describe('useNitroPlayer', () => {
   beforeEach(() => {
-    const { useManagedInstance } = require('../../../core/hooks/useManagedInstance');
+    const { useManagedInstance } = require('../../../support/useManagedInstance');
 
     destroy.mockClear();
     playerInstance.replaceSourceAsync.mockClear();
@@ -44,20 +44,17 @@ describe('useNitroPlayer', () => {
   });
 
   it('creates a managed player once and keeps it stable across source updates', async () => {
-    const { useNitroPlayer } = require('../../../core/hooks/useNitroPlayer');
-    const { useManagedInstance } = require('../../../core/hooks/useManagedInstance');
+    const { useNitroPlayer } = require('../../../player/hooks/useNitroPlayer');
+    const { useManagedInstance } = require('../../../support/useManagedInstance');
 
     const initialSource = { uri: 'https://cdn.example.com/video.mp4' };
     const nextSource = { uri: 'https://cdn.example.com/video-2.mp4' };
 
-    const { result, rerender } = renderHook(
-      ({ source }: { source: { uri: string } }) => useNitroPlayer(source),
-      {
-        initialProps: {
-          source: initialSource
-        }
+    const { result, rerender } = renderHook(({ source }: { source: { uri: string } }) => useNitroPlayer(source), {
+      initialProps: {
+        source: initialSource
       }
-    );
+    });
 
     expect(result.current).toBe(playerInstance);
     expect(useManagedInstance).toHaveBeenCalledWith(
@@ -79,7 +76,7 @@ describe('useNitroPlayer', () => {
   });
 
   it('serializes replaceSourceAsync calls when source changes rapidly', async () => {
-    const { useNitroPlayer } = require('../../../core/hooks/useNitroPlayer');
+    const { useNitroPlayer } = require('../../../player/hooks/useNitroPlayer');
     let resolveFirstReplace: (() => void) | undefined;
     let resolveSecondReplace: (() => void) | undefined;
 
@@ -101,14 +98,11 @@ describe('useNitroPlayer', () => {
     const secondSource = { uri: 'https://cdn.example.com/video-2.mp4' };
     const thirdSource = { uri: 'https://cdn.example.com/video-3.mp4' };
 
-    const { rerender } = renderHook(
-      ({ source }: { source: { uri: string } }) => useNitroPlayer(source),
-      {
-        initialProps: {
-          source: initialSource
-        }
+    const { rerender } = renderHook(({ source }: { source: { uri: string } }) => useNitroPlayer(source), {
+      initialProps: {
+        source: initialSource
       }
-    );
+    });
 
     await act(async () => {
       rerender({ source: secondSource });

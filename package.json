@@ -50,11 +50,14 @@
     "release:notes": "node ./scripts/release-notes.mjs",
     "prepublishOnly": "yarn build && yarn test:ts",
     "typecheck": "tsc --noEmit",
-    "test": "yarn test:behavior:audit && yarn test:ts && yarn test:android && yarn test:ios",
+    "test": "yarn test:behavior:audit && yarn audit:lifecycle && yarn test:ts && yarn test:android && yarn test:ios",
     "test:behavior:audit": "node ./scripts/check-behavior-tests.mjs",
+    "audit:lifecycle": "node ./scripts/audit-lifecycle-guards.mjs --self-test && node ./scripts/audit-lifecycle-guards.mjs",
     "test:ts": "jest --runInBand",
     "test:android": "cd example/android && ./gradlew :noma4i_nitro-play:test",
-    "test:ios": "cd tests/ios && swift test"
+    "test:ios": "cd tests/ios && swift test",
+    "test:ios:tsan": "cd tests/ios && swift test --sanitize=thread",
+    "test:ios:asan": "cd tests/ios && swift test --sanitize=address"
   },
   "peerDependencies": {
     "react": "*",
@@ -108,7 +111,7 @@
   "codegenConfig": {
     "name": "RNCNitroPlayerViewSpec",
     "type": "components",
-    "jsSrcsDir": "src/spec/fabric",
+    "jsSrcsDir": "src/bridge/fabric",
     "android": {
       "javaPackageName": "com.nitroplay.video.react"
     },

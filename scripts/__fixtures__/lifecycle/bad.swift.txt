@@ -1,0 +1,49 @@
+// Fixture: UNGUARDED resource-touching callbacks. Each block here can run after
+// release/teardown and dereferences the player / emits an event with no early
+// isReleased / generation guard. The analyzer MUST flag these.
+
+import AVFoundation
+import Foundation
+
+class BadObserver {
+  var player: AVPlayer
+  var _eventEmitter: EventEmitter?
+  var isReleased = false
+  var sourceGeneration = 0
+
+  func initializeObservers() {
+    // Unguarded periodic observer that derefs the live player.
+    player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] _ in
+      guard let self else { return }
+      self.player.play()
+    }
+
+    // Unguarded async block that derefs the stored player property.
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      self.player.pause()
+    }
+  }
+
+  // Unguarded delegate method that emits directly through the event emitter.
+  func onVolumeChanged(volume: Float) {
+    _eventEmitter?.onVolumeChange(volume)
+  }
+
+  // Unguarded: binding the resource into a local proves non-nil, not not-released.
+  func onBoundGuardLet() {
+    DispatchQueue.main.async { [weak self] in
+      guard let self, let player = self.player else { return }
+      player.play()
+    }
+  }
+
+  // Unguarded: if-let binding of the resource, still no release/generation guard.
+  func onBoundIfLet() {
+    DispatchQueue.main.async { [weak self] in
+      if let player = self?.player {
+        player.pause()
+      }
+    }
+  }
+}

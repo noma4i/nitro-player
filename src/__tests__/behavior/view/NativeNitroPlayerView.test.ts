@@ -8,16 +8,16 @@ describe('NativeNitroPlayerView lookup', () => {
 
     jest.doMock('react-native', () => ({
       Platform: {
-        select: jest.fn(() => ''),
+        select: jest.fn(() => '')
       },
       UIManager: {
-        hasViewManagerConfig,
-      },
+        hasViewManagerConfig
+      }
     }));
 
-    jest.doMock('../../../spec/fabric/NitroPlayerViewNativeComponent', () => 'NativeComponent');
+    jest.doMock('../../../bridge/fabric/NitroPlayerViewNativeComponent', () => 'NativeComponent');
 
-    require('../../../core/player-view/NativeNitroPlayerView');
+    require('../../../view/NativeNitroPlayerView');
 
     expect(hasViewManagerConfig).toHaveBeenCalledWith('RNCNitroPlayerView');
   });
@@ -25,16 +25,16 @@ describe('NativeNitroPlayerView lookup', () => {
   it('throws the linking error when the native view manager is unavailable', () => {
     jest.doMock('react-native', () => ({
       Platform: {
-        select: jest.fn(() => ''),
+        select: jest.fn(() => '')
       },
       UIManager: {
-        hasViewManagerConfig: jest.fn(() => false),
-      },
+        hasViewManagerConfig: jest.fn(() => false)
+      }
     }));
 
-    jest.doMock('../../../spec/fabric/NitroPlayerViewNativeComponent', () => 'NativeComponent');
+    jest.doMock('../../../bridge/fabric/NitroPlayerViewNativeComponent', () => 'NativeComponent');
 
-    const { NativeNitroPlayerView } = require('../../../core/player-view/NativeNitroPlayerView');
+    const { NativeNitroPlayerView } = require('../../../view/NativeNitroPlayerView');
 
     expect(() => NativeNitroPlayerView()).toThrow(/doesn't seem to be linked/i);
   });

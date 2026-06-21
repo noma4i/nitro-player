@@ -1,6 +1,6 @@
-import { NativeModules } from 'react-native';
-import { resolveSource } from '../core/utils/resolveSource';
-import type { StreamHeaders } from '../transport/types';
+import { resolveSource } from '../source/resolveSource';
+import { createUnavailableWarner, getNativeStreamRuntime } from '../support/nativeStreamRuntime';
+import type { StreamHeaders } from '../streaming/types';
 
 interface VideoPreviewNativeModule {
   getThumbnailUrl: (url: string, headers?: StreamHeaders) => Promise<string | null>;
@@ -8,19 +8,10 @@ interface VideoPreviewNativeModule {
   clearPreview?: () => Promise<boolean>;
 }
 
-const NativePreview = NativeModules?.NitroPlayStreamRuntime as VideoPreviewNativeModule | undefined;
+const NativePreview = getNativeStreamRuntime<VideoPreviewNativeModule>();
 
 class VideoPreview {
-  private didWarnUnavailable = false;
-
-  private warnUnavailable(): void {
-    if (this.didWarnUnavailable) {
-      return;
-    }
-
-    this.didWarnUnavailable = true;
-    console.warn('[VideoPreview] Native module not available');
-  }
+  private readonly warnUnavailable = createUnavailableWarner('VideoPreview');
 
   async getFirstFrame(source: { uri: string; headers?: StreamHeaders } | string, headers?: StreamHeaders): Promise<string | null> {
     if (!NativePreview?.getThumbnailUrl) {

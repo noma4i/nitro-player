@@ -1,1 +1,1 @@
-../../../ios/hls/HlsCacheStore.swift
+../../../ios/streaming/cache/HlsCacheStore.swift

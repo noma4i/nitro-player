@@ -1,1 +1,1 @@
-../../../ios/hybrids/NitroPlayerSource/SourceLoader.swift
+../../../ios/source/SourceLoader.swift

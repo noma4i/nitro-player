@@ -17,11 +17,11 @@ jest.mock('react-native-nitro-modules', () => ({
   }
 }));
 
-jest.mock('../../../core/utils/sourceFactory', () => ({
+jest.mock('../../../source/sourceFactory', () => ({
   createNitroSource: jest.fn(() => ({ id: 'source' }))
 }));
 
-jest.mock('../../../core/utils/playerFactory', () => ({
+jest.mock('../../../player/playerFactory', () => ({
   createPlayer: jest.fn(() => ({
     eventEmitter: {
       clearAllListeners: jest.fn()
@@ -61,7 +61,7 @@ describe('NitroPlayer release contract', () => {
   });
 
   it('becomes unusable immediately after release', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
 
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
     player.release();
@@ -73,7 +73,7 @@ describe('NitroPlayer release contract', () => {
 
 describe('NitroPlayer delegation', () => {
   const createMockPlayer = () => {
-    const { createPlayer } = require('../../../core/utils/playerFactory') as {
+    const { createPlayer } = require('../../../player/playerFactory') as {
       createPlayer: jest.Mock;
     };
     createPlayer.mockReturnValue({
@@ -118,7 +118,7 @@ describe('NitroPlayer delegation', () => {
   });
 
   it('play() delegates to native hybrid play', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     player.play();
@@ -127,7 +127,7 @@ describe('NitroPlayer delegation', () => {
   });
 
   it('pause() delegates to native hybrid pause', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     player.pause();
@@ -136,7 +136,7 @@ describe('NitroPlayer delegation', () => {
   });
 
   it('seekTo(time) delegates to native hybrid seekTo', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     player.seekTo(42);
@@ -146,7 +146,7 @@ describe('NitroPlayer delegation', () => {
   });
 
   it('volume getter/setter delegates to native', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     expect(player.volume).toBe(0.5);
@@ -156,7 +156,7 @@ describe('NitroPlayer delegation', () => {
   });
 
   it('muted getter/setter delegates to native', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     expect(player.muted).toBe(false);
@@ -207,7 +207,7 @@ describe('NitroPlayer async methods', () => {
     nativeIgnoreSilentSwitchMode = 'auto';
     release.mockClear();
 
-    const { createPlayer } = require('../../../core/utils/playerFactory') as {
+    const { createPlayer } = require('../../../player/playerFactory') as {
       createPlayer: jest.Mock;
     };
     createPlayer.mockReturnValue({
@@ -292,7 +292,7 @@ describe('NitroPlayer async methods', () => {
   });
 
   it('initialize() calls native initialize', async () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     await player.initialize();
@@ -302,7 +302,7 @@ describe('NitroPlayer async methods', () => {
 
   it('initialize() calls updateMemorySize after success', async () => {
     const { NitroModules } = require('react-native-nitro-modules');
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     await player.initialize();
@@ -311,7 +311,7 @@ describe('NitroPlayer async methods', () => {
   });
 
   it('preload() calls native preload', async () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     await player.preload();
@@ -321,7 +321,7 @@ describe('NitroPlayer async methods', () => {
 
   it('preload() calls updateMemorySize after success', async () => {
     const { NitroModules } = require('react-native-nitro-modules');
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     await player.preload();
@@ -330,7 +330,7 @@ describe('NitroPlayer async methods', () => {
   });
 
   it('seekBy(time) delegates to native seekBy', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     player.seekBy(15);
@@ -340,8 +340,8 @@ describe('NitroPlayer async methods', () => {
   });
 
   it('replaceSourceAsync(source) creates source and calls native', async () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { createNitroSource } = require('../../../source/sourceFactory');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     await player.replaceSourceAsync({ uri: 'https://cdn.example.com/video2.mp4' });
@@ -351,7 +351,7 @@ describe('NitroPlayer async methods', () => {
   });
 
   it('clearSourceAsync() calls native clear without releasing the JS player instance', async () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     await player.clearSourceAsync();
@@ -363,7 +363,7 @@ describe('NitroPlayer async methods', () => {
   });
 
   it('__destroy is idempotent - second call is no-op', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     player.__destroy();
@@ -373,7 +373,7 @@ describe('NitroPlayer async methods', () => {
   });
 
   it('replaceSourceAsync resolves even when released during the await (refreshMemorySize is a no-op after release)', async () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     let resolveNative: (() => void) | undefined;
@@ -394,7 +394,7 @@ describe('NitroPlayer async methods', () => {
   });
 
   it('clearSourceAsync resolves even when released during the await', async () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     let resolveNative: (() => void) | undefined;
@@ -439,7 +439,7 @@ describe('NitroPlayer getters', () => {
     nativeCurrentTime = 0;
     release.mockClear();
 
-    const { createPlayer } = require('../../../core/utils/playerFactory') as {
+    const { createPlayer } = require('../../../player/playerFactory') as {
       createPlayer: jest.Mock;
     };
     createPlayer.mockReturnValue({
@@ -513,21 +513,21 @@ describe('NitroPlayer getters', () => {
   });
 
   it('duration reads from playbackState.duration', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     expect(player.duration).toBe(200);
   });
 
   it('currentTime reads from playbackState.currentTime', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     expect(player.currentTime).toBe(42);
   });
 
   it('setter currentTime sets on native player', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     player.currentTime = 99;
@@ -536,7 +536,7 @@ describe('NitroPlayer getters', () => {
   });
 
   it('getter/setter loop delegates to native', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     expect(player.loop).toBe(false);
@@ -546,14 +546,14 @@ describe('NitroPlayer getters', () => {
   });
 
   it('getter rate reads from playbackState.rate', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     expect(player.rate).toBe(1.5);
   });
 
   it('setter rate sets on native player', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     player.rate = 2;
@@ -562,7 +562,7 @@ describe('NitroPlayer getters', () => {
   });
 
   it('getter/setter playInBackground delegates to native', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     expect(player.playInBackground).toBe(false);
@@ -572,28 +572,28 @@ describe('NitroPlayer getters', () => {
   });
 
   it('status reads from playbackState.status', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     expect(player.status).toBe('playing');
   });
 
   it('isPlaying reads from playbackState.isPlaying', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     expect(player.isPlaying).toBe(true);
   });
 
   it('isBuffering reads from playbackState.isBuffering', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     expect(player.isBuffering).toBe(false);
   });
 
   it('isVisualReady reads from playbackState.isVisualReady', () => {
-    const { NitroPlayer } = require('../../../core/NitroPlayer');
+    const { NitroPlayer } = require('../../../player/NitroPlayer');
     const player = new NitroPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
     expect(player.isVisualReady).toBe(true);

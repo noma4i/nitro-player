@@ -1,4 +1,4 @@
-import { resolveSource } from '../../../core/utils/resolveSource';
+import { resolveSource } from '../../../source/resolveSource';
 
 describe('resolveSource', () => {
   it('wraps a string source into { uri } with no headers', () => {

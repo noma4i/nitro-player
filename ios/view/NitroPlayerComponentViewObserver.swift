@@ -46,6 +46,7 @@ final class NitroPlayerViewDelegate: NSObject, NitroPlayerComponentViewDelegate 
     viewManager?.willExitFullscreen()
   }
 
+  // lifecycle-audit:ignore(guarded-by-markReadyToDisplay)
   func onReadyToDisplay() {
     if let player = viewManager?.player as? HybridNitroPlayer {
       player.markReadyToDisplay()

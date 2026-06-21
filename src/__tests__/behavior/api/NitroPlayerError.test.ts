@@ -1,14 +1,10 @@
-import {
-  NitroPlayerRuntimeError,
-  NitroPlayerComponentError,
-  tryParseNativeNitroPlayerError,
-} from '../../../core/types/NitroPlayerError';
+import { NitroPlayerRuntimeError, NitroPlayerComponentError, tryParseNativeNitroPlayerError } from '../../../support/errors/NitroPlayerError';
 
 describe('NitroPlayerError', () => {
   describe('NATIVE_ERROR_REGEX via tryParseNativeNitroPlayerError', () => {
     it('matches valid format {%@code::message@%}', () => {
       const nativeError = {
-        message: '{%@player/released::Player has been released@%}',
+        message: '{%@player/released::Player has been released@%}'
       };
       const result = tryParseNativeNitroPlayerError(nativeError);
       expect(result).toBeInstanceOf(NitroPlayerRuntimeError);
@@ -18,7 +14,7 @@ describe('NitroPlayerError', () => {
 
     it('does not match invalid format - returns original error', () => {
       const nativeError = {
-        message: 'Some random error without the special format',
+        message: 'Some random error without the special format'
       };
       const result = tryParseNativeNitroPlayerError(nativeError);
       expect(result).toBe(nativeError);
@@ -26,7 +22,7 @@ describe('NitroPlayerError', () => {
 
     it('does not match partial format', () => {
       const nativeError = {
-        message: '{%@incomplete',
+        message: '{%@incomplete'
       };
       const result = tryParseNativeNitroPlayerError(nativeError);
       expect(result).toBe(nativeError);
@@ -36,7 +32,7 @@ describe('NitroPlayerError', () => {
   describe('tryParseNativeNitroPlayerError', () => {
     it('parses native error with valid runtime error format', () => {
       const nativeError = {
-        message: '{%@source/invalid-uri::The URI is invalid@%}',
+        message: '{%@source/invalid-uri::The URI is invalid@%}'
       };
       const result = tryParseNativeNitroPlayerError(nativeError);
       expect(result).toBeInstanceOf(NitroPlayerRuntimeError);
@@ -46,7 +42,7 @@ describe('NitroPlayerError', () => {
 
     it('parses native error with view error format as NitroPlayerComponentError', () => {
       const nativeError = {
-        message: '{%@view/not-found::View was not found@%}',
+        message: '{%@view/not-found::View was not found@%}'
       };
       const result = tryParseNativeNitroPlayerError(nativeError);
       expect(result).toBeInstanceOf(NitroPlayerComponentError);
@@ -68,7 +64,7 @@ describe('NitroPlayerError', () => {
 
     it('falls back to unknown/unknown for an unrecognized native code, preserving the message', () => {
       const nativeError = {
-        message: '{%@player/teleported::Something the JS layer does not know@%}',
+        message: '{%@player/teleported::Something the JS layer does not know@%}'
       };
       const result = tryParseNativeNitroPlayerError(nativeError);
       expect(result).toBeInstanceOf(NitroPlayerRuntimeError);
@@ -76,22 +72,20 @@ describe('NitroPlayerError', () => {
       expect((result as NitroPlayerRuntimeError).message).toBe('Something the JS layer does not know');
     });
 
-    it.each([
-      'library/method-not-supported',
-      'player/cancelled',
-      'player/invalid-track-url',
-      'source/cancelled',
-    ])('preserves the native runtime code %s instead of collapsing to unknown/unknown', (code) => {
-      const nativeError = { message: `{%@${code}::native detail@%}` };
-      const result = tryParseNativeNitroPlayerError(nativeError);
-      expect(result).toBeInstanceOf(NitroPlayerRuntimeError);
-      expect((result as NitroPlayerRuntimeError).code).toBe(code);
-      expect((result as NitroPlayerRuntimeError).message).toBe('native detail');
-    });
+    it.each(['library/method-not-supported', 'player/cancelled', 'player/invalid-track-url', 'source/cancelled'])(
+      'preserves the native runtime code %s instead of collapsing to unknown/unknown',
+      code => {
+        const nativeError = { message: `{%@${code}::native detail@%}` };
+        const result = tryParseNativeNitroPlayerError(nativeError);
+        expect(result).toBeInstanceOf(NitroPlayerRuntimeError);
+        expect((result as NitroPlayerRuntimeError).code).toBe(code);
+        expect((result as NitroPlayerRuntimeError).message).toBe('native detail');
+      }
+    );
 
     it('does not coerce an unknown view-prefixed code into a typed component error', () => {
       const nativeError = {
-        message: '{%@view/holographic::Unsupported view error@%}',
+        message: '{%@view/holographic::Unsupported view error@%}'
       };
       const result = tryParseNativeNitroPlayerError(nativeError);
       expect(result).toBeInstanceOf(NitroPlayerRuntimeError);
@@ -101,7 +95,7 @@ describe('NitroPlayerError', () => {
     it('replaces error stack when regex matches', () => {
       const nativeError = {
         message: '{%@player/released::Player released@%}',
-        stack: 'Error: {%@player/released::Player released@%}\n    at NativeModule.call',
+        stack: 'Error: {%@player/released::Player released@%}\n    at NativeModule.call'
       };
       const result = tryParseNativeNitroPlayerError(nativeError);
       expect(result).toBeInstanceOf(NitroPlayerRuntimeError);
@@ -113,7 +107,7 @@ describe('NitroPlayerError', () => {
     it('preserves fixed stack from native error in the result', () => {
       const nativeError = {
         message: '{%@player/not-initialized::Not init@%}',
-        stack: 'Error: {%@player/not-initialized::Not init@%}\n    at foo.js:1:1',
+        stack: 'Error: {%@player/not-initialized::Not init@%}\n    at foo.js:1:1'
       };
       const result = tryParseNativeNitroPlayerError(nativeError) as NitroPlayerRuntimeError;
       // The result gets the fixed stack from the native error (maybeFixErrorStack runs first)

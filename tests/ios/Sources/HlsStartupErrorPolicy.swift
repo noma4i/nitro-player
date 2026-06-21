@@ -1,1 +1,1 @@
-../../../ios/hls/HlsStartupErrorPolicy.swift
+../../../ios/streaming/HlsStartupErrorPolicy.swift

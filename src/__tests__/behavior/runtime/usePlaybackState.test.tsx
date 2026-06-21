@@ -33,7 +33,7 @@ function makeMockPlayer(playbackState: ReturnType<typeof makePlaybackState> | nu
     _playbackState: playbackState,
     get playbackState() {
       if (this._released) {
-        const { NitroPlayerRuntimeError } = require('../../../core/types/NitroPlayerError');
+        const { NitroPlayerRuntimeError } = require('../../../support/errors/NitroPlayerError');
         throw new NitroPlayerRuntimeError('player/released', 'Player is released');
       }
       return this._playbackState;
@@ -57,7 +57,7 @@ function makeMockPlayer(playbackState: ReturnType<typeof makePlaybackState> | nu
 
 describe('usePlaybackState', () => {
   it('returns null for null player', () => {
-    const { usePlaybackState } = require('../../../core/hooks/usePlaybackState');
+    const { usePlaybackState } = require('../../../player/hooks/usePlaybackState');
 
     const { result } = renderHook(() => usePlaybackState(null));
 
@@ -65,19 +65,21 @@ describe('usePlaybackState', () => {
   });
 
   it('returns current native playbackState from player', () => {
-    const { usePlaybackState } = require('../../../core/hooks/usePlaybackState');
+    const { usePlaybackState } = require('../../../player/hooks/usePlaybackState');
     const player = makeMockPlayer(makePlaybackState({ status: 'paused', currentTime: 42 }));
 
     const { result } = renderHook(() => usePlaybackState(player, { interpolate: true, fps: 60 }));
 
-    expect(result.current).toEqual(expect.objectContaining({
-      status: 'paused',
-      currentTime: 42
-    }));
+    expect(result.current).toEqual(
+      expect.objectContaining({
+        status: 'paused',
+        currentTime: 42
+      })
+    );
   });
 
   it('updates state only from native playback events', () => {
-    const { usePlaybackState } = require('../../../core/hooks/usePlaybackState');
+    const { usePlaybackState } = require('../../../player/hooks/usePlaybackState');
     const player = makeMockPlayer(makePlaybackState({ status: 'idle', currentTime: 1 }));
 
     const { result } = renderHook(() => usePlaybackState(player));
@@ -86,14 +88,16 @@ describe('usePlaybackState', () => {
       player._emit('onPlaybackState', makePlaybackState({ status: 'playing', currentTime: 5 }));
     });
 
-    expect(result.current).toEqual(expect.objectContaining({
-      status: 'playing',
-      currentTime: 5
-    }));
+    expect(result.current).toEqual(
+      expect.objectContaining({
+        status: 'playing',
+        currentTime: 5
+      })
+    );
   });
 
   it('returns null when player getter throws player/released', () => {
-    const { usePlaybackState } = require('../../../core/hooks/usePlaybackState');
+    const { usePlaybackState } = require('../../../player/hooks/usePlaybackState');
     const player = makeMockPlayer(makePlaybackState());
     player._released = true;
 

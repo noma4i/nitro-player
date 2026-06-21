@@ -2,8 +2,8 @@ import { renderHook } from '@testing-library/react';
 
 jest.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
 jest.mock('react-native-nitro-modules', () => ({ NitroModules: { createHybridObject: jest.fn(), updateMemorySize: jest.fn() } }));
-jest.mock('../../../core/utils/sourceFactory', () => ({ createNitroSource: jest.fn(() => ({ id: 'source' })) }));
-jest.mock('../../../core/utils/playerFactory', () => ({ createPlayer: jest.fn() }));
+jest.mock('../../../source/sourceFactory', () => ({ createNitroSource: jest.fn(() => ({ id: 'source' })) }));
+jest.mock('../../../player/playerFactory', () => ({ createPlayer: jest.fn() }));
 
 describe('useManagedInstance', () => {
   let instanceCounter: number;
@@ -23,7 +23,7 @@ describe('useManagedInstance', () => {
   }
 
   it('creates instance on mount via factory', () => {
-    const { useManagedInstance } = require('../../../core/hooks/useManagedInstance');
+    const { useManagedInstance } = require('../../../support/useManagedInstance');
     const { factory, cleanup, deps } = makeConfig();
 
     const { result } = renderHook(() => useManagedInstance({ factory, cleanup }, deps));
@@ -33,7 +33,7 @@ describe('useManagedInstance', () => {
   });
 
   it('calls cleanup on unmount', () => {
-    const { useManagedInstance } = require('../../../core/hooks/useManagedInstance');
+    const { useManagedInstance } = require('../../../support/useManagedInstance');
     const { factory, cleanup, deps } = makeConfig();
 
     const { unmount } = renderHook(() => useManagedInstance({ factory, cleanup }, deps));
@@ -46,7 +46,7 @@ describe('useManagedInstance', () => {
   });
 
   it('recreates instance when dependencies change', () => {
-    const { useManagedInstance } = require('../../../core/hooks/useManagedInstance');
+    const { useManagedInstance } = require('../../../support/useManagedInstance');
     const cleanup = jest.fn((obj: number) => {
       cleanedUp.push(obj);
     });
@@ -62,7 +62,7 @@ describe('useManagedInstance', () => {
   });
 
   it('calls cleanup for old instance before creating new', () => {
-    const { useManagedInstance } = require('../../../core/hooks/useManagedInstance');
+    const { useManagedInstance } = require('../../../support/useManagedInstance');
     const cleanup = jest.fn((obj: number) => {
       cleanedUp.push(obj);
     });
@@ -76,7 +76,7 @@ describe('useManagedInstance', () => {
   });
 
   it('does not recreate when dependencies are same ref', () => {
-    const { useManagedInstance } = require('../../../core/hooks/useManagedInstance');
+    const { useManagedInstance } = require('../../../support/useManagedInstance');
     const cleanup = jest.fn();
     const factory = jest.fn(() => ++instanceCounter);
     const deps = ['stable'];
@@ -92,7 +92,7 @@ describe('useManagedInstance', () => {
   });
 
   it('uses custom dependenciesEqualFn', () => {
-    const { useManagedInstance } = require('../../../core/hooks/useManagedInstance');
+    const { useManagedInstance } = require('../../../support/useManagedInstance');
     const cleanup = jest.fn((obj: number) => {
       cleanedUp.push(obj);
     });
@@ -110,7 +110,7 @@ describe('useManagedInstance', () => {
   });
 
   it('factory called only once on initial render', () => {
-    const { useManagedInstance } = require('../../../core/hooks/useManagedInstance');
+    const { useManagedInstance } = require('../../../support/useManagedInstance');
     const factory = jest.fn(() => ++instanceCounter);
     const cleanup = jest.fn();
 

@@ -61,35 +61,29 @@ describe('streamCache', () => {
   });
 
   it('delegates prefetch(source) to native prefetchFirstSegment', async () => {
-    const { streamCache } = require('../../../transport/streamCache');
+    const { streamCache } = require('../../../streaming/streamCache');
 
     await streamCache.prefetch({
       uri: 'https://cdn.example.com/live.m3u8',
       headers: { Authorization: 'Bearer token' }
     });
 
-    expect(nativePrefetchFirstSegment).toHaveBeenCalledWith(
-      'https://cdn.example.com/live.m3u8',
-      { Authorization: 'Bearer token' }
-    );
+    expect(nativePrefetchFirstSegment).toHaveBeenCalledWith('https://cdn.example.com/live.m3u8', { Authorization: 'Bearer token' });
   });
 
   it('prefetches HLS manifest URLs with query strings and second-arg headers', async () => {
-    const { streamCache } = require('../../../transport/streamCache');
+    const { streamCache } = require('../../../streaming/streamCache');
 
     await streamCache.prefetch('https://cdn.example.com/live.m3u8?token=abc', {
       Authorization: 'Bearer token',
       'X-Variant': 'home'
     });
 
-    expect(nativePrefetchFirstSegment).toHaveBeenCalledWith(
-      'https://cdn.example.com/live.m3u8?token=abc',
-      { Authorization: 'Bearer token', 'X-Variant': 'home' }
-    );
+    expect(nativePrefetchFirstSegment).toHaveBeenCalledWith('https://cdn.example.com/live.m3u8?token=abc', { Authorization: 'Bearer token', 'X-Variant': 'home' });
   });
 
   it('does not prefetch non-HLS sources', async () => {
-    const { streamCache } = require('../../../transport/streamCache');
+    const { streamCache } = require('../../../streaming/streamCache');
 
     await streamCache.prefetch({
       uri: 'https://cdn.example.com/movie.mp4',
@@ -100,7 +94,7 @@ describe('streamCache', () => {
   });
 
   it('getStats() returns total cache stats when source is omitted', async () => {
-    const { streamCache } = require('../../../transport/streamCache');
+    const { streamCache } = require('../../../streaming/streamCache');
 
     const stats = await streamCache.getStats();
 
@@ -113,17 +107,14 @@ describe('streamCache', () => {
   });
 
   it('getStats(source) returns per-stream stats', async () => {
-    const { streamCache } = require('../../../transport/streamCache');
+    const { streamCache } = require('../../../streaming/streamCache');
 
     const stats = await streamCache.getStats({
       uri: 'https://cdn.example.com/live.m3u8',
       headers: { Authorization: 'Bearer token' }
     });
 
-    expect(nativeGetStreamCacheStats).toHaveBeenCalledWith(
-      'https://cdn.example.com/live.m3u8',
-      { Authorization: 'Bearer token' }
-    );
+    expect(nativeGetStreamCacheStats).toHaveBeenCalledWith('https://cdn.example.com/live.m3u8', { Authorization: 'Bearer token' });
     expect(stats).toEqual({
       totalSize: 0,
       fileCount: 0,
@@ -134,7 +125,7 @@ describe('streamCache', () => {
   });
 
   it('keeps cache stats identity scoped by source headers', async () => {
-    const { streamCache } = require('../../../transport/streamCache');
+    const { streamCache } = require('../../../streaming/streamCache');
 
     await streamCache.getStats({
       uri: 'https://cdn.example.com/live.m3u8',
@@ -145,21 +136,13 @@ describe('streamCache', () => {
       headers: { 'X-Feed': 'creator' }
     });
 
-    expect(nativeGetStreamCacheStats).toHaveBeenNthCalledWith(
-      1,
-      'https://cdn.example.com/live.m3u8',
-      { 'X-Feed': 'home' }
-    );
-    expect(nativeGetStreamCacheStats).toHaveBeenNthCalledWith(
-      2,
-      'https://cdn.example.com/live.m3u8',
-      { 'X-Feed': 'creator' }
-    );
+    expect(nativeGetStreamCacheStats).toHaveBeenNthCalledWith(1, 'https://cdn.example.com/live.m3u8', { 'X-Feed': 'home' });
+    expect(nativeGetStreamCacheStats).toHaveBeenNthCalledWith(2, 'https://cdn.example.com/live.m3u8', { 'X-Feed': 'creator' });
   });
 
   it('getStats(source) falls back to defaults when native throws', async () => {
     nativeGetStreamCacheStats.mockRejectedValueOnce(new Error('fail'));
-    const { streamCache } = require('../../../transport/streamCache');
+    const { streamCache } = require('../../../streaming/streamCache');
 
     const stats = await streamCache.getStats('https://cdn.example.com/live.m3u8', {
       Authorization: 'Bearer token'
@@ -175,7 +158,7 @@ describe('streamCache', () => {
   });
 
   it('clear() delegates to native clearCache', async () => {
-    const { streamCache } = require('../../../transport/streamCache');
+    const { streamCache } = require('../../../streaming/streamCache');
 
     const result = await streamCache.clear();
 
@@ -203,10 +186,7 @@ describe('videoPreview', () => {
       headers: { Authorization: 'Bearer token' }
     });
 
-    expect(nativeGetThumbnailUrl).toHaveBeenCalledWith(
-      'https://cdn.example.com/live.m3u8',
-      { Authorization: 'Bearer token' }
-    );
+    expect(nativeGetThumbnailUrl).toHaveBeenCalledWith('https://cdn.example.com/live.m3u8', { Authorization: 'Bearer token' });
     expect(frame).toBe('file:///tmp/frame.jpg');
   });
 
@@ -222,16 +202,8 @@ describe('videoPreview', () => {
       headers: { 'X-Feed': 'creator' }
     });
 
-    expect(nativeGetThumbnailUrl).toHaveBeenNthCalledWith(
-      1,
-      'https://cdn.example.com/live.m3u8',
-      { 'X-Feed': 'home' }
-    );
-    expect(nativeGetThumbnailUrl).toHaveBeenNthCalledWith(
-      2,
-      'https://cdn.example.com/live.m3u8',
-      { 'X-Feed': 'creator' }
-    );
+    expect(nativeGetThumbnailUrl).toHaveBeenNthCalledWith(1, 'https://cdn.example.com/live.m3u8', { 'X-Feed': 'home' });
+    expect(nativeGetThumbnailUrl).toHaveBeenNthCalledWith(2, 'https://cdn.example.com/live.m3u8', { 'X-Feed': 'creator' });
   });
 
   it('returns null when native preview lookup fails', async () => {
@@ -251,10 +223,7 @@ describe('videoPreview', () => {
       headers: { Authorization: 'Bearer token' }
     });
 
-    expect(nativePeekThumbnailUrl).toHaveBeenCalledWith(
-      'https://cdn.example.com/live.m3u8',
-      { Authorization: 'Bearer token' }
-    );
+    expect(nativePeekThumbnailUrl).toHaveBeenCalledWith('https://cdn.example.com/live.m3u8', { Authorization: 'Bearer token' });
     expect(nativeGetThumbnailUrl).not.toHaveBeenCalled();
     expect(frame).toBe('file:///tmp/cached-frame.jpg');
   });
@@ -269,16 +238,8 @@ describe('videoPreview', () => {
       'X-Feed': 'creator'
     });
 
-    expect(nativePeekThumbnailUrl).toHaveBeenNthCalledWith(
-      1,
-      'https://cdn.example.com/live.m3u8',
-      { 'X-Feed': 'home' }
-    );
-    expect(nativePeekThumbnailUrl).toHaveBeenNthCalledWith(
-      2,
-      'https://cdn.example.com/live.m3u8',
-      { 'X-Feed': 'creator' }
-    );
+    expect(nativePeekThumbnailUrl).toHaveBeenNthCalledWith(1, 'https://cdn.example.com/live.m3u8', { 'X-Feed': 'home' });
+    expect(nativePeekThumbnailUrl).toHaveBeenNthCalledWith(2, 'https://cdn.example.com/live.m3u8', { 'X-Feed': 'creator' });
     expect(nativeGetThumbnailUrl).not.toHaveBeenCalled();
   });
 

@@ -1,1 +1,1 @@
-../../../ios/core/PlaybackStateEmissionGate.swift
+../../../ios/player/PlaybackStateEmissionGate.swift

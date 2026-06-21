@@ -1,0 +1,54 @@
+// Fixture: correctly guarded callbacks. Every resource-touching block either has
+// an early isReleased / generation guard, routes through a guarded wrapper, only
+// derefs a freshly-bound / parameter value, or is explicitly opted out. The
+// analyzer MUST keep this file clean.
+
+import AVFoundation
+import Foundation
+
+class GoodObserver {
+  var player: AVPlayer
+  var _eventEmitter: EventEmitter?
+  weak var delegate: Host?
+  var isReleased = false
+  var sourceGeneration = 0
+
+  func initializeObservers() {
+    // Periodic observer guarded by isReleased.
+    player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] _ in
+      guard let self, !self.isReleased else { return }
+      self.player.play()
+    }
+
+    // Async block guarded by generation.
+    let generation = sourceGeneration
+    DispatchQueue.main.async { [weak self] in
+      guard let self, self.sourceGeneration == generation else { return }
+      self.player.pause()
+    }
+
+    // Resource access routed through a guarded wrapper.
+    player.observe(\.rate, options: [.new]) { [weak self] _, change in
+      self?.notifyDelegate { $0.onRateChanged() }
+    }
+  }
+
+  // Helper whose only resource access is through a parameter value.
+  func onPlayerAccessLog(playerItem: AVPlayerItem) {
+    guard let log = playerItem.accessLog() else { return }
+    _ = log
+  }
+
+  // Opted-out delegate method reached only through a guarded wrapper.
+  // lifecycle-audit:ignore(guarded-by-notifyDelegate)
+  func onVolumeChanged(volume: Float) {
+    _eventEmitter?.onVolumeChange(volume)
+  }
+
+  private func notifyDelegate(_ handler: @escaping (Host) -> Void) {
+    DispatchQueue.main.async { [weak self] in
+      guard let delegate = self?.delegate, !delegate.isReleased else { return }
+      handler(delegate)
+    }
+  }
+}

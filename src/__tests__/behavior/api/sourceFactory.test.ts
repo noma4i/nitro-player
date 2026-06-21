@@ -20,7 +20,7 @@ describe('sourceFactory', () => {
   });
 
   it('passes raw source config to native factory without JS-side resolution', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({
       uri: 'https://cdn.example.com/video.mp4'
@@ -39,7 +39,7 @@ describe('sourceFactory', () => {
   });
 
   it('preserves explicit startup and retention config for native resolution', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({
       uri: 'https://cdn.example.com/feed-item.mp4',
@@ -66,7 +66,7 @@ describe('sourceFactory', () => {
   });
 
   it('maps buffer, transport and preview overrides', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({
       uri: 'https://cdn.example.com/live.m3u8',
@@ -108,7 +108,7 @@ describe('sourceFactory', () => {
   });
 
   it('preserves the complete v2 source DSL for native source ownership', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({
       uri: 'https://cdn.example.com/live.m3u8',
@@ -188,7 +188,7 @@ describe('sourceFactory', () => {
   });
 
   it('supports React Native asset sources inside NitroSourceConfig', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({
       uri: 42
@@ -202,28 +202,28 @@ describe('sourceFactory', () => {
   });
 
   it('rejects an unknown startup value before reaching the native factory', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', startup: 'turbo' as never })).toThrow(/Invalid startup/);
     expect(fromNitroPlayerConfig).not.toHaveBeenCalled();
   });
 
   it('rejects an unknown transport mode', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', transport: { mode: 'tunnel' as never } })).toThrow(/Invalid transport\.mode/);
     expect(fromNitroPlayerConfig).not.toHaveBeenCalled();
   });
 
   it('rejects an unknown preview mode and retention preload level', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', preview: { mode: 'eager' as never } })).toThrow(/Invalid preview\.mode/);
     expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', retention: { preload: 'all' as never } })).toThrow(/Invalid retention\.preload/);
   });
 
   it('rejects malformed nested source config before native factory ownership', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', metadata: 'title' as never })).toThrow(/Invalid metadata/);
     expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', buffer: ['fast'] as never })).toThrow(/Invalid buffer/);
@@ -235,9 +235,8 @@ describe('sourceFactory', () => {
   });
 
   it('rejects a malformed headers shape', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     expect(() => createNitroSource({ uri: 'https://cdn.example.com/v.mp4', headers: ['x'] as never })).toThrow(/Invalid headers/);
   });
-
 });

@@ -11,11 +11,11 @@ jest.mock('react-native-nitro-modules', () => ({
   }
 }));
 
-jest.mock('../../../core/utils/sourceFactory', () => ({
+jest.mock('../../../source/sourceFactory', () => ({
   createNitroSource: jest.fn(() => ({ id: 'source' }))
 }));
 
-jest.mock('../../../core/utils/playerFactory', () => ({
+jest.mock('../../../player/playerFactory', () => ({
   createPlayer: jest.fn()
 }));
 
@@ -35,7 +35,7 @@ function makeMockPlayer() {
 
 describe('useEvent', () => {
   it('calls addEventListener on player', () => {
-    const { useEvent } = require('../../../core/hooks/useEvent');
+    const { useEvent } = require('../../../player/hooks/useEvent');
     const player = makeMockPlayer();
     const callback = jest.fn();
 
@@ -45,7 +45,7 @@ describe('useEvent', () => {
   });
 
   it('removes subscription on unmount', () => {
-    const { useEvent } = require('../../../core/hooks/useEvent');
+    const { useEvent } = require('../../../player/hooks/useEvent');
     const player = makeMockPlayer();
     const callback = jest.fn();
 
@@ -59,7 +59,7 @@ describe('useEvent', () => {
   });
 
   it('callback change does not resubscribe (uses ref)', () => {
-    const { useEvent } = require('../../../core/hooks/useEvent');
+    const { useEvent } = require('../../../player/hooks/useEvent');
     const player = makeMockPlayer();
     const callback1 = jest.fn();
     const callback2 = jest.fn();
@@ -81,7 +81,7 @@ describe('useEvent', () => {
   });
 
   it('updates subscription when event name changes', () => {
-    const { useEvent } = require('../../../core/hooks/useEvent');
+    const { useEvent } = require('../../../player/hooks/useEvent');
     const player = makeMockPlayer();
     const callback = jest.fn();
 
@@ -99,7 +99,7 @@ describe('useEvent', () => {
   });
 
   it('does nothing when player is null', () => {
-    const { useEvent } = require('../../../core/hooks/useEvent');
+    const { useEvent } = require('../../../player/hooks/useEvent');
     const callback = jest.fn();
 
     const { result } = renderHook(() => useEvent(null, 'onPlaybackState', callback));
@@ -108,7 +108,7 @@ describe('useEvent', () => {
   });
 
   it('does nothing when player is undefined', () => {
-    const { useEvent } = require('../../../core/hooks/useEvent');
+    const { useEvent } = require('../../../player/hooks/useEvent');
     const callback = jest.fn();
 
     const { result } = renderHook(() => useEvent(undefined, 'onLoad', callback));

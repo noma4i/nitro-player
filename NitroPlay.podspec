@@ -29,11 +29,7 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/noma4i/nitro-player.git", :tag => "#{s.version}" }
 
   s.source_files = [
-    "ios/*.{h,m,mm,swift}",
-    "ios/core/**/*.{h,m,mm,swift}",      # Core library files
-    "ios/hybrids/**/*.{h,m,mm,swift}",   # Nitro Hybrid files
-    "ios/view/**/*.{h,m,mm,swift}",      # Video View files
-    "ios/hls/**/*.{h,m,mm,swift}"        # HLS Cache Proxy
+    "ios/**/*.{h,m,mm,swift}"            # Domain-organized: player/source/view/streaming/preview/bridge/support
   ]
 
   s.dependency "GCDWebServer", "~> 3.5"

@@ -1,0 +1,1 @@
+../../../ios/support/LifecycleGate.swift

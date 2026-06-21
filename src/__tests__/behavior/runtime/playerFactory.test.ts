@@ -10,7 +10,7 @@ jest.mock('react-native-nitro-modules', () => ({
   }
 }));
 
-jest.mock('../../../core/utils/sourceFactory', () => ({
+jest.mock('../../../source/sourceFactory', () => ({
   createNitroSource: jest.fn((s: unknown) => ({ uri: s })),
   isNitroPlayerSource: jest.fn(
     (s: unknown) =>
@@ -26,7 +26,7 @@ describe('playerFactory', () => {
   beforeEach(() => {
     nativeCreatePlayer.mockImplementation((source: unknown) => ({ source }));
 
-    const { createNitroSource, isNitroPlayerSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource, isNitroPlayerSource } = require('../../../source/sourceFactory');
     (createNitroSource as jest.Mock).mockImplementation((s: unknown) => ({ uri: s }));
     (isNitroPlayerSource as jest.Mock).mockImplementation(
       (s: unknown) =>
@@ -39,7 +39,7 @@ describe('playerFactory', () => {
   });
 
   it('createPlayer with source object calls NitroPlayerFactory.createPlayer', () => {
-    const { createPlayer } = require('../../../core/utils/playerFactory');
+    const { createPlayer } = require('../../../player/playerFactory');
 
     const result = createPlayer({ uri: 'https://cdn.example.com/video.mp4' });
 
@@ -48,7 +48,7 @@ describe('playerFactory', () => {
   });
 
   it('createPlayer wraps native errors via tryParseNativeNitroPlayerError', () => {
-    const { createPlayer } = require('../../../core/utils/playerFactory');
+    const { createPlayer } = require('../../../player/playerFactory');
 
     nativeCreatePlayer.mockImplementation(() => {
       throw new Error('{%@source/invalid-uri::Bad URI@%}');
@@ -58,8 +58,8 @@ describe('playerFactory', () => {
   });
 
   it('createPlayer passes NitroPlayerSource directly if isNitroPlayerSource is true', () => {
-    const { createPlayer } = require('../../../core/utils/playerFactory');
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createPlayer } = require('../../../player/playerFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     const nitroSource = { name: 'NitroPlayerSource', uri: 'https://cdn.example.com/video.mp4' };
     createPlayer(nitroSource);

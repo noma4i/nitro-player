@@ -2,6 +2,9 @@ import type { NitroSourceConfig, StreamHeaders } from '@noma4i/nitro-play';
 
 export const HLS_URL = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
 export const MP4_URL = 'https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4';
+// Longer HLS asset so buffering / background scenarios have enough runway to
+// exercise rebuffer and mid-stream teardown without the stream ending first.
+export const LONG_HLS_URL = 'https://test-streams.mux.dev/pts_shift/master.m3u8';
 
 export type StreamRuntimeSource = {
   uri: string;
@@ -35,22 +38,22 @@ export const HERO_SOURCES = {
       startup: 'lazy',
       metadata: {
         title: 'Feed stream',
-        subtitle: 'Auto proxy',
+        subtitle: 'Auto proxy'
       },
       transport: { mode: 'auto' },
       retention: {
         preload: 'metadata',
         offscreen: 'metadata',
         trimDelayMs: 4000,
-        feedPoolEligible: true,
+        feedPoolEligible: true
       },
       preview: {
         mode: 'always',
         maxWidth: 640,
         maxHeight: 360,
-        quality: 80,
-      },
-    } satisfies NitroSourceConfig,
+        quality: 80
+      }
+    } satisfies NitroSourceConfig
   },
   profileStream: {
     key: 'profileStream',
@@ -60,27 +63,27 @@ export const HERO_SOURCES = {
     source: {
       uri: HLS_URL,
       headers: {
-        'X-Nitro-Scenario': 'profile-feed',
+        'X-Nitro-Scenario': 'profile-feed'
       },
       startup: 'lazy',
       metadata: {
         title: 'Profile stream',
-        subtitle: 'Scoped headers',
+        subtitle: 'Scoped headers'
       },
       transport: { mode: 'auto' },
       retention: {
         preload: 'metadata',
         offscreen: 'metadata',
         trimDelayMs: 4000,
-        feedPoolEligible: true,
+        feedPoolEligible: true
       },
       preview: {
         mode: 'listener',
         maxWidth: 512,
         maxHeight: 512,
-        quality: 72,
-      },
-    } satisfies NitroSourceConfig,
+        quality: 72
+      }
+    } satisfies NitroSourceConfig
   },
   directMp4: {
     key: 'directMp4',
@@ -92,24 +95,63 @@ export const HERO_SOURCES = {
       startup: 'eager',
       metadata: {
         title: 'Direct clip',
-        subtitle: 'Generated preview',
+        subtitle: 'Generated preview'
       },
       transport: { mode: 'direct' },
       retention: {
         preload: 'buffered',
         offscreen: 'hot',
         trimDelayMs: 12000,
-        feedPoolEligible: false,
+        feedPoolEligible: false
       },
       preview: {
         mode: 'manual',
         maxWidth: 480,
         maxHeight: 270,
-        quality: 70,
-      },
-    } satisfies NitroSourceConfig,
-  },
+        quality: 70
+      }
+    } satisfies NitroSourceConfig
+  }
 } as const;
+
+// Long-running HLS source for buffering-interrupt and background-lifecycle
+// screens. Listener preview keeps side jobs from mutating playback state.
+export const LONG_HLS_SOURCE: NitroSourceConfig = {
+  uri: LONG_HLS_URL,
+  startup: 'lazy',
+  metadata: {
+    title: 'Long HLS stream',
+    subtitle: 'Buffering and background lab'
+  },
+  transport: { mode: 'auto' },
+  retention: {
+    preload: 'metadata',
+    offscreen: 'metadata',
+    trimDelayMs: 4000,
+    feedPoolEligible: true
+  },
+  preview: {
+    mode: 'listener',
+    maxWidth: 640,
+    maxHeight: 360,
+    quality: 80
+  }
+};
+
+// Two distinct HERO sources used by the source-swap-stress screen to drive
+// replaceSourceAsync back and forth while playing.
+export const SWAP_SOURCES = [
+  {
+    key: 'swap-direct',
+    label: 'Direct MP4',
+    source: HERO_SOURCES.directMp4.source
+  },
+  {
+    key: 'swap-hls',
+    label: 'Proxy HLS',
+    source: HERO_SOURCES.startupProxy.source
+  }
+] as const;
 
 export const FEED_SOURCES = [
   {
@@ -117,7 +159,7 @@ export const FEED_SOURCES = [
     title: 'Home Feed Stream',
     tone: '#ec5f67',
     source: HERO_SOURCES.profileStream.source,
-    description: 'Header-scoped HLS in listener mode, matching a home feed cell.',
+    description: 'Header-scoped HLS in listener mode, matching a home feed cell.'
   },
   {
     key: 'feed-creator',
@@ -126,28 +168,28 @@ export const FEED_SOURCES = [
     source: {
       ...HERO_SOURCES.profileStream.source,
       headers: {
-        'X-Nitro-Scenario': 'creator-feed',
+        'X-Nitro-Scenario': 'creator-feed'
       },
       metadata: {
         title: 'Creator stream',
-        subtitle: 'Parallel feed cell',
+        subtitle: 'Parallel feed cell'
       },
       preview: {
         mode: 'always',
         maxWidth: 512,
         maxHeight: 512,
-        quality: 76,
-      },
+        quality: 76
+      }
     } satisfies NitroSourceConfig,
-    description: 'Same playable HLS URL with a different harmless header identity.',
+    description: 'Same playable HLS URL with a different harmless header identity.'
   },
   {
     key: 'feed-direct',
     title: 'Inline MP4 Preview',
     tone: '#66d19e',
     source: HERO_SOURCES.directMp4.source,
-    description: 'Direct MP4 alongside streaming cards to check mixed transport and preview coexistence.',
-  },
+    description: 'Direct MP4 alongside streaming cards to check mixed transport and preview coexistence.'
+  }
 ] as const;
 
 export const CONSUMER_PAGE_SIZE = 3;
@@ -169,7 +211,7 @@ export const CONSUMER_FEED_ITEMS: ConsumerFeedItem[] = [
     page: 1,
     reuseGroup: 'home-stream-object',
     source: HERO_SOURCES.profileStream.source,
-    note: 'Same object as the profile/home stream. Verifies value-based reuse across surfaces.',
+    note: 'Same object as the profile/home stream. Verifies value-based reuse across surfaces.'
   },
   {
     key: 'page-1-creator-header',
@@ -177,7 +219,7 @@ export const CONSUMER_FEED_ITEMS: ConsumerFeedItem[] = [
     page: 1,
     reuseGroup: 'creator-stream-header',
     source: FEED_SOURCES[1].source,
-    note: 'Same HLS URL, different harmless header. Cache identity must stay isolated.',
+    note: 'Same HLS URL, different harmless header. Cache identity must stay isolated.'
   },
   {
     key: 'page-1-direct',
@@ -185,7 +227,7 @@ export const CONSUMER_FEED_ITEMS: ConsumerFeedItem[] = [
     page: 1,
     reuseGroup: 'direct-mp4',
     source: HERO_SOURCES.directMp4.source,
-    note: 'Direct MP4 in the same pool as proxied HLS cards.',
+    note: 'Direct MP4 in the same pool as proxied HLS cards.'
   },
   {
     key: 'page-2-home-copy',
@@ -193,7 +235,7 @@ export const CONSUMER_FEED_ITEMS: ConsumerFeedItem[] = [
     page: 2,
     reuseGroup: 'home-stream-object',
     source: HERO_SOURCES.profileStream.source,
-    note: 'Reuses the exact home stream object after page append.',
+    note: 'Reuses the exact home stream object after page append.'
   },
   {
     key: 'page-2-topic-header',
@@ -203,20 +245,20 @@ export const CONSUMER_FEED_ITEMS: ConsumerFeedItem[] = [
     source: {
       ...HERO_SOURCES.profileStream.source,
       headers: {
-        'X-Nitro-Scenario': 'topic-feed',
+        'X-Nitro-Scenario': 'topic-feed'
       },
       metadata: {
         title: 'Topic stream',
-        subtitle: 'Page 2 variant',
+        subtitle: 'Page 2 variant'
       },
       retention: {
         preload: 'metadata',
         offscreen: 'metadata',
         trimDelayMs: 6000,
-        feedPoolEligible: true,
-      },
+        feedPoolEligible: true
+      }
     } satisfies NitroSourceConfig,
-    note: 'Header identity churn while keeping the playable URL stable.',
+    note: 'Header identity churn while keeping the playable URL stable.'
   },
   {
     key: 'page-2-startup-proxy',
@@ -224,7 +266,7 @@ export const CONSUMER_FEED_ITEMS: ConsumerFeedItem[] = [
     page: 2,
     reuseGroup: 'startup-proxy',
     source: HERO_SOURCES.startupProxy.source,
-    note: 'Lazy HLS startup source mounted after pagination.',
+    note: 'Lazy HLS startup source mounted after pagination.'
   },
   {
     key: 'page-3-direct-reuse',
@@ -232,7 +274,7 @@ export const CONSUMER_FEED_ITEMS: ConsumerFeedItem[] = [
     page: 3,
     reuseGroup: 'direct-mp4',
     source: HERO_SOURCES.directMp4.source,
-    note: 'Direct MP4 source reused after multiple active-index changes.',
+    note: 'Direct MP4 source reused after multiple active-index changes.'
   },
   {
     key: 'page-3-home-new-metadata',
@@ -243,10 +285,10 @@ export const CONSUMER_FEED_ITEMS: ConsumerFeedItem[] = [
       ...HERO_SOURCES.profileStream.source,
       metadata: {
         title: 'Home stream',
-        subtitle: 'Metadata identity variant',
-      },
+        subtitle: 'Metadata identity variant'
+      }
     } satisfies NitroSourceConfig,
-    note: 'Same URL/header with metadata changed to stress source signature.',
+    note: 'Same URL/header with metadata changed to stress source signature.'
   },
   {
     key: 'page-3-notification-header',
@@ -256,21 +298,21 @@ export const CONSUMER_FEED_ITEMS: ConsumerFeedItem[] = [
     source: {
       ...HERO_SOURCES.profileStream.source,
       headers: {
-        'X-Nitro-Scenario': 'notification-feed',
+        'X-Nitro-Scenario': 'notification-feed'
       },
       metadata: {
         title: 'Notification stream',
-        subtitle: 'Page 3 variant',
+        subtitle: 'Page 3 variant'
       },
       preview: {
         mode: 'listener',
         maxWidth: 320,
         maxHeight: 320,
-        quality: 68,
-      },
+        quality: 68
+      }
     } satisfies NitroSourceConfig,
-    note: 'Late-page header variant with smaller preview target.',
-  },
+    note: 'Late-page header variant with smaller preview target.'
+  }
 ];
 
 export const getVisibleConsumerItems = (pageIndex: number): ConsumerFeedItem[] => CONSUMER_FEED_ITEMS.slice(0, (pageIndex + 1) * CONSUMER_PAGE_SIZE);
@@ -289,23 +331,71 @@ export const buildConsumerCardSource = (item: ConsumerFeedItem, index: number, i
     startup: isActive ? 'eager' : 'lazy',
     retention: {
       ...distanceRetention,
-      ...(item.source.retention ?? {}),
+      ...(item.source.retention ?? {})
     },
     transport: {
       mode: item.source.transport?.mode ?? 'auto',
-      ...(item.source.transport ?? {}),
+      ...(item.source.transport ?? {})
     },
     preview: {
       mode: isActive ? 'always' : 'listener',
       maxWidth: 512,
       maxHeight: 512,
       quality: 72,
-      ...(item.source.preview ?? {}),
+      ...(item.source.preview ?? {})
     },
     metadata: {
       ...(item.source.metadata ?? {}),
       title: item.title,
-      subtitle: `page ${item.page}, row ${index + 1}`,
-    },
+      subtitle: `page ${item.page}, row ${index + 1}`
+    }
   };
 };
+
+// ---------------------------------------------------------------------------
+// Feed-list churn scenario
+// A long list whose rows rotate through the existing HERO sources. The list
+// screen mounts a player only for viewable rows, so scrolling churns
+// mount/unmount on a real FlatList recycling path.
+// ---------------------------------------------------------------------------
+
+export const CHURN_LIST_LENGTH = 30;
+
+export type ChurnListItem = {
+  key: string;
+  index: number;
+  title: string;
+  note: string;
+  tone: string;
+  source: NitroSourceConfig;
+};
+
+const CHURN_ROTATION = [
+  { hero: HERO_SOURCES.directMp4, tone: '#66d19e' },
+  { hero: HERO_SOURCES.startupProxy, tone: '#4cb3ff' },
+  { hero: HERO_SOURCES.profileStream, tone: '#f7b955' }
+] as const;
+
+export const CHURN_LIST_ITEMS: ChurnListItem[] = Array.from({ length: CHURN_LIST_LENGTH }, (_, index) => {
+  const slot = CHURN_ROTATION[index % CHURN_ROTATION.length];
+  return {
+    key: `churn-row-${index}`,
+    index,
+    title: `${slot.hero.label} #${index + 1}`,
+    note: slot.hero.note,
+    tone: slot.tone,
+    source: slot.hero.source
+  };
+});
+
+// Source for a single churn row. Only the active (viewable) row plays eagerly;
+// neighbours stay lazy so the recycling churn keeps creating/releasing players.
+export const buildChurnRowSource = (item: ChurnListItem, isMounted: boolean): NitroSourceConfig => ({
+  ...item.source,
+  startup: isMounted ? 'eager' : 'lazy',
+  metadata: {
+    ...(item.source.metadata ?? {}),
+    title: item.title,
+    subtitle: `churn row ${item.index + 1}`
+  }
+});

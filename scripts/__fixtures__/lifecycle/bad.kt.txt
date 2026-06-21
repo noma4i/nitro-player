@@ -1,0 +1,23 @@
+// Fixture: UNGUARDED resource-touching callbacks (Kotlin). Each block can run
+// after release/teardown and derefs the player / emits an event with no early
+// host.isReleased / generation guard. The analyzer MUST flag these.
+
+package com.nitroplay.player
+
+internal class BadListenerBridge(private val host: HybridNitroPlayer) {
+  val playerListener = object : Player.Listener {
+    override fun onVolumeChanged(volume: Float) {
+      host.player.volume = volume.toDouble()
+      host.eventEmitter.onVolumeChange(volume.toDouble())
+    }
+  }
+
+  fun startProgressUpdates() {
+    val runnable = object : Runnable {
+      override fun run() {
+        host.eventEmitter.onProgress(host.player.currentPosition)
+      }
+    }
+    handler.post(runnable)
+  }
+}

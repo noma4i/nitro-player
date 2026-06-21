@@ -90,7 +90,7 @@ describe('source factory: v2 passthrough contract', () => {
   const PREVIEW_VALUES = ['listener', 'always', 'manual'] as const;
 
   it.each(STARTUP_VALUES)('passes startup=%s directly to native', startup => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({ uri: 'https://cdn.example.com/stream.m3u8', startup });
 
@@ -98,7 +98,7 @@ describe('source factory: v2 passthrough contract', () => {
   });
 
   it.each(TRANSPORT_VALUES)('passes transport.mode=%s directly to native', mode => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({
       uri: 'https://cdn.example.com/stream.m3u8',
@@ -113,7 +113,7 @@ describe('source factory: v2 passthrough contract', () => {
   });
 
   it.each(PREVIEW_VALUES)('passes preview.mode=%s directly to native', mode => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({
       uri: 'https://cdn.example.com/video.mp4',
@@ -128,7 +128,7 @@ describe('source factory: v2 passthrough contract', () => {
   });
 
   it('passes preview.autoThumbnail directly to native', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({
       uri: 'https://cdn.example.com/video.mp4',
@@ -143,7 +143,7 @@ describe('source factory: v2 passthrough contract', () => {
   });
 
   it('passes explicit retention policy to native without JS-side preset resolution', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({
       uri: 'https://cdn.example.com/feed-item.m3u8',
@@ -168,7 +168,7 @@ describe('source factory: v2 passthrough contract', () => {
   });
 
   it('defaults to undefined for all optional v2 fields so native owns defaults', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({ uri: 'https://cdn.example.com/video.mp4' });
 
@@ -185,7 +185,7 @@ describe('source factory: v2 passthrough contract', () => {
 
 describe('source factory: route ownership stays native', () => {
   it('does NOT modify HLS URLs on JS side', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({ uri: 'https://cdn.example.com/live.m3u8' });
 
@@ -194,7 +194,7 @@ describe('source factory: route ownership stays native', () => {
   });
 
   it('does NOT modify non-HLS URLs on JS side', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({ uri: 'https://cdn.example.com/video.mp4' });
 
@@ -205,7 +205,7 @@ describe('source factory: route ownership stays native', () => {
 
 describe('source factory: native config structure', () => {
   it('NativeNitroPlayerConfig has exactly the expected v2 fields', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     createNitroSource({
       uri: 'https://cdn.example.com/v.mp4',
@@ -224,7 +224,7 @@ describe('source factory: native config structure', () => {
   });
 
   it('does NOT pass removed legacy fields to native', () => {
-    const { createNitroSource } = require('../../../core/utils/sourceFactory');
+    const { createNitroSource } = require('../../../source/sourceFactory');
 
     const configWithLegacyFields = {
       uri: 'https://cdn.example.com/v.mp4',

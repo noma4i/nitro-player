@@ -23,6 +23,8 @@ jobs:
           node-version: 20
       - run: corepack enable
       - run: yarn install --immutable
+      - run: yarn test:behavior:audit
+      - run: yarn audit:lifecycle
       - run: yarn test:ts
 
   test-android:
@@ -53,3 +55,5 @@ jobs:
       - run: corepack enable
       - run: yarn install --immutable
       - run: yarn test:ios
+      - run: yarn test:ios:tsan
+      - run: yarn test:ios:asan

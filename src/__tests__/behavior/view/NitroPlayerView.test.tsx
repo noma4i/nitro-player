@@ -1,4 +1,4 @@
-import type { ListenerSubscription } from '../../../spec/nitro/NitroPlayerEventEmitter.nitro';
+import type { ListenerSubscription } from '../../../bridge/nitro/NitroPlayerEventEmitter.nitro';
 
 type ListenerSets = {
   onAttached: Set<() => void>;
@@ -67,11 +67,11 @@ const setupSubject = (initiallyAttached = false) => {
     }
   }));
 
-  jest.doMock('../../../core/hooks/useNitroPlayer', () => ({
+  jest.doMock('../../../player/hooks/useNitroPlayer', () => ({
     useNitroPlayer
   }));
 
-  jest.doMock('../../../core/player-view/NativeNitroPlayerView', () => {
+  jest.doMock('../../../view/NativeNitroPlayerView', () => {
     const React = require('react') as typeof import('react');
 
     const MockNativeNitroPlayerView = ({ onNitroIdChange }: { onNitroIdChange?: (event: { nativeEvent: { nitroId: number } }) => void }) => {
@@ -89,7 +89,7 @@ const setupSubject = (initiallyAttached = false) => {
 
   const React = require('react') as typeof import('react');
   const ReactDOMClient = require('react-dom/client') as { createRoot: (container: Element) => { render: (node: unknown) => void } };
-  const { default: NitroPlayerView } = require('../../../core/player-view/NitroPlayerView') as typeof import('../../../core/player-view/NitroPlayerView');
+  const { default: NitroPlayerView } = require('../../../view/NitroPlayerView') as typeof import('../../../view/NitroPlayerView');
   const container = global.document.createElement('div');
   const root = ReactDOMClient.createRoot(container);
 
@@ -198,8 +198,6 @@ describe('NitroPlayerView attach contract', () => {
       );
     });
 
-    expect(useNitroPlayer).toHaveBeenCalledWith(
-      { uri: 'https://cdn.example.com/video.mp4' }
-    );
+    expect(useNitroPlayer).toHaveBeenCalledWith({ uri: 'https://cdn.example.com/video.mp4' });
   });
 });

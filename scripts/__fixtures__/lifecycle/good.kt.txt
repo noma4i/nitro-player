@@ -1,0 +1,25 @@
+// Fixture: correctly guarded callbacks (Kotlin). Every resource-touching block
+// starts with an early host.isReleased guard or routes through a guarded wrapper.
+// The analyzer MUST keep this file clean.
+
+package com.nitroplay.player
+
+internal class GoodListenerBridge(private val host: HybridNitroPlayer) {
+  val playerListener = object : Player.Listener {
+    override fun onVolumeChanged(volume: Float) {
+      if (host.isReleased) return
+      host.player.volume = volume.toDouble()
+      host.eventEmitter.onVolumeChange(volume.toDouble())
+    }
+  }
+
+  fun startProgressUpdates() {
+    val runnable = object : Runnable {
+      override fun run() {
+        if (host.isReleased) return
+        host.eventEmitter.onProgress(host.player.currentPosition)
+      }
+    }
+    handler.post(runnable)
+  }
+}

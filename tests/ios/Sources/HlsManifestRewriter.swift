@@ -1,1 +1,1 @@
-../../../ios/hls/HlsManifestRewriter.swift
+../../../ios/streaming/HlsManifestRewriter.swift
