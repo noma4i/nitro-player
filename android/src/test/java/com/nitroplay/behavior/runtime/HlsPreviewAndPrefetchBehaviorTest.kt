@@ -77,4 +77,11 @@ class HlsPreviewAndPrefetchBehaviorTest {
     assertEquals(550, completions.get())
     assertEquals(0, HlsProxyRuntime.prefetchTimestampCountForTests())
   }
+
+  @Test
+  fun configureCacheBeforeServerStartIsVisibleInStats() {
+    HlsProxyRuntime.configureCache((512L * 1024L * 1024L).toDouble())
+
+    assertEquals(512L * 1024L * 1024L, HlsProxyRuntime.configuredMaxCacheBytesForTests())
+  }
 }

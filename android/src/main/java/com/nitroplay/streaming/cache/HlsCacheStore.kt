@@ -10,8 +10,9 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
-class HlsCacheStore(context: Context) {
-    private val maxBytes: Long = 5L * 1024L * 1024L * 1024L
+class HlsCacheStore(context: Context, maxBytes: Long = HlsCacheBudget.DEFAULT_MAX_BYTES) {
+    @Volatile
+    private var maxBytes: Long = HlsCacheBudget.normalize(maxBytes)
     private val ttlMs: Long = 7L * 24L * 60L * 60L * 1000L
     private val cacheDir = File(context.cacheDir, "hls-cache")
     private val indexFile = File(cacheDir, "index.json")
@@ -24,23 +25,34 @@ class HlsCacheStore(context: Context) {
         loadIndex()
     }
 
+    fun setMaxBytes(bytes: Long) {
+        maxBytes = HlsCacheBudget.normalize(bytes)
+        evictIfNeeded()
+        saveIndex()
+    }
+
     fun has(url: String): Boolean {
         val entry = index[url] ?: return false
-        if (isExpired(entry)) {
+        if (isExpired(entry) || !isSafeFileName(entry.fileName)) {
             remove(url)
             return false
         }
-        return File(cacheDir, entry.fileName).exists()
+        val file = File(cacheDir, entry.fileName)
+        if (!file.exists() || file.length() <= 0L || file.length() != entry.size) {
+            remove(url)
+            return false
+        }
+        return true
     }
 
     fun getFilePath(url: String): File? {
         val entry = index[url] ?: return null
-        if (isExpired(entry)) {
+        if (isExpired(entry) || !isSafeFileName(entry.fileName)) {
             remove(url)
             return null
         }
         val file = File(cacheDir, entry.fileName)
-        if (!file.exists()) {
+        if (!file.exists() || file.length() <= 0L || file.length() != entry.size) {
             remove(url)
             return null
         }
@@ -51,12 +63,12 @@ class HlsCacheStore(context: Context) {
 
     fun get(url: String): ByteArray? {
         val entry = index[url] ?: return null
-        if (isExpired(entry)) {
+        if (isExpired(entry) || !isSafeFileName(entry.fileName)) {
             remove(url)
             return null
         }
         val file = File(cacheDir, entry.fileName)
-        if (!file.exists()) {
+        if (!file.exists() || file.length() <= 0L || file.length() != entry.size) {
             remove(url)
             return null
         }
@@ -72,6 +84,7 @@ class HlsCacheStore(context: Context) {
         val file = File(cacheDir, name)
         file.writeBytes(data)
         index[url] = HlsCacheEntry(url, name, data.size.toLong(), streamKey, System.currentTimeMillis(), System.currentTimeMillis())
+        evictIfNeeded()
         scheduleSave()
     }
 
@@ -137,8 +150,8 @@ class HlsCacheStore(context: Context) {
     private fun evictIfNeeded() {
         evictExpired()
         var total = index.values.sumOf { it.size }
-        val threshold = maxBytes * 80 / 100
-        if (total <= threshold) return
+        if (total <= maxBytes) return
+        val target = HlsCacheBudget.evictionTarget(maxBytes)
 
         val streams = index.values.groupBy { it.streamKey ?: it.url }
         val sorted = streams.entries.sortedBy { entry ->
@@ -146,7 +159,7 @@ class HlsCacheStore(context: Context) {
         }
 
         for ((_, entries) in sorted) {
-            if (total <= threshold) break
+            if (total <= target) break
             for (entry in entries) {
                 total -= entry.size
                 remove(entry.url)
@@ -173,20 +186,28 @@ class HlsCacheStore(context: Context) {
 
     private fun loadIndex() {
         if (!indexFile.exists()) return
-        val text = indexFile.readText()
-        if (text.isBlank()) return
-        val json = JSONObject(text)
-        json.keys().forEach { key ->
-            val obj = json.getJSONObject(key)
-            val entry = HlsCacheEntry(
-                url = key,
-                fileName = obj.getString("fileName"),
-                size = obj.getLong("size"),
-                streamKey = if (obj.has("streamKey") && !obj.isNull("streamKey")) obj.getString("streamKey") else null,
-                createdAt = obj.getLong("createdAt"),
-                lastAccess = obj.getLong("lastAccess")
-            )
-            index[key] = entry
+        try {
+            val text = indexFile.readText()
+            if (text.isBlank()) return
+            val json = JSONObject(text)
+            json.keys().forEach { key ->
+                val obj = json.getJSONObject(key)
+                val entry = HlsCacheEntry(
+                    url = key,
+                    fileName = obj.getString("fileName"),
+                    size = obj.getLong("size"),
+                    streamKey = if (obj.has("streamKey") && !obj.isNull("streamKey")) obj.getString("streamKey") else null,
+                    createdAt = obj.getLong("createdAt"),
+                    lastAccess = obj.getLong("lastAccess")
+                )
+                val file = File(cacheDir, entry.fileName)
+                if (isSafeFileName(entry.fileName) && file.exists() && file.length() > 0L && file.length() == entry.size) {
+                    index[key] = entry
+                }
+            }
+        } catch (_: Exception) {
+            index.clear()
+            indexFile.delete()
         }
     }
 
@@ -217,6 +238,14 @@ class HlsCacheStore(context: Context) {
         return digest.joinToString("") { "%02x".format(it) }
     }
 
+    private fun isSafeFileName(fileName: String): Boolean {
+        return fileName.isNotBlank() &&
+            fileName == File(fileName).name &&
+            !fileName.contains("/") &&
+            !fileName.contains("\\") &&
+            !fileName.contains("..")
+    }
+
     // Thumbnails share the segment index so they participate in the same TTL and
     // size eviction. They are keyed under a "thumb:" namespace to avoid colliding
     // with a segment cached under the same URL; the on-disk file keeps the plain
@@ -233,6 +262,7 @@ class HlsCacheStore(context: Context) {
             val now = System.currentTimeMillis()
             val key = thumbnailKey(url)
             index[key] = HlsCacheEntry(key, name, data.size.toLong(), null, now, now)
+            evictIfNeeded()
             scheduleSave()
             Uri.fromFile(file).toString()
         } catch (_: Exception) {

@@ -93,4 +93,105 @@ final class HlsThumbnailCacheTests: XCTestCase {
     XCTAssertFalse(FileManager.default.fileExists(atPath: orphan.path), "orphan must be swept")
     XCTAssertEqual(store.getCacheStats()["fileCount"] as? Int, 0)
   }
+
+  func testClearAll_persistsBeforeReturning() {
+    store.put(url: "https://cdn.example.com/clip.ts", data: Data(count: 40), streamKey: "s1")
+    _ = store.getCacheStats()
+
+    store.clearAll()
+
+    let reloaded = HlsCacheStore()
+    XCTAssertEqual(reloaded.getCacheStats()["fileCount"] as? Int, 0)
+    XCTAssertNil(reloaded.getFilePath(url: "https://cdn.example.com/clip.ts"))
+  }
+
+  func testStaleZeroByteSegmentIsInvalidatedBeforePlayback() {
+    let url = "https://cdn.example.com/stale-zero.ts"
+    writeLegacySegmentIndex(url: url, fileName: "zero.seg", indexedSize: 64, bytes: Data())
+
+    let reloaded = HlsCacheStore()
+
+    XCTAssertNil(reloaded.getFilePath(url: url))
+    XCTAssertFalse(reloaded.has(url: url))
+    XCTAssertEqual(reloaded.getCacheStats()["fileCount"] as? Int, 0)
+  }
+
+  func testSizeMismatchSegmentIsInvalidatedBeforePlayback() {
+    let url = "https://cdn.example.com/stale-partial.ts"
+    writeLegacySegmentIndex(url: url, fileName: "partial.seg", indexedSize: 64, bytes: Data(count: 8))
+
+    let reloaded = HlsCacheStore()
+
+    XCTAssertNil(reloaded.getFilePath(url: url))
+    XCTAssertNil(reloaded.get(url: url))
+    XCTAssertEqual(reloaded.getCacheStats()["fileCount"] as? Int, 0)
+  }
+
+  func testUnsafeLegacyFileNameIsIgnoredAndRemoved() {
+    let url = "https://cdn.example.com/unsafe.ts"
+    writeLegacySegmentIndex(url: url, fileName: "../unsafe.seg", indexedSize: 8, bytes: Data(count: 8))
+
+    let reloaded = HlsCacheStore()
+
+    XCTAssertNil(reloaded.getFilePath(url: url))
+    XCTAssertFalse(reloaded.has(url: url))
+    XCTAssertEqual(reloaded.getCacheStats()["fileCount"] as? Int, 0)
+  }
+
+  func testCorruptIndexDoesNotCrashStoreInitialization() {
+    let cacheDir = hlsCacheDir()
+    try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+    try? Data("{".utf8).write(to: cacheDir.appendingPathComponent("index.json"))
+
+    let reloaded = HlsCacheStore()
+
+    XCTAssertEqual(reloaded.getCacheStats()["fileCount"] as? Int, 0)
+  }
+
+  func testDefaultCacheBudgetIsFourGiB() {
+    let stats = store.getCacheStats()
+
+    XCTAssertEqual(stats["maxSize"] as? Int, HlsCacheBudget.defaultMaxBytes)
+  }
+
+  func testKtvEmptyCacheItemsAreReportedAsZeroFiles() {
+    XCTAssertEqual(HlsKtvCacheStats.fileCount(from: Optional<[String]>.none), 0)
+    XCTAssertEqual(HlsKtvCacheStats.fileCount(from: [String]()), 0)
+  }
+
+  func testSetMaxBytesClampsAndEvictsAfterSegmentWrite() {
+    store.setMaxBytes(1)
+    store.put(url: "https://cdn.example.com/first.ts", data: Data(count: 36 * 1_024 * 1_024), streamKey: "s1")
+    store.put(url: "https://cdn.example.com/second.ts", data: Data(count: 36 * 1_024 * 1_024), streamKey: "s2")
+
+    let stats = store.getCacheStats()
+
+    XCTAssertEqual(stats["maxSize"] as? Int, HlsCacheBudget.minimumMaxBytes)
+    XCTAssertLessThanOrEqual(stats["totalSize"] as? Int ?? Int.max, HlsCacheBudget.minimumMaxBytes)
+    XCTAssertEqual(stats["fileCount"] as? Int, 1)
+  }
+
+  private func writeLegacySegmentIndex(url: String, fileName: String, indexedSize: Int, bytes: Data) {
+    let cacheDir = hlsCacheDir()
+    try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+    try? bytes.write(to: cacheDir.appendingPathComponent(fileName), options: .atomic)
+    let now = Date().timeIntervalSince1970
+    let index = [
+      url: HlsCacheEntry(
+        url: url,
+        fileName: fileName,
+        size: indexedSize,
+        streamKey: "stream",
+        createdAt: now,
+        lastAccess: now
+      )
+    ]
+    let data = try! JSONEncoder().encode(index)
+    try? data.write(to: cacheDir.appendingPathComponent("index.json"), options: .atomic)
+  }
+
+  private func hlsCacheDir() -> URL {
+    FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+      .appendingPathComponent("hls-cache", isDirectory: true)
+  }
 }

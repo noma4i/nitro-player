@@ -1,12 +1,14 @@
 import { resolveSource } from '../source/resolveSource';
 import type { ResolvableSource } from '../source/resolveSource';
 import { createUnavailableWarner, getNativeStreamRuntime } from '../support/nativeStreamRuntime';
-import type { StreamCacheNativeModule, StreamCacheStats, StreamHeaders, StreamSourceCacheStats } from './types';
+import type { StreamCacheConfig, StreamCacheNativeModule, StreamCacheStats, StreamHeaders, StreamSourceCacheStats } from './types';
+
+export const DEFAULT_STREAM_CACHE_MAX_BYTES = 4 * 1024 * 1024 * 1024;
 
 const DEFAULT_CACHE_STATS: StreamCacheStats = {
   totalSize: 0,
   fileCount: 0,
-  maxSize: 5_368_709_120
+  maxSize: DEFAULT_STREAM_CACHE_MAX_BYTES
 };
 
 const DEFAULT_STREAM_CACHE_STATS: StreamSourceCacheStats = {
@@ -80,6 +82,29 @@ class StreamCache {
       return false;
     }
   }
+
+  async configure(config: StreamCacheConfig): Promise<boolean> {
+    if (!NativeStreamCache?.configureCache) {
+      this.warnUnavailable();
+      return false;
+    }
+    try {
+      return await NativeStreamCache.configureCache(normalizeConfig(config));
+    } catch {
+      console.warn('[StreamCache] configure failed');
+      return false;
+    }
+  }
 }
+
+const normalizeConfig = (config: StreamCacheConfig): StreamCacheConfig => {
+  if (typeof config.maxBytes !== 'number') {
+    return {};
+  }
+  if (!Number.isFinite(config.maxBytes) || config.maxBytes <= 0) {
+    return {};
+  }
+  return { maxBytes: Math.floor(config.maxBytes) };
+};
 
 export const streamCache = new StreamCache();

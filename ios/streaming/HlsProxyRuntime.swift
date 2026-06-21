@@ -69,6 +69,10 @@ final class HlsProxyRuntime {
     controller.getCacheStats(streamKey: HlsIdentity.sourceKey(url: url, headers: headers))
   }
 
+  func configureCache(maxBytes: Int) {
+    controller.configureCache(maxBytes: maxBytes)
+  }
+
   func getThumbnailUrl(url: String, headers: [String: String]?) async -> String? {
     return await VideoPreviewRuntime.shared.getFirstFrame(url: url, headers: headers, preview: nil)?.uri
   }
@@ -78,7 +82,9 @@ final class HlsProxyRuntime {
   }
 
   func clearCache() {
-    controller.clearCache()
+    runtimeQueue.sync {
+      controller.clearCache()
+    }
   }
 
   func clearPreview() {

@@ -9,17 +9,19 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 
 class HlsProxyServer(
     private val port: Int,
-    private val context: Context
+    private val context: Context,
+    maxCacheBytes: Long = HlsCacheBudget.DEFAULT_MAX_BYTES
 ) : NanoHTTPD("127.0.0.1", port) {
     companion object {
         private const val TAG = "NitroPlayStreamRuntime"
         private val RETRY_DELAYS_MS = longArrayOf(100L, 300L)
     }
 
-    val cacheStore = HlsCacheStore(context)
+    val cacheStore = HlsCacheStore(context, maxCacheBytes)
     private val executor = Executors.newSingleThreadExecutor()
 
     // Set before tearing down executor/cacheStore so in-flight prefetch/segment
@@ -68,10 +70,26 @@ class HlsProxyServer(
         visitedUrls: MutableSet<String> = mutableSetOf(),
         streamKey: String = HlsIdentity.sourceKey(url, headers)
     ) {
-        executor.execute {
+        try {
+            executor.execute {
+                runPrefetch(url, headers, onComplete, onError, visitedUrls, streamKey)
+            }
+        } catch (e: RejectedExecutionException) {
+            onError(e)
+        }
+    }
+
+    private fun runPrefetch(
+        url: String,
+        headers: Map<String, String>?,
+        onComplete: () -> Unit,
+        onError: (Throwable) -> Unit,
+        visitedUrls: MutableSet<String>,
+        streamKey: String
+    ) {
             try {
                 val manifestKey = HlsIdentity.resourceKey(url, headers)
-                if (manifestKey in visitedUrls) { onComplete(); return@execute }
+                if (manifestKey in visitedUrls) { onComplete(); return }
                 visitedUrls.add(manifestKey)
 
                 val manifest = fetchText(url, headers)
@@ -80,7 +98,7 @@ class HlsProxyServer(
                     if (variants.isNotEmpty()) {
                         val resolved = HlsManifest.resolveUrl(url, variants[0])
                         prefetch(resolved, headers, onComplete, onError, visitedUrls, streamKey)
-                        return@execute
+                        return
                     }
                 }
                 val (initSeg, firstSeg) = HlsManifest.extractInitAndFirstSegment(manifest)
@@ -104,7 +122,6 @@ class HlsProxyServer(
             } catch (e: Exception) {
                 onError(e)
             }
-        }
     }
 
     private fun handleManifest(session: IHTTPSession): Response {

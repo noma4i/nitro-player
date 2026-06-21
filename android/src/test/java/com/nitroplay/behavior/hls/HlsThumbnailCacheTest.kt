@@ -122,4 +122,109 @@ class HlsThumbnailCacheTest {
     val remaining = cacheDir.listFiles()?.map { it.name }?.toSet() ?: emptySet()
     assertEquals(setOf("index.json"), remaining)
   }
+
+  @Test
+  fun staleZeroByteSegment_isInvalidatedBeforePlayback() {
+    val url = "https://cdn.example.com/stale-zero.ts"
+    writeLegacySegmentIndex(url, "zero.seg", indexedSize = 64, bytes = ByteArray(0))
+
+    val reloaded = HlsCacheStore(ApplicationProvider.getApplicationContext())
+    try {
+      assertNull(reloaded.getFilePath(url))
+      assertFalse(reloaded.has(url))
+      assertEquals(0, reloaded.getCacheStats()["fileCount"])
+    } finally {
+      reloaded.close()
+    }
+  }
+
+  @Test
+  fun sizeMismatchSegment_isInvalidatedBeforePlayback() {
+    val url = "https://cdn.example.com/stale-partial.ts"
+    writeLegacySegmentIndex(url, "partial.seg", indexedSize = 64, bytes = ByteArray(8))
+
+    val reloaded = HlsCacheStore(ApplicationProvider.getApplicationContext())
+    try {
+      assertNull(reloaded.getFilePath(url))
+      assertNull(reloaded.get(url))
+      assertEquals(0, reloaded.getCacheStats()["fileCount"])
+    } finally {
+      reloaded.close()
+    }
+  }
+
+  @Test
+  fun unsafeLegacyFileName_isIgnoredAndRemoved() {
+    val url = "https://cdn.example.com/unsafe.ts"
+    writeLegacySegmentIndex(url, "../unsafe.seg", indexedSize = 8, bytes = ByteArray(8))
+
+    val reloaded = HlsCacheStore(ApplicationProvider.getApplicationContext())
+    try {
+      assertNull(reloaded.getFilePath(url))
+      assertFalse(reloaded.has(url))
+      assertEquals(0, reloaded.getCacheStats()["fileCount"])
+    } finally {
+      reloaded.close()
+    }
+  }
+
+  @Test
+  fun corruptIndex_doesNotCrashStoreInitialization() {
+    val cacheDir = hlsCacheDir().apply { mkdirs() }
+    File(cacheDir, "index.json").writeText("{")
+
+    val reloaded = HlsCacheStore(ApplicationProvider.getApplicationContext())
+    try {
+      assertEquals(0, reloaded.getCacheStats()["fileCount"])
+    } finally {
+      reloaded.close()
+    }
+  }
+
+  @Test
+  fun defaultCacheBudget_isFourGiB() {
+    val stats = store.getCacheStats()
+
+    assertEquals(HlsCacheBudget.DEFAULT_MAX_BYTES, stats["maxSize"])
+  }
+
+  @Test
+  fun setMaxBytes_clampsAndEvictsAfterSegmentWrite() {
+    store.setMaxBytes(1)
+    store.put("https://cdn.example.com/first.ts", ByteArray(36 * 1024 * 1024) { 1 }, "s1")
+    store.put("https://cdn.example.com/second.ts", ByteArray(36 * 1024 * 1024) { 2 }, "s2")
+
+    val stats = store.getCacheStats()
+
+    assertEquals(HlsCacheBudget.MINIMUM_MAX_BYTES, stats["maxSize"])
+    assertTrue((stats["totalSize"] as Long) <= HlsCacheBudget.MINIMUM_MAX_BYTES)
+    assertEquals(1, stats["fileCount"])
+  }
+
+  private fun writeLegacySegmentIndex(url: String, fileName: String, indexedSize: Long, bytes: ByteArray) {
+    val cacheDir = hlsCacheDir().apply { mkdirs() }
+    File(cacheDir, fileName).apply {
+      parentFile?.mkdirs()
+      writeBytes(bytes)
+    }
+    val now = System.currentTimeMillis()
+    File(cacheDir, "index.json").writeText(
+      """
+      {
+        "$url": {
+          "fileName": "$fileName",
+          "size": $indexedSize,
+          "streamKey": "stream",
+          "createdAt": $now,
+          "lastAccess": $now
+        }
+      }
+      """.trimIndent()
+    )
+  }
+
+  private fun hlsCacheDir(): File {
+    val ctx = ApplicationProvider.getApplicationContext<Context>()
+    return File(ctx.cacheDir, "hls-cache")
+  }
 }

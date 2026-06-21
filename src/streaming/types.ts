@@ -11,10 +11,15 @@ export interface StreamSourceCacheStats extends StreamCacheStats {
 
 export type StreamHeaders = Record<string, string>;
 
+export interface StreamCacheConfig {
+  maxBytes?: number;
+}
+
 export interface StreamCacheNativeModule {
   prefetchFirstSegment: (url: string, headers?: StreamHeaders) => Promise<void>;
   getCacheStats: () => Promise<StreamCacheStats>;
   getStreamCacheStats: (url: string, headers?: StreamHeaders) => Promise<StreamSourceCacheStats>;
+  configureCache?: (options?: StreamCacheConfig) => Promise<boolean>;
   clearCache: () => Promise<boolean>;
   clearPreview?: () => Promise<boolean>;
 }

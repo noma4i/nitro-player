@@ -5,7 +5,7 @@ import OSLog
 private let cacheLogger = Logger(subsystem: "com.nitroplay.hls", category: "CacheStore")
 
 final class HlsCacheStore {
-  private let maxBytes: Int = 5_368_709_120
+  private var maxBytes: Int
   private let ttlSeconds: TimeInterval = 7 * 24 * 60 * 60
   private let cacheDir: URL
   private let indexUrl: URL
@@ -13,7 +13,8 @@ final class HlsCacheStore {
   private let queue = DispatchQueue(label: "hls-cache-store")
   private var pendingSave: DispatchWorkItem?
 
-  init() {
+  init(maxBytes: Int = HlsCacheBudget.defaultMaxBytes) {
+    self.maxBytes = HlsCacheBudget.normalize(maxBytes)
     let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
     cacheDir = base.appendingPathComponent("hls-cache", isDirectory: true)
     indexUrl = cacheDir.appendingPathComponent("index.json")
@@ -21,9 +22,17 @@ final class HlsCacheStore {
     ensureDir()
   }
 
+  func setMaxBytes(_ bytes: Int) {
+    queue.sync {
+      maxBytes = HlsCacheBudget.normalize(bytes)
+      evictIfNeeded()
+      saveIndex()
+    }
+  }
+
   func get(url: String) -> Data? {
     guard let entry = queue.sync(execute: { index[url] }) else { return nil }
-    if isExpired(entry) {
+    if isExpired(entry) || !isSafeFileName(entry.fileName) {
       queue.async { [weak self] in
         self?.remove(url: url)
       }
@@ -31,7 +40,10 @@ final class HlsCacheStore {
     }
 
     let fileUrl = cacheDir.appendingPathComponent(entry.fileName)
-    guard let data = try? Data(contentsOf: fileUrl) else {
+    guard let data = try? Data(contentsOf: fileUrl),
+          data.count > 0,
+          data.count == entry.size
+    else {
       queue.async { [weak self] in
         self?.remove(url: url)
       }
@@ -65,6 +77,7 @@ final class HlsCacheStore {
           lastAccess: Date().timeIntervalSince1970
         )
         self.index[url] = entry
+        self.evictIfNeeded()
         self.scheduleSave()
       } catch {
         cacheLogger.error("Failed to write cache entry for \(url): \(error.localizedDescription)")
@@ -76,24 +89,28 @@ final class HlsCacheStore {
   func has(url: String) -> Bool {
     queue.sync {
       guard let entry = index[url] else { return false }
-      if isExpired(entry) {
+      if isExpired(entry) || !isSafeFileName(entry.fileName) {
         remove(url: url)
         return false
       }
       let fileUrl = cacheDir.appendingPathComponent(entry.fileName)
-      return FileManager.default.fileExists(atPath: fileUrl.path)
+      guard let size = fileSize(fileUrl), size > 0, size == entry.size else {
+        remove(url: url)
+        return false
+      }
+      return true
     }
   }
 
   func getFilePath(url: String) -> URL? {
     queue.sync {
       guard let entry = index[url] else { return nil }
-      if isExpired(entry) {
+      if isExpired(entry) || !isSafeFileName(entry.fileName) {
         remove(url: url)
         return nil
       }
       let fileUrl = cacheDir.appendingPathComponent(entry.fileName)
-      guard FileManager.default.fileExists(atPath: fileUrl.path) else {
+      guard let size = fileSize(fileUrl), size > 0, size == entry.size else {
         remove(url: url)
         return nil
       }
@@ -133,7 +150,7 @@ final class HlsCacheStore {
   }
 
   func clearAll() {
-    queue.async {
+    queue.sync {
       for entry in self.index.values {
         let fileUrl = self.cacheDir.appendingPathComponent(entry.fileName)
         try? FileManager.default.removeItem(at: fileUrl)
@@ -180,8 +197,8 @@ final class HlsCacheStore {
   private func evictIfNeeded() {
     evictExpired()
     var total = index.values.reduce(0) { $0 + $1.size }
-    let threshold = maxBytes * 80 / 100
-    if total <= threshold { return }
+    guard total > maxBytes else { return }
+    let target = HlsCacheBudget.evictionTarget(for: maxBytes)
 
     var streams: [String: [HlsCacheEntry]] = [:]
     for entry in index.values {
@@ -195,7 +212,7 @@ final class HlsCacheStore {
     }
 
     for (_, entries) in sorted {
-      if total <= threshold { break }
+      if total <= target { break }
       for entry in entries {
         remove(url: entry.url)
         total -= entry.size
@@ -227,7 +244,17 @@ final class HlsCacheStore {
   private func loadIndex() {
     guard let data = try? Data(contentsOf: indexUrl) else { return }
     if let decoded = try? JSONDecoder().decode([String: HlsCacheEntry].self, from: data) {
-      index = decoded
+      index = decoded.filter { _, entry in
+        guard isSafeFileName(entry.fileName),
+              let size = fileSize(cacheDir.appendingPathComponent(entry.fileName))
+        else {
+          return false
+        }
+        return size > 0 && size == entry.size
+      }
+    } else {
+      index = [:]
+      try? FileManager.default.removeItem(at: indexUrl)
     }
   }
 
@@ -255,6 +282,27 @@ final class HlsCacheStore {
     return hash.map { String(format: "%02x", $0) }.joined()
   }
 
+  private func isSafeFileName(_ fileName: String) -> Bool {
+    guard !fileName.isEmpty,
+          fileName == (fileName as NSString).lastPathComponent,
+          !fileName.contains("/"),
+          !fileName.contains("\\"),
+          !fileName.contains("..")
+    else {
+      return false
+    }
+    return true
+  }
+
+  private func fileSize(_ url: URL) -> Int? {
+    guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+          let size = attributes[.size] as? NSNumber
+    else {
+      return nil
+    }
+    return size.intValue
+  }
+
   // Thumbnails share the segment index so they participate in the same TTL and
   // size eviction. They are keyed under a "thumb:" namespace to avoid colliding
   // with a segment cached under the same URL; the on-disk file keeps the plain
@@ -279,6 +327,7 @@ final class HlsCacheStore {
           createdAt: now,
           lastAccess: now
         )
+        evictIfNeeded()
         scheduleSave()
         return fileUrl
       } catch {

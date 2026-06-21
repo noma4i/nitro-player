@@ -1,5 +1,6 @@
 package com.nitroplay.hls
 
+import android.content.Context
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableMap
@@ -18,7 +19,8 @@ object HlsProxyRuntime {
   private var isRegistered = false
   private val serverSlot = SingleOwnerResourceSlot<HlsProxyServer> { it.stop() }
   private var serverStopGeneration = 0
-  private var reactContext: ReactApplicationContext? = null
+  private var appContext: Context? = null
+  private var configuredMaxCacheBytes = HlsCacheBudget.DEFAULT_MAX_BYTES
   private val prefetchDeduper = HlsPrefetchDeduper(PREFETCH_DEDUP_MS, PREFETCH_MAX_ENTRIES)
 
   internal data class RuntimeStateSnapshot(
@@ -30,7 +32,7 @@ object HlsProxyRuntime {
 
   fun register(reactContext: ReactApplicationContext) {
     synchronized(lock) {
-      this.reactContext = reactContext
+      this.appContext = reactContext.applicationContext ?: reactContext
       isRegistered = true
     }
     VideoPreviewRuntime.register(reactContext)
@@ -151,25 +153,51 @@ object HlsProxyRuntime {
   }
 
   fun getCacheStats() = Arguments.createMap().apply {
-    val stats = serverSlot.current?.cacheStore?.getCacheStats()
+    val stats = activeCacheStoreStats { it.getCacheStats() }
+    val fallbackMaxBytes = synchronized(lock) { configuredMaxCacheBytes }
     putDouble("totalSize", (stats?.get("totalSize") as? Long)?.toDouble() ?: 0.0)
     putInt("fileCount", (stats?.get("fileCount") as? Int) ?: 0)
-    putDouble("maxSize", (stats?.get("maxSize") as? Long)?.toDouble() ?: 5368709120.0)
+    putDouble("maxSize", (stats?.get("maxSize") as? Long)?.toDouble() ?: fallbackMaxBytes.toDouble())
   }
 
   fun getStreamCacheStats(url: String, headers: Map<String, String>? = null) = Arguments.createMap().apply {
-    val stats = synchronized(lock) {
-      serverSlot.current?.cacheStore?.getStreamCacheStats(HlsIdentity.sourceKey(url, headers))
+    val streamKey = HlsIdentity.sourceKey(url, headers)
+    val stats = activeCacheStoreStats {
+      it.getStreamCacheStats(streamKey)
     }
+    val fallbackMaxBytes = synchronized(lock) { configuredMaxCacheBytes }
     putDouble("totalSize", (stats?.get("totalSize") as? Long)?.toDouble() ?: 0.0)
     putInt("fileCount", (stats?.get("fileCount") as? Int) ?: 0)
-    putDouble("maxSize", (stats?.get("maxSize") as? Long)?.toDouble() ?: 5368709120.0)
+    putDouble("maxSize", (stats?.get("maxSize") as? Long)?.toDouble() ?: fallbackMaxBytes.toDouble())
     putDouble("streamSize", (stats?.get("streamSize") as? Long)?.toDouble() ?: 0.0)
     putInt("streamFileCount", (stats?.get("streamFileCount") as? Int) ?: 0)
   }
 
+  fun configureCache(maxBytes: Double?) {
+    val normalized = HlsCacheBudget.normalize(maxBytes?.toLong() ?: HlsCacheBudget.DEFAULT_MAX_BYTES)
+    val context = synchronized(lock) {
+      configuredMaxCacheBytes = normalized
+      appContext
+    }
+    serverSlot.current?.cacheStore?.setMaxBytes(normalized)
+    if (serverSlot.current == null && context != null) {
+      HlsCacheStore(context, normalized).close()
+    }
+  }
+
   fun clearCache() {
-    serverSlot.current?.cacheStore?.clearAll()
+    val (store, context, maxBytes) = synchronized(lock) {
+      Triple(serverSlot.current?.cacheStore, appContext, configuredMaxCacheBytes)
+    }
+    if (store != null) {
+      store.clearAll()
+      return
+    }
+    context?.let {
+      HlsCacheStore(it, maxBytes).useAndClose { cacheStore ->
+        cacheStore.clearAll()
+      }
+    }
   }
 
   fun clearPreview() {
@@ -191,8 +219,19 @@ object HlsProxyRuntime {
     return synchronized(lock) { prefetchDeduper.size }
   }
 
+  internal fun configuredMaxCacheBytesForTests(): Long {
+    return synchronized(lock) { configuredMaxCacheBytes }
+  }
+
   internal fun registerForTests() {
     synchronized(lock) {
+      isRegistered = true
+    }
+  }
+
+  internal fun registerForTests(context: Context) {
+    synchronized(lock) {
+      appContext = context.applicationContext ?: context
       isRegistered = true
     }
   }
@@ -202,7 +241,8 @@ object HlsProxyRuntime {
     synchronized(lock) {
       runtimeState = HlsRuntimeState(DEFAULT_PORT)
       isRegistered = false
-      reactContext = null
+      appContext = null
+      configuredMaxCacheBytes = HlsCacheBudget.DEFAULT_MAX_BYTES
       prefetchDeduper.clear()
     }
     VideoPreviewRuntime.resetStateForTests()
@@ -225,16 +265,20 @@ object HlsProxyRuntime {
   }
 
   private fun ensureServerRunning(forceRestart: Boolean = false, desiredPort: Int = runtimeState.snapshot().port): Boolean {
-    val (context, startGeneration) = synchronized(lock) {
-      val context = reactContext ?: return false
+    val startPlan = synchronized(lock) {
+      val context = appContext ?: return false
       val isAlive = serverSlot.current?.isAlive == true
       if (!forceRestart && isAlive) {
         return true
       }
-      stopServer(invalidatePendingStart = false)
-      Pair(context, serverStopGeneration)
+      serverSlot.take()?.let { PreviousServer(it, context, serverStopGeneration) }
+        ?: PreviousServer(null, context, serverStopGeneration)
     }
-    val nextServer = HlsProxyServer(desiredPort, context)
+    startPlan.server?.let { serverSlot.releaseResource(it) }
+    val context = startPlan.context
+    val startGeneration = startPlan.startGeneration
+    val maxCacheBytes = synchronized(lock) { configuredMaxCacheBytes }
+    val nextServer = HlsProxyServer(desiredPort, context, maxCacheBytes)
     val started = try {
       nextServer.start(NanoHttpdConfig.TIMEOUT_MS, false)
       nextServer.isAlive
@@ -247,7 +291,7 @@ object HlsProxyRuntime {
       return false
     }
 
-    val previous = synchronized(lock) {
+    val replacedServer = synchronized(lock) {
       if (runtimeState.snapshot().isExplicitlyStopped || serverStopGeneration != startGeneration) {
         null
       } else {
@@ -255,7 +299,7 @@ object HlsProxyRuntime {
       }
     }
     val stored = serverSlot.current === nextServer
-    previous?.let { serverSlot.releaseResource(it) }
+    replacedServer?.let { serverSlot.releaseResource(it) }
     if (!stored) {
       nextServer.stop()
     }
@@ -271,6 +315,32 @@ object HlsProxyRuntime {
     }
     previous?.let { serverSlot.releaseResource(it) }
   }
+
+  private fun activeCacheStoreStats(read: (HlsCacheStore) -> Map<String, Any>): Map<String, Any>? {
+    val (store, context, maxBytes) = synchronized(lock) {
+      Triple(serverSlot.current?.cacheStore, appContext, configuredMaxCacheBytes)
+    }
+    if (store != null) {
+      return read(store)
+    }
+    return context?.let {
+      HlsCacheStore(it, maxBytes).useAndClose(read)
+    }
+  }
+
+  private inline fun <T> HlsCacheStore.useAndClose(block: (HlsCacheStore) -> T): T {
+    try {
+      return block(this)
+    } finally {
+      close()
+    }
+  }
+
+  private data class PreviousServer(
+    val server: HlsProxyServer?,
+    val context: Context,
+    val startGeneration: Int
+  )
 }
 
 internal data class PlaybackRouteResolution(

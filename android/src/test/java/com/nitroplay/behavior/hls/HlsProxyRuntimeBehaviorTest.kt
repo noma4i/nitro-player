@@ -1,5 +1,7 @@
 package com.nitroplay.hls
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -47,6 +49,28 @@ class HlsProxyRuntimeBehaviorTest {
 
     assertEquals(originalUrl, result.url)
     assertFalse(result.isProxying)
+  }
+
+  @Test
+  fun clearCache_withoutActiveServerClearsPersistedDiskCache() {
+    val appContext = ApplicationProvider.getApplicationContext<Context>()
+    val seedStore = HlsCacheStore(appContext)
+    seedStore.clearAll()
+    seedStore.put(
+      HlsIdentity.resourceKey("https://cdn.example.com/legacy.ts", null),
+      ByteArray(64),
+      HlsIdentity.sourceKey("https://cdn.example.com/live.m3u8", null)
+    )
+    seedStore.close()
+    HlsProxyRuntime.registerForTests(appContext)
+
+    HlsProxyRuntime.clearCache()
+
+    val reloaded = HlsCacheStore(appContext)
+    val stats = reloaded.getCacheStats()
+    assertEquals(0L, stats["totalSize"])
+    assertEquals(0, stats["fileCount"])
+    reloaded.close()
   }
 
   @Test

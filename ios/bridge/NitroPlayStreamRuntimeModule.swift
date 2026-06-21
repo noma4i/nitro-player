@@ -48,10 +48,21 @@ class NitroPlayStreamRuntime: NSObject, RCTBridgeModule {
   }
 
   @objc
+  func configureCache(_ options: NSDictionary?, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+    let maxBytes = options?["maxBytes"] as? NSNumber
+    HlsProxyRuntime.shared.configureCache(maxBytes: Int(maxBytes?.int64Value ?? Int64(HlsCacheBudget.defaultMaxBytes)))
+    resolver(true)
+  }
+
+  @objc
   func getThumbnailUrl(_ url: String, headers: NSDictionary?, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
     Task.detached {
-      let result = await HlsProxyRuntime.shared.getThumbnailUrl(url: url, headers: headers as? [String: String])
-      resolver(result)
+      do {
+        let result = await HlsProxyRuntime.shared.getThumbnailUrl(url: url, headers: headers as? [String: String])
+        resolver(result)
+      } catch {
+        rejecter("thumbnail_error", error.localizedDescription, error)
+      }
     }
   }
 

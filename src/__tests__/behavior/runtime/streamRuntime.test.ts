@@ -2,17 +2,18 @@ const nativePrefetchFirstSegment = jest.fn(async () => true);
 const nativeGetCacheStats = jest.fn(async () => ({
   totalSize: 0,
   fileCount: 0,
-  maxSize: 5_368_709_120
+  maxSize: 4_294_967_296
 }));
 const nativeGetStreamCacheStats = jest.fn(async () => ({
   totalSize: 0,
   fileCount: 0,
-  maxSize: 5_368_709_120,
+  maxSize: 4_294_967_296,
   streamSize: 0,
   streamFileCount: 0
 }));
 const nativeGetThumbnailUrl = jest.fn(async () => 'file:///tmp/frame.jpg');
 const nativePeekThumbnailUrl = jest.fn(async () => 'file:///tmp/cached-frame.jpg');
+const nativeConfigureCache = jest.fn(async () => true);
 const nativeClearCache = jest.fn(async () => true);
 const nativeClearPreview = jest.fn(async () => true);
 
@@ -22,6 +23,7 @@ jest.mock('react-native', () => ({
       prefetchFirstSegment: nativePrefetchFirstSegment,
       getCacheStats: nativeGetCacheStats,
       getStreamCacheStats: nativeGetStreamCacheStats,
+      configureCache: nativeConfigureCache,
       getThumbnailUrl: nativeGetThumbnailUrl,
       peekThumbnailUrl: nativePeekThumbnailUrl,
       clearCache: nativeClearCache,
@@ -38,6 +40,7 @@ describe('streamCache', () => {
     nativeGetStreamCacheStats.mockReset();
     nativeGetThumbnailUrl.mockReset();
     nativePeekThumbnailUrl.mockReset();
+    nativeConfigureCache.mockReset();
     nativeClearCache.mockReset();
     nativeClearPreview.mockReset();
 
@@ -45,17 +48,18 @@ describe('streamCache', () => {
     nativeGetCacheStats.mockResolvedValue({
       totalSize: 0,
       fileCount: 0,
-      maxSize: 5_368_709_120
+      maxSize: 4_294_967_296
     });
     nativeGetStreamCacheStats.mockResolvedValue({
       totalSize: 0,
       fileCount: 0,
-      maxSize: 5_368_709_120,
+      maxSize: 4_294_967_296,
       streamSize: 0,
       streamFileCount: 0
     });
     nativeGetThumbnailUrl.mockResolvedValue('file:///tmp/frame.jpg');
     nativePeekThumbnailUrl.mockResolvedValue('file:///tmp/cached-frame.jpg');
+    nativeConfigureCache.mockResolvedValue(true);
     nativeClearCache.mockResolvedValue(true);
     nativeClearPreview.mockResolvedValue(true);
   });
@@ -102,7 +106,7 @@ describe('streamCache', () => {
     expect(stats).toEqual({
       totalSize: 0,
       fileCount: 0,
-      maxSize: 5_368_709_120
+      maxSize: 4_294_967_296
     });
   });
 
@@ -118,7 +122,7 @@ describe('streamCache', () => {
     expect(stats).toEqual({
       totalSize: 0,
       fileCount: 0,
-      maxSize: 5_368_709_120,
+      maxSize: 4_294_967_296,
       streamSize: 0,
       streamFileCount: 0
     });
@@ -151,10 +155,38 @@ describe('streamCache', () => {
     expect(stats).toEqual({
       totalSize: 0,
       fileCount: 0,
-      maxSize: 5_368_709_120,
+      maxSize: 4_294_967_296,
       streamSize: 0,
       streamFileCount: 0
     });
+  });
+
+  it('configure(maxBytes) delegates normalized cache budget to native', async () => {
+    const { streamCache } = require('../../../streaming/streamCache');
+
+    const result = await streamCache.configure({ maxBytes: 1024.9 });
+
+    expect(result).toBe(true);
+    expect(nativeConfigureCache).toHaveBeenCalledWith({ maxBytes: 1024 });
+  });
+
+  it('configure ignores invalid maxBytes instead of sending unsafe native values', async () => {
+    const { streamCache } = require('../../../streaming/streamCache');
+
+    await streamCache.configure({ maxBytes: Number.NaN });
+    await streamCache.configure({ maxBytes: -1 });
+
+    expect(nativeConfigureCache).toHaveBeenNthCalledWith(1, {});
+    expect(nativeConfigureCache).toHaveBeenNthCalledWith(2, {});
+  });
+
+  it('configure returns false when native configuration fails', async () => {
+    nativeConfigureCache.mockRejectedValueOnce(new Error('fail'));
+    const { streamCache } = require('../../../streaming/streamCache');
+
+    const result = await streamCache.configure({ maxBytes: 512 * 1024 * 1024 });
+
+    expect(result).toBe(false);
   });
 
   it('clear() delegates to native clearCache', async () => {

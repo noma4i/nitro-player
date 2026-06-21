@@ -6,8 +6,14 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+
 class NitroPlayStreamRuntimeModule(private val reactContext: ReactApplicationContext)
     : ReactContextBaseJavaModule(reactContext), LifecycleEventListener {
+    companion object {
+        private val previewExecutor: ExecutorService = Executors.newFixedThreadPool(2)
+    }
 
     init {
         reactContext.addLifecycleEventListener(this)
@@ -33,11 +39,15 @@ class NitroPlayStreamRuntimeModule(private val reactContext: ReactApplicationCon
 
     @ReactMethod
     fun prefetchFirstSegment(url: String, headers: ReadableMap?, promise: Promise) {
-        HlsProxyRuntime.prefetchFirstSegment(url, headers, onComplete = {
-            promise.resolve(true)
-        }, onError = { err ->
+        try {
+            HlsProxyRuntime.prefetchFirstSegment(url, headers, onComplete = {
+                promise.resolve(true)
+            }, onError = { err ->
+                promise.reject("prefetch_error", err)
+            })
+        } catch (err: Throwable) {
             promise.reject("prefetch_error", err)
-        })
+        }
     }
 
     @ReactMethod
@@ -48,6 +58,13 @@ class NitroPlayStreamRuntimeModule(private val reactContext: ReactApplicationCon
     @ReactMethod
     fun getStreamCacheStats(url: String, headers: ReadableMap?, promise: Promise) {
         promise.resolve(HlsProxyRuntime.getStreamCacheStats(url, HlsHeaderCodec.decode(headers)))
+    }
+
+    @ReactMethod
+    fun configureCache(options: ReadableMap?, promise: Promise) {
+        val maxBytes = if (options?.hasKey("maxBytes") == true) options.getDouble("maxBytes") else null
+        HlsProxyRuntime.configureCache(maxBytes)
+        promise.resolve(true)
     }
 
     @ReactMethod
@@ -64,18 +81,26 @@ class NitroPlayStreamRuntimeModule(private val reactContext: ReactApplicationCon
 
     @ReactMethod
     fun getThumbnailUrl(url: String, headers: ReadableMap?, promise: Promise) {
-        Thread {
-            val result = HlsProxyRuntime.getThumbnailUrl(url, com.nitroplay.hls.HlsHeaderCodec.decode(headers))
-            promise.resolve(result)
-        }.start()
+        previewExecutor.execute {
+            try {
+                val result = HlsProxyRuntime.getThumbnailUrl(url, HlsHeaderCodec.decode(headers))
+                promise.resolve(result)
+            } catch (err: Throwable) {
+                promise.reject("thumbnail_error", err)
+            }
+        }
     }
 
     @ReactMethod
     fun peekThumbnailUrl(url: String, headers: ReadableMap?, promise: Promise) {
-        Thread {
-            val result = HlsProxyRuntime.peekThumbnailUrl(url, com.nitroplay.hls.HlsHeaderCodec.decode(headers))
-            promise.resolve(result)
-        }.start()
+        previewExecutor.execute {
+            try {
+                val result = HlsProxyRuntime.peekThumbnailUrl(url, HlsHeaderCodec.decode(headers))
+                promise.resolve(result)
+            } catch (err: Throwable) {
+                promise.reject("thumbnail_error", err)
+            }
+        }
     }
 
     // LifecycleEventListener — self-heal on foreground return
