@@ -32,8 +32,6 @@ Pod::Spec.new do |s|
     "ios/**/*.{h,m,mm,swift}"            # Domain-organized: player/source/view/streaming/preview/bridge/support
   ]
 
-  s.dependency "GCDWebServer", "~> 3.5"
-
   if fabric_enabled
     s.exclude_files = ["ios/view/paper/**/*.{h,m,mm,swift}"]
   else
@@ -44,7 +42,21 @@ Pod::Spec.new do |s|
   s.public_header_files = ["ios/NitroPlay-Bridging-Header.h"]
 
   s.pod_target_xcconfig = {
-    "GCC_PREPROCESSOR_DEFINITIONS" => "$(inherited) FOLLY_NO_CONFIG FOLLY_CFG_NO_COROUTINES FOLLY_MOBILE"
+    "GCC_PREPROCESSOR_DEFINITIONS" => "$(inherited) FOLLY_NO_CONFIG FOLLY_CFG_NO_COROUTINES FOLLY_MOBILE",
+    "HEADER_SEARCH_PATHS" => [
+      "$(inherited)",
+      "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/KTVHTTPCache\"",
+      "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/KTVHTTPCache/Classes/KTVHCCommon\"",
+      "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/KTVHTTPCache/Classes/KTVHCDataStorage\"",
+      "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/KTVHTTPCache/Classes/KTVHCDownload\"",
+      "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/KTVHTTPCache/Classes/KTVHCHTTPServer\"",
+      "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/KTVHTTPCache/Classes/KTVHCTools\"",
+      "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/KTVHTTPCache/CocoaHTTPServer\"",
+      "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/KTVHTTPCache/CocoaHTTPServer/Categories\"",
+      "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/KTVHTTPCache/CocoaHTTPServer/Mime\"",
+      "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/KTVHTTPCache/CocoaHTTPServer/Responses\"",
+      "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/Vendors/CocoaAsyncSocket\""
+    ].join(" ")
   }
 
   # Try to manually add the dependencies

@@ -4,9 +4,6 @@ PODS:
   - fast_float (8.0.0)
   - FBLazyVector (0.83.4)
   - fmt (12.1.0)
-  - GCDWebServer (3.5.4):
-    - GCDWebServer/Core (= 3.5.4)
-  - GCDWebServer/Core (3.5.4)
   - glog (0.3.5)
   - hermes-engine (0.14.1):
     - hermes-engine/Pre-built (= 0.14.1)
@@ -45,7 +42,6 @@ PODS:
     - DoubleConversion
     - fast_float
     - fmt
-    - GCDWebServer (~> 3.5)
     - glog
     - hermes-engine
     - NitroModules
@@ -2607,7 +2603,6 @@ DEPENDENCIES:
   - fast_float (from `../node_modules/react-native/third-party-podspecs/fast_float.podspec`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - fmt (from `../node_modules/react-native/third-party-podspecs/fmt.podspec`)
-  - GCDWebServer
   - glog (from `../node_modules/react-native/third-party-podspecs/glog.podspec`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
   - NitroModules (from `../node_modules/react-native-nitro-modules`)
@@ -2688,7 +2683,6 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
-    - GCDWebServer
     - SocketRocket
 
 EXTERNAL SOURCES:
@@ -2860,11 +2854,10 @@ SPEC CHECKSUMS:
   fast_float: b32c788ed9c6a8c584d114d0047beda9664e7cc6
   FBLazyVector: 82d1d7996af4c5850242966eb81e73f9a6dfab1e
   fmt: 530618a01105dae0fa3a2f27c81ae11fa8f67eac
-  GCDWebServer: 2c156a56c8226e2d5c0c3f208a3621ccffbe3ce4
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: 4076e3ef71d79020a525eb9e43a012761443dac7
   NitroModules: 17f56ebb3581e74931c870a789834582ce75470c
-  NitroPlay: dfa3d0b580754a6abb1e621c03f76eaff1d0fdb8
+  NitroPlay: 13f46da16430cb2ec1692b4ec7f7cd884bae618f
   RCT-Folly: b29feb752b08042c62badaef7d453f3bb5e6ae23
   RCTDeprecation: 9da1d0cf93db23ca8b41e8efe9ae558fd9c0077f
   RCTRequired: 92a63c7041031a131fa5206eb082d53f95729b79
@@ -2938,6 +2931,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: b669e79fa0f8d3f6f5e35372345f54b99e06b13c
 
-PODFILE CHECKSUM: e6d4bd912cb40aa5fa40db0ed8179074daf069c7
+PODFILE CHECKSUM: bde33dfa03cfaebdfb32a449c4532b463e6694d1
 
 COCOAPODS: 1.16.2
