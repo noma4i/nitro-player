@@ -57,3 +57,7 @@ The native `PlayerRetentionCoordinator` owns trim decisions on both platforms.
 Managers pass current player state into it, then apply trim effects on the main
 thread. Released players and players without an active source are never trimmed
 by resource-pressure handlers.
+
+Preview extraction is coordinated outside player retention. Shared preview jobs
+are coalesced per source key, cancelled only when the last waiter leaves, and
+cleared globally on release/clear so stale frames cannot rehydrate a player.

@@ -10,6 +10,7 @@ import androidx.media3.exoplayer.upstream.DefaultAllocator
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
 import com.nitroplay.video.core.LibraryError
+import com.nitroplay.video.core.PlayerAppStateSnapshot
 import com.nitroplay.video.core.PlayerRetentionCoordinator
 import com.nitroplay.video.core.PlayerRetentionLevel
 import com.nitroplay.video.core.PlayerRetentionSnapshot
@@ -239,6 +240,16 @@ internal class NitroPlayerLifecycle(
       isExternalPlaybackActive = false,
       isFeedPoolEligible = isFeedProfile(),
       retentionLevel = currentRetentionLevel()
+    )
+  }
+
+  fun appStateSnapshot(): PlayerAppStateSnapshot {
+    return PlayerAppStateSnapshot(
+      playInBackground = host.playInBackground,
+      playWhenInactive = host.playWhenInactive,
+      isPlaying = host.isPlaying,
+      wasAutoPaused = host.wasAutoPaused,
+      isExternalPlaybackActive = false
     )
   }
 

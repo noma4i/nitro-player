@@ -1,0 +1,1 @@
+../../../ios/player/PlayerAppStatePolicy.swift

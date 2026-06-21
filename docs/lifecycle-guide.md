@@ -50,3 +50,5 @@ playback targets.
 
 `playWhenInactive` prevents automatic pause while the host is inactive on both
 iOS and Android. `playInBackground` remains the background-playback opt-in.
+If foreground resume fails after a library auto-pause, the auto-paused flag stays
+set so the next active transition can retry instead of losing playback intent.

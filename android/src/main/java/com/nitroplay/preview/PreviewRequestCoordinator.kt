@@ -13,6 +13,13 @@ internal class PreviewRequestCoordinator<K, T> {
     val future: Future<T?>
   ) {
     var waiters: Int = 0
+    var isCancelled: Boolean = false
+
+    fun cancel() {
+      if (isCancelled) return
+      isCancelled = true
+      future.cancel(true)
+    }
   }
 
   private val lock = Any()
@@ -31,7 +38,7 @@ internal class PreviewRequestCoordinator<K, T> {
 
   fun cancelAll() {
     synchronized(lock) {
-      inflight.values.forEach { it.future.cancel(true) }
+      inflight.values.forEach { it.cancel() }
       inflight.clear()
     }
   }
@@ -46,6 +53,9 @@ internal class PreviewRequestCoordinator<K, T> {
 
     override fun await(): T? {
       if (isCancelled) return null
+      synchronized(lock) {
+        if (entry.isCancelled || inflight[key] !== entry) return null
+      }
       return try {
         entry.future.get()
       } catch (_: Exception) {
@@ -61,7 +71,7 @@ internal class PreviewRequestCoordinator<K, T> {
         entry.waiters = (entry.waiters - 1).coerceAtLeast(0)
         if (entry.waiters == 0) {
           inflight.remove(key)
-          entry.future.cancel(true)
+          entry.cancel()
         }
       }
     }

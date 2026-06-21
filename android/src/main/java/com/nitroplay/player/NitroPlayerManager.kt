@@ -182,17 +182,19 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
   // ------------ Lifecycle Handler ------------
   private fun onAppEnterForeground() {
     players.keys.forEach { player ->
-      if (player.wasAutoPaused) {
+      if (PlayerAppStatePolicy.shouldResumeWhenEnteringForeground(player.appStateSnapshot())) {
         // play() clears wasAutoPaused only after a successful start, so a
         // throwing initializePlayer() leaves the flag set for the next resume.
         player.play()
+      } else {
+        player.wasAutoPaused = false
       }
     }
   }
 
   private fun onAppEnterBackground() {
     players.keys.forEach { player ->
-      if (!player.playInBackground && !player.playWhenInactive && player.isPlaying) {
+      if (PlayerAppStatePolicy.shouldAutoPauseWhenEnteringBackground(player.appStateSnapshot())) {
         player.wasAutoPaused = true
         player.pause()
       }

@@ -14,10 +14,8 @@ object HlsProxyRuntime {
   private const val PREFETCH_MAX_ENTRIES = 500
 
   private val lock = Any()
-  private var port: Int = DEFAULT_PORT
+  private var runtimeState = HlsRuntimeState(DEFAULT_PORT)
   private var isRegistered = false
-  private var didAutoStart = false
-  private var isExplicitlyStopped = false
   private var server: HlsProxyServer? = null
   private var reactContext: ReactApplicationContext? = null
   private val prefetchTimestamps = LinkedHashMap<String, Long>()
@@ -39,27 +37,22 @@ object HlsProxyRuntime {
 
   fun start(port: Int?) {
     val (nextPort, shouldRestartForPort) = synchronized(lock) {
-      val previousPort = this.port
-      val resolvedPort = if ((port ?: DEFAULT_PORT) > 0) port ?: DEFAULT_PORT else DEFAULT_PORT
-      this.port = resolvedPort
+      val previousPort = runtimeState.snapshot().port
+      val resolvedPort = runtimeState.start(port)
       isRegistered = true
-      didAutoStart = true
-      isExplicitlyStopped = false
       Pair(resolvedPort, server?.isAlive == true && previousPort != resolvedPort)
     }
     ensureServerRunning(forceRestart = shouldRestartForPort, desiredPort = nextPort)
   }
 
   fun stop() {
-    synchronized(lock) {
-      didAutoStart = false
-      isExplicitlyStopped = true
-    }
+    runtimeState.stop()
     stopServer()
   }
 
   fun onHostResume() {
-    val shouldRun = synchronized(lock) { isRegistered && didAutoStart && !isExplicitlyStopped }
+    val state = runtimeState.snapshot()
+    val shouldRun = synchronized(lock) { isRegistered && state.didAutoStart && !state.isExplicitlyStopped }
     if (shouldRun) {
       val forceRestart = synchronized(lock) { server?.isAlive != true }
       ensureServerRunning(forceRestart = forceRestart)
@@ -67,9 +60,7 @@ object HlsProxyRuntime {
   }
 
   fun onHostDestroy() {
-    synchronized(lock) {
-      didAutoStart = false
-    }
+    runtimeState.stop()
     stopServer()
   }
 
@@ -82,8 +73,7 @@ object HlsProxyRuntime {
   }
 
   internal fun resolvePlaybackRoute(url: String, headers: Map<String, String>?): PlaybackRouteResolution {
-    val isStopped = synchronized(lock) { isExplicitlyStopped }
-    if (isStopped) return PlaybackRouteResolution(url = url, isProxying = false)
+    if (runtimeState.snapshot().isExplicitlyStopped) return PlaybackRouteResolution(url = url, isProxying = false)
     ensureStarted()
     if (!ensureServerRunning()) {
       return PlaybackRouteResolution(url = url, isProxying = false)
@@ -108,8 +98,7 @@ object HlsProxyRuntime {
   }
 
   fun prefetchFirstSegment(url: String, headers: ReadableMap?, onComplete: () -> Unit, onError: (Throwable) -> Unit) {
-    val isStopped = synchronized(lock) { isExplicitlyStopped }
-    if (isStopped) {
+    if (runtimeState.snapshot().isExplicitlyStopped) {
       onComplete()
       return
     }
@@ -202,8 +191,8 @@ object HlsProxyRuntime {
     synchronized(lock) {
       return RuntimeStateSnapshot(
         isRegistered = isRegistered,
-        didAutoStart = didAutoStart,
-        isExplicitlyStopped = isExplicitlyStopped,
+        didAutoStart = runtimeState.snapshot().didAutoStart,
+        isExplicitlyStopped = runtimeState.snapshot().isExplicitlyStopped,
         hasServer = server != null
       )
     }
@@ -222,10 +211,8 @@ object HlsProxyRuntime {
   internal fun resetStateForTests() {
     stopServer()
     synchronized(lock) {
-      port = DEFAULT_PORT
+      runtimeState = HlsRuntimeState(DEFAULT_PORT)
       isRegistered = false
-      didAutoStart = false
-      isExplicitlyStopped = false
       reactContext = null
       prefetchTimestamps.clear()
     }
@@ -233,30 +220,18 @@ object HlsProxyRuntime {
   }
 
   fun restartForPlaybackRecovery() {
-    val (shouldRestart, desiredPort) = synchronized(lock) {
-      if (isExplicitlyStopped) {
-        Pair(false, port)
-      } else {
-        didAutoStart = true
-        Pair(true, port)
-      }
-    }
-    if (!shouldRestart) {
-      return
-    }
+    val desiredPort = runtimeState.shouldRestartForPlaybackRecovery() ?: return
     ensureServerRunning(forceRestart = true, desiredPort = desiredPort)
   }
 
   private fun ensureStarted() {
-    synchronized(lock) {
-      isRegistered = true
-      if (!isExplicitlyStopped) {
-        didAutoStart = true
-      }
+    synchronized(lock) { isRegistered = true }
+    runtimeState.shouldStartForImplicitUse()?.let {
+      ensureServerRunning(forceRestart = false, desiredPort = it)
     }
   }
 
-  private fun ensureServerRunning(forceRestart: Boolean = false, desiredPort: Int = port): Boolean {
+  private fun ensureServerRunning(forceRestart: Boolean = false, desiredPort: Int = runtimeState.snapshot().port): Boolean {
     val context = synchronized(lock) { reactContext } ?: return false
     val isAlive = synchronized(lock) { server?.isAlive == true }
     if (!forceRestart && isAlive) {
@@ -278,7 +253,7 @@ object HlsProxyRuntime {
     }
 
     val stored = synchronized(lock) {
-      if (isExplicitlyStopped) {
+      if (runtimeState.snapshot().isExplicitlyStopped) {
         false
       } else {
         server = nextServer

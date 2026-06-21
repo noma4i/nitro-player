@@ -23,70 +23,6 @@ struct VideoPreviewResult {
   let fromCache: Bool
 }
 
-fileprivate final class InflightVideoPreview {
-  let task: Task<VideoPreviewResult?, Never>
-  var waiters: Int = 0
-
-  init(task: Task<VideoPreviewResult?, Never>) {
-    self.task = task
-  }
-}
-
-final class VideoPreviewRequest {
-  private let lock = NSLock()
-  private let cachedResult: VideoPreviewResult?
-  private let cacheKey: String?
-  private let entry: InflightVideoPreview?
-  private weak var runtime: VideoPreviewRuntime?
-  private var cancelled = false
-
-  var isCancelled: Bool {
-    lock.lock()
-    defer { lock.unlock() }
-    return cancelled
-  }
-
-  init(cachedResult: VideoPreviewResult) {
-    self.cachedResult = cachedResult
-    self.cacheKey = nil
-    self.entry = nil
-    self.runtime = nil
-  }
-
-  fileprivate init(cacheKey: String, entry: InflightVideoPreview, runtime: VideoPreviewRuntime) {
-    self.cachedResult = nil
-    self.cacheKey = cacheKey
-    self.entry = entry
-    self.runtime = runtime
-  }
-
-  func value() async -> VideoPreviewResult? {
-    if isCancelled {
-      return nil
-    }
-    if let cachedResult {
-      return cachedResult
-    }
-    let result = await entry?.task.value
-    return isCancelled ? nil : result
-  }
-
-  func cancel() {
-    lock.lock()
-    if cancelled {
-      lock.unlock()
-      return
-    }
-    cancelled = true
-    lock.unlock()
-
-    guard let cacheKey, let entry else {
-      return
-    }
-    runtime?.release(cacheKey: cacheKey, entry: entry)
-  }
-}
-
 final class VideoPreviewRuntime {
   static let shared = VideoPreviewRuntime()
 
@@ -95,8 +31,7 @@ final class VideoPreviewRuntime {
   private static let ciContext = CIContext()
 
   private let store = HlsCacheStore()
-  private let stateQueue = DispatchQueue(label: "com.nitroplay.preview.runtime")
-  private var inflight: [String: InflightVideoPreview] = [:]
+  private let requestCoordinator = PreviewRequestCoordinator<VideoPreviewResult>()
 
   private init() {}
 
@@ -116,32 +51,23 @@ final class VideoPreviewRuntime {
     url: String,
     headers: [String: String]?,
     preview: NitroSourcePreviewConfig?
-  ) -> VideoPreviewRequest? {
+  ) -> PreviewRequest<VideoPreviewResult>? {
     let profile = VideoPreviewProfile.from(config: preview)
     let cacheKey = HlsIdentity.previewKey(url: url, headers: headers, profile: profile)
 
     if let cached = store.getThumbnailPath(url: cacheKey) {
-      return VideoPreviewRequest(cachedResult: VideoPreviewResult(uri: cached.absoluteString, fromCache: true))
+      return requestCoordinator.cached(VideoPreviewResult(uri: cached.absoluteString, fromCache: true))
     }
 
-    return stateQueue.sync { () -> VideoPreviewRequest in
-      if let existing = inflight[cacheKey] {
-        existing.waiters += 1
-        return VideoPreviewRequest(cacheKey: cacheKey, entry: existing, runtime: self)
-      }
-
-      let created = Task<VideoPreviewResult?, Never> {
+    return requestCoordinator.acquire(key: cacheKey) {
+      TaskPreviewJob(task: Task<VideoPreviewResult?, Never> {
         await self.generatePreview(
           cacheKey: cacheKey,
           url: url,
           headers: headers,
           profile: profile
         )
-      }
-      let entry = InflightVideoPreview(task: created)
-      entry.waiters = 1
-      inflight[cacheKey] = entry
-      return VideoPreviewRequest(cacheKey: cacheKey, entry: entry, runtime: self)
+      })
     }
   }
 
@@ -161,24 +87,8 @@ final class VideoPreviewRuntime {
   }
 
   func clear() {
-    stateQueue.sync {
-      inflight.values.forEach { $0.task.cancel() }
-      inflight.removeAll()
-    }
+    requestCoordinator.cancelAll()
     store.clearThumbnails()
-  }
-
-  fileprivate func release(cacheKey: String, entry: InflightVideoPreview) {
-    stateQueue.sync {
-      guard inflight[cacheKey] === entry else {
-        return
-      }
-      entry.waiters = max(0, entry.waiters - 1)
-      if entry.waiters == 0 {
-        inflight.removeValue(forKey: cacheKey)
-        entry.task.cancel()
-      }
-    }
   }
 
   private func generatePreview(

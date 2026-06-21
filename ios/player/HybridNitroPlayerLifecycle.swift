@@ -466,4 +466,14 @@ extension HybridNitroPlayer {
       retentionLevel: currentRetentionLevel()
     )
   }
+
+  func appStateSnapshot() -> PlayerAppStateSnapshot {
+    PlayerAppStateSnapshot(
+      playInBackground: playInBackground,
+      playWhenInactive: playWhenInactive,
+      isPlaying: isPlaying,
+      wasAutoPaused: wasAutoPaused,
+      isExternalPlaybackActive: player.isExternalPlaybackActive == true
+    )
+  }
 }

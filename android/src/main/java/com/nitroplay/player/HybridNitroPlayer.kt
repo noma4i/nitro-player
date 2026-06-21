@@ -23,6 +23,7 @@ import com.nitroplay.video.core.LibraryError
 import com.nitroplay.video.core.PlayerError
 import com.nitroplay.video.core.LifecycleGate
 import com.nitroplay.video.core.NitroPlayerManager
+import com.nitroplay.video.core.PlayerAppStateSnapshot
 import com.nitroplay.video.core.PlayerRetentionSnapshot
 import com.nitroplay.video.core.utils.Threading.mainThreadProperty
 import com.nitroplay.video.core.utils.Threading.runOnMainThread
@@ -850,6 +851,10 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   internal fun retentionSnapshot(): PlayerRetentionSnapshot {
     return lifecycle.retentionSnapshot()
+  }
+
+  internal fun appStateSnapshot(): PlayerAppStateSnapshot {
+    return lifecycle.appStateSnapshot()
   }
 
   internal fun trimForFeedHotPool() {

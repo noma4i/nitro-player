@@ -98,7 +98,7 @@ class NitroPlayerManager {
 
   func applicationWillResignActive() {
     for player in players.allObjects {
-      if player.playInBackground || player.playWhenInactive || !player.isPlaying || player.player.isExternalPlaybackActive == true {
+      if !PlayerAppStatePolicy.shouldAutoPauseWhenInactive(player.appStateSnapshot()) {
         continue
       }
 
@@ -110,13 +110,15 @@ class NitroPlayerManager {
   func applicationDidBecomeActive() {
     // Resume handled in willEnterForeground; clear any remaining flags
     for player in players.allObjects {
-      player.wasAutoPaused = false
+      if PlayerAppStatePolicy.shouldClearAutoPausedAfterBecomeActive(player.appStateSnapshot()) {
+        player.wasAutoPaused = false
+      }
     }
   }
 
   func applicationDidEnterBackground() {
     for player in players.allObjects {
-      if player.playInBackground || player.player.isExternalPlaybackActive == true || !player.isPlaying {
+      if !PlayerAppStatePolicy.shouldAutoPauseWhenEnteringBackground(player.appStateSnapshot()) {
         continue
       }
 
@@ -127,10 +129,16 @@ class NitroPlayerManager {
 
   func applicationWillEnterForeground() {
     for player in players.allObjects {
-      if player.wasAutoPaused {
-        try? player.play()
+      if PlayerAppStatePolicy.shouldResumeWhenEnteringForeground(player.appStateSnapshot()) {
+        do {
+          try player.play()
+          player.wasAutoPaused = false
+        } catch {
+          player.wasAutoPaused = true
+        }
+      } else {
+        player.wasAutoPaused = false
       }
-      player.wasAutoPaused = false
     }
   }
 

@@ -8,35 +8,22 @@ struct HlsProxyRouteResolution {
 final class HlsProxyRuntime {
   static let shared = HlsProxyRuntime()
 
-  // 0 = OS-assigned ephemeral port (avoids loopback port collisions); the
-  // controller reads back the actual bound port for proxied URLs.
-  private let defaultPort: Int = 0
   private let prefetchDedupMs: TimeInterval = 60
   private let stateQueue = DispatchQueue(label: "com.nitroplay.hls.runtime-state")
+  private let runtimeState = HlsRuntimeState()
   private let controller = HlsProxyServerController()
 
-  private var port: Int = 0
-  private var didAutoStart = false
-  private var isExplicitlyStopped = false
   private var prefetchTimestamps: [String: Date] = [:]
 
   private init() {}
 
   func start(port: Int?) {
-    let resolvedPort = (port ?? defaultPort) > 0 ? (port ?? defaultPort) : defaultPort
-    stateQueue.sync {
-      self.port = resolvedPort
-      self.isExplicitlyStopped = false
-      self.didAutoStart = true
-    }
+    let resolvedPort = runtimeState.start(port: port)
     controller.start(port: resolvedPort)
   }
 
   func stop() {
-    stateQueue.sync {
-      isExplicitlyStopped = true
-      didAutoStart = false
-    }
+    runtimeState.stop()
     controller.stop()
   }
 
@@ -105,15 +92,7 @@ final class HlsProxyRuntime {
   }
 
   func restartForPlaybackRecovery() {
-    let restartPort = stateQueue.sync { () -> Int? in
-      guard !isExplicitlyStopped else {
-        return nil
-      }
-      didAutoStart = true
-      return port
-    }
-
-    guard let restartPort else {
+    guard let restartPort = runtimeState.shouldRestartForPlaybackRecovery() else {
       return
     }
 
@@ -122,19 +101,8 @@ final class HlsProxyRuntime {
   }
 
   private func ensureStarted() {
-    let shouldStart = stateQueue.sync { () -> Bool in
-      guard !isExplicitlyStopped else {
-        return false
-      }
-      if didAutoStart {
-        return false
-      }
-      didAutoStart = true
-      return true
-    }
-
-    if shouldStart {
-      controller.start(port: port)
+    if let startPort = runtimeState.shouldStartForImplicitUse() {
+      controller.start(port: startPort)
     }
   }
 }

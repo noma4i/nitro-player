@@ -176,6 +176,16 @@ class PreviewRequestCoordinatorTest {
   }
 
   @Test
+  fun cancelAll_preventsCompletedFutureFromDeliveringStaleValue() {
+    val coordinator = PreviewRequestCoordinator<String, String>()
+    val request = coordinator.acquire("video-a") { CountingFuture("already-finished-frame") }
+
+    coordinator.cancelAll()
+
+    assertNull(request.await())
+  }
+
+  @Test
   fun awaitAfterCancel_returnsNull() {
     val coordinator = PreviewRequestCoordinator<String, String>()
     val request = coordinator.acquire("video-a") {

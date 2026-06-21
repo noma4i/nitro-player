@@ -51,7 +51,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   var pendingTrimWorkItem: DispatchWorkItem?
   var startupRecoveryTask: Task<Void, Never>?
   var firstFrameTask: Task<Void, Never>?
-  var firstFrameRequest: VideoPreviewRequest?
+  var firstFrameRequest: PreviewRequest<VideoPreviewResult>?
   var sourceGeneration: Int { lifecycleGate.generation }
   var startupRecoveryAttempts: Int = 0
   var hasLoadedCurrentSource = false
