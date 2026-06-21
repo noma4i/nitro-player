@@ -29,6 +29,10 @@ const withoutComments = source => source
   .map(line => line.replace(/\/\/.*$/, ''))
   .join('\n');
 
+const approvedMainThreadSyncFiles = new Set([
+  'ios/support/MainThreadResourceExecutor.swift'
+]);
+
 const assertNoPattern = (relative, pattern, message) => {
   if (!exists(relative)) return;
   const source = withoutComments(read(relative));
@@ -56,6 +60,12 @@ if (process.argv.includes('--self-test')) {
       pattern: /synchronized\s*\(\s*lock\s*\)\s*\{[\s\S]*?\bserver\??\.(start|stop)\s*\(/m,
       bad: 'synchronized(lock) { server?.start(1000, false) }',
       good: 'val current = synchronized(lock) { server }; current?.stop()'
+    },
+    {
+      name: 'main sync allowlist',
+      pattern: /DispatchQueue\.main\.sync\b/,
+      bad: 'DispatchQueue.main.sync { player.play() }',
+      good: 'DispatchQueue.main.async { player.play() }'
     }
   ];
   for (const sample of samples) {
@@ -91,7 +101,9 @@ for (const pair of requiredMirrors) {
 
 for (const relative of walk('ios')) {
   if (!relative.endsWith('.swift')) continue;
-  assertNoPattern(relative, /DispatchQueue\.main\.sync\b/, 'Forbidden iOS main-thread sync');
+  if (!approvedMainThreadSyncFiles.has(relative)) {
+    assertNoPattern(relative, /DispatchQueue\.main\.sync\b/, 'Forbidden iOS main-thread sync');
+  }
   assertNoPattern(relative, /NotificationCenter\.default\.addObserver\([\s\S]*?selector\s*:/m, 'Forbidden selector-based NotificationCenter observer');
 }
 

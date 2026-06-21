@@ -15,13 +15,25 @@ final class HlsProxyServerController: NSObject {
 
   private let stateQueue = DispatchQueue(label: "com.nitroplay.hls.proxy-state")
   private var port: Int = 0
-  private let serverSlot = SingleOwnerResourceSlot<GCDWebServer> { $0.stop() }
+  private let serverExecutor: MainThreadResourceExecutor
+  private let serverSlot: SingleOwnerResourceSlot<GCDWebServer>
   private var serverStopGeneration = 0
   private var shouldBeRunning = false
   private var wasExplicitlyStopped = false
   private var needsRestartOnActive = false
   private var observersRegistered = false
   private var notificationObservers: [NSObjectProtocol] = []
+
+  override init() {
+    let serverExecutor = MainThreadResourceExecutor()
+    self.serverExecutor = serverExecutor
+    self.serverSlot = SingleOwnerResourceSlot<GCDWebServer> { server in
+      serverExecutor.run {
+        server.stop()
+      }
+    }
+    super.init()
+  }
 
   func start(port: Int?) {
     let resolvedPort = (port ?? defaultPort) > 0 ? (port ?? defaultPort) : defaultPort
@@ -163,11 +175,21 @@ final class HlsProxyServerController: NSObject {
   }
 
   var isRunning: Bool {
-    serverSlot.current?.isRunning == true
+    guard let server = serverSlot.current else {
+      return false
+    }
+    return serverExecutor.run {
+      server.isRunning
+    }
   }
 
   private var hasLiveServer: Bool {
-    serverSlot.current?.isRunning == true
+    guard let server = serverSlot.current else {
+      return false
+    }
+    return serverExecutor.run {
+      server.isRunning
+    }
   }
 
   private func ensureListening(forceRestart: Bool) -> Bool {
@@ -202,38 +224,47 @@ final class HlsProxyServerController: NSObject {
   }
 
   private func startServer(on requestedPort: Int, stopGeneration: Int) -> Bool {
-    let webServer = GCDWebServer()
-    bindHandlers(to: webServer)
+    let started = serverExecutor.run { () -> (server: GCDWebServer, boundPort: Int, isRunning: Bool)? in
+      let webServer = GCDWebServer()
+      bindHandlers(to: webServer)
 
-    do {
-      // Start outside stateQueue: GCDWebServer.start blocks while binding.
-      try webServer.start(options: [
-        GCDWebServerOption_Port: requestedPort,
-        GCDWebServerOption_BindToLocalhost: true,
-        GCDWebServerOption_AutomaticallySuspendInBackground: false
-      ])
-      // Store only if a concurrent stop() did not run while we were binding,
-      // otherwise we would resurrect a server after an explicit stop. Capture the
-      // actual bound port so proxied URLs target the OS-assigned port.
-      let previous = stateQueue.sync { () -> GCDWebServer? in
-        guard shouldBeRunning, serverStopGeneration == stopGeneration else {
-          return nil
-        }
-        port = Int(webServer.port)
-        return serverSlot.swap(webServer)
+      do {
+        // Start outside stateQueue: GCDWebServer.start blocks while binding and
+        // GCDWebServer debug builds assert that lifecycle calls run on main.
+        try webServer.start(options: [
+          GCDWebServerOption_Port: requestedPort,
+          GCDWebServerOption_BindToLocalhost: true,
+          GCDWebServerOption_AutomaticallySuspendInBackground: false
+        ])
+        return (webServer, Int(webServer.port), webServer.isRunning)
+      } catch {
+        return nil
       }
-      let stored = serverSlot.current === webServer
-      if let previous {
-        serverSlot.releaseResource(previous)
-      }
-      guard stored else {
-        webServer.stop()
-        return false
-      }
-      return webServer.isRunning
-    } catch {
+    }
+
+    guard let started else {
       return false
     }
+
+    // Store only if a concurrent stop() did not run while we were binding,
+    // otherwise we would resurrect a server after an explicit stop. Capture the
+    // actual bound port so proxied URLs target the OS-assigned port.
+    let previous = stateQueue.sync { () -> GCDWebServer? in
+      guard shouldBeRunning, serverStopGeneration == stopGeneration else {
+        return nil
+      }
+      port = started.boundPort
+      return serverSlot.swap(started.server)
+    }
+    let stored = serverSlot.current === started.server
+    if let previous {
+      serverSlot.releaseResource(previous)
+    }
+    guard stored else {
+      serverSlot.releaseResource(started.server)
+      return false
+    }
+    return started.isRunning
   }
 
   private func stopServer(invalidatePendingStart: Bool = true) {
