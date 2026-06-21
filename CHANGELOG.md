@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.1.0-beta.4
+
+### Added
+
+- Example stress lab screens for home playback, lifecycle churn, source swap, feed-list churn, buffering interrupt, background lifecycle, and preload race verification
+- Cross-platform lifecycle gate coverage for stale callbacks after `replaceSourceAsync`, `clearSourceAsync`, and `release`
+- Behavior-test organization and lifecycle guard audit checks for JS, iOS, and Android regression coverage
+
+### Changed
+
+- Reorganized the public TypeScript, iOS, Android, and generated build outputs into matching Rails-like domains: `bridge`, `player`, `source`, `view`, `streaming`, `preview`, and `support`
+- Refreshed generated `lib/` artifacts so package consumers resolve the new domain paths instead of the old `core`, `spec`, and `transport` layout
+- Updated the example app to use scenario-specific screens and reusable shared controls for manual consumer QA
+
+### Fixed
+
+- iOS and Android: shared HLS manifest URL detection now handles `.m3u8` URLs with query strings or fragments consistently
+- JS source validation and native stream runtime helpers now keep stream cache, preview, and source factory behavior aligned after the domain split
+- iOS and Android: listener and lifecycle cleanup paths now guard stale emissions more consistently during rapid source churn and release
+
 ## 1.1.0-beta.3
 
 ### Added
