@@ -1,12 +1,12 @@
 import Foundation
 
-protocol CancellablePreviewTask<Output>: AnyObject {
-  associatedtype Output
+protocol CancellablePreviewTask<Output>: AnyObject, Sendable {
+  associatedtype Output: Sendable
   func value() async -> Output?
   func cancel()
 }
 
-final class TaskPreviewJob<Output>: CancellablePreviewTask {
+final class TaskPreviewJob<Output: Sendable>: CancellablePreviewTask, @unchecked Sendable {
   private let task: Task<Output?, Never>
 
   init(task: Task<Output?, Never>) {
@@ -22,7 +22,7 @@ final class TaskPreviewJob<Output>: CancellablePreviewTask {
   }
 }
 
-final class PreviewRequest<Output> {
+final class PreviewRequest<Output: Sendable>: @unchecked Sendable {
   private let lock = NSLock()
   private let cachedResult: Output?
   private let key: String?
@@ -84,8 +84,8 @@ final class PreviewRequest<Output> {
   }
 }
 
-final class PreviewRequestCoordinator<Output> {
-  final class Entry {
+final class PreviewRequestCoordinator<Output: Sendable>: @unchecked Sendable {
+  final class Entry: @unchecked Sendable {
     private let lock = NSLock()
     let job: any CancellablePreviewTask<Output>
     var waiters: Int = 0

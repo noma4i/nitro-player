@@ -61,3 +61,6 @@ by resource-pressure handlers.
 Preview extraction is coordinated outside player retention. Shared preview jobs
 are coalesced per source key, cancelled only when the last waiter leaves, and
 cleared globally on release/clear so stale frames cannot rehydrate a player.
+HLS prefetch side work is bounded separately by a native dedup window with a hard
+entry cap, so feed/header churn cannot grow the prefetch bookkeeping without
+limit.

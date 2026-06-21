@@ -7,7 +7,7 @@ import { type NitroPlayerViewEvents } from './events';
 import type { ResizeMode } from './types/ResizeMode';
 import type { NitroSourceInput } from '../source/types/NitroPlayerConfig';
 import type { NitroPlayerDefaults } from '../player/types/NitroPlayerDefaults';
-import { tryParseNativeNitroPlayerError, NitroPlayerComponentError, NitroPlayerError } from '../support/errors/NitroPlayerError';
+import { tryParseNativeNitroPlayerError, NitroPlayerError } from '../support/errors/NitroPlayerError';
 import { NitroPlayer } from '../player/NitroPlayer';
 import { useNitroPlayer } from '../player/hooks/useNitroPlayer';
 import { NativeNitroPlayerView } from './NativeNitroPlayerView';
@@ -62,6 +62,9 @@ const updateNativeProps = (
   manager.player = player.__getNativePlayer();
 };
 
+const isViewNotFound = (error: unknown): error is { code: 'view/not-found' } =>
+  typeof error === 'object' && error !== null && 'code' in error && error.code === 'view/not-found';
+
 const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProps>(
   (
     {
@@ -92,11 +95,14 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
       (id: number) => {
         try {
           if (nitroViewManager.current === null) {
-            nitroViewManager.current = NitroPlayerViewManagerFactory.createViewManager(id);
+            const manager = NitroPlayerViewManagerFactory.createViewManager(id);
 
-            if (!nitroViewManager.current) {
-              throw new NitroPlayerError('view/not-found', 'Failed to create View Manager');
+            if (!manager) {
+              console.warn('[NitroPlay] NitroPlayerView native view disappeared before manager attach completed; waiting for the next native attach event.');
+              return;
             }
+
+            nitroViewManager.current = manager;
           }
 
           setIsAttached(nitroViewManager.current.isAttached);
@@ -104,15 +110,15 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
         } catch (error) {
           const parsedError = tryParseNativeNitroPlayerError(error);
 
-          if (parsedError instanceof NitroPlayerComponentError && parsedError.code === 'view/not-found' && !isMountedRef.current) {
-            console.warn('[NitroPlay] NitroPlayerView was unmounted before native manager was able to find it.');
+          if (isViewNotFound(parsedError)) {
+            console.warn('[NitroPlay] NitroPlayerView native view disappeared before manager attach completed; waiting for the next native attach event.');
             return;
           }
 
           throw parsedError;
         }
       },
-      [nitroId]
+      []
     );
 
     const onNitroIdChange = React.useCallback(
@@ -169,6 +175,7 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
         if (nitroViewManager.current) {
           nitroViewManager.current.clearAllListeners();
         }
+        nitroViewManager.current = null;
         lastDeliveredAttachStateRef.current = false;
       };
     }, []);

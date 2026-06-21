@@ -57,7 +57,11 @@ internal class PreviewRequestCoordinator<K, T> {
         if (entry.isCancelled || inflight[key] !== entry) return null
       }
       return try {
-        entry.future.get()
+        val result = entry.future.get()
+        synchronized(lock) {
+          if (isCancelled || entry.isCancelled || inflight[key] !== entry) return null
+        }
+        result
       } catch (_: Exception) {
         null
       }

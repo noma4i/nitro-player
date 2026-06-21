@@ -18,7 +18,7 @@ object HlsProxyRuntime {
   private var isRegistered = false
   private var server: HlsProxyServer? = null
   private var reactContext: ReactApplicationContext? = null
-  private val prefetchTimestamps = LinkedHashMap<String, Long>()
+  private val prefetchDeduper = HlsPrefetchDeduper(PREFETCH_DEDUP_MS, PREFETCH_MAX_ENTRIES)
 
   internal data class RuntimeStateSnapshot(
     val isRegistered: Boolean,
@@ -42,7 +42,9 @@ object HlsProxyRuntime {
       isRegistered = true
       Pair(resolvedPort, server?.isAlive == true && previousPort != resolvedPort)
     }
-    ensureServerRunning(forceRestart = shouldRestartForPort, desiredPort = nextPort)
+    if (ensureServerRunning(forceRestart = shouldRestartForPort, desiredPort = nextPort)) {
+      runtimeState.markAutoStarted()
+    }
   }
 
   fun stop() {
@@ -60,7 +62,7 @@ object HlsProxyRuntime {
   }
 
   fun onHostDestroy() {
-    runtimeState.stop()
+    runtimeState.suspendForHostLifecycle()
     stopServer()
   }
 
@@ -108,36 +110,9 @@ object HlsProxyRuntime {
     }
     ensureStarted()
 
-    val shouldPrefetch = synchronized(lock) {
-      val now = System.currentTimeMillis()
-      val dedupKey = HlsIdentity.sourceKey(url, HlsHeaderCodec.decode(headers))
-      val last = prefetchTimestamps[dedupKey]
-      if (last != null && now - last < PREFETCH_DEDUP_MS) {
-        false
-      } else {
-        prefetchTimestamps[dedupKey] = now
-        if (prefetchTimestamps.size > PREFETCH_MAX_ENTRIES) {
-          val iterator = prefetchTimestamps.entries.iterator()
-          while (iterator.hasNext()) {
-            if (now - iterator.next().value > PREFETCH_DEDUP_MS) {
-              iterator.remove()
-            }
-          }
-          // Hard cap: if churn outpaces the dedup window every entry is still
-          // fresh, so drop the oldest (LinkedHashMap keeps insertion order).
-          var overBudget = prefetchTimestamps.size - PREFETCH_MAX_ENTRIES
-          if (overBudget > 0) {
-            val oldest = prefetchTimestamps.entries.iterator()
-            while (oldest.hasNext() && overBudget > 0) {
-              oldest.next()
-              oldest.remove()
-              overBudget -= 1
-            }
-          }
-        }
-        true
-      }
-    }
+    val decodedHeaders = HlsHeaderCodec.decode(headers)
+    val dedupKey = HlsIdentity.sourceKey(url, decodedHeaders)
+    val shouldPrefetch = prefetchDeduper.shouldPrefetch(dedupKey)
 
     if (!shouldPrefetch) {
       onComplete()
@@ -146,11 +121,20 @@ object HlsProxyRuntime {
 
     val activeServer = synchronized(lock) { server }
     if (activeServer == null) {
+      prefetchDeduper.forget(dedupKey)
       onComplete()
       return
     }
 
-    activeServer.prefetch(url, HlsHeaderCodec.decode(headers), onComplete, onError)
+    activeServer.prefetch(
+      url,
+      decodedHeaders,
+      onComplete,
+      { error ->
+        prefetchDeduper.forget(dedupKey)
+        onError(error)
+      }
+    )
   }
 
   fun getThumbnailUrl(url: String, headers: Map<String, String>?): String? {
@@ -199,7 +183,7 @@ object HlsProxyRuntime {
   }
 
   internal fun prefetchTimestampCountForTests(): Int {
-    return synchronized(lock) { prefetchTimestamps.size }
+    return synchronized(lock) { prefetchDeduper.size }
   }
 
   internal fun registerForTests() {
@@ -214,20 +198,24 @@ object HlsProxyRuntime {
       runtimeState = HlsRuntimeState(DEFAULT_PORT)
       isRegistered = false
       reactContext = null
-      prefetchTimestamps.clear()
+      prefetchDeduper.clear()
     }
     VideoPreviewRuntime.resetStateForTests()
   }
 
   fun restartForPlaybackRecovery() {
-    val desiredPort = runtimeState.shouldRestartForPlaybackRecovery() ?: return
-    ensureServerRunning(forceRestart = true, desiredPort = desiredPort)
+    val desiredPort = runtimeState.portForPlaybackRecoveryRestart() ?: return
+    if (ensureServerRunning(forceRestart = true, desiredPort = desiredPort)) {
+      runtimeState.markAutoStarted()
+    }
   }
 
   private fun ensureStarted() {
     synchronized(lock) { isRegistered = true }
-    runtimeState.shouldStartForImplicitUse()?.let {
-      ensureServerRunning(forceRestart = false, desiredPort = it)
+    runtimeState.portForImplicitStart()?.let {
+      if (ensureServerRunning(forceRestart = false, desiredPort = it)) {
+        runtimeState.markAutoStarted()
+      }
     }
   }
 
@@ -275,7 +263,8 @@ object HlsProxyRuntime {
     current?.stop()
   }
 }
-  internal data class PlaybackRouteResolution(
-    val url: String,
-    val isProxying: Boolean
-  )
+
+internal data class PlaybackRouteResolution(
+  val url: String,
+  val isProxying: Boolean
+)

@@ -72,10 +72,12 @@ const requiredMirrors = [
   ['ios/player/PlayerAppStatePolicy.swift', 'android/src/main/java/com/nitroplay/player/PlayerAppStatePolicy.kt'],
   ['ios/player/PlayerRetentionCoordinator.swift', 'android/src/main/java/com/nitroplay/player/PlayerRetentionCoordinator.kt'],
   ['ios/preview/PreviewRequestCoordinator.swift', 'android/src/main/java/com/nitroplay/preview/PreviewRequestCoordinator.kt'],
+  ['ios/streaming/HlsPrefetchDeduper.swift', 'android/src/main/java/com/nitroplay/streaming/HlsPrefetchDeduper.kt'],
   ['ios/streaming/HlsRuntimeState.swift', 'android/src/main/java/com/nitroplay/streaming/HlsRuntimeState.kt'],
   ['tests/ios/Tests/Behavior/Core/PlayerAppStatePolicyTests.swift', 'android/src/test/java/com/nitroplay/behavior/core/PlayerAppStatePolicyTest.kt'],
   ['tests/ios/Tests/Behavior/Core/PlayerRetentionCoordinatorTests.swift', 'android/src/test/java/com/nitroplay/behavior/core/PlayerRetentionCoordinatorTest.kt'],
   ['tests/ios/Tests/Behavior/Hls/PreviewRequestCoordinatorTests.swift', 'android/src/test/java/com/nitroplay/behavior/hls/PreviewRequestCoordinatorTest.kt'],
+  ['tests/ios/Tests/Behavior/Hls/HlsPrefetchDeduperTests.swift', 'android/src/test/java/com/nitroplay/behavior/hls/HlsPrefetchDeduperTest.kt'],
   ['tests/ios/Tests/Behavior/Hls/HlsRuntimeStateTests.swift', 'android/src/test/java/com/nitroplay/behavior/hls/HlsRuntimeStateTest.kt']
 ];
 

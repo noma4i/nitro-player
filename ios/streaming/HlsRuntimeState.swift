@@ -24,7 +24,6 @@ final class HlsRuntimeState {
       let resolvedPort = (requestedPort ?? defaultPort) > 0 ? (requestedPort ?? defaultPort) : defaultPort
       port = resolvedPort
       isExplicitlyStopped = false
-      didAutoStart = true
       return resolvedPort
     }
   }
@@ -36,7 +35,13 @@ final class HlsRuntimeState {
     }
   }
 
-  func shouldStartForImplicitUse() -> Int? {
+  func suspendForHostLifecycle() {
+    queue.sync {
+      didAutoStart = false
+    }
+  }
+
+  func portForImplicitStart() -> Int? {
     queue.sync {
       guard !isExplicitlyStopped else {
         return nil
@@ -44,17 +49,23 @@ final class HlsRuntimeState {
       if didAutoStart {
         return nil
       }
-      didAutoStart = true
       return port
     }
   }
 
-  func shouldRestartForPlaybackRecovery() -> Int? {
+  func markAutoStarted() {
+    queue.sync {
+      if !isExplicitlyStopped {
+        didAutoStart = true
+      }
+    }
+  }
+
+  func portForPlaybackRecoveryRestart() -> Int? {
     queue.sync {
       guard !isExplicitlyStopped else {
         return nil
       }
-      didAutoStart = true
       return port
     }
   }

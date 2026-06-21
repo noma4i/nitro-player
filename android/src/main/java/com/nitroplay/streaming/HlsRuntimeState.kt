@@ -18,7 +18,6 @@ internal class HlsRuntimeState(
     synchronized(lock) {
       val resolvedPort = if ((requestedPort ?: defaultPort) > 0) requestedPort ?: defaultPort else defaultPort
       port = resolvedPort
-      didAutoStart = true
       isExplicitlyStopped = false
       return resolvedPort
     }
@@ -31,19 +30,31 @@ internal class HlsRuntimeState(
     }
   }
 
-  fun shouldStartForImplicitUse(): Int? {
+  fun suspendForHostLifecycle() {
+    synchronized(lock) {
+      didAutoStart = false
+    }
+  }
+
+  fun portForImplicitStart(): Int? {
     synchronized(lock) {
       if (isExplicitlyStopped) return null
       if (didAutoStart) return null
-      didAutoStart = true
       return port
     }
   }
 
-  fun shouldRestartForPlaybackRecovery(): Int? {
+  fun markAutoStarted() {
+    synchronized(lock) {
+      if (!isExplicitlyStopped) {
+        didAutoStart = true
+      }
+    }
+  }
+
+  fun portForPlaybackRecoveryRestart(): Int? {
     synchronized(lock) {
       if (isExplicitlyStopped) return null
-      didAutoStart = true
       return port
     }
   }

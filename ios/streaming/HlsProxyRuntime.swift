@@ -8,23 +8,28 @@ struct HlsProxyRouteResolution {
 final class HlsProxyRuntime {
   static let shared = HlsProxyRuntime()
 
-  private let prefetchDedupMs: TimeInterval = 60
-  private let stateQueue = DispatchQueue(label: "com.nitroplay.hls.runtime-state")
   private let runtimeState = HlsRuntimeState()
   private let controller = HlsProxyServerController()
-
-  private var prefetchTimestamps: [String: Date] = [:]
+  private let prefetchDeduper = HlsPrefetchDeduper(window: 60, maxEntries: 500)
+  private let runtimeQueue = DispatchQueue(label: "com.nitroplay.hls.proxy-runtime")
 
   private init() {}
 
   func start(port: Int?) {
-    let resolvedPort = runtimeState.start(port: port)
-    controller.start(port: resolvedPort)
+    runtimeQueue.sync {
+      let resolvedPort = runtimeState.start(port: port)
+      controller.start(port: resolvedPort)
+      if controller.isRunning {
+        runtimeState.markAutoStarted()
+      }
+    }
   }
 
   func stop() {
-    runtimeState.stop()
-    controller.stop()
+    runtimeQueue.sync {
+      runtimeState.stop()
+      controller.stop()
+    }
   }
 
   func getProxiedUrl(url: String, headers: [String: String]?) -> String {
@@ -32,30 +37,28 @@ final class HlsProxyRuntime {
   }
 
   func prefetchFirstSegment(url: String, headers: [String: String]?) async throws {
+    guard !runtimeQueue.sync(execute: { runtimeState.snapshot().isExplicitlyStopped }) else {
+      return
+    }
     guard HlsManifestUrl.matches(url) else {
       return
     }
 
     ensureStarted()
 
-    let shouldPrefetch = stateQueue.sync { () -> Bool in
-      let now = Date()
-      let dedupKey = HlsIdentity.sourceKey(url: url, headers: headers)
-      if let last = prefetchTimestamps[dedupKey], now.timeIntervalSince(last) < prefetchDedupMs {
-        return false
-      }
-      prefetchTimestamps[dedupKey] = now
-      if prefetchTimestamps.count > 500 {
-        prefetchTimestamps = prefetchTimestamps.filter { now.timeIntervalSince($0.value) < prefetchDedupMs }
-      }
-      return true
-    }
+    let dedupKey = HlsIdentity.sourceKey(url: url, headers: headers)
+    let shouldPrefetch = prefetchDeduper.shouldPrefetch(key: dedupKey)
 
     guard shouldPrefetch else {
       return
     }
 
-    try await controller.prefetchFirstSegment(url: url, headers: headers)
+    do {
+      try await controller.prefetchFirstSegment(url: url, headers: headers)
+    } catch {
+      prefetchDeduper.forget(key: dedupKey)
+      throw error
+    }
   }
 
   func getCacheStats() -> [String: Any] {
@@ -92,17 +95,27 @@ final class HlsProxyRuntime {
   }
 
   func restartForPlaybackRecovery() {
-    guard let restartPort = runtimeState.shouldRestartForPlaybackRecovery() else {
-      return
-    }
+    runtimeQueue.sync {
+      guard let restartPort = runtimeState.portForPlaybackRecoveryRestart() else {
+        return
+      }
 
-    controller.stop()
-    controller.start(port: restartPort)
+      controller.stop()
+      controller.start(port: restartPort)
+      if controller.isRunning {
+        runtimeState.markAutoStarted()
+      }
+    }
   }
 
   private func ensureStarted() {
-    if let startPort = runtimeState.shouldStartForImplicitUse() {
-      controller.start(port: startPort)
+    runtimeQueue.sync {
+      if let startPort = runtimeState.portForImplicitStart() {
+        controller.start(port: startPort)
+        if controller.isRunning {
+          runtimeState.markAutoStarted()
+        }
+      }
     }
   }
 }

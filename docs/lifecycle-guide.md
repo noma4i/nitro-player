@@ -52,3 +52,8 @@ playback targets.
 iOS and Android. `playInBackground` remains the background-playback opt-in.
 If foreground resume fails after a library auto-pause, the auto-paused flag stays
 set so the next active transition can retry instead of losing playback intent.
+
+HLS runtime start is retryable: implicit start is committed only after the native
+server/controller starts successfully. Host destroy stops the server without
+marking the runtime explicitly stopped, so the next source usage can start it
+again.

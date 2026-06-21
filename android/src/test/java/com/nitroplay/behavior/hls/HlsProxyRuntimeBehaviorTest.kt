@@ -27,7 +27,7 @@ class HlsProxyRuntimeBehaviorTest {
   }
 
   @Test
-  fun getProxiedUrl_marksRuntimeAutoStarted() {
+  fun getProxiedUrl_withoutReactContextKeepsImplicitStartRetryable() {
     val originalUrl = "https://cdn.example.com/live.m3u8"
 
     val result = HlsProxyRuntime.getProxiedUrl(originalUrl, emptyMap())
@@ -35,7 +35,7 @@ class HlsProxyRuntimeBehaviorTest {
     assertEquals(originalUrl, result)
     val state = HlsProxyRuntime.snapshotStateForTests()
     assertTrue(state.isRegistered)
-    assertTrue(state.didAutoStart)
+    assertFalse(state.didAutoStart)
     assertFalse(state.isExplicitlyStopped)
   }
 
@@ -62,5 +62,26 @@ class HlsProxyRuntimeBehaviorTest {
     val state = HlsProxyRuntime.snapshotStateForTests()
     assertFalse(state.didAutoStart)
     assertTrue(state.isExplicitlyStopped)
+  }
+
+  @Test
+  fun hostDestroy_doesNotBlockFutureImplicitRestart() {
+    val url = "https://cdn.example.com/live.m3u8"
+
+    HlsProxyRuntime.getProxiedUrl(url, emptyMap())
+    HlsProxyRuntime.onHostDestroy()
+
+    val stateAfterDestroy = HlsProxyRuntime.snapshotStateForTests()
+    assertFalse(stateAfterDestroy.didAutoStart)
+    assertFalse(stateAfterDestroy.isExplicitlyStopped)
+
+    HlsProxyRuntime.getProxiedUrl(url, emptyMap())
+
+    val stateAfterImplicitUse = HlsProxyRuntime.snapshotStateForTests()
+    assertFalse(
+      "A failed server start without a React context must leave implicit start retryable",
+      stateAfterImplicitUse.didAutoStart
+    )
+    assertFalse(stateAfterImplicitUse.isExplicitlyStopped)
   }
 }

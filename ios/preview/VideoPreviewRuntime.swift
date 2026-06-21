@@ -18,7 +18,7 @@ struct VideoPreviewProfile {
   }
 }
 
-struct VideoPreviewResult {
+struct VideoPreviewResult: Sendable {
   let uri: String
   let fromCache: Bool
 }
@@ -146,10 +146,8 @@ final class VideoPreviewRuntime {
 
     let asset = AVURLAsset(url: assetUrl, options: options)
     let item = AVPlayerItem(asset: asset)
-    let iosurfaceProperties = NSDictionary()
     let output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
-      kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-      kCVPixelBufferIOSurfacePropertiesKey as String: iosurfaceProperties
+      kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
     ])
     item.add(output)
 

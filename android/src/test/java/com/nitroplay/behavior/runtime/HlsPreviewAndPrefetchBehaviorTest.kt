@@ -62,7 +62,7 @@ class HlsPreviewAndPrefetchBehaviorTest {
   }
 
   @Test
-  fun prefetchDedup_hardCapsFreshEntriesInRuntime() {
+  fun prefetchWithoutServerDoesNotPoisonDedupState() {
     val completions = AtomicInteger(0)
 
     repeat(550) { index ->
@@ -75,6 +75,6 @@ class HlsPreviewAndPrefetchBehaviorTest {
     }
 
     assertEquals(550, completions.get())
-    assertEquals(500, HlsProxyRuntime.prefetchTimestampCountForTests())
+    assertEquals(0, HlsProxyRuntime.prefetchTimestampCountForTests())
   }
 }

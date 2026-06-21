@@ -1,6 +1,7 @@
 package com.nitroplay.hls
 
 import java.util.concurrent.Callable
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Future
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -183,6 +184,36 @@ class PreviewRequestCoordinatorTest {
     coordinator.cancelAll()
 
     assertNull(request.await())
+  }
+
+  @Test
+  fun cancelAllDuringAwait_preventsFutureResultFromDeliveringStaleValue() {
+    val coordinator = PreviewRequestCoordinator<String, String>()
+    val enteredGet = CountDownLatch(1)
+    val allowReturn = CountDownLatch(1)
+    val future = object : Future<String?> {
+      @Volatile private var cancelled = false
+      override fun cancel(mayInterruptIfRunning: Boolean): Boolean {
+        cancelled = true
+        allowReturn.countDown()
+        return true
+      }
+      override fun isCancelled(): Boolean = cancelled
+      override fun isDone(): Boolean = false
+      override fun get(): String? {
+        enteredGet.countDown()
+        allowReturn.await(1, TimeUnit.SECONDS)
+        return "stale-frame"
+      }
+      override fun get(timeout: Long, unit: TimeUnit): String? = get()
+    }
+    val request = coordinator.acquire("video-a") { future }
+    val result = executor.submit(Callable { request.await() })
+
+    assertTrue(enteredGet.await(1, TimeUnit.SECONDS))
+    coordinator.cancelAll()
+
+    assertNull(result.get(1, TimeUnit.SECONDS))
   }
 
   @Test

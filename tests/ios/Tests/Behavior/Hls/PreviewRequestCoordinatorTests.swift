@@ -2,7 +2,7 @@ import XCTest
 @testable import NitroPlayLogic
 
 final class PreviewRequestCoordinatorTests: XCTestCase {
-  private final class CountingJob: CancellablePreviewTask {
+  private final class CountingJob: CancellablePreviewTask, @unchecked Sendable {
     typealias Output = String
 
     let valueResult: String?
@@ -20,6 +20,29 @@ final class PreviewRequestCoordinatorTests: XCTestCase {
 
     func cancel() {
       cancelCount += 1
+    }
+  }
+
+  private final class DelayedReturnAfterCancelJob: CancellablePreviewTask, @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<String?, Never>?
+    private(set) var cancelCount = 0
+
+    func value() async -> String? {
+      await withCheckedContinuation { continuation in
+        lock.lock()
+        self.continuation = continuation
+        lock.unlock()
+      }
+    }
+
+    func cancel() {
+      lock.lock()
+      cancelCount += 1
+      let pending = continuation
+      continuation = nil
+      lock.unlock()
+      pending?.resume(returning: "stale-frame")
     }
   }
 
@@ -120,6 +143,20 @@ final class PreviewRequestCoordinatorTests: XCTestCase {
     XCTAssertNil(secondValue)
     XCTAssertEqual(firstJob.cancelCount, 1)
     XCTAssertEqual(secondJob.cancelCount, 1)
+  }
+
+  func testCancelAllDuringAwaitDoesNotDeliverJobResult() async {
+    let coordinator = PreviewRequestCoordinator<String>()
+    let job = DelayedReturnAfterCancelJob()
+    let request = coordinator.acquire(key: "video-a") { job }
+
+    async let value = request.value()
+    await Task.yield()
+    coordinator.cancelAll()
+
+    let resolved = await value
+    XCTAssertNil(resolved)
+    XCTAssertEqual(job.cancelCount, 1)
   }
 
   func testAwaitAfterCancelReturnsNil() async {

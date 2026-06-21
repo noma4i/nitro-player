@@ -8,6 +8,12 @@ type ListenerSets = {
   willExitFullscreen: Set<() => void>;
 };
 
+type SetupOptions = {
+  initiallyAttached?: boolean;
+  nativeNitroIds?: number[];
+  createViewManager?: (nitroId: number, manager: ReturnType<typeof createMockManager>) => ReturnType<typeof createMockManager> | null;
+};
+
 const createListeners = (): ListenerSets => ({
   onAttached: new Set<() => void>(),
   onDetached: new Set<() => void>(),
@@ -25,34 +31,53 @@ const createSubscription = <T extends Function>(set: Set<T>, callback: T): Liste
   };
 };
 
-const setupSubject = (initiallyAttached = false) => {
+const createMockManager = (listeners: ListenerSets, initiallyAttached: boolean) => ({
+  player: undefined,
+  isAttached: initiallyAttached,
+  controls: false,
+  resizeMode: 'none',
+  keepScreenAwake: true,
+  surfaceType: 'surface',
+  setPlayerDefaults: jest.fn(),
+  clearPlayerDefaults: jest.fn(),
+  enterFullscreen: jest.fn(),
+  exitFullscreen: jest.fn(),
+  addOnAttachedListener: jest.fn((callback: () => void) => createSubscription(listeners.onAttached, callback)),
+  addOnDetachedListener: jest.fn((callback: () => void) => createSubscription(listeners.onDetached, callback)),
+  addOnFullscreenChangeListener: jest.fn((callback: (fullscreen: boolean) => void) => createSubscription(listeners.onFullscreenChange, callback)),
+  addWillEnterFullscreenListener: jest.fn((callback: () => void) => createSubscription(listeners.willEnterFullscreen, callback)),
+  addWillExitFullscreenListener: jest.fn((callback: () => void) => createSubscription(listeners.willExitFullscreen, callback)),
+  clearAllListeners: jest.fn(() => {
+    listeners.onAttached.clear();
+    listeners.onDetached.clear();
+    listeners.onFullscreenChange.clear();
+    listeners.willEnterFullscreen.clear();
+    listeners.willExitFullscreen.clear();
+  })
+});
+
+const normalizeSetupOptions = (optionsOrInitiallyAttached: boolean | SetupOptions): SetupOptions => {
+  if (typeof optionsOrInitiallyAttached === 'boolean') {
+    return { initiallyAttached: optionsOrInitiallyAttached };
+  }
+
+  return optionsOrInitiallyAttached;
+};
+
+const setupSubject = (optionsOrInitiallyAttached: boolean | SetupOptions = false) => {
   jest.resetModules();
 
+  const options = normalizeSetupOptions(optionsOrInitiallyAttached);
   const listeners = createListeners();
-  const mockManager = {
-    player: undefined,
-    isAttached: initiallyAttached,
-    controls: false,
-    resizeMode: 'none',
-    keepScreenAwake: true,
-    surfaceType: 'surface',
-    setPlayerDefaults: jest.fn(),
-    clearPlayerDefaults: jest.fn(),
-    enterFullscreen: jest.fn(),
-    exitFullscreen: jest.fn(),
-    addOnAttachedListener: jest.fn((callback: () => void) => createSubscription(listeners.onAttached, callback)),
-    addOnDetachedListener: jest.fn((callback: () => void) => createSubscription(listeners.onDetached, callback)),
-    addOnFullscreenChangeListener: jest.fn((callback: (fullscreen: boolean) => void) => createSubscription(listeners.onFullscreenChange, callback)),
-    addWillEnterFullscreenListener: jest.fn((callback: () => void) => createSubscription(listeners.willEnterFullscreen, callback)),
-    addWillExitFullscreenListener: jest.fn((callback: () => void) => createSubscription(listeners.willExitFullscreen, callback)),
-    clearAllListeners: jest.fn(() => {
-      listeners.onAttached.clear();
-      listeners.onDetached.clear();
-      listeners.onFullscreenChange.clear();
-      listeners.willEnterFullscreen.clear();
-      listeners.willExitFullscreen.clear();
-    })
-  };
+  const mockManager = createMockManager(listeners, options.initiallyAttached ?? false);
+  const createViewManager = jest.fn((nitroId: number) => {
+    if (options.createViewManager) {
+      return options.createViewManager(nitroId, mockManager);
+    }
+
+    return mockManager;
+  });
+  const nativeNitroIds = options.nativeNitroIds ?? [101];
 
   const mockPlayer = {
     __getNativePlayer: jest.fn(() => ({ name: 'native-player' }))
@@ -62,7 +87,7 @@ const setupSubject = (initiallyAttached = false) => {
   jest.doMock('react-native-nitro-modules', () => ({
     NitroModules: {
       createHybridObject: jest.fn(() => ({
-        createViewManager: jest.fn(() => mockManager)
+        createViewManager
       }))
     }
   }));
@@ -76,7 +101,9 @@ const setupSubject = (initiallyAttached = false) => {
 
     const MockNativeNitroPlayerView = ({ onNitroIdChange }: { onNitroIdChange?: (event: { nativeEvent: { nitroId: number } }) => void }) => {
       React.useEffect(() => {
-        onNitroIdChange?.({ nativeEvent: { nitroId: 101 } });
+        nativeNitroIds.forEach(nitroId => {
+          onNitroIdChange?.({ nativeEvent: { nitroId } });
+        });
       }, [onNitroIdChange]);
 
       return React.createElement('div', { 'data-testid': 'nitro-player-view' });
@@ -99,12 +126,15 @@ const setupSubject = (initiallyAttached = false) => {
     renderNode: (node: unknown) => root.render(node),
     NitroPlayerView,
     listeners,
+    createViewManager,
+    mockManager,
     useNitroPlayer
   };
 };
 
 describe('NitroPlayerView attach contract', () => {
   afterEach(() => {
+    jest.restoreAllMocks();
     jest.resetModules();
     jest.clearAllMocks();
   });
@@ -199,5 +229,122 @@ describe('NitroPlayerView attach contract', () => {
     });
 
     expect(useNitroPlayer).toHaveBeenCalledWith({ uri: 'https://cdn.example.com/video.mp4' });
+  });
+
+  it('does not redbox when a virtualized native view disappears before manager attach can resolve it', () => {
+    const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const viewNotFound = new Error('{%@view/not-found::View with viewId 101 not found@%}');
+    const { React, act, renderNode, NitroPlayerView, createViewManager } = setupSubject({
+      initiallyAttached: true,
+      nativeNitroIds: [101, 102],
+      createViewManager: (nitroId, manager) => {
+        if (nitroId === 101) {
+          throw viewNotFound;
+        }
+
+        return manager;
+      }
+    });
+    const ref = React.createRef<any>();
+
+    expect(() => {
+      act(() => {
+        renderNode(
+          React.createElement(NitroPlayerView, {
+            ref,
+            source: { uri: 'https://cdn.example.com/video.mp4' }
+          })
+        );
+      });
+    }).not.toThrow();
+
+    expect(createViewManager).toHaveBeenNthCalledWith(1, 101);
+    expect(createViewManager).toHaveBeenNthCalledWith(2, 102);
+    expect(ref.current?.isAttached).toBe(true);
+    expect(consoleWarn).toHaveBeenCalledWith(expect.stringContaining('native view disappeared before manager attach completed'));
+
+    consoleWarn.mockRestore();
+  });
+
+  it('retries when native manager creation returns null for a disappearing virtualized view', () => {
+    const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { React, act, renderNode, NitroPlayerView, createViewManager } = setupSubject({
+      initiallyAttached: true,
+      nativeNitroIds: [201, 202],
+      createViewManager: (nitroId, manager) => {
+        if (nitroId === 201) {
+          return null;
+        }
+
+        return manager;
+      }
+    });
+    const ref = React.createRef<any>();
+
+    expect(() => {
+      act(() => {
+        renderNode(
+          React.createElement(NitroPlayerView, {
+            ref,
+            source: { uri: 'https://cdn.example.com/video.mp4' }
+          })
+        );
+      });
+    }).not.toThrow();
+
+    expect(createViewManager).toHaveBeenNthCalledWith(1, 201);
+    expect(createViewManager).toHaveBeenNthCalledWith(2, 202);
+    expect(ref.current?.isAttached).toBe(true);
+    expect(consoleWarn).toHaveBeenCalledWith(expect.stringContaining('native view disappeared before manager attach completed'));
+
+    consoleWarn.mockRestore();
+  });
+
+  it('stays detached when every native attach event races with view removal', () => {
+    const consoleWarn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const viewNotFound = new Error('{%@view/not-found::View with viewId missing during churn@%}');
+    const { React, act, renderNode, NitroPlayerView, createViewManager } = setupSubject({
+      initiallyAttached: true,
+      nativeNitroIds: [301, 302],
+      createViewManager: () => {
+        throw viewNotFound;
+      }
+    });
+    const ref = React.createRef<any>();
+
+    act(() => {
+      renderNode(
+        React.createElement(NitroPlayerView, {
+          ref,
+          source: { uri: 'https://cdn.example.com/video.mp4' }
+        })
+      );
+    });
+
+    expect(createViewManager).toHaveBeenCalledTimes(2);
+    expect(ref.current?.isAttached).toBe(false);
+    expect(consoleWarn).toHaveBeenCalledTimes(2);
+
+    consoleWarn.mockRestore();
+  });
+
+  it('does not swallow native view errors that are not transient view-not-found misses', () => {
+    const nativeFailure = new Error('{%@view/deallocated::View was already deallocated@%}');
+    const { React, act, renderNode, NitroPlayerView } = setupSubject({
+      nativeNitroIds: [401],
+      createViewManager: () => {
+        throw nativeFailure;
+      }
+    });
+
+    expect(() => {
+      act(() => {
+        renderNode(
+          React.createElement(NitroPlayerView, {
+            source: { uri: 'https://cdn.example.com/video.mp4' }
+          })
+        );
+      });
+    }).toThrow('View was already deallocated');
   });
 });

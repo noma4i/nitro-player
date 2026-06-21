@@ -547,8 +547,8 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
         defer {
           if self.firstFrameRequest === request {
             self.firstFrameRequest = nil
+            self.firstFrameTask = nil
           }
-          self.firstFrameTask = nil
         }
         guard !self.isReleased, self.sourceGeneration == generation, self.hasActiveSource, self.readyToDisplay, self.firstFrame == nil else {
           return
