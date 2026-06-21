@@ -15,7 +15,8 @@ final class HlsProxyServerController: NSObject {
 
   private let stateQueue = DispatchQueue(label: "com.nitroplay.hls.proxy-state")
   private var port: Int = 0
-  private var server: GCDWebServer?
+  private let serverSlot = SingleOwnerResourceSlot<GCDWebServer> { $0.stop() }
+  private var serverStopGeneration = 0
   private var shouldBeRunning = false
   private var wasExplicitlyStopped = false
   private var needsRestartOnActive = false
@@ -162,11 +163,11 @@ final class HlsProxyServerController: NSObject {
   }
 
   var isRunning: Bool {
-    stateQueue.sync { server?.isRunning == true }
+    serverSlot.current?.isRunning == true
   }
 
   private var hasLiveServer: Bool {
-    stateQueue.sync { server?.isRunning == true }
+    serverSlot.current?.isRunning == true
   }
 
   private func ensureListening(forceRestart: Bool) -> Bool {
@@ -185,22 +186,22 @@ final class HlsProxyServerController: NSObject {
   }
 
   private func restartServer() -> Bool {
-    stopServer()
+    stopServer(invalidatePendingStart: false)
 
-    let requestedPort = stateQueue.sync { port }
-    if startServer(on: requestedPort) {
+    let (requestedPort, startGeneration) = stateQueue.sync { (port, serverStopGeneration) }
+    if startServer(on: requestedPort, stopGeneration: startGeneration) {
       return true
     }
     // A fixed/explicit port can already be taken (e.g. several proxies sharing the
     // loopback). Retry once on an OS-assigned ephemeral port so a conflict never
     // silently disables the proxy and forces direct playback.
     if requestedPort != 0 {
-      return startServer(on: 0)
+      return startServer(on: 0, stopGeneration: startGeneration)
     }
     return false
   }
 
-  private func startServer(on requestedPort: Int) -> Bool {
+  private func startServer(on requestedPort: Int, stopGeneration: Int) -> Bool {
     let webServer = GCDWebServer()
     bindHandlers(to: webServer)
 
@@ -214,13 +215,16 @@ final class HlsProxyServerController: NSObject {
       // Store only if a concurrent stop() did not run while we were binding,
       // otherwise we would resurrect a server after an explicit stop. Capture the
       // actual bound port so proxied URLs target the OS-assigned port.
-      let stored = stateQueue.sync { () -> Bool in
-        guard shouldBeRunning else {
-          return false
+      let previous = stateQueue.sync { () -> GCDWebServer? in
+        guard shouldBeRunning, serverStopGeneration == stopGeneration else {
+          return nil
         }
-        server = webServer
         port = Int(webServer.port)
-        return true
+        return serverSlot.swap(webServer)
+      }
+      let stored = serverSlot.current === webServer
+      if let previous {
+        serverSlot.releaseResource(previous)
       }
       guard stored else {
         webServer.stop()
@@ -228,18 +232,20 @@ final class HlsProxyServerController: NSObject {
       }
       return webServer.isRunning
     } catch {
-      stateQueue.sync { server = nil }
       return false
     }
   }
 
-  private func stopServer() {
-    let existing = stateQueue.sync { () -> GCDWebServer? in
-      let current = server
-      server = nil
-      return current
+  private func stopServer(invalidatePendingStart: Bool = true) {
+    let previous = stateQueue.sync { () -> GCDWebServer? in
+      if invalidatePendingStart {
+        serverStopGeneration += 1
+      }
+      return serverSlot.take()
     }
-    existing?.stop()
+    if let previous {
+      serverSlot.releaseResource(previous)
+    }
   }
 
   private func registerObserversIfNeeded() {

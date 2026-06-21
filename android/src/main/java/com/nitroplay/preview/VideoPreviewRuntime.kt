@@ -102,7 +102,17 @@ object VideoPreviewRuntime {
 
   fun clear() {
     synchronized(lock) {
+      requestCoordinator.cancelAll()
       previewStore?.clearThumbnails()
+    }
+  }
+
+  internal fun acquirePreviewRequestForTests(
+    cacheKey: String,
+    supplier: () -> Future<VideoPreviewResult?>
+  ): PreviewRequest<VideoPreviewResult> {
+    return synchronized(lock) {
+      requestCoordinator.acquire(cacheKey, supplier)
     }
   }
 
