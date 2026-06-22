@@ -105,6 +105,7 @@ export function PlayerWorkbench({
   source,
   accent,
   compact = false,
+  active = true,
   testID
 }: {
   title: string;
@@ -113,6 +114,10 @@ export function PlayerWorkbench({
   source: NitroSourceConfig;
   accent: string;
   compact?: boolean;
+  // When false the heavy video surface (NitroPlayerView) is unmounted while the
+  // card chrome stays mounted, so a recycling feed keeps a stable row height
+  // instead of collapsing to a short placeholder (avoids scroll flicker).
+  active?: boolean;
   testID?: string;
 }) {
   const [player, setPlayer] = useState<NitroPlayer | null>(null);
@@ -177,21 +182,27 @@ export function PlayerWorkbench({
         {/* surfaceType="texture": these cards live in a ScrollView feed. TextureView
             renders inside the view hierarchy so it stays in sync while scrolling; a
             SurfaceView overlay can briefly desync its bounds during scroll/seek. */}
-        <NitroPlayerView
-          ref={playerViewRef}
-          source={source}
-          playerDefaults={{ loop: true }}
-          controls={allowControls || isFullscreen}
-          resizeMode="contain"
-          keepScreenAwake
-          surfaceType="texture"
-          onAttached={() => setIsAttached(true)}
-          onDetached={() => setIsAttached(false)}
-          onFullscreenChange={setIsFullscreen}
-          style={styles.playerView}
-          testID={playerTestID}
-          accessibilityLabel={playerTestID}
-        />
+        {active ? (
+          <NitroPlayerView
+            ref={playerViewRef}
+            source={source}
+            playerDefaults={{ loop: true }}
+            controls={allowControls || isFullscreen}
+            resizeMode="contain"
+            keepScreenAwake
+            surfaceType="texture"
+            onAttached={() => setIsAttached(true)}
+            onDetached={() => setIsAttached(false)}
+            onFullscreenChange={setIsFullscreen}
+            style={styles.playerView}
+            testID={playerTestID}
+            accessibilityLabel={playerTestID}
+          />
+        ) : (
+          // Surface unmounted for an offscreen feed row; keep the same box size so
+          // the row height does not change as viewability toggles during scroll.
+          <View style={styles.playerView} testID={playerTestID} accessibilityLabel={playerTestID} />
+        )}
         {firstFrame?.uri ? (
           <Image
             source={{ uri: firstFrame.uri }}

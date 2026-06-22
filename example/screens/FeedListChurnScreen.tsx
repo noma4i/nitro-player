@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { FlatList, Text, View, type ListRenderItemInfo, type ViewToken } from 'react-native';
+import { FlatList, View, type ListRenderItemInfo, type ViewToken } from 'react-native';
 import { CHURN_LIST_ITEMS, buildChurnRowSource, type ChurnListItem } from '../scenarioModel';
 import { Metric, PlayerWorkbench, SectionTitle, styles } from '../shared';
 
@@ -25,29 +25,20 @@ export function FeedListChurnScreen() {
 
   const renderItem = useCallback(
     ({ item, index }: ListRenderItemInfo<ChurnListItem>) => {
-      const isMounted = viewableKeys.has(item.key);
-      if (!isMounted) {
-        return (
-          <View style={styles.consumerColdRow} testID={`${SCREEN_KEY}-cold-${index}`}>
-            <View style={styles.consumerColdIndex}>
-              <Text style={styles.consumerColdIndexText}>{index + 1}</Text>
-            </View>
-            <View style={styles.consumerColdContent}>
-              <Text style={styles.consumerColdTitle}>{item.title}</Text>
-              <Text style={styles.consumerColdText}>{item.note}</Text>
-              <Text style={styles.consumerColdText}>offscreen: player unmounted</Text>
-            </View>
-          </View>
-        );
-      }
-
+      // The card chrome stays mounted for every rendered row; only the video
+      // surface mounts for viewable rows (active prop). Keeping a constant row
+      // height avoids the viewability -> height-change -> re-measure flicker loop.
+      const isViewable = viewableKeys.has(item.key);
+      // Description and source are kept constant (independent of viewability) so
+      // the row height never changes: only `active` toggles the video surface.
       return (
         <PlayerWorkbench
           title={item.title}
           chip={`row ${index + 1}`}
-          description={`${item.note} Mounted because viewable - scroll away to unmount.`}
-          source={buildChurnRowSource(item, true)}
+          description={item.note}
+          source={buildChurnRowSource(item, false)}
           accent={item.tone}
+          active={isViewable}
           testID={`${SCREEN_KEY}-row-${index}`}
           compact
         />
