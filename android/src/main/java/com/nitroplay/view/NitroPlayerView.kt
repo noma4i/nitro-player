@@ -18,11 +18,11 @@ import com.margelo.nitro.video.HybridNitroPlayer
 import com.margelo.nitro.video.ResizeMode
 import com.margelo.nitro.video.SurfaceType
 import com.margelo.nitro.video.NitroPlayerViewEventsEmitter
-import com.nitroplay.video.core.LibraryError
-import com.nitroplay.video.core.NitroPlayerManager
-import com.nitroplay.video.core.utils.Threading.runOnMainThread
-import com.nitroplay.video.core.extensions.toAspectRatioFrameLayout
-import com.nitroplay.video.core.utils.SmallVideoPlayerOptimizer
+import com.nitroplay.video.support.errors.LibraryError
+import com.nitroplay.video.player.NitroPlayerManager
+import com.nitroplay.video.support.Threading.runOnMainThread
+import com.nitroplay.video.view.toAspectRatioFrameLayout
+import com.nitroplay.video.view.SmallVideoPlayerOptimizer
 import android.view.ViewTreeObserver
 import com.nitroplay.video.R.layout.player_view_surface
 import com.nitroplay.video.R.layout.player_view_texture

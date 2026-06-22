@@ -6,7 +6,7 @@ import android.graphics.Color
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.media3.common.util.UnstableApi
-import com.nitroplay.video.core.utils.SmallVideoPlayerOptimizer
+import com.nitroplay.video.view.SmallVideoPlayerOptimizer
 
 @UnstableApi
 internal class FullscreenDialogManager(

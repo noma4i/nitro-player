@@ -11,7 +11,7 @@ module.exports = {
        * @type {import('@react-native-community/cli-types').AndroidDependencyParams}
        */
       android: {
-        packageImportPath: 'import com.nitroplay.video.react.NitroPlayPackage;',
+        packageImportPath: 'import com.nitroplay.video.bridge.NitroPlayPackage;',
         packageInstance: 'new NitroPlayPackage()',
         componentDescriptors: ['RNCNitroPlayerViewComponentDescriptor']
       }

@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.streaming
 
 object HlsManifest {
     private const val STREAM_INF = "#EXT-X-STREAM-INF"

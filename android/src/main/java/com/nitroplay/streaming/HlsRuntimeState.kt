@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.streaming
 
 internal data class HlsRuntimeStateSnapshot(
   val port: Int,

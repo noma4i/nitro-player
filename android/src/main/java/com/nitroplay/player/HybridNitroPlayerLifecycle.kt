@@ -9,13 +9,13 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.upstream.DefaultAllocator
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
-import com.nitroplay.video.core.LibraryError
-import com.nitroplay.video.core.PlayerAppStateSnapshot
-import com.nitroplay.video.core.PlayerRetentionCoordinator
-import com.nitroplay.video.core.PlayerRetentionLevel
-import com.nitroplay.video.core.PlayerRetentionSnapshot
-import com.nitroplay.video.core.PlayerError
-import com.nitroplay.video.core.utils.Threading.runOnMainThread
+import com.nitroplay.video.support.errors.LibraryError
+import com.nitroplay.video.player.PlayerAppStateSnapshot
+import com.nitroplay.video.player.PlayerRetentionCoordinator
+import com.nitroplay.video.player.PlayerRetentionLevel
+import com.nitroplay.video.player.PlayerRetentionSnapshot
+import com.nitroplay.video.support.errors.PlayerError
+import com.nitroplay.video.support.Threading.runOnMainThread
 
 @UnstableApi
 internal class NitroPlayerLifecycle(

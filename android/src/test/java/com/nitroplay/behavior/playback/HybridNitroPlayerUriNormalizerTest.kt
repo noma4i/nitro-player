@@ -1,5 +1,6 @@
-package com.margelo.nitro.video
+package com.nitroplay.video.behavior.playback
 
+import com.margelo.nitro.video.HybridNitroPlayerUriNormalizer
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test

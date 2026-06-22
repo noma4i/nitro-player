@@ -1,7 +1,7 @@
-package com.nitroplay.video
+package com.nitroplay.video.behavior.runtime
 
 import android.os.Looper
-import com.nitroplay.video.core.utils.Threading
+import com.nitroplay.video.support.Threading
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit

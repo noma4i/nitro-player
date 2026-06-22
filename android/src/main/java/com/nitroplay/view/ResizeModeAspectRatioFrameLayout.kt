@@ -1,4 +1,4 @@
-package com.nitroplay.video.core.extensions
+package com.nitroplay.video.view
 
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi

@@ -1,9 +1,10 @@
-package com.nitroplay.video.core
+package com.nitroplay.video.behavior.core
 
 import org.junit.Assert.*
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger
+import com.nitroplay.video.support.ListenerRegistry
 
 class ListenerRegistryConcurrencyTest {
 

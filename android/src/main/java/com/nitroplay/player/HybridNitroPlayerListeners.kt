@@ -8,8 +8,8 @@ import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.analytics.AnalyticsListener
-import com.nitroplay.video.core.NitroPlayerManager
-import com.nitroplay.video.core.utils.NitroPlayerOrientationUtils
+import com.nitroplay.video.player.NitroPlayerManager
+import com.nitroplay.video.view.NitroPlayerOrientationUtils
 
 @UnstableApi
 internal class NitroPlayerListenerBridge(

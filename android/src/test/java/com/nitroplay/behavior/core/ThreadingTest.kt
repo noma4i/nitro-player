@@ -1,8 +1,9 @@
-package com.nitroplay.video.core.utils
+package com.nitroplay.video.behavior.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.nitroplay.video.source.SourceLoader
 
 class ThreadingTest {
 

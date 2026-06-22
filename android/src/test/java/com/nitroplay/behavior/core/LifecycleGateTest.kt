@@ -1,9 +1,10 @@
-package com.nitroplay.video.core
+package com.nitroplay.video.behavior.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.nitroplay.video.support.LifecycleGate
 
 // Exercises the real production lifecycle seam (LifecycleGate) that
 // HybridNitroPlayer forwards isReleased / sourceGeneration to. iOS/Android parity

@@ -4,13 +4,13 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.source.MediaSource
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
-import com.nitroplay.hls.HlsManifestUrl
-import com.nitroplay.hls.HlsProxyRuntime
-import com.nitroplay.video.core.LibraryError
-import com.nitroplay.video.core.player.buildMediaSource
-import com.nitroplay.video.core.player.createMediaItemFromVideoConfig
-import com.nitroplay.video.core.utils.SourceLoader
-import com.nitroplay.video.core.utils.NitroPlayerInformationUtils
+import com.nitroplay.video.streaming.HlsManifestUrl
+import com.nitroplay.video.streaming.HlsProxyRuntime
+import com.nitroplay.video.support.errors.LibraryError
+import com.nitroplay.video.source.buildMediaSource
+import com.nitroplay.video.source.createMediaItemFromVideoConfig
+import com.nitroplay.video.source.SourceLoader
+import com.nitroplay.video.source.NitroPlayerInformationUtils
 
 class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
   override lateinit var uri: String

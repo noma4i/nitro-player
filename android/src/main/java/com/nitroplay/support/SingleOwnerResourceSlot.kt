@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.support
 
 internal class SingleOwnerResourceSlot<T>(
   private val release: (T) -> Unit

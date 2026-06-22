@@ -1,7 +1,8 @@
-package com.nitroplay.hls
+package com.nitroplay.video.streaming
 
 import com.margelo.nitro.video.NitroSourcePreviewConfig
 import java.util.TreeMap
+import com.nitroplay.video.preview.VideoPreviewProfile
 
 object HlsIdentity {
   fun requestKey(url: String, headers: Map<String, String>?): String {

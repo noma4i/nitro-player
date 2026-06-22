@@ -1,9 +1,10 @@
-package com.nitroplay.hls
+package com.nitroplay.video.behavior.hls
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.nitroplay.video.streaming.HlsPrefetchDeduper
 
 class HlsPrefetchDeduperTest {
   @Test

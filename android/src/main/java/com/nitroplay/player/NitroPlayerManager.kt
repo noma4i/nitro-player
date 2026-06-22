@@ -1,4 +1,4 @@
-package com.nitroplay.video.core
+package com.nitroplay.video.player
 
 import android.content.ComponentCallbacks2
 import android.content.Context
@@ -8,8 +8,8 @@ import androidx.media3.common.util.UnstableApi
 import com.facebook.react.bridge.LifecycleEventListener
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.video.HybridNitroPlayer
-import com.nitroplay.video.core.utils.Threading.runOnMainThread
-import com.nitroplay.video.core.utils.Threading.runOnMainThreadSync
+import com.nitroplay.video.support.Threading.runOnMainThread
+import com.nitroplay.video.support.Threading.runOnMainThreadSync
 import com.nitroplay.video.view.NitroPlayerView
 import java.lang.ref.WeakReference
 

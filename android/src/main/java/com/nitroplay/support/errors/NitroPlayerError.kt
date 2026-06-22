@@ -1,4 +1,4 @@
-package com.nitroplay.video.core
+package com.nitroplay.video.support.errors
 
 // Base class for all video errors
 abstract class NitroPlayerError(

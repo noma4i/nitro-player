@@ -3,7 +3,7 @@ package com.nitroplay.video
 import androidx.test.ext.junit.rules.ActivityScenarioRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.nitroplay.video.core.NitroPlayerManager
+import com.nitroplay.video.player.NitroPlayerManager
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule

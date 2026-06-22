@@ -1,7 +1,7 @@
-package com.nitroplay.video
+package com.nitroplay.video.behavior.runtime
 
-import com.nitroplay.hls.HlsManifest
-import com.nitroplay.hls.HlsProxyRuntime
+import com.nitroplay.video.streaming.HlsManifest
+import com.nitroplay.video.streaming.HlsProxyRuntime
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.After
 import org.junit.Assert.assertEquals

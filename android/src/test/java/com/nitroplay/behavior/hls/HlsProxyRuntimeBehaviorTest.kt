@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.behavior.hls
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -9,6 +9,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import com.nitroplay.video.streaming.HlsIdentity
+import com.nitroplay.video.streaming.HlsProxyRuntime
+import com.nitroplay.video.streaming.cache.HlsCacheStore
 
 @RunWith(RobolectricTestRunner::class)
 class HlsProxyRuntimeBehaviorTest {

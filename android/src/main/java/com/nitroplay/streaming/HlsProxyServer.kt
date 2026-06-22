@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.streaming
 
 import android.content.Context
 import android.util.Log
@@ -10,6 +10,8 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
+import com.nitroplay.video.streaming.cache.HlsCacheBudget
+import com.nitroplay.video.streaming.cache.HlsCacheStore
 
 class HlsProxyServer(
     private val port: Int,

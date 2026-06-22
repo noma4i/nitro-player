@@ -3,10 +3,11 @@ package com.margelo.nitro.video
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import com.facebook.proguard.annotations.DoNotStrip
-import com.nitroplay.video.core.NitroPlayerManager
-import com.nitroplay.video.core.NitroPlayerViewError
-import com.nitroplay.video.core.utils.Threading
-import com.nitroplay.video.core.ListenerRegistry
+import com.nitroplay.video.player.NitroPlayerManager
+import com.nitroplay.video.support.errors.NitroPlayerViewError
+import com.nitroplay.video.support.Threading
+import com.nitroplay.video.support.ListenerRegistry
+import com.nitroplay.video.view.NitroPlayerView
 
 @DoNotStrip
 @OptIn(UnstableApi::class)

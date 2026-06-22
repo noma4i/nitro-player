@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.streaming
 
 import android.util.Base64
 import com.facebook.react.bridge.ReadableMap

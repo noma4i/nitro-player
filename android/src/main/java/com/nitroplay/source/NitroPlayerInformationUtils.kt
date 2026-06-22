@@ -1,4 +1,4 @@
-package com.nitroplay.video.core.utils
+package com.nitroplay.video.source
 
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
@@ -7,6 +7,8 @@ import android.os.Build
 import android.webkit.URLUtil
 import com.margelo.nitro.video.NitroPlayerInformation
 import androidx.core.net.toUri
+import com.nitroplay.video.support.NitroPlayerFileHelper
+import com.nitroplay.video.view.NitroPlayerOrientationUtils
 
 object NitroPlayerInformationUtils {
   fun fromUri(uri: String, headers: Map<String, String> = emptyMap()): NitroPlayerInformation {

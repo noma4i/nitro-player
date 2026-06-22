@@ -1,6 +1,6 @@
-package com.nitroplay.video
+package com.nitroplay.video.behavior.playback
 
-import com.nitroplay.video.core.utils.SourceLoader
+import com.nitroplay.video.source.SourceLoader
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail

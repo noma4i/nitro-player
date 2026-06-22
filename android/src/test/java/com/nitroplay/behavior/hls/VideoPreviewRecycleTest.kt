@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.behavior.hls
 
 import android.graphics.Bitmap
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -7,6 +7,8 @@ import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import com.nitroplay.video.preview.VideoPreviewProfile
+import com.nitroplay.video.preview.VideoPreviewRuntime
 
 /**
  * NP-MEMORY-06: generatePreview() must recycle both the raw frame and the

@@ -5,8 +5,8 @@ import android.net.Uri
 import androidx.media3.datasource.RawResourceDataSource
 import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
-import com.nitroplay.hls.HlsManifestUrl
-import com.nitroplay.hls.HlsProxyRuntime
+import com.nitroplay.video.streaming.HlsManifestUrl
+import com.nitroplay.video.streaming.HlsProxyRuntime
 import java.io.File
 
 internal object HybridNitroPlayerUriNormalizer {

@@ -1,4 +1,4 @@
-package com.nitroplay.video.core
+package com.nitroplay.video.player
 
 internal enum class PlayerRetentionLevel {
   COLD,

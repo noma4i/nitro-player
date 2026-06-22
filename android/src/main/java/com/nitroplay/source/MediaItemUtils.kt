@@ -1,4 +1,4 @@
-package com.nitroplay.video.core.player
+package com.nitroplay.video.source
 
 import androidx.annotation.OptIn
 import androidx.core.net.toUri

@@ -1,4 +1,4 @@
-package com.nitroplay.video.core.utils
+package com.nitroplay.video.view
 
 import com.margelo.nitro.video.NitroPlayerOrientation
 

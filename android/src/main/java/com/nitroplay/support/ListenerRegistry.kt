@@ -1,4 +1,4 @@
-package com.nitroplay.video.core
+package com.nitroplay.video.support
 
 import com.margelo.nitro.video.ListenerSubscription
 import java.util.UUID

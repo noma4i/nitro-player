@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.behavior.hls
 
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
@@ -7,6 +7,8 @@ import org.junit.After
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.nitroplay.video.preview.VideoPreviewResult
+import com.nitroplay.video.preview.VideoPreviewRuntime
 
 class VideoPreviewRuntimeBehaviorTest {
   private val executor = Executors.newSingleThreadExecutor()

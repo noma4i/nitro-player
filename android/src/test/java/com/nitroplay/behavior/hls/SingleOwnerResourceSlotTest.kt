@@ -1,9 +1,10 @@
-package com.nitroplay.hls
+package com.nitroplay.video.behavior.hls
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertNull
 import org.junit.Test
+import com.nitroplay.video.support.SingleOwnerResourceSlot
 
 class SingleOwnerResourceSlotTest {
   private class Resource {

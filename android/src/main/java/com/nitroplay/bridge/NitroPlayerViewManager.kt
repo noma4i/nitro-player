@@ -1,4 +1,4 @@
-package com.nitroplay.video.react
+package com.nitroplay.video.bridge
 
 import androidx.media3.common.util.UnstableApi
 import com.facebook.react.bridge.Arguments

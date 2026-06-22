@@ -1,4 +1,4 @@
-package com.nitroplay.video.core
+package com.nitroplay.video.player
 
 import android.content.Context
 import android.media.AudioAttributes
@@ -12,7 +12,8 @@ import com.margelo.nitro.NitroModules
 import com.margelo.nitro.video.HybridNitroPlayer
 import com.margelo.nitro.video.MixAudioMode
 import kotlin.getValue
-import com.nitroplay.video.core.utils.Threading
+import com.nitroplay.video.support.Threading
+import com.nitroplay.video.support.errors.UnknownError
 
 @OptIn(UnstableApi::class)
 class AudioFocusManager() {

@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.streaming.cache
 
 import android.content.Context
 import android.net.Uri

@@ -1,9 +1,13 @@
-package com.nitroplay.video.core
+package com.nitroplay.video.behavior.core
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.nitroplay.video.player.FeedHotPlayerSnapshot
+import com.nitroplay.video.player.PlayerRetentionCoordinator
+import com.nitroplay.video.player.PlayerRetentionLevel
+import com.nitroplay.video.player.PlayerRetentionSnapshot
 
 class PlayerRetentionCoordinatorTest {
   private fun snapshot(

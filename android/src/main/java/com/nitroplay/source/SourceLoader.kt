@@ -1,6 +1,6 @@
-package com.nitroplay.video.core.utils
+package com.nitroplay.video.source
 
-import com.nitroplay.video.core.SourceError
+import com.nitroplay.video.support.errors.SourceError
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 

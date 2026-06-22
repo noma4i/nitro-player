@@ -1,4 +1,4 @@
-package com.nitroplay.video.core
+package com.nitroplay.video.player
 
 internal data class PlayerAppStateSnapshot(
   val playInBackground: Boolean,

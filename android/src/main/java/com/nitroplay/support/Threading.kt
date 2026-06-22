@@ -1,9 +1,9 @@
-package com.nitroplay.video.core.utils
+package com.nitroplay.video.support
 
 import android.os.Handler
 import android.os.Looper
 import com.margelo.nitro.NitroModules
-import com.nitroplay.video.core.LibraryError
+import com.nitroplay.video.support.errors.LibraryError
 import java.util.concurrent.Callable
 import java.util.concurrent.FutureTask
 import java.util.concurrent.TimeUnit

@@ -1,10 +1,14 @@
-package com.nitroplay.hls
+package com.nitroplay.video.streaming
 
 import android.content.Context
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableMap
 import java.net.URLEncoder
+import com.nitroplay.video.preview.VideoPreviewRuntime
+import com.nitroplay.video.streaming.cache.HlsCacheBudget
+import com.nitroplay.video.streaming.cache.HlsCacheStore
+import com.nitroplay.video.support.SingleOwnerResourceSlot
 
 object HlsProxyRuntime {
   // 0 = OS-assigned ephemeral port. A fixed port collides when several proxies

@@ -1,8 +1,9 @@
-package com.nitroplay.video.core
+package com.nitroplay.video.behavior.core
 
 import com.margelo.nitro.video.ListenerSubscription
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import com.nitroplay.video.support.ListenerRegistry
 
 /**
  * Locks in the lifetime contract behind the iOS EXC_BAD_ACCESS fix (Sentry YUPIV3-TN):

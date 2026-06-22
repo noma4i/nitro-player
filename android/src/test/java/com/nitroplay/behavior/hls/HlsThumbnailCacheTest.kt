@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.behavior.hls
 
 import android.content.Context
 import android.net.Uri
@@ -14,6 +14,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import com.nitroplay.video.streaming.cache.HlsCacheBudget
+import com.nitroplay.video.streaming.cache.HlsCacheStore
 
 /**
  * NP-MEMORY-05: thumbnails must be registered in the cache index so they take

@@ -1,4 +1,4 @@
-package com.nitroplay.video.core
+package com.nitroplay.video.support
 
 // Nitro-free owner of the player's pure lifecycle state (released flag + source
 // generation) and the decisions derived from them. Mirror of the iOS

@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.streaming.cache
 
 object HlsCacheBudget {
     const val DEFAULT_MAX_BYTES: Long = 4L * 1024L * 1024L * 1024L

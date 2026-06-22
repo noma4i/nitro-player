@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.bridge
 
 import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.Promise
@@ -8,6 +8,8 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import com.nitroplay.video.streaming.HlsHeaderCodec
+import com.nitroplay.video.streaming.HlsProxyRuntime
 
 class NitroPlayStreamRuntimeModule(private val reactContext: ReactApplicationContext)
     : ReactContextBaseJavaModule(reactContext), LifecycleEventListener {

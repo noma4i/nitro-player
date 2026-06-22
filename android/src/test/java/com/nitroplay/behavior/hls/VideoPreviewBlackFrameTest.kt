@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.behavior.hls
 
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -7,6 +7,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import com.nitroplay.video.preview.VideoPreviewRuntime
 
 /**
  * NP-PREVIEW-01 (Android parity): isMostlyBlack drives the multi-offset frame

@@ -1,4 +1,4 @@
-package com.nitroplay.video
+package com.nitroplay.video.behavior.playback
 
 import com.margelo.nitro.video.NitroPlayerStatus
 import org.junit.Assert.assertEquals

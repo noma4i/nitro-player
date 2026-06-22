@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.preview
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -13,6 +13,9 @@ import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import kotlin.math.roundToInt
+import com.nitroplay.video.streaming.HlsIdentity
+import com.nitroplay.video.streaming.HlsManifest
+import com.nitroplay.video.streaming.cache.HlsCacheStore
 
 data class VideoPreviewProfile(
   val maxWidth: Int,

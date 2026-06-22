@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.streaming
 
 internal class HlsPrefetchDeduper(
   private val windowMs: Long,

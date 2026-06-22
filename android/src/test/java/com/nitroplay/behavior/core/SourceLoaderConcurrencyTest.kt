@@ -1,12 +1,13 @@
-package com.nitroplay.video.core
+package com.nitroplay.video.behavior.core
 
-import com.nitroplay.video.core.utils.SourceLoader
+import com.nitroplay.video.source.SourceLoader
 import org.junit.Assert.*
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import com.nitroplay.video.support.errors.SourceError
 
 class SourceLoaderConcurrencyTest {
 

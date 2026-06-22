@@ -1,6 +1,6 @@
 package com.margelo.nitro.video
 
-import com.nitroplay.video.core.ListenerRegistry
+import com.nitroplay.video.support.ListenerRegistry
 
 class HybridNitroPlayerEventEmitter : HybridNitroPlayerEventEmitterSpec() {
   private val registry = ListenerRegistry()

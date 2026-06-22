@@ -1,4 +1,4 @@
-package com.nitroplay.video.core.player
+package com.nitroplay.video.source
 
 import android.content.Context
 import androidx.annotation.OptIn
@@ -12,7 +12,7 @@ import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.margelo.nitro.video.HybridNitroPlayerSource
-import com.nitroplay.video.core.SourceError
+import com.nitroplay.video.support.errors.SourceError
 
 @OptIn(UnstableApi::class)
 @Throws(SourceError::class)

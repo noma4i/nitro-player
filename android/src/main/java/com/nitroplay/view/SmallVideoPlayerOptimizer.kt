@@ -1,4 +1,4 @@
-package com.nitroplay.video.core.utils
+package com.nitroplay.video.view
 
 import android.content.Context
 import android.util.Log

@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.streaming
 
 /**
  * Single source of truth for "is this URL an HLS manifest" detection, shared by the

@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.preview
 
 import java.util.concurrent.Future
 

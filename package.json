@@ -118,7 +118,7 @@
     "type": "components",
     "jsSrcsDir": "src/bridge/fabric",
     "android": {
-      "javaPackageName": "com.nitroplay.video.react"
+      "javaPackageName": "com.nitroplay.video.bridge"
     },
     "ios": {
       "componentProvider": {

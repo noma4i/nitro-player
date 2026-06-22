@@ -1,8 +1,9 @@
-package com.nitroplay.video.core.utils
+package com.nitroplay.video.behavior.core
 
 import com.margelo.nitro.video.NitroPlayerOrientation
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import com.nitroplay.video.view.NitroPlayerOrientationUtils
 
 class NitroPlayerOrientationUtilsTest {
 

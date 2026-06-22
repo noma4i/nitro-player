@@ -1,10 +1,11 @@
-package com.nitroplay.hls
+package com.nitroplay.video.behavior.hls
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import com.nitroplay.video.streaming.HlsHeaderCodec
 
 @RunWith(RobolectricTestRunner::class)
 class HlsHeaderCodecTest {

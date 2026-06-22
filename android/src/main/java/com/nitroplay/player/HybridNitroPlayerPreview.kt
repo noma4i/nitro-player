@@ -2,7 +2,7 @@ package com.margelo.nitro.video
 
 import android.os.Handler
 import android.os.Looper
-import com.nitroplay.hls.VideoPreviewRuntime
+import com.nitroplay.video.preview.VideoPreviewRuntime
 
 // First-frame / preview generation, split out of HybridNitroPlayer (mirror of the
 // iOS HybridNitroPlayer preview extension). Extension functions keep the player's

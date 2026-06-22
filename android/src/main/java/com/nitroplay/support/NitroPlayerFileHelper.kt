@@ -1,11 +1,11 @@
-package com.nitroplay.video.core.utils
+package com.nitroplay.video.support
 
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.webkit.URLUtil
 import com.margelo.nitro.NitroModules
-import com.nitroplay.video.core.SourceError
+import com.nitroplay.video.support.errors.SourceError
 import java.io.File
 import java.net.URL
 import java.net.URLConnection

@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.behavior.hls
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -7,6 +7,8 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
+import com.nitroplay.video.streaming.HlsProxyServer
+import com.nitroplay.video.streaming.NanoHttpdConfig
 
 /**
  * #3 (proxy ephemeral port): a fixed proxy port collides when several proxies

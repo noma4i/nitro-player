@@ -1,4 +1,4 @@
-package com.nitroplay.hls
+package com.nitroplay.video.behavior.hls
 
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
@@ -12,6 +12,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.nitroplay.video.preview.PreviewRequestCoordinator
 
 class PreviewRequestCoordinatorTest {
   private val executor = Executors.newCachedThreadPool()
