@@ -1,1 +1,1 @@
-{"version":3,"file":"MemoryConfig.d.ts","sourceRoot":"","sources":["../../../../../src/player/types/MemoryConfig.ts"],"names":[],"mappings":"AAAA,MAAM,MAAM,YAAY,GAAG,MAAM,GAAG,UAAU,GAAG,UAAU,CAAC;AAE5D,MAAM,MAAM,kBAAkB,GAAG,MAAM,GAAG,UAAU,GAAG,KAAK,CAAC"}
+{"version":3,"file":"MemoryConfig.d.ts","sourceRoot":"","sources":["../../../../../src/player/types/MemoryConfig.ts"],"names":[],"mappings":"AAKA,MAAM,MAAM,YAAY,GAAG,MAAM,GAAG,UAAU,GAAG,UAAU,CAAC;AAC5D,eAAO,MAAM,cAAc,kCAA6D,CAAC;AAEzF,MAAM,MAAM,cAAc,GAAG,MAAM,GAAG,UAAU,GAAG,KAAK,CAAC;AACzD,eAAO,MAAM,gBAAgB,6BAA0D,CAAC"}

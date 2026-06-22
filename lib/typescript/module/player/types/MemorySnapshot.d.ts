@@ -1,11 +1,10 @@
-import type { PreloadLevel } from './MemoryConfig';
-export type MemoryRetentionState = 'cold' | 'metadata' | 'hot';
+import type { PreloadLevel, RetentionLevel } from './MemoryConfig';
 export interface MemorySnapshot {
     playerBytes: number;
     sourceBytes: number;
     totalBytes: number;
     preloadLevel: PreloadLevel;
-    retentionState: MemoryRetentionState;
+    retentionState: RetentionLevel;
     isAttachedToView: boolean;
     isPlaying: boolean;
 }

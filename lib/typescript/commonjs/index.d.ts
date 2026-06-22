@@ -1,11 +1,11 @@
 export { useEvent } from './player/hooks/useEvent';
 export { usePlaybackState } from './player/hooks/usePlaybackState';
-export type { AllNitroPlayerEvents, NitroPlayerEvents as NitroPlayerEventsType, BandwidthData, FirstFrameEvent, LoadEvent, LoadStartEvent, VolumeChangeEvent, onFirstFrameData, onLoadData, onLoadStartData, SourceType, onVolumeChangeData } from './player/events';
+export type { AllNitroPlayerEvents, NitroPlayerEvents as NitroPlayerEventsType, BandwidthData, onFirstFrameData, onLoadData, onLoadStartData, SourceType, onVolumeChangeData } from './player/events';
 export { ALL_PLAYER_EVENTS } from './player/events';
 export type { NitroPlayerViewEvents } from './view/events';
 export { ALL_VIEW_EVENTS } from './view/events';
-export type { OffscreenRetention, PreloadLevel } from './player/types/MemoryConfig';
-export type { MemoryRetentionState, MemorySnapshot } from './player/types/MemorySnapshot';
+export type { RetentionLevel, PreloadLevel } from './player/types/MemoryConfig';
+export type { MemorySnapshot } from './player/types/MemorySnapshot';
 export type { PlaybackError } from './support/errors/PlaybackError';
 export type { PlaybackState } from './player/types/PlaybackState';
 export type { IgnoreSilentSwitchMode } from './player/types/IgnoreSilentSwitchMode';
@@ -22,5 +22,5 @@ export { NitroPlayer } from './player/NitroPlayer';
 export { prepareSource, type PreparedNitroSource } from './source/prepareSource';
 export { streamCache } from './streaming/streamCache';
 export { videoPreview } from './preview/videoPreview';
-export type { StreamCacheStats, StreamSourceCacheStats, StreamHeaders } from './streaming/types';
+export type { StreamCacheConfig, StreamCacheStats, StreamSourceCacheStats, StreamHeaders } from './streaming/types';
 //# sourceMappingURL=index.d.ts.map

@@ -58,18 +58,15 @@ export interface onLoadData {
     width: number;
     orientation: NitroPlayerOrientation;
 }
-export type LoadEvent = onLoadData;
 export type SourceType = 'local' | 'network';
 export interface onLoadStartData {
     sourceType: SourceType;
     source: NitroPlayerSource;
 }
-export type LoadStartEvent = onLoadStartData;
 export interface onVolumeChangeData {
     volume: number;
     muted: boolean;
 }
-export type VolumeChangeEvent = onVolumeChangeData;
 export interface onFirstFrameData {
     uri: string;
     width: number;
@@ -77,6 +74,5 @@ export interface onFirstFrameData {
     sourceUri: string;
     fromCache: boolean;
 }
-export type FirstFrameEvent = onFirstFrameData;
 export declare const ALL_PLAYER_EVENTS: (keyof AllNitroPlayerEvents)[];
 //# sourceMappingURL=events.d.ts.map

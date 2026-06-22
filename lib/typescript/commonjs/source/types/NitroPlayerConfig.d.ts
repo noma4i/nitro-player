@@ -1,10 +1,14 @@
 import type { BufferConfig } from '../../player/types/BufferConfig';
-import type { OffscreenRetention, PreloadLevel } from '../../player/types/MemoryConfig';
+import type { PreloadLevel, RetentionLevel } from '../../player/types/MemoryConfig';
 export type NitroSourceUri = number | string;
 export type NitroSourceStartup = 'eager' | 'lazy';
+export declare const SOURCE_STARTUPS: ["eager", "lazy"];
 export type NitroSourceTransportMode = 'auto' | 'direct' | 'proxy';
+export declare const SOURCE_TRANSPORT_MODES: ["auto", "direct", "proxy"];
 export type NitroSourcePreviewMode = 'listener' | 'always' | 'manual';
+export declare const SOURCE_PREVIEW_MODES: ["listener", "always", "manual"];
 export type NitroSourcePolicy = 'auto' | 'feed' | 'hero' | 'thumbnail' | 'manual';
+export declare const SOURCE_POLICIES: ["auto", "feed", "hero", "thumbnail", "manual"];
 export interface NitroSourceMetadata {
     title?: string;
     subtitle?: string;
@@ -14,7 +18,7 @@ export interface NitroSourceMetadata {
 }
 export interface NitroSourceRetentionConfig {
     preload?: PreloadLevel;
-    offscreen?: OffscreenRetention;
+    offscreen?: RetentionLevel;
     trimDelayMs?: number;
     feedPoolEligible?: boolean;
 }

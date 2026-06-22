@@ -54,7 +54,9 @@ yarn-error.log
 .metro-health-check*
 
 # Build artifacts
-lib/
+# NOTE: lib/ is intentionally tracked - the package ships prebuilt output
+# (package.json main -> lib/commonjs) and is installed from a GitHub tag with no
+# prepare/build step, so lib/ must be committed (see release workflow).
 /coverage
 /dist
 tsconfig.tsbuildinfo
