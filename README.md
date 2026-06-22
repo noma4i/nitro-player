@@ -215,12 +215,13 @@ sub.remove();
 | `streamCache.prefetch(source)`        | `Promise<void>`                   | Warm transport and first segment cache |
 | `streamCache.getStats()`              | `Promise<StreamCacheStats>`       | Total cache stats                      |
 | `streamCache.getStats(source)`        | `Promise<StreamSourceCacheStats>` | Per-source stats, header-aware         |
+| `streamCache.configure({ maxBytes })` | `Promise<boolean>`                | Override stream cache disk budget      |
 | `streamCache.clear()`                 | `Promise<boolean>`                | Clear stream disk cache                |
 | `videoPreview.getFirstFrame(source)`  | `Promise<string \| null>`         | Cached or generated first-frame path   |
 | `videoPreview.peekFirstFrame(source)` | `Promise<string \| null>`         | Cached-only lookup (no generation)     |
 | `videoPreview.clear()`                | `Promise<boolean>`                | Clear preview artifacts                |
 
-All source-taking methods accept either a URL string or `{ uri, headers }`. Use the object form whenever headers are part of request identity. See [docs/stream-runtime.md](docs/stream-runtime.md).
+All source-taking methods accept either a URL string or `{ uri, headers }`. Use the object form whenever headers are part of request identity. Stream cache defaults to 4 GiB and can be lowered or raised with `streamCache.configure({ maxBytes })`. See [docs/stream-runtime.md](docs/stream-runtime.md).
 
 ## Hooks
 

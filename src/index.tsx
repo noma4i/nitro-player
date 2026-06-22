@@ -59,4 +59,4 @@ export { NitroPlayer } from './player/NitroPlayer';
 export { prepareSource, type PreparedNitroSource } from './source/prepareSource';
 export { streamCache } from './streaming/streamCache';
 export { videoPreview } from './preview/videoPreview';
-export type { StreamCacheStats, StreamSourceCacheStats, StreamHeaders } from './streaming/types';
+export type { StreamCacheConfig, StreamCacheStats, StreamSourceCacheStats, StreamHeaders } from './streaming/types';

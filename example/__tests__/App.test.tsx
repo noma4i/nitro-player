@@ -12,7 +12,7 @@ jest.mock('react-native-safe-area-context', () => {
   const { View } = require('react-native');
   return {
     SafeAreaProvider: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
-    SafeAreaView: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
+    SafeAreaView: ({ children }: { children: React.ReactNode }) => <View>{children}</View>
   };
 });
 
@@ -27,7 +27,7 @@ jest.mock('@noma4i/nitro-play', () => {
     seekBy: jest.fn(),
     preload: jest.fn(() => Promise.resolve()),
     initialize: jest.fn(() => Promise.resolve()),
-    addEventListener: jest.fn(() => ({ remove: jest.fn() })),
+    addEventListener: jest.fn(() => ({ remove: jest.fn() }))
   };
 
   const NitroPlayerView = React.forwardRef((_props: unknown, ref: React.Ref<unknown>) => {
@@ -36,7 +36,7 @@ jest.mock('@noma4i/nitro-play', () => {
       isAttached: true,
       enterFullscreen: jest.fn(),
       exitFullscreen: jest.fn(),
-      addEventListener: jest.fn(() => ({ remove: jest.fn() })),
+      addEventListener: jest.fn(() => ({ remove: jest.fn() }))
     }));
 
     return (
@@ -54,16 +54,16 @@ jest.mock('@noma4i/nitro-play', () => {
         Promise.resolve({
           totalSize: 0,
           fileCount: 0,
-          maxSize: 5_368_709_120,
+          maxSize: 4_294_967_296,
           streamSize: 0,
-          streamFileCount: 0,
+          streamFileCount: 0
         })
       ),
-      clear: jest.fn(() => Promise.resolve(true)),
+      clear: jest.fn(() => Promise.resolve(true))
     },
     videoPreview: {
       getFirstFrame: jest.fn(() => Promise.resolve(null)),
-      clear: jest.fn(() => Promise.resolve(true)),
+      clear: jest.fn(() => Promise.resolve(true))
     },
     usePlaybackState: jest.fn(() => ({
       status: 'idle',
@@ -71,9 +71,9 @@ jest.mock('@noma4i/nitro-play', () => {
       duration: 0,
       bufferDuration: 0,
       bufferedPosition: 0,
-      isVisualReady: false,
+      isVisualReady: false
     })),
-    useEvent: jest.fn(),
+    useEvent: jest.fn()
   };
 });
 

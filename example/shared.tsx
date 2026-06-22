@@ -12,20 +12,20 @@ import {
   type StreamCacheStats,
   type StreamSourceCacheStats,
   type onFirstFrameData,
-  type onLoadData,
+  type onLoadData
 } from '@noma4i/nitro-play';
 import { buildConsumerCardSource, type ConsumerFeedItem } from './scenarioModel';
 
 export const EMPTY_CACHE_STATS: StreamCacheStats = {
   totalSize: 0,
   fileCount: 0,
-  maxSize: 5_368_709_120,
+  maxSize: 4_294_967_296
 };
 
 export const EMPTY_SOURCE_CACHE_STATS: StreamSourceCacheStats = {
   ...EMPTY_CACHE_STATS,
   streamSize: 0,
-  streamFileCount: 0,
+  streamFileCount: 0
 };
 
 // ---------------------------------------------------------------------------
@@ -65,13 +65,7 @@ export function truncate(value: string, max = 56) {
   return `${value.slice(0, max - 1)}...`;
 }
 
-export function usePlayerViewHandle({
-  onPlayerChange,
-  onAttachChange,
-}: {
-  onPlayerChange?: (player: NitroPlayer | null) => void;
-  onAttachChange?: (isAttached: boolean) => void;
-}) {
+export function usePlayerViewHandle({ onPlayerChange, onAttachChange }: { onPlayerChange?: (player: NitroPlayer | null) => void; onAttachChange?: (isAttached: boolean) => void }) {
   const viewRef = React.useRef<NitroPlayerViewRef | null>(null);
   const playerRef = React.useRef<NitroPlayer | null>(null);
   const attachedRef = React.useRef(false);
@@ -111,7 +105,7 @@ export function PlayerWorkbench({
   source,
   accent,
   compact = false,
-  testID,
+  testID
 }: {
   title: string;
   chip: string;
@@ -133,7 +127,7 @@ export function PlayerWorkbench({
   const handleAttachChange = React.useCallback((nextAttached: boolean) => setIsAttached(nextAttached), []);
   const { viewRef, ref: playerViewRef } = usePlayerViewHandle({
     onPlayerChange: handlePlayerChange,
-    onAttachChange: handleAttachChange,
+    onAttachChange: handleAttachChange
   });
 
   const playbackState = usePlaybackState(player);
@@ -199,7 +193,10 @@ export function PlayerWorkbench({
           accessibilityLabel={playerTestID}
         />
         {firstFrame?.uri ? (
-          <Image source={{ uri: firstFrame.uri }} style={styles.firstFramePreview} />
+          <Image
+            source={{ uri: firstFrame.uri }}
+            style={styles.firstFramePreview}
+          />
         ) : (
           <View style={styles.firstFramePlaceholder}>
             <Text style={styles.firstFramePlaceholderText}>first frame pending</Text>
@@ -292,15 +289,42 @@ export function PlayerWorkbench({
       ) : null}
 
       <View style={styles.metricsGrid}>
-        <Metric label="status" value={status} />
-        <Metric label="attached" value={isAttached ? 'yes' : 'no'} />
-        <Metric label="visual" value={playbackState?.isVisualReady ? 'ready' : 'waiting'} />
-        <Metric label="time" value={formatSeconds(playbackState?.currentTime ?? 0)} />
-        <Metric label="buffer" value={formatSeconds(playbackState?.bufferDuration ?? 0)} />
-        <Metric label="bandwidth" value={bandwidth ? `${(bandwidth.bitrate / 1_000_000).toFixed(2)} Mbps` : '-'} />
-        <Metric label="onLoad" value={truncate(lastLoad)} />
-        <Metric label="error" value={truncate(lastError)} />
-        <Metric label="preview" value={firstFrame ? (firstFrame.fromCache ? 'cache hit' : 'fresh') : 'none'} />
+        <Metric
+          label="status"
+          value={status}
+        />
+        <Metric
+          label="attached"
+          value={isAttached ? 'yes' : 'no'}
+        />
+        <Metric
+          label="visual"
+          value={playbackState?.isVisualReady ? 'ready' : 'waiting'}
+        />
+        <Metric
+          label="time"
+          value={formatSeconds(playbackState?.currentTime ?? 0)}
+        />
+        <Metric
+          label="buffer"
+          value={formatSeconds(playbackState?.bufferDuration ?? 0)}
+        />
+        <Metric
+          label="bandwidth"
+          value={bandwidth ? `${(bandwidth.bitrate / 1_000_000).toFixed(2)} Mbps` : '-'}
+        />
+        <Metric
+          label="onLoad"
+          value={truncate(lastLoad)}
+        />
+        <Metric
+          label="error"
+          value={truncate(lastError)}
+        />
+        <Metric
+          label="preview"
+          value={firstFrame ? (firstFrame.fromCache ? 'cache hit' : 'fresh') : 'none'}
+        />
       </View>
     </View>
   );
@@ -310,17 +334,7 @@ export function PlayerWorkbench({
 // ConsumerFeedCard - the paged consumer lab card, reused on Home.
 // ---------------------------------------------------------------------------
 
-export function ConsumerFeedCard({
-  item,
-  index,
-  isActive,
-  isPooled,
-}: {
-  item: ConsumerFeedItem;
-  index: number;
-  isActive: boolean;
-  isPooled: boolean;
-}) {
+export function ConsumerFeedCard({ item, index, isActive, isPooled }: { item: ConsumerFeedItem; index: number; isActive: boolean; isPooled: boolean }) {
   const activeSource = useMemo((): NitroSourceConfig => buildConsumerCardSource(item, index, isActive), [index, isActive, item]);
 
   if (!isPooled) {
@@ -364,17 +378,7 @@ export function SectionTitle({ title, subtitle }: { title: string; subtitle: str
   );
 }
 
-export function ChipButton({
-  label,
-  active,
-  onPress,
-  testID,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-  testID?: string;
-}) {
+export function ChipButton({ label, active, onPress, testID }: { label: string; active: boolean; onPress: () => void; testID?: string }) {
   return (
     <Pressable
       onPress={onPress}
@@ -391,7 +395,7 @@ export function ActionButton({
   onPress,
   active = false,
   disabled = false,
-  testID,
+  testID
 }: {
   label: string;
   onPress: () => void;
@@ -413,9 +417,14 @@ export function ActionButton({
 
 export function Metric({ label, value, testID }: { label: string; value: string; testID?: string }) {
   return (
-    <View style={styles.metricCell} testID={testID} accessibilityLabel={testID}>
+    <View
+      style={styles.metricCell}
+      testID={testID}
+      accessibilityLabel={testID}>
       <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue} testID={testID ? `${testID}-value` : undefined}>
+      <Text
+        style={styles.metricValue}
+        testID={testID ? `${testID}-value` : undefined}>
         {value}
       </Text>
     </View>
@@ -428,13 +437,19 @@ export function Metric({ label, value, testID }: { label: string; value: string;
 
 export function EventLog({ entries, testID }: { entries: string[]; testID?: string }) {
   return (
-    <View style={styles.eventLog} testID={testID} accessibilityLabel={testID}>
+    <View
+      style={styles.eventLog}
+      testID={testID}
+      accessibilityLabel={testID}>
       <Text style={styles.eventLogTitle}>event log</Text>
       {entries.length === 0 ? (
         <Text style={styles.eventLogEmpty}>no events yet</Text>
       ) : (
         entries.map((entry, index) => (
-          <Text key={`${index}-${entry}`} style={styles.eventLogLine} numberOfLines={2}>
+          <Text
+            key={`${index}-${entry}`}
+            style={styles.eventLogLine}
+            numberOfLines={2}>
             {entry}
           </Text>
         ))
@@ -456,49 +471,49 @@ export function appendLog(entries: string[], line: string, cap = 12): string[] {
 export const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#07141b',
+    backgroundColor: '#07141b'
   },
   screen: {
     flex: 1,
-    backgroundColor: '#07141b',
+    backgroundColor: '#07141b'
   },
   content: {
     paddingHorizontal: 18,
     paddingTop: 20,
     paddingBottom: 44,
-    gap: 18,
+    gap: 18
   },
   eyebrow: {
     color: '#86d8ff',
     fontSize: 12,
     letterSpacing: 1.8,
     fontWeight: '700',
-    textTransform: 'uppercase',
+    textTransform: 'uppercase'
   },
   headline: {
     color: '#eef7fb',
     fontSize: 28,
     lineHeight: 34,
-    fontWeight: '800',
+    fontWeight: '800'
   },
   sectionHeader: {
     gap: 6,
-    marginTop: 8,
+    marginTop: 8
   },
   sectionTitle: {
     color: '#f2fbff',
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: '800'
   },
   sectionSubtitle: {
     color: '#91b9cb',
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 20
   },
   selectorRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 10
   },
   chipButton: {
     paddingHorizontal: 14,
@@ -506,19 +521,19 @@ export const styles = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: '#11242d',
     borderWidth: 1,
-    borderColor: '#244756',
+    borderColor: '#244756'
   },
   chipButtonActive: {
     backgroundColor: '#1a4b63',
-    borderColor: '#4cb3ff',
+    borderColor: '#4cb3ff'
   },
   chipButtonLabel: {
     color: '#d7ebf5',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '700'
   },
   chipButtonLabelActive: {
-    color: '#ffffff',
+    color: '#ffffff'
   },
   card: {
     backgroundColor: '#0d1d25',
@@ -526,49 +541,49 @@ export const styles = StyleSheet.create({
     padding: 16,
     gap: 14,
     borderWidth: 1,
-    borderColor: '#183441',
+    borderColor: '#183441'
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
     alignItems: 'flex-start',
-    flexWrap: 'wrap',
+    flexWrap: 'wrap'
   },
   cardTitleBlock: {
     flex: 1,
-    gap: 4,
+    gap: 4
   },
   cardTitle: {
     color: '#f5fbff',
     fontSize: 19,
-    fontWeight: '800',
+    fontWeight: '800'
   },
   cardDescription: {
     color: '#9ab7c6',
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 20
   },
   cardChip: {
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: '#0a171d',
+    backgroundColor: '#0a171d'
   },
   cardChipLabel: {
     fontSize: 12,
     fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 0.7,
+    letterSpacing: 0.7
   },
   playerFrame: {
-    position: 'relative',
+    position: 'relative'
   },
   playerView: {
     width: '100%',
     aspectRatio: 16 / 9,
-    backgroundColor: '#000',
+    backgroundColor: '#000'
   },
   firstFramePreview: {
     position: 'absolute',
@@ -579,7 +594,7 @@ export const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: '#0e1f26',
+    backgroundColor: '#0e1f26'
   },
   firstFramePlaceholder: {
     position: 'absolute',
@@ -588,17 +603,17 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 12,
-    backgroundColor: 'rgba(3,10,15,0.78)',
+    backgroundColor: 'rgba(3,10,15,0.78)'
   },
   firstFramePlaceholderText: {
     color: '#b6d6e6',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '700'
   },
   buttonRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 10
   },
   actionButton: {
     flex: 1,
@@ -610,14 +625,14 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingVertical: 9
   },
   actionButtonActive: {
-    backgroundColor: '#2d7aad',
+    backgroundColor: '#2d7aad'
   },
   actionButtonDisabled: {
     backgroundColor: '#16252d',
-    opacity: 0.45,
+    opacity: 0.45
   },
   actionButtonLabel: {
     color: '#ffffff',
@@ -625,15 +640,15 @@ export const styles = StyleSheet.create({
     lineHeight: 17,
     fontWeight: '800',
     textAlign: 'center',
-    flexShrink: 1,
+    flexShrink: 1
   },
   actionButtonLabelDisabled: {
-    color: '#89a5b2',
+    color: '#89a5b2'
   },
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 10
   },
   metricCell: {
     flexBasis: '47%',
@@ -642,21 +657,21 @@ export const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     backgroundColor: '#10262f',
-    gap: 4,
+    gap: 4
   },
   metricLabel: {
     color: '#79a5b8',
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.7,
+    letterSpacing: 0.7
   },
   metricValue: {
     color: '#f2fbff',
     fontSize: 14,
     lineHeight: 18,
     fontWeight: '700',
-    flexShrink: 1,
+    flexShrink: 1
   },
   utilityPanel: {
     backgroundColor: '#0b1a21',
@@ -664,33 +679,33 @@ export const styles = StyleSheet.create({
     padding: 16,
     gap: 14,
     borderWidth: 1,
-    borderColor: '#17313b',
+    borderColor: '#17313b'
   },
   utilityHeader: {
-    gap: 8,
+    gap: 8
   },
   utilityStatus: {
     color: '#75d7ff',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '700'
   },
   utilityPreview: {
     borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: '#09161c',
     borderWidth: 1,
-    borderColor: '#19313c',
+    borderColor: '#19313c'
   },
   utilityPreviewImage: {
     width: '100%',
     aspectRatio: 16 / 9,
-    backgroundColor: '#000',
+    backgroundColor: '#000'
   },
   utilityPreviewCaption: {
     color: '#c7dce6',
     fontSize: 12,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 10
   },
   utilityPreviewPlaceholder: {
     alignItems: 'center',
@@ -700,27 +715,27 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: '#274651',
-    backgroundColor: '#0c171d',
+    backgroundColor: '#0c171d'
   },
   utilityPreviewPlaceholderText: {
     color: '#87aaba',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '700'
   },
   feedColumn: {
-    gap: 16,
+    gap: 16
   },
   consumerPanel: {
-    gap: 14,
+    gap: 14
   },
   consumerSummaryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 10
   },
   consumerList: {
     gap: 14,
-    marginTop: 2,
+    marginTop: 2
   },
   consumerColdRow: {
     flexDirection: 'row',
@@ -729,7 +744,7 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#091821',
     borderWidth: 1,
-    borderColor: '#1a3541',
+    borderColor: '#1a3541'
   },
   consumerColdIndex: {
     width: 32,
@@ -739,27 +754,27 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#122b36',
     borderWidth: 1,
-    borderColor: '#244756',
+    borderColor: '#244756'
   },
   consumerColdIndexText: {
     color: '#8ed6ff',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '800'
   },
   consumerColdContent: {
     flex: 1,
-    gap: 4,
+    gap: 4
   },
   consumerColdTitle: {
     color: '#eaf6fb',
     fontSize: 15,
     lineHeight: 20,
-    fontWeight: '800',
+    fontWeight: '800'
   },
   consumerColdText: {
     color: '#8faebe',
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 18
   },
   eventLog: {
     backgroundColor: '#091821',
@@ -767,23 +782,23 @@ export const styles = StyleSheet.create({
     padding: 14,
     gap: 6,
     borderWidth: 1,
-    borderColor: '#1a3541',
+    borderColor: '#1a3541'
   },
   eventLogTitle: {
     color: '#79a5b8',
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.7,
+    letterSpacing: 0.7
   },
   eventLogEmpty: {
     color: '#5f8294',
     fontSize: 13,
-    fontStyle: 'italic',
+    fontStyle: 'italic'
   },
   eventLogLine: {
     color: '#cfe6f1',
     fontSize: 13,
-    lineHeight: 18,
-  },
+    lineHeight: 18
+  }
 });
