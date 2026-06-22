@@ -2,6 +2,13 @@
 
 Native-first video player for React Native with shared HLS transport, stream cache, and first-frame preview utilities.
 
+| Live playback + runtime state | Stream cache | Feed prefetch & reuse |
+| :---: | :---: | :---: |
+| <img src="screenshots/player-runtime.png" width="250" alt="Player runtime state" /> | <img src="screenshots/stream-cache.png" width="250" alt="Stream cache stats" /> | <img src="screenshots/consumer-feed.png" width="250" alt="Consumer feed prefetch" /> |
+| A real decoded video frame alongside `status`, `bufferDuration`, measured bandwidth, `onLoad` dimensions, visual-ready, and the sticky first-frame `preview` (cache hit). | `streamCache` global and per-source size + file counts, fed by the shared HLS proxy, with prefetch / clear controls. | Paged consumer feed: prefetched HLS count, per-source vs global cache, and pooled source reuse across surfaces. |
+
+The example is a consumer-style lab with screens for hero playback, lifecycle churn, source swap, feed-list churn, buffering interrupt, background, and preload races. Run it with `cd example && yarn start` then `yarn ios` / `yarn android`.
+
 ## Installation
 
 ```sh
