@@ -129,6 +129,10 @@ extension HybridNitroPlayer {
   }
 
   func replaceSourceAsync(source: any HybridNitroPlayerSourceSpec) throws -> Promise<Void> {
+    // Preserve the early-play intent across the swap: `wantsToPlay` is true while
+    // the player is playing or waiting to play, so a swap mid-playback (or a
+    // play() issued right before the swap) must auto-resume the new source.
+    let shouldAutoPlay = wantsToPlay
     wantsToPlay = false
     cancelStartupRecovery()
     let promise = Promise<Void>()
@@ -154,11 +158,20 @@ extension HybridNitroPlayer {
       self.source = source
       self.hasActiveSource = true
       self.beginSourceGeneration()
+      let generation = self.sourceGeneration
       self.resumePositionSeconds = 0
       self.resetPlaybackError()
 
       do {
         try await self.prepareBufferedState()
+        if shouldAutoPlay {
+          await MainActor.run { [weak self] in
+            guard let self, !self.isReleased, self.sourceGeneration == generation else { return }
+            // currentItem is set by prepareBufferedState, so play() takes the
+            // synchronous start path and re-asserts wantsToPlay.
+            try? self.play()
+          }
+        }
         promise.resolve(withResult: ())
       } catch {
         if error is CancellationError {

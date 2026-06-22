@@ -383,6 +383,10 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   override fun replaceSourceAsync(source: HybridNitroPlayerSourceSpec): Promise<Unit> {
+    // Preserve the early-play intent across the swap: wantsToPlay is true while
+    // the player is playing or waiting to play, so a swap mid-playback (or a
+    // play() issued right before the swap) must auto-resume the new source.
+    val shouldAutoPlay = wantsToPlay
     wantsToPlay = false
     cancelStartupRecovery()
     return Promise.async {
@@ -414,6 +418,10 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
         }
 
         player.prepare()
+        if (shouldAutoPlay) {
+          wantsToPlay = true
+          player.play()
+        }
         emitPlaybackState()
       }
     }
