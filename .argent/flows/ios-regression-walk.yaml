@@ -1,0 +1,63 @@
+executionPrerequisite: "NitroPlayExample running on a booted iOS simulator
+  (iPhone 17 Pro Max, udid B14BD3B3-6C45-402A-BA45-7FB7D0B70C1E). Metro serving
+  the example on port 8088 (app RCT_jsLocation = localhost:8088). Network access
+  for the mux HLS and Blender MP4 test streams. The flow resets to the Home
+  screen via restart-app, then exercises the two fixed regressions: Source Swap
+  auto-resume after replaceSourceAsync, and Feed List stable-height scroll."
+steps:
+  - tool: restart-app
+    args:
+      udid: B14BD3B3-6C45-402A-BA45-7FB7D0B70C1E
+      bundleId: com.noma4i.nitroplay.example
+  - echo: "Source Swap: play, then swap source while playing - new source must keep
+      playing (Bug1 fix)"
+  - tool: gesture-tap
+    args:
+      udid: B14BD3B3-6C45-402A-BA45-7FB7D0B70C1E
+      x: 0.66
+      y: 0.096
+    delayMs: 1200
+  - tool: gesture-tap
+    args:
+      udid: B14BD3B3-6C45-402A-BA45-7FB7D0B70C1E
+      x: 0.187
+      y: 0.615
+    delayMs: 1000
+  - tool: screenshot
+    args:
+      udid: B14BD3B3-6C45-402A-BA45-7FB7D0B70C1E
+    delayMs: 3500
+  - tool: gesture-tap
+    args:
+      udid: B14BD3B3-6C45-402A-BA45-7FB7D0B70C1E
+      x: 0.5
+      y: 0.615
+    delayMs: 600
+  - tool: screenshot
+    args:
+      udid: B14BD3B3-6C45-402A-BA45-7FB7D0B70C1E
+    delayMs: 4500
+  - echo: "Feed List: rows keep constant height, scroll is smooth (Bug2 fix)"
+  - tool: gesture-tap
+    args:
+      udid: B14BD3B3-6C45-402A-BA45-7FB7D0B70C1E
+      x: 0.906
+      y: 0.096
+    delayMs: 900
+  - tool: screenshot
+    args:
+      udid: B14BD3B3-6C45-402A-BA45-7FB7D0B70C1E
+    delayMs: 1800
+  - tool: gesture-swipe
+    args:
+      udid: B14BD3B3-6C45-402A-BA45-7FB7D0B70C1E
+      fromX: 0.5
+      fromY: 0.8
+      toX: 0.5
+      toY: 0.35
+      durationMs: 250
+    delayMs: 300
+  - tool: screenshot
+    args:
+      udid: B14BD3B3-6C45-402A-BA45-7FB7D0B70C1E
+    delayMs: 1500
