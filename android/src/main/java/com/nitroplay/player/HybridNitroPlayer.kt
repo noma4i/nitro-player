@@ -669,14 +669,6 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     eventEmitter.resetStickyState()
   }
 
-  internal fun cancelFirstFrameRequest() {
-    firstFrameRequest?.cancel()
-    firstFrameRequest = null
-    firstFrameTask?.cancel(true)
-    firstFrameTask = null
-    pendingFirstFrameGeneration = -1
-  }
-
   internal fun markCurrentSourceLoaded() {
     hasLoadedCurrentSource = true
     startupRecoveryAttempts = 0
@@ -744,115 +736,6 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     lastError?.let { eventEmitter.onError(it) }
     listenerBridge.stopProgressUpdates()
     emitPlaybackState()
-  }
-
-  internal fun cacheFirstFrameContext(sourceUri: String, width: Double, height: Double) {
-    firstFrameContext = FirstFrameContext(
-      sourceUri = sourceUri,
-      headers = currentSourceConfig()?.headers,
-      width = width,
-      height = height
-    )
-  }
-
-  internal fun emitFirstFrame(uri: String, width: Double, height: Double, sourceUri: String, fromCache: Boolean) {
-    val data = onFirstFrameData(
-      uri = uri,
-      width = width,
-      height = height,
-      sourceUri = sourceUri,
-      fromCache = fromCache
-    )
-    firstFrame = data
-    eventEmitter.onFirstFrame(data)
-  }
-
-  internal fun requestFirstFrameIfNeeded() {
-    if (isReleased || !hasActiveSource || !readyToDisplay || firstFrame != null) {
-      return
-    }
-    val autoThumbnailEnabled = currentAutoThumbnailEnabled()
-
-    when (currentPreviewMode()) {
-      NitroSourcePreviewMode.MANUAL -> {
-        if (!autoThumbnailEnabled) {
-          return
-        }
-      }
-      NitroSourcePreviewMode.LISTENER -> {
-        if (!autoThumbnailEnabled && !eventEmitter.hasOnFirstFrameListeners()) {
-          return
-        }
-      }
-      NitroSourcePreviewMode.ALWAYS -> Unit
-    }
-
-    val context = firstFrameContext ?: return
-    val generation = sourceGeneration
-    if (pendingFirstFrameGeneration == generation) {
-      return
-    }
-    pendingFirstFrameGeneration = generation
-    val previewConfig = currentSourceConfig()?.preview
-    val request = VideoPreviewRuntime.startFirstFrameRequest(
-      context.sourceUri,
-      context.headers,
-      previewConfig
-    ) ?: run {
-      pendingFirstFrameGeneration = -1
-      return
-    }
-    firstFrameRequest = request
-
-    firstFrameTask = VideoPreviewRuntime.dispatchFirstFrameAwait {
-      val preview = try {
-        if (isReleased) {
-          null
-        } else {
-          request.await()
-        }
-      } finally {
-        request.cancel()
-      }
-
-      Handler(Looper.getMainLooper()).post {
-        if (pendingFirstFrameGeneration == generation) {
-          pendingFirstFrameGeneration = -1
-          firstFrameTask = null
-        }
-        if (firstFrameRequest === request) {
-          firstFrameRequest = null
-        }
-
-        if (
-          isReleased ||
-          sourceGeneration != generation ||
-          !hasActiveSource ||
-          !readyToDisplay ||
-          firstFrame != null
-        ) {
-          return@post
-        }
-
-        preview?.let {
-          emitFirstFrame(
-            uri = it.uri,
-            width = context.width,
-            height = context.height,
-            sourceUri = context.sourceUri,
-            fromCache = it.fromCache
-          )
-        }
-      }
-    }
-  }
-
-  private fun currentPreviewMode(): NitroSourcePreviewMode {
-    return currentSourceConfig()?.preview?.mode ?: NitroSourcePreviewMode.LISTENER
-  }
-
-  private fun currentAutoThumbnailEnabled(): Boolean {
-    return currentSourceConfig()?.preview?.autoThumbnail ?: true
   }
 
   internal fun resolvePlayPauseStatus(): NitroPlayerStatus {
