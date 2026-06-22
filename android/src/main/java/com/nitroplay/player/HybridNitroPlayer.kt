@@ -95,7 +95,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
   override var status: NitroPlayerStatus = NitroPlayerStatus.IDLE
   internal var isCurrentlyBuffering: Boolean = false
-  private var lastEmittedState: PlaybackState? = null
+  private val playbackStateEmissionGate = PlaybackStateEmissionGate()
 
   override val playbackState: PlaybackState
     get() = runOnMainThreadSync {
@@ -592,15 +592,13 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   internal fun emitPlaybackState() {
     if (isReleased) return
     val next = buildPlaybackState()
-    val previous = lastEmittedState
+    val fingerprint = PlaybackStateFingerprint.from(next)
     // The 0.25s progress tick rebuilds the state every time, but when nothing
     // meaningful changed (only the timestamp advanced) there is no reason to
     // cross the bridge. nativeTimestampMs is excluded from the comparison.
-    if (previous != null &&
-      previous.copy(nativeTimestampMs = 0.0) == next.copy(nativeTimestampMs = 0.0)) {
+    if (!playbackStateEmissionGate.shouldEmit(fingerprint)) {
       return
     }
-    lastEmittedState = next
     eventEmitter.onPlaybackState(next)
   }
 
@@ -608,7 +606,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     lifecycleGate.beginGeneration()
     startupRecoveryAttempts = 0
     hasLoadedCurrentSource = false
-    lastEmittedState = null
+    playbackStateEmissionGate.reset()
     firstFrame = null
     cancelFirstFrameRequest()
     firstFrameContext = null

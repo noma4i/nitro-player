@@ -17,6 +17,21 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
     let height: Double
   }
 
+  private struct PlaybackSnapshot {
+    let status: NitroPlayerStatus
+    let currentTime: Double
+    let duration: Double
+    let bufferDuration: Double
+    let bufferedPosition: Double
+    let rate: Double
+    let isPlaying: Bool
+    let isBuffering: Bool
+    let isVisualReady: Bool
+    let error: Variant_NullType_PlaybackError?
+    let nativeTimestampMs: Double
+    let fingerprint: PlaybackStateFingerprint
+  }
+
   /**
    * Player instance for video playback
    */
@@ -261,8 +276,12 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   }
 
   var playbackState: PlaybackState {
+    playbackState(from: currentPlaybackSnapshot())
+  }
+
+  private func currentPlaybackSnapshot() -> PlaybackSnapshot {
     if isReleased {
-      return PlaybackState(
+      return PlaybackSnapshot(
         status: .idle,
         currentTime: 0,
         duration: 0,
@@ -273,11 +292,35 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
         isBuffering: false,
         isVisualReady: false,
         error: nil,
-        nativeTimestampMs: Date().timeIntervalSince1970 * 1000
+        nativeTimestampMs: Date().timeIntervalSince1970 * 1000,
+        fingerprint: PlaybackStateFingerprint(
+          status: playbackStatusIndex(.idle),
+          currentTime: 0,
+          duration: 0,
+          bufferDuration: 0,
+          bufferedPosition: 0,
+          rate: 0,
+          isPlaying: false,
+          isBuffering: false,
+          isVisualReady: false,
+          errorCode: nil,
+          errorMessageHash: nil
+        )
       )
     }
 
-    return PlaybackState(
+    let currentStatus = status
+    let currentTime = currentTime
+    let duration = duration
+    let bufferDuration = bufferDuration
+    let bufferedPosition = currentTime + bufferDuration
+    let rate = rate
+    let isPlaying = isPlaying
+    let isBuffering = isBuffering
+    let isVisualReady = readyToDisplay
+    let error = lastError.map { Variant_NullType_PlaybackError.second($0) }
+    let errorFingerprint = playbackErrorFingerprint(error)
+    return PlaybackSnapshot(
       status: status,
       currentTime: currentTime,
       duration: duration,
@@ -286,9 +329,38 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
       rate: rate,
       isPlaying: isPlaying,
       isBuffering: isBuffering,
-      isVisualReady: readyToDisplay,
-      error: lastError.map { .second($0) },
-      nativeTimestampMs: Date().timeIntervalSince1970 * 1000
+      isVisualReady: isVisualReady,
+      error: error,
+      nativeTimestampMs: Date().timeIntervalSince1970 * 1000,
+      fingerprint: PlaybackStateFingerprint(
+        status: playbackStatusIndex(currentStatus),
+        currentTime: currentTime,
+        duration: duration,
+        bufferDuration: bufferDuration,
+        bufferedPosition: bufferedPosition,
+        rate: rate,
+        isPlaying: isPlaying,
+        isBuffering: isBuffering,
+        isVisualReady: isVisualReady,
+        errorCode: errorFingerprint.code,
+        errorMessageHash: errorFingerprint.messageHash
+      )
+    )
+  }
+
+  private func playbackState(from snapshot: PlaybackSnapshot) -> PlaybackState {
+    PlaybackState(
+      status: snapshot.status,
+      currentTime: snapshot.currentTime,
+      duration: snapshot.duration,
+      bufferDuration: snapshot.bufferDuration,
+      bufferedPosition: snapshot.bufferedPosition,
+      rate: snapshot.rate,
+      isPlaying: snapshot.isPlaying,
+      isBuffering: snapshot.isBuffering,
+      isVisualReady: snapshot.isVisualReady,
+      error: snapshot.error,
+      nativeTimestampMs: snapshot.nativeTimestampMs
     )
   }
 
@@ -321,39 +393,96 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
 
   func emitPlaybackState() {
     guard !isReleased else { return }
-    let state = playbackState
-    let signature = playbackStateSignature(state)
+    let snapshot = currentPlaybackSnapshot()
     // The 0.25s observer tick rebuilds the state every time, but when nothing
     // meaningful changed (only the timestamp advanced) there is no reason to
-    // cross the bridge. nativeTimestampMs is excluded from the signature.
-    if !playbackStateEmissionGate.shouldEmit(signature: signature) {
+    // cross the bridge. nativeTimestampMs is excluded from the fingerprint.
+    if !playbackStateEmissionGate.shouldEmit(fingerprint: snapshot.fingerprint) {
       return
     }
-    _eventEmitter?.onPlaybackState(state)
+    _eventEmitter?.onPlaybackState(playbackState(from: snapshot))
   }
 
-  private func playbackStateSignature(_ state: PlaybackState) -> String {
-    let errorSignature: String
-    switch state.error {
-    case .some(.second(let error)):
-      errorSignature = "\(error.code)|\(error.message)"
-    case .some(.first):
-      errorSignature = "null"
-    case .none:
-      errorSignature = "nil"
+  private func playbackStatusIndex(_ status: NitroPlayerStatus) -> Int {
+    switch status {
+    case .idle:
+      return 0
+    case .loading:
+      return 1
+    case .buffering:
+      return 2
+    case .playing:
+      return 3
+    case .paused:
+      return 4
+    case .ended:
+      return 5
+    case .error:
+      return 6
     }
-    return [
-      String(describing: state.status),
-      String(state.currentTime),
-      String(state.duration),
-      String(state.bufferDuration),
-      String(state.bufferedPosition),
-      String(state.rate),
-      String(state.isPlaying),
-      String(state.isBuffering),
-      String(state.isVisualReady),
-      errorSignature
-    ].joined(separator: "|")
+  }
+
+  private func playbackErrorFingerprint(_ error: Variant_NullType_PlaybackError?) -> (code: Int?, messageHash: UInt64?) {
+    switch error {
+    case .some(.second(let error)):
+      return (playbackErrorCodeIndex(error.code), stableHash(error.message))
+    case .some(.first):
+      return (-1, nil)
+    case .none:
+      return (nil, nil)
+    }
+  }
+
+  private func playbackErrorCodeIndex(_ code: NitroPlayerErrorCode) -> Int {
+    switch code {
+    case .libraryDeallocated:
+      return 0
+    case .libraryApplicationContextNotFound:
+      return 1
+    case .libraryMethodNotSupported:
+      return 2
+    case .playerReleased:
+      return 3
+    case .playerNotInitialized:
+      return 4
+    case .playerAssetNotInitialized:
+      return 5
+    case .playerInvalidSource:
+      return 6
+    case .playerInvalidTrackUrl:
+      return 7
+    case .playerCancelled:
+      return 8
+    case .sourceInvalidUri:
+      return 9
+    case .sourceMissingReadFilePermission:
+      return 10
+    case .sourceFileDoesNotExist:
+      return 11
+    case .sourceFailedToInitializeAsset:
+      return 12
+    case .sourceUnsupportedContentType:
+      return 13
+    case .sourceCancelled:
+      return 14
+    case .viewNotFound:
+      return 15
+    case .viewDeallocated:
+      return 16
+    case .viewPictureInPictureNotSupported:
+      return 17
+    case .unknownUnknown:
+      return 18
+    }
+  }
+
+  private func stableHash(_ value: String) -> UInt64 {
+    var hash: UInt64 = 14_695_981_039_346_656_037
+    for byte in value.utf8 {
+      hash ^= UInt64(byte)
+      hash &*= 1_099_511_628_211
+    }
+    return hash
   }
 
   func currentSourceConfig() -> NativeNitroPlayerConfig? {
