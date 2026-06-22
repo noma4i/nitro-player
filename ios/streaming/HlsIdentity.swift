@@ -1,19 +1,7 @@
 import Foundation
 
 struct HlsIdentity {
-  static func sourceKey(url: String, headers: [String: String]?) -> String {
-    stableRequestKey(url: url, headers: headers)
-  }
-
-  static func resourceKey(url: String, headers: [String: String]?) -> String {
-    stableRequestKey(url: url, headers: headers)
-  }
-
-  static func previewKey(url: String, headers: [String: String]?, profile: VideoPreviewProfile) -> String {
-    "\(stableRequestKey(url: url, headers: headers))\npreview:\(profile.maxWidth)x\(profile.maxHeight)@\(profile.quality)"
-  }
-
-  private static func stableRequestKey(url: String, headers: [String: String]?) -> String {
+  static func requestKey(url: String, headers: [String: String]?) -> String {
     guard let headers, !headers.isEmpty else {
       return url
     }
@@ -25,5 +13,9 @@ struct HlsIdentity {
       .joined(separator: "&")
 
     return "\(url)\n\(stableHeaders)"
+  }
+
+  static func previewKey(url: String, headers: [String: String]?, profile: VideoPreviewProfile) -> String {
+    "\(requestKey(url: url, headers: headers))\npreview:\(profile.maxWidth)x\(profile.maxHeight)@\(profile.quality)"
   }
 }

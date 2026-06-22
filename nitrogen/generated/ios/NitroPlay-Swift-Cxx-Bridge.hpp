@@ -56,8 +56,6 @@ namespace margelo::nitro::video { enum class NitroSourceStartup; }
 namespace margelo::nitro::video { struct NitroSourceTransportConfig; }
 // Forward declaration of `NitroSourceTransportMode` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroSourceTransportMode; }
-// Forward declaration of `OffscreenRetention` to properly resolve imports.
-namespace margelo::nitro::video { enum class OffscreenRetention; }
 // Forward declaration of `PlaybackError` to properly resolve imports.
 namespace margelo::nitro::video { struct PlaybackError; }
 // Forward declaration of `PlaybackState` to properly resolve imports.
@@ -66,6 +64,8 @@ namespace margelo::nitro::video { struct PlaybackState; }
 namespace margelo::nitro::video { enum class PreloadLevel; }
 // Forward declaration of `Resolution` to properly resolve imports.
 namespace margelo::nitro::video { struct Resolution; }
+// Forward declaration of `RetentionLevel` to properly resolve imports.
+namespace margelo::nitro::video { enum class RetentionLevel; }
 // Forward declaration of `SourceType` to properly resolve imports.
 namespace margelo::nitro::video { enum class SourceType; }
 // Forward declaration of `onFirstFrameData` to properly resolve imports.
@@ -118,11 +118,11 @@ namespace NitroPlay { class HybridNitroPlayerViewManagerSpec_cxx; }
 #include "NitroSourceStartup.hpp"
 #include "NitroSourceTransportConfig.hpp"
 #include "NitroSourceTransportMode.hpp"
-#include "OffscreenRetention.hpp"
 #include "PlaybackError.hpp"
 #include "PlaybackState.hpp"
 #include "PreloadLevel.hpp"
 #include "Resolution.hpp"
+#include "RetentionLevel.hpp"
 #include "SourceType.hpp"
 #include "onFirstFrameData.hpp"
 #include "onLoadData.hpp"
@@ -687,18 +687,18 @@ namespace margelo::nitro::video::bridge::swift {
     return optional.value();
   }
   
-  // pragma MARK: std::optional<OffscreenRetention>
+  // pragma MARK: std::optional<RetentionLevel>
   /**
-   * Specialized version of `std::optional<OffscreenRetention>`.
+   * Specialized version of `std::optional<RetentionLevel>`.
    */
-  using std__optional_OffscreenRetention_ = std::optional<OffscreenRetention>;
-  inline std::optional<OffscreenRetention> create_std__optional_OffscreenRetention_(const OffscreenRetention& value) noexcept {
-    return std::optional<OffscreenRetention>(value);
+  using std__optional_RetentionLevel_ = std::optional<RetentionLevel>;
+  inline std::optional<RetentionLevel> create_std__optional_RetentionLevel_(const RetentionLevel& value) noexcept {
+    return std::optional<RetentionLevel>(value);
   }
-  inline bool has_value_std__optional_OffscreenRetention_(const std::optional<OffscreenRetention>& optional) noexcept {
+  inline bool has_value_std__optional_RetentionLevel_(const std::optional<RetentionLevel>& optional) noexcept {
     return optional.has_value();
   }
-  inline OffscreenRetention get_std__optional_OffscreenRetention_(const std::optional<OffscreenRetention>& optional) noexcept {
+  inline RetentionLevel get_std__optional_RetentionLevel_(const std::optional<RetentionLevel>& optional) noexcept {
     return optional.value();
   }
   

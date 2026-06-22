@@ -94,7 +94,7 @@ object HlsProxyRuntime {
     }
     val encodedUrl = URLEncoder.encode(url, "UTF-8")
     val encodedHeaders = HlsHeaderCodec.encode(headers)
-    val streamKey = HlsIdentity.sourceKey(url, headers)
+    val streamKey = HlsIdentity.requestKey(url, headers)
     val query = StringBuilder("url=").append(encodedUrl)
     if (encodedHeaders != null) {
       query.append("&headers=").append(URLEncoder.encode(encodedHeaders, "UTF-8"))
@@ -118,7 +118,7 @@ object HlsProxyRuntime {
     ensureStarted()
 
     val decodedHeaders = HlsHeaderCodec.decode(headers)
-    val dedupKey = HlsIdentity.sourceKey(url, decodedHeaders)
+    val dedupKey = HlsIdentity.requestKey(url, decodedHeaders)
     val shouldPrefetch = prefetchDeduper.shouldPrefetch(dedupKey)
 
     if (!shouldPrefetch) {
@@ -161,7 +161,7 @@ object HlsProxyRuntime {
   }
 
   fun getStreamCacheStats(url: String, headers: Map<String, String>? = null) = Arguments.createMap().apply {
-    val streamKey = HlsIdentity.sourceKey(url, headers)
+    val streamKey = HlsIdentity.requestKey(url, headers)
     val stats = activeCacheStoreStats {
       it.getStreamCacheStats(streamKey)
     }

@@ -72,7 +72,7 @@ final class HlsProxyServerController: NSObject {
     try await prefetchFirstSegment(
       url: url,
       headers: headers,
-      streamKey: HlsIdentity.sourceKey(url: url, headers: headers)
+      streamKey: HlsIdentity.requestKey(url: url, headers: headers)
     )
   }
 
@@ -184,7 +184,7 @@ final class HlsProxyServerController: NSObject {
     let (initSegment, firstSegment) = manifestRewriter.extractInitAndFirstSegment(manifest)
     if let initSegment {
       let resolved = manifestRewriter.resolveUrl(base: url, relative: initSegment)
-      let resourceKey = HlsIdentity.resourceKey(url: resolved, headers: headers)
+      let resourceKey = HlsIdentity.requestKey(url: resolved, headers: headers)
       if !prefetchCache.has(url: resourceKey) {
         let data = try await prefetchThroughProxy(url: resolved, headers: headers)
         prefetchCache.put(url: resourceKey, data: data, streamKey: streamKey)
@@ -193,7 +193,7 @@ final class HlsProxyServerController: NSObject {
 
     if let firstSegment {
       let resolved = manifestRewriter.resolveUrl(base: url, relative: firstSegment)
-      let resourceKey = HlsIdentity.resourceKey(url: resolved, headers: headers)
+      let resourceKey = HlsIdentity.requestKey(url: resolved, headers: headers)
       if !prefetchCache.has(url: resourceKey) {
         let data = try await prefetchThroughProxy(url: resolved, headers: headers)
         prefetchCache.put(url: resourceKey, data: data, streamKey: streamKey)
@@ -342,7 +342,9 @@ final class HlsNetworkClient {
     }
     var request = URLRequest(url: parsed)
     request.cachePolicy = cachePolicy
-    request.timeoutInterval = 10
+    // HLS fetch timeout. parity-divergent: Android HlsProxyServer uses 12s (intentional until measured).
+    let requestTimeoutSeconds: TimeInterval = 10
+    request.timeoutInterval = requestTimeoutSeconds
     headers?.forEach { key, value in
       request.setValue(value, forHTTPHeaderField: key)
     }

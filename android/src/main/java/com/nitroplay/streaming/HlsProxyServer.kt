@@ -19,6 +19,8 @@ class HlsProxyServer(
     companion object {
         private const val TAG = "NitroPlayStreamRuntime"
         private val RETRY_DELAYS_MS = longArrayOf(100L, 300L)
+        // Upstream segment/manifest fetch timeout. parity-divergent: iOS HlsProxyServerController uses 10s.
+        private const val FETCH_TIMEOUT_MS = 12_000
     }
 
     val cacheStore = HlsCacheStore(context, maxCacheBytes)
@@ -68,7 +70,7 @@ class HlsProxyServer(
         onComplete: () -> Unit,
         onError: (Throwable) -> Unit,
         visitedUrls: MutableSet<String> = mutableSetOf(),
-        streamKey: String = HlsIdentity.sourceKey(url, headers)
+        streamKey: String = HlsIdentity.requestKey(url, headers)
     ) {
         try {
             executor.execute {
@@ -88,7 +90,7 @@ class HlsProxyServer(
         streamKey: String
     ) {
             try {
-                val manifestKey = HlsIdentity.resourceKey(url, headers)
+                val manifestKey = HlsIdentity.requestKey(url, headers)
                 if (manifestKey in visitedUrls) { onComplete(); return }
                 visitedUrls.add(manifestKey)
 
@@ -104,7 +106,7 @@ class HlsProxyServer(
                 val (initSeg, firstSeg) = HlsManifest.extractInitAndFirstSegment(manifest)
                 if (initSeg != null) {
                     val resolved = HlsManifest.resolveUrl(url, initSeg)
-                    val resourceKey = HlsIdentity.resourceKey(resolved, headers)
+                    val resourceKey = HlsIdentity.requestKey(resolved, headers)
                     if (!cacheStore.has(resourceKey)) {
                         val data = fetchData(resolved, headers)
                         putToCache(resourceKey, data, streamKey)
@@ -112,7 +114,7 @@ class HlsProxyServer(
                 }
                 if (firstSeg != null) {
                     val resolved = HlsManifest.resolveUrl(url, firstSeg)
-                    val resourceKey = HlsIdentity.resourceKey(resolved, headers)
+                    val resourceKey = HlsIdentity.requestKey(resolved, headers)
                     if (!cacheStore.has(resourceKey)) {
                         val data = fetchData(resolved, headers)
                         putToCache(resourceKey, data, streamKey)
@@ -125,10 +127,10 @@ class HlsProxyServer(
     }
 
     private fun handleManifest(session: IHTTPSession): Response {
-        val url = HlsHeaderCodec.decodeUrl(session.parameters["url"]?.firstOrNull())
+        val url = HlsHeaderCodec.normalizeParam(session.parameters["url"]?.firstOrNull())
             ?: return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "Missing url")
         val headers = HlsHeaderCodec.decode(session.parameters["headers"]?.firstOrNull())
-        val streamKey = HlsHeaderCodec.decodeUrl(session.parameters["streamKey"]?.firstOrNull()) ?: url
+        val streamKey = HlsHeaderCodec.normalizeParam(session.parameters["streamKey"]?.firstOrNull()) ?: url
         return try {
             val manifest = fetchText(url, headers, useCaches = false)
             validateManifest(manifest)
@@ -151,12 +153,12 @@ class HlsProxyServer(
     }
 
     private fun handleSegment(session: IHTTPSession): Response {
-        val url = HlsHeaderCodec.decodeUrl(session.parameters["url"]?.firstOrNull())
+        val url = HlsHeaderCodec.normalizeParam(session.parameters["url"]?.firstOrNull())
             ?: return newFixedLengthResponse(Response.Status.BAD_REQUEST, "text/plain", "Missing url")
         val headers = HlsHeaderCodec.decode(session.parameters["headers"]?.firstOrNull())
-        val streamKey = HlsHeaderCodec.decodeUrl(session.parameters["streamKey"]?.firstOrNull())
+        val streamKey = HlsHeaderCodec.normalizeParam(session.parameters["streamKey"]?.firstOrNull())
         val contentType = HlsManifest.guessContentType(url)
-        val resourceKey = HlsIdentity.resourceKey(url, headers)
+        val resourceKey = HlsIdentity.requestKey(url, headers)
 
         cacheStore.getFilePath(resourceKey)?.let { file ->
             return newFixedLengthResponse(Response.Status.OK, contentType, FileInputStream(file), file.length())
@@ -202,8 +204,8 @@ class HlsProxyServer(
     private fun performFetchData(url: String, headers: Map<String, String>?, useCaches: Boolean): ByteArray {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             this.useCaches = useCaches
-            connectTimeout = 12_000
-            readTimeout = 12_000
+            connectTimeout = FETCH_TIMEOUT_MS
+            readTimeout = FETCH_TIMEOUT_MS
             requestMethod = "GET"
             headers?.forEach { (k, v) -> setRequestProperty(k, v) }
         }

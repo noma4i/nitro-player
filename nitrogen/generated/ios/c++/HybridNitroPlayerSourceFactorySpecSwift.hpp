@@ -30,8 +30,8 @@ namespace margelo::nitro::video { struct Resolution; }
 namespace margelo::nitro::video { struct NitroSourceRetentionConfig; }
 // Forward declaration of `PreloadLevel` to properly resolve imports.
 namespace margelo::nitro::video { enum class PreloadLevel; }
-// Forward declaration of `OffscreenRetention` to properly resolve imports.
-namespace margelo::nitro::video { enum class OffscreenRetention; }
+// Forward declaration of `RetentionLevel` to properly resolve imports.
+namespace margelo::nitro::video { enum class RetentionLevel; }
 // Forward declaration of `NitroSourceTransportConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct NitroSourceTransportConfig; }
 // Forward declaration of `NitroSourceTransportMode` to properly resolve imports.
@@ -54,7 +54,7 @@ namespace margelo::nitro::video { enum class NitroSourcePreviewMode; }
 #include "Resolution.hpp"
 #include "NitroSourceRetentionConfig.hpp"
 #include "PreloadLevel.hpp"
-#include "OffscreenRetention.hpp"
+#include "RetentionLevel.hpp"
 #include "NitroSourceTransportConfig.hpp"
 #include "NitroSourceTransportMode.hpp"
 #include "NitroSourcePreviewConfig.hpp"

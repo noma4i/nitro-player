@@ -1,11 +1,23 @@
 import type { BufferConfig } from '../../player/types/BufferConfig';
-import type { OffscreenRetention, PreloadLevel } from '../../player/types/MemoryConfig';
+import type { PreloadLevel, RetentionLevel } from '../../player/types/MemoryConfig';
+import { unionTuple } from '../../support/typeHelpers';
 
 export type NitroSourceUri = number | string;
+
+// Boundary enums crossing the Nitro native bridge must be explicit string-literal
+// union aliases — Nitrogen rejects `typeof tuple[number]`. Each paired runtime tuple
+// is the source of truth for validation; unionTuple() fails the build on any drift.
 export type NitroSourceStartup = 'eager' | 'lazy';
+export const SOURCE_STARTUPS = unionTuple<NitroSourceStartup>()('eager', 'lazy');
+
 export type NitroSourceTransportMode = 'auto' | 'direct' | 'proxy';
+export const SOURCE_TRANSPORT_MODES = unionTuple<NitroSourceTransportMode>()('auto', 'direct', 'proxy');
+
 export type NitroSourcePreviewMode = 'listener' | 'always' | 'manual';
+export const SOURCE_PREVIEW_MODES = unionTuple<NitroSourcePreviewMode>()('listener', 'always', 'manual');
+
 export type NitroSourcePolicy = 'auto' | 'feed' | 'hero' | 'thumbnail' | 'manual';
+export const SOURCE_POLICIES = unionTuple<NitroSourcePolicy>()('auto', 'feed', 'hero', 'thumbnail', 'manual');
 
 export interface NitroSourceMetadata {
   title?: string;
@@ -17,7 +29,7 @@ export interface NitroSourceMetadata {
 
 export interface NitroSourceRetentionConfig {
   preload?: PreloadLevel;
-  offscreen?: OffscreenRetention;
+  offscreen?: RetentionLevel;
   trimDelayMs?: number;
   feedPoolEligible?: boolean;
 }

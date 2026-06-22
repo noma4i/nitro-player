@@ -23,8 +23,8 @@ namespace margelo::nitro::video { enum class NitroPlayerErrorCode; }
 namespace margelo::nitro::video { struct MemorySnapshot; }
 // Forward declaration of `PreloadLevel` to properly resolve imports.
 namespace margelo::nitro::video { enum class PreloadLevel; }
-// Forward declaration of `MemoryRetentionState` to properly resolve imports.
-namespace margelo::nitro::video { enum class MemoryRetentionState; }
+// Forward declaration of `RetentionLevel` to properly resolve imports.
+namespace margelo::nitro::video { enum class RetentionLevel; }
 // Forward declaration of `MixAudioMode` to properly resolve imports.
 namespace margelo::nitro::video { enum class MixAudioMode; }
 // Forward declaration of `IgnoreSilentSwitchMode` to properly resolve imports.
@@ -53,8 +53,8 @@ namespace margelo::nitro::video { enum class IgnoreSilentSwitchMode; }
 #include "JMemorySnapshot.hpp"
 #include "PreloadLevel.hpp"
 #include "JPreloadLevel.hpp"
-#include "MemoryRetentionState.hpp"
-#include "JMemoryRetentionState.hpp"
+#include "RetentionLevel.hpp"
+#include "JRetentionLevel.hpp"
 #include "MixAudioMode.hpp"
 #include "JMixAudioMode.hpp"
 #include "IgnoreSilentSwitchMode.hpp"

@@ -14,22 +14,45 @@ internal data class PlaybackStateFingerprint(
   val errorMessageHash: Int?
 ) {
   companion object {
-    fun from(state: PlaybackState): PlaybackStateFingerprint {
-      val error = state.error?.asSecondOrNull()
-      return PlaybackStateFingerprint(
-        status = state.status,
-        currentTimeBits = state.currentTime.toBits(),
-        durationBits = state.duration.toBits(),
-        bufferDurationBits = state.bufferDuration.toBits(),
-        bufferedPositionBits = state.bufferedPosition.toBits(),
-        rateBits = state.rate.toBits(),
-        isPlaying = state.isPlaying,
-        isBuffering = state.isBuffering,
-        isVisualReady = state.isVisualReady,
-        errorCode = error?.code,
-        errorMessageHash = error?.message?.hashCode()
-      )
-    }
+    // Builds the fingerprint straight from raw values so the 0.25s tick can decide
+    // whether to emit without allocating a Nitro PlaybackState first (parity with iOS).
+    fun fromValues(
+      status: NitroPlayerStatus,
+      currentTime: Double,
+      duration: Double,
+      bufferDuration: Double,
+      bufferedPosition: Double,
+      rate: Double,
+      isPlaying: Boolean,
+      isBuffering: Boolean,
+      isVisualReady: Boolean,
+      error: PlaybackError?
+    ): PlaybackStateFingerprint = PlaybackStateFingerprint(
+      status = status,
+      currentTimeBits = currentTime.toBits(),
+      durationBits = duration.toBits(),
+      bufferDurationBits = bufferDuration.toBits(),
+      bufferedPositionBits = bufferedPosition.toBits(),
+      rateBits = rate.toBits(),
+      isPlaying = isPlaying,
+      isBuffering = isBuffering,
+      isVisualReady = isVisualReady,
+      errorCode = error?.code,
+      errorMessageHash = error?.message?.hashCode()
+    )
+
+    fun from(state: PlaybackState): PlaybackStateFingerprint = fromValues(
+      status = state.status,
+      currentTime = state.currentTime,
+      duration = state.duration,
+      bufferDuration = state.bufferDuration,
+      bufferedPosition = state.bufferedPosition,
+      rate = state.rate,
+      isPlaying = state.isPlaying,
+      isBuffering = state.isBuffering,
+      isVisualReady = state.isVisualReady,
+      error = state.error?.asSecondOrNull()
+    )
   }
 }
 

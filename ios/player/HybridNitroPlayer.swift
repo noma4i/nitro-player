@@ -392,7 +392,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   }
 
   func emitPlaybackState() {
-    guard !isReleased else { return }
+    guard lifecycleGate.shouldEmit() else { return }
     let snapshot = currentPlaybackSnapshot()
     // The 0.25s observer tick rebuilds the state every time, but when nothing
     // meaningful changed (only the timestamp advanced) there is no reason to

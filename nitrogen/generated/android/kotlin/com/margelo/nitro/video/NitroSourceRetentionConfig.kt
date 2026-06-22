@@ -22,7 +22,7 @@ data class NitroSourceRetentionConfig(
   val preload: PreloadLevel?,
   @DoNotStrip
   @Keep
-  val offscreen: OffscreenRetention?,
+  val offscreen: RetentionLevel?,
   @DoNotStrip
   @Keep
   val trimDelayMs: Double?,
@@ -40,7 +40,7 @@ data class NitroSourceRetentionConfig(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(preload: PreloadLevel?, offscreen: OffscreenRetention?, trimDelayMs: Double?, feedPoolEligible: Boolean?): NitroSourceRetentionConfig {
+    private fun fromCpp(preload: PreloadLevel?, offscreen: RetentionLevel?, trimDelayMs: Double?, feedPoolEligible: Boolean?): NitroSourceRetentionConfig {
       return NitroSourceRetentionConfig(preload, offscreen, trimDelayMs, feedPoolEligible)
     }
   }

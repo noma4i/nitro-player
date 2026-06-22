@@ -547,27 +547,82 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     return max(0.0, calculateBufferedPositionSeconds() - calculateCurrentTimeSeconds())
   }
 
-  internal fun buildPlaybackState(): PlaybackState {
-    if (isReleased) return PlaybackState(
-      status = NitroPlayerStatus.IDLE, currentTime = 0.0, duration = 0.0,
-      bufferDuration = 0.0, bufferedPosition = 0.0, rate = 0.0,
-      isPlaying = false, isBuffering = false, isVisualReady = false, error = null,
-      nativeTimestampMs = System.currentTimeMillis().toDouble()
-    )
-    return PlaybackState(
+  // Lightweight raw-value holder + fingerprint built once per tick, mirroring the
+  // iOS PlaybackSnapshot. Lets emitPlaybackState() dedupe before allocating the
+  // Nitro PlaybackState.
+  private data class PlaybackSnapshot(
+    val status: NitroPlayerStatus,
+    val currentTime: Double,
+    val duration: Double,
+    val bufferDuration: Double,
+    val bufferedPosition: Double,
+    val rate: Double,
+    val isPlaying: Boolean,
+    val isBuffering: Boolean,
+    val isVisualReady: Boolean,
+    val error: PlaybackError?,
+    val nativeTimestampMs: Double,
+    val fingerprint: PlaybackStateFingerprint
+  )
+
+  private fun currentPlaybackSnapshot(): PlaybackSnapshot {
+    if (isReleased) {
+      return PlaybackSnapshot(
+        status = NitroPlayerStatus.IDLE,
+        currentTime = 0.0, duration = 0.0, bufferDuration = 0.0,
+        bufferedPosition = 0.0, rate = 0.0,
+        isPlaying = false, isBuffering = false, isVisualReady = false,
+        error = null,
+        nativeTimestampMs = System.currentTimeMillis().toDouble(),
+        fingerprint = PlaybackStateFingerprint.fromValues(
+          NitroPlayerStatus.IDLE, 0.0, 0.0, 0.0, 0.0, 0.0, false, false, false, null
+        )
+      )
+    }
+
+    val currentTime = calculateCurrentTimeSeconds()
+    val bufferedPosition = calculateBufferedPositionSeconds()
+    val bufferDuration = max(0.0, bufferedPosition - currentTime)
+    val duration = calculateDurationSeconds()
+    val rate = player.playbackParameters.speed.toDouble()
+    val playing = player.isPlaying
+    val buffering = isCurrentlyBuffering
+    val visualReady = readyToDisplay
+    val error = lastError
+    return PlaybackSnapshot(
       status = status,
-      currentTime = calculateCurrentTimeSeconds(),
-      duration = calculateDurationSeconds(),
-      bufferDuration = calculateBufferDurationSeconds(),
-      bufferedPosition = calculateBufferedPositionSeconds(),
-      rate = player.playbackParameters.speed.toDouble(),
-      isPlaying = player.isPlaying,
-      isBuffering = isCurrentlyBuffering,
-      isVisualReady = readyToDisplay,
-      error = lastError?.let { Variant_NullType_PlaybackError.Second(it) },
-      nativeTimestampMs = System.currentTimeMillis().toDouble()
+      currentTime = currentTime,
+      duration = duration,
+      bufferDuration = bufferDuration,
+      bufferedPosition = bufferedPosition,
+      rate = rate,
+      isPlaying = playing,
+      isBuffering = buffering,
+      isVisualReady = visualReady,
+      error = error,
+      nativeTimestampMs = System.currentTimeMillis().toDouble(),
+      fingerprint = PlaybackStateFingerprint.fromValues(
+        status, currentTime, duration, bufferDuration, bufferedPosition, rate,
+        playing, buffering, visualReady, error
+      )
     )
   }
+
+  private fun playbackStateFrom(snapshot: PlaybackSnapshot): PlaybackState = PlaybackState(
+    status = snapshot.status,
+    currentTime = snapshot.currentTime,
+    duration = snapshot.duration,
+    bufferDuration = snapshot.bufferDuration,
+    bufferedPosition = snapshot.bufferedPosition,
+    rate = snapshot.rate,
+    isPlaying = snapshot.isPlaying,
+    isBuffering = snapshot.isBuffering,
+    isVisualReady = snapshot.isVisualReady,
+    error = snapshot.error?.let { Variant_NullType_PlaybackError.Second(it) },
+    nativeTimestampMs = snapshot.nativeTimestampMs
+  )
+
+  internal fun buildPlaybackState(): PlaybackState = playbackStateFrom(currentPlaybackSnapshot())
 
   private fun buildMemorySnapshot(): MemorySnapshot {
     if (isReleased) return MemorySnapshot(
@@ -590,16 +645,16 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   internal fun emitPlaybackState() {
-    if (isReleased) return
-    val next = buildPlaybackState()
-    val fingerprint = PlaybackStateFingerprint.from(next)
-    // The 0.25s progress tick rebuilds the state every time, but when nothing
-    // meaningful changed (only the timestamp advanced) there is no reason to
-    // cross the bridge. nativeTimestampMs is excluded from the comparison.
-    if (!playbackStateEmissionGate.shouldEmit(fingerprint)) {
+    if (!lifecycleGate.shouldEmit()) return
+    val snapshot = currentPlaybackSnapshot()
+    // The 0.25s progress tick rebuilds the snapshot every time, but when nothing
+    // meaningful changed (only the timestamp advanced) there is no reason to cross
+    // the bridge or allocate the Nitro PlaybackState. nativeTimestampMs is excluded
+    // from the fingerprint.
+    if (!playbackStateEmissionGate.shouldEmit(snapshot.fingerprint)) {
       return
     }
-    eventEmitter.onPlaybackState(next)
+    eventEmitter.onPlaybackState(playbackStateFrom(snapshot))
   }
 
   internal fun beginSourceGeneration() {

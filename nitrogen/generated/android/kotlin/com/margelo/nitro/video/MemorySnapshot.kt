@@ -31,7 +31,7 @@ data class MemorySnapshot(
   val preloadLevel: PreloadLevel,
   @DoNotStrip
   @Keep
-  val retentionState: MemoryRetentionState,
+  val retentionState: RetentionLevel,
   @DoNotStrip
   @Keep
   val isAttachedToView: Boolean,
@@ -49,7 +49,7 @@ data class MemorySnapshot(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(playerBytes: Double, sourceBytes: Double, totalBytes: Double, preloadLevel: PreloadLevel, retentionState: MemoryRetentionState, isAttachedToView: Boolean, isPlaying: Boolean): MemorySnapshot {
+    private fun fromCpp(playerBytes: Double, sourceBytes: Double, totalBytes: Double, preloadLevel: PreloadLevel, retentionState: RetentionLevel, isAttachedToView: Boolean, isPlaying: Boolean): MemorySnapshot {
       return MemorySnapshot(playerBytes, sourceBytes, totalBytes, preloadLevel, retentionState, isAttachedToView, isPlaying)
     }
   }

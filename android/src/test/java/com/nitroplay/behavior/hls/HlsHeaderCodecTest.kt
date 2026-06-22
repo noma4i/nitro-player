@@ -69,17 +69,17 @@ class HlsHeaderCodecTest {
   }
 
   @Test
-  fun decodeUrl_returnsNullForNull() {
-    assertNull(HlsHeaderCodec.decodeUrl(null))
+  fun normalizeParam_returnsNullForNull() {
+    assertNull(HlsHeaderCodec.normalizeParam(null))
   }
 
   @Test
-  fun decodeUrl_returnsNullForBlank() {
-    assertNull(HlsHeaderCodec.decodeUrl(""))
+  fun normalizeParam_returnsNullForBlank() {
+    assertNull(HlsHeaderCodec.normalizeParam(""))
   }
 
   @Test
-  fun decodeUrl_returnsValueForValidUrl() {
-    assertEquals("https://example.com", HlsHeaderCodec.decodeUrl("https://example.com"))
+  fun normalizeParam_returnsValueForValidUrl() {
+    assertEquals("https://example.com", HlsHeaderCodec.normalizeParam("https://example.com"))
   }
 }

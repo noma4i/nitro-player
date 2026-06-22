@@ -38,7 +38,9 @@ object HlsHeaderCodec {
         return map.toHashMap().mapValues { it.value.toString() }
     }
 
-    fun decodeUrl(value: String?): String? {
+    // NanoHTTPD already URL-decodes query parameters; this only normalizes
+    // null/blank values away, it does not decode.
+    fun normalizeParam(value: String?): String? {
         if (value.isNullOrBlank()) return null
         return value
     }

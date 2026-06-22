@@ -11,7 +11,7 @@ import NitroModules
 
 class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSourceSpec {
   private var _asset: AVURLAsset?
-  private var _retentionState: MemoryRetentionState = .cold
+  private var _retentionState: RetentionLevel = .cold
   private var _config: NativeNitroPlayerConfig
   private var _url: URL
   private var _isProxyRouteActive: Bool
@@ -23,7 +23,7 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
     set { stateLock.lock(); _asset = newValue; stateLock.unlock() }
   }
 
-  var retentionState: MemoryRetentionState {
+  var retentionState: RetentionLevel {
     get { stateLock.lock(); defer { stateLock.unlock() }; return _retentionState }
     set { stateLock.lock(); _retentionState = newValue; stateLock.unlock() }
   }

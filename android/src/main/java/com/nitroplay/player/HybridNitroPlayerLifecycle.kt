@@ -29,6 +29,8 @@ internal class NitroPlayerLifecycle(
     private const val DEFAULT_BUFFER_FOR_PLAYBACK_DURATION_MS = 1000
     private const val DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_DURATION_MS = 2000
     private const val DEFAULT_BACK_BUFFER_DURATION_MS = 0
+    // parity: iOS HybridNitroPlayerLifecycle defaultTrimDelayMs = 10000.
+    private const val DEFAULT_TRIM_DELAY_MS = 10000.0
   }
 
   fun initializePlayer() {
@@ -125,15 +127,15 @@ internal class NitroPlayerLifecycle(
     return host.currentSourceConfig()?.retention?.preload ?: PreloadLevel.BUFFERED
   }
 
-  fun resolvedOffscreenRetention(): OffscreenRetention {
+  fun resolvedOffscreenRetention(): RetentionLevel {
     if (!host.hasActiveSource) {
-      return OffscreenRetention.HOT
+      return RetentionLevel.HOT
     }
-    return host.currentSourceConfig()?.retention?.offscreen ?: OffscreenRetention.HOT
+    return host.currentSourceConfig()?.retention?.offscreen ?: RetentionLevel.HOT
   }
 
   fun resolvedPauseTrimDelayMs(): Long? {
-    val delay = host.currentSourceConfig()?.retention?.trimDelayMs ?: 10000.0
+    val delay = host.currentSourceConfig()?.retention?.trimDelayMs ?: DEFAULT_TRIM_DELAY_MS
     if (delay.isInfinite()) {
       return null
     }
@@ -141,19 +143,19 @@ internal class NitroPlayerLifecycle(
     return delay.toLong().coerceAtLeast(0L)
   }
 
-  fun currentRetentionState(): MemoryRetentionState {
+  fun currentRetentionState(): RetentionLevel {
     if (!host.hasActiveSource) {
-      return MemoryRetentionState.COLD
+      return RetentionLevel.COLD
     }
     return (host.source as? HybridNitroPlayerSource)?.retentionState
-      ?: MemoryRetentionState.COLD
+      ?: RetentionLevel.COLD
   }
 
   fun currentRetentionLevel(): PlayerRetentionLevel {
     return when (currentRetentionState()) {
-      MemoryRetentionState.COLD -> PlayerRetentionLevel.COLD
-      MemoryRetentionState.METADATA -> PlayerRetentionLevel.METADATA
-      MemoryRetentionState.HOT -> PlayerRetentionLevel.HOT
+      RetentionLevel.COLD -> PlayerRetentionLevel.COLD
+      RetentionLevel.METADATA -> PlayerRetentionLevel.METADATA
+      RetentionLevel.HOT -> PlayerRetentionLevel.HOT
     }
   }
 
@@ -199,7 +201,7 @@ internal class NitroPlayerLifecycle(
   fun scheduleOffscreenTrim() {
     cancelPendingTrim()
 
-    if (resolvedOffscreenRetention() == OffscreenRetention.HOT) {
+    if (resolvedOffscreenRetention() == RetentionLevel.HOT) {
       return
     }
 
@@ -224,9 +226,9 @@ internal class NitroPlayerLifecycle(
     }
 
     when (resolvedOffscreenRetention()) {
-      OffscreenRetention.HOT -> Unit
-      OffscreenRetention.METADATA -> trimToMetadataRetention()
-      OffscreenRetention.COLD -> trimToColdRetention()
+      RetentionLevel.HOT -> Unit
+      RetentionLevel.METADATA -> trimToMetadataRetention()
+      RetentionLevel.COLD -> trimToColdRetention()
     }
   }
 

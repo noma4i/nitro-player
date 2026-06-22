@@ -23,7 +23,7 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
   private var mediaItem: MediaItem? = null
   private var mediaSource: MediaSource? = null
   private val stateLock = Any()
-  var retentionState: MemoryRetentionState = MemoryRetentionState.COLD
+  var retentionState: RetentionLevel = RetentionLevel.COLD
     // Read under stateLock for visibility: writers mutate it inside
     // synchronized(stateLock); the monitor is reentrant so writer paths are fine.
     get() = synchronized(stateLock) { field }
@@ -51,8 +51,8 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
 
       return createMediaItemFromVideoConfig(this).also {
         mediaItem = it
-        if (retentionState == MemoryRetentionState.COLD) {
-          retentionState = MemoryRetentionState.METADATA
+        if (retentionState == RetentionLevel.COLD) {
+          retentionState = RetentionLevel.METADATA
         }
       }
     }
@@ -78,7 +78,7 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
       }
 
       mediaSource = nextMediaSource
-      retentionState = MemoryRetentionState.HOT
+      retentionState = RetentionLevel.HOT
       return nextMediaSource
     }
   }
@@ -93,7 +93,7 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
     synchronized(stateLock) {
       createOrGetMediaItem()
       mediaSource = null
-      retentionState = MemoryRetentionState.METADATA
+      retentionState = RetentionLevel.METADATA
     }
   }
 
@@ -101,7 +101,7 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
     synchronized(stateLock) {
       mediaSource = null
       mediaItem = null
-      retentionState = MemoryRetentionState.COLD
+      retentionState = RetentionLevel.COLD
     }
   }
 

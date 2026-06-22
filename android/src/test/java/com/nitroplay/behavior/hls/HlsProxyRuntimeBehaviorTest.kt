@@ -57,9 +57,9 @@ class HlsProxyRuntimeBehaviorTest {
     val seedStore = HlsCacheStore(appContext)
     seedStore.clearAll()
     seedStore.put(
-      HlsIdentity.resourceKey("https://cdn.example.com/legacy.ts", null),
+      HlsIdentity.requestKey("https://cdn.example.com/legacy.ts", null),
       ByteArray(64),
-      HlsIdentity.sourceKey("https://cdn.example.com/live.m3u8", null)
+      HlsIdentity.requestKey("https://cdn.example.com/live.m3u8", null)
     )
     seedStore.close()
     HlsProxyRuntime.registerForTests(appContext)

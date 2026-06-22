@@ -18,7 +18,7 @@ public extension MemorySnapshot {
   /**
    * Create a new instance of `MemorySnapshot`.
    */
-  init(playerBytes: Double, sourceBytes: Double, totalBytes: Double, preloadLevel: PreloadLevel, retentionState: MemoryRetentionState, isAttachedToView: Bool, isPlaying: Bool) {
+  init(playerBytes: Double, sourceBytes: Double, totalBytes: Double, preloadLevel: PreloadLevel, retentionState: RetentionLevel, isAttachedToView: Bool, isPlaying: Bool) {
     self.init(playerBytes, sourceBytes, totalBytes, preloadLevel, retentionState, isAttachedToView, isPlaying)
   }
 
@@ -43,7 +43,7 @@ public extension MemorySnapshot {
   }
   
   @inline(__always)
-  var retentionState: MemoryRetentionState {
+  var retentionState: RetentionLevel {
     return self.__retentionState
   }
   

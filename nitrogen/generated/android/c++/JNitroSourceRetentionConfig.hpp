@@ -10,10 +10,10 @@
 #include <fbjni/fbjni.h>
 #include "NitroSourceRetentionConfig.hpp"
 
-#include "JOffscreenRetention.hpp"
 #include "JPreloadLevel.hpp"
-#include "OffscreenRetention.hpp"
+#include "JRetentionLevel.hpp"
 #include "PreloadLevel.hpp"
+#include "RetentionLevel.hpp"
 #include <optional>
 
 namespace margelo::nitro::video {
@@ -37,8 +37,8 @@ namespace margelo::nitro::video {
       static const auto clazz = javaClassStatic();
       static const auto fieldPreload = clazz->getField<JPreloadLevel>("preload");
       jni::local_ref<JPreloadLevel> preload = this->getFieldValue(fieldPreload);
-      static const auto fieldOffscreen = clazz->getField<JOffscreenRetention>("offscreen");
-      jni::local_ref<JOffscreenRetention> offscreen = this->getFieldValue(fieldOffscreen);
+      static const auto fieldOffscreen = clazz->getField<JRetentionLevel>("offscreen");
+      jni::local_ref<JRetentionLevel> offscreen = this->getFieldValue(fieldOffscreen);
       static const auto fieldTrimDelayMs = clazz->getField<jni::JDouble>("trimDelayMs");
       jni::local_ref<jni::JDouble> trimDelayMs = this->getFieldValue(fieldTrimDelayMs);
       static const auto fieldFeedPoolEligible = clazz->getField<jni::JBoolean>("feedPoolEligible");
@@ -57,13 +57,13 @@ namespace margelo::nitro::video {
      */
     [[maybe_unused]]
     static jni::local_ref<JNitroSourceRetentionConfig::javaobject> fromCpp(const NitroSourceRetentionConfig& value) {
-      using JSignature = JNitroSourceRetentionConfig(jni::alias_ref<JPreloadLevel>, jni::alias_ref<JOffscreenRetention>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JBoolean>);
+      using JSignature = JNitroSourceRetentionConfig(jni::alias_ref<JPreloadLevel>, jni::alias_ref<JRetentionLevel>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JBoolean>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
         clazz,
         value.preload.has_value() ? JPreloadLevel::fromCpp(value.preload.value()) : nullptr,
-        value.offscreen.has_value() ? JOffscreenRetention::fromCpp(value.offscreen.value()) : nullptr,
+        value.offscreen.has_value() ? JRetentionLevel::fromCpp(value.offscreen.value()) : nullptr,
         value.trimDelayMs.has_value() ? jni::JDouble::valueOf(value.trimDelayMs.value()) : nullptr,
         value.feedPoolEligible.has_value() ? jni::JBoolean::valueOf(value.feedPoolEligible.value()) : nullptr
       );

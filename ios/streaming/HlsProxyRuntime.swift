@@ -46,7 +46,7 @@ final class HlsProxyRuntime {
 
     ensureStarted()
 
-    let dedupKey = HlsIdentity.sourceKey(url: url, headers: headers)
+    let dedupKey = HlsIdentity.requestKey(url: url, headers: headers)
     let shouldPrefetch = prefetchDeduper.shouldPrefetch(key: dedupKey)
 
     guard shouldPrefetch else {
@@ -66,7 +66,7 @@ final class HlsProxyRuntime {
   }
 
   func getStreamCacheStats(url: String, headers: [String: String]?) -> [String: Any] {
-    controller.getCacheStats(streamKey: HlsIdentity.sourceKey(url: url, headers: headers))
+    controller.getCacheStats(streamKey: HlsIdentity.requestKey(url: url, headers: headers))
   }
 
   func configureCache(maxBytes: Int) {

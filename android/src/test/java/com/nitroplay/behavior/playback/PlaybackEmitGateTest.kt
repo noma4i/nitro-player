@@ -1,11 +1,13 @@
 package com.nitroplay.video
 
 import com.margelo.nitro.video.NitroPlayerStatus
+import com.margelo.nitro.video.PlaybackState
 import com.margelo.nitro.video.PlaybackStateEmissionGate
 import com.margelo.nitro.video.PlaybackStateFingerprint
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -68,6 +70,31 @@ class PlaybackEmitGateTest {
 
     assertTrue(latch.await(5, TimeUnit.SECONDS))
     executor.shutdownNow()
+  }
+
+  @Test
+  fun fromValuesMatchesFingerprintBuiltFromState() {
+    val state = PlaybackState(
+      status = NitroPlayerStatus.PLAYING,
+      currentTime = 10.0,
+      duration = 12.0,
+      bufferDuration = 2.0,
+      bufferedPosition = 12.0,
+      rate = 1.0,
+      isPlaying = true,
+      isBuffering = false,
+      isVisualReady = true,
+      error = null,
+      nativeTimestampMs = 999.0
+    )
+
+    val fromState = PlaybackStateFingerprint.from(state)
+    val fromValues = PlaybackStateFingerprint.fromValues(
+      NitroPlayerStatus.PLAYING, 10.0, 12.0, 2.0, 12.0, 1.0,
+      true, false, true, null
+    )
+
+    assertEquals(fromState, fromValues)
   }
 
   private fun makeFingerprint(

@@ -1,12 +1,14 @@
 import type { NitroSourceConfig } from './types/NitroPlayerConfig';
+import { SOURCE_POLICIES, SOURCE_PREVIEW_MODES, SOURCE_STARTUPS, SOURCE_TRANSPORT_MODES } from './types/NitroPlayerConfig';
+import { PRELOAD_LEVELS, RETENTION_LEVELS } from '../player/types/MemoryConfig';
 import { NitroPlayerRuntimeError } from '../support/errors/NitroPlayerError';
 
-const VALID_STARTUP: ReadonlySet<string> = new Set(['eager', 'lazy']);
-const VALID_PRELOAD: ReadonlySet<string> = new Set(['none', 'metadata', 'buffered']);
-const VALID_OFFSCREEN: ReadonlySet<string> = new Set(['cold', 'metadata', 'hot']);
-const VALID_TRANSPORT_MODE: ReadonlySet<string> = new Set(['auto', 'direct', 'proxy']);
-const VALID_PREVIEW_MODE: ReadonlySet<string> = new Set(['listener', 'always', 'manual']);
-const VALID_POLICY: ReadonlySet<string> = new Set(['auto', 'feed', 'hero', 'thumbnail', 'manual']);
+const VALID_STARTUP: ReadonlySet<string> = new Set(SOURCE_STARTUPS);
+const VALID_PRELOAD: ReadonlySet<string> = new Set(PRELOAD_LEVELS);
+const VALID_OFFSCREEN: ReadonlySet<string> = new Set(RETENTION_LEVELS);
+const VALID_TRANSPORT_MODE: ReadonlySet<string> = new Set(SOURCE_TRANSPORT_MODES);
+const VALID_PREVIEW_MODE: ReadonlySet<string> = new Set(SOURCE_PREVIEW_MODES);
+const VALID_POLICY: ReadonlySet<string> = new Set(SOURCE_POLICIES);
 
 const assertEnum = (value: unknown, valid: ReadonlySet<string>, field: string): void => {
   if (value !== undefined && (typeof value !== 'string' || !valid.has(value))) {

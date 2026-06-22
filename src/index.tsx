@@ -4,10 +4,6 @@ export type {
   AllNitroPlayerEvents,
   NitroPlayerEvents as NitroPlayerEventsType,
   BandwidthData,
-  FirstFrameEvent,
-  LoadEvent,
-  LoadStartEvent,
-  VolumeChangeEvent,
   onFirstFrameData,
   onLoadData,
   onLoadStartData,
@@ -17,8 +13,8 @@ export type {
 export { ALL_PLAYER_EVENTS } from './player/events';
 export type { NitroPlayerViewEvents } from './view/events';
 export { ALL_VIEW_EVENTS } from './view/events';
-export type { OffscreenRetention, PreloadLevel } from './player/types/MemoryConfig';
-export type { MemoryRetentionState, MemorySnapshot } from './player/types/MemorySnapshot';
+export type { RetentionLevel, PreloadLevel } from './player/types/MemoryConfig';
+export type { MemorySnapshot } from './player/types/MemorySnapshot';
 export type { PlaybackError } from './support/errors/PlaybackError';
 export type { PlaybackState } from './player/types/PlaybackState';
 export type { IgnoreSilentSwitchMode } from './player/types/IgnoreSilentSwitchMode';

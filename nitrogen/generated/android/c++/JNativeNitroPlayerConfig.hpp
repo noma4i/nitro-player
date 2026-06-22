@@ -20,9 +20,9 @@
 #include "JNitroSourceStartup.hpp"
 #include "JNitroSourceTransportConfig.hpp"
 #include "JNitroSourceTransportMode.hpp"
-#include "JOffscreenRetention.hpp"
 #include "JPreloadLevel.hpp"
 #include "JResolution.hpp"
+#include "JRetentionLevel.hpp"
 #include "LivePlaybackParams.hpp"
 #include "NitroSourceMetadata.hpp"
 #include "NitroSourcePreviewConfig.hpp"
@@ -31,9 +31,9 @@
 #include "NitroSourceStartup.hpp"
 #include "NitroSourceTransportConfig.hpp"
 #include "NitroSourceTransportMode.hpp"
-#include "OffscreenRetention.hpp"
 #include "PreloadLevel.hpp"
 #include "Resolution.hpp"
+#include "RetentionLevel.hpp"
 #include <optional>
 #include <string>
 #include <unordered_map>

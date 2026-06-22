@@ -32,8 +32,6 @@ namespace margelo::nitro::video { enum class IgnoreSilentSwitchMode; }
 namespace margelo::nitro::video { struct ListenerSubscription; }
 // Forward declaration of `LivePlaybackParams` to properly resolve imports.
 namespace margelo::nitro::video { struct LivePlaybackParams; }
-// Forward declaration of `MemoryRetentionState` to properly resolve imports.
-namespace margelo::nitro::video { enum class MemoryRetentionState; }
 // Forward declaration of `MemorySnapshot` to properly resolve imports.
 namespace margelo::nitro::video { struct MemorySnapshot; }
 // Forward declaration of `MixAudioMode` to properly resolve imports.
@@ -64,8 +62,6 @@ namespace margelo::nitro::video { enum class NitroSourceStartup; }
 namespace margelo::nitro::video { struct NitroSourceTransportConfig; }
 // Forward declaration of `NitroSourceTransportMode` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroSourceTransportMode; }
-// Forward declaration of `OffscreenRetention` to properly resolve imports.
-namespace margelo::nitro::video { enum class OffscreenRetention; }
 // Forward declaration of `PlaybackError` to properly resolve imports.
 namespace margelo::nitro::video { struct PlaybackError; }
 // Forward declaration of `PlaybackState` to properly resolve imports.
@@ -76,6 +72,8 @@ namespace margelo::nitro::video { enum class PreloadLevel; }
 namespace margelo::nitro::video { enum class ResizeMode; }
 // Forward declaration of `Resolution` to properly resolve imports.
 namespace margelo::nitro::video { struct Resolution; }
+// Forward declaration of `RetentionLevel` to properly resolve imports.
+namespace margelo::nitro::video { enum class RetentionLevel; }
 // Forward declaration of `SourceType` to properly resolve imports.
 namespace margelo::nitro::video { enum class SourceType; }
 // Forward declaration of `SurfaceType` to properly resolve imports.
@@ -102,7 +100,6 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "IgnoreSilentSwitchMode.hpp"
 #include "ListenerSubscription.hpp"
 #include "LivePlaybackParams.hpp"
-#include "MemoryRetentionState.hpp"
 #include "MemorySnapshot.hpp"
 #include "MixAudioMode.hpp"
 #include "NativeNitroPlayerConfig.hpp"
@@ -118,12 +115,12 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "NitroSourceStartup.hpp"
 #include "NitroSourceTransportConfig.hpp"
 #include "NitroSourceTransportMode.hpp"
-#include "OffscreenRetention.hpp"
 #include "PlaybackError.hpp"
 #include "PlaybackState.hpp"
 #include "PreloadLevel.hpp"
 #include "ResizeMode.hpp"
 #include "Resolution.hpp"
+#include "RetentionLevel.hpp"
 #include "SourceType.hpp"
 #include "SurfaceType.hpp"
 #include "onFirstFrameData.hpp"

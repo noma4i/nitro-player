@@ -18,16 +18,16 @@ public extension NitroSourceRetentionConfig {
   /**
    * Create a new instance of `NitroSourceRetentionConfig`.
    */
-  init(preload: PreloadLevel?, offscreen: OffscreenRetention?, trimDelayMs: Double?, feedPoolEligible: Bool?) {
+  init(preload: PreloadLevel?, offscreen: RetentionLevel?, trimDelayMs: Double?, feedPoolEligible: Bool?) {
     self.init({ () -> bridge.std__optional_PreloadLevel_ in
       if let __unwrappedValue = preload {
         return bridge.create_std__optional_PreloadLevel_(__unwrappedValue)
       } else {
         return .init()
       }
-    }(), { () -> bridge.std__optional_OffscreenRetention_ in
+    }(), { () -> bridge.std__optional_RetentionLevel_ in
       if let __unwrappedValue = offscreen {
-        return bridge.create_std__optional_OffscreenRetention_(__unwrappedValue)
+        return bridge.create_std__optional_RetentionLevel_(__unwrappedValue)
       } else {
         return .init()
       }
@@ -52,7 +52,7 @@ public extension NitroSourceRetentionConfig {
   }
   
   @inline(__always)
-  var offscreen: OffscreenRetention? {
+  var offscreen: RetentionLevel? {
     return self.__offscreen.value
   }
   

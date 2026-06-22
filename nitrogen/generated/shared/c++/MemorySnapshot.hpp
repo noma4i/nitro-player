@@ -30,11 +30,11 @@
 
 // Forward declaration of `PreloadLevel` to properly resolve imports.
 namespace margelo::nitro::video { enum class PreloadLevel; }
-// Forward declaration of `MemoryRetentionState` to properly resolve imports.
-namespace margelo::nitro::video { enum class MemoryRetentionState; }
+// Forward declaration of `RetentionLevel` to properly resolve imports.
+namespace margelo::nitro::video { enum class RetentionLevel; }
 
 #include "PreloadLevel.hpp"
-#include "MemoryRetentionState.hpp"
+#include "RetentionLevel.hpp"
 
 namespace margelo::nitro::video {
 
@@ -47,13 +47,13 @@ namespace margelo::nitro::video {
     double sourceBytes     SWIFT_PRIVATE;
     double totalBytes     SWIFT_PRIVATE;
     PreloadLevel preloadLevel     SWIFT_PRIVATE;
-    MemoryRetentionState retentionState     SWIFT_PRIVATE;
+    RetentionLevel retentionState     SWIFT_PRIVATE;
     bool isAttachedToView     SWIFT_PRIVATE;
     bool isPlaying     SWIFT_PRIVATE;
 
   public:
     MemorySnapshot() = default;
-    explicit MemorySnapshot(double playerBytes, double sourceBytes, double totalBytes, PreloadLevel preloadLevel, MemoryRetentionState retentionState, bool isAttachedToView, bool isPlaying): playerBytes(playerBytes), sourceBytes(sourceBytes), totalBytes(totalBytes), preloadLevel(preloadLevel), retentionState(retentionState), isAttachedToView(isAttachedToView), isPlaying(isPlaying) {}
+    explicit MemorySnapshot(double playerBytes, double sourceBytes, double totalBytes, PreloadLevel preloadLevel, RetentionLevel retentionState, bool isAttachedToView, bool isPlaying): playerBytes(playerBytes), sourceBytes(sourceBytes), totalBytes(totalBytes), preloadLevel(preloadLevel), retentionState(retentionState), isAttachedToView(isAttachedToView), isPlaying(isPlaying) {}
 
   public:
     friend bool operator==(const MemorySnapshot& lhs, const MemorySnapshot& rhs) = default;
@@ -73,7 +73,7 @@ namespace margelo::nitro {
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "sourceBytes"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "totalBytes"))),
         JSIConverter<margelo::nitro::video::PreloadLevel>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "preloadLevel"))),
-        JSIConverter<margelo::nitro::video::MemoryRetentionState>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "retentionState"))),
+        JSIConverter<margelo::nitro::video::RetentionLevel>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "retentionState"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isAttachedToView"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPlaying")))
       );
@@ -84,7 +84,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "sourceBytes"), JSIConverter<double>::toJSI(runtime, arg.sourceBytes));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "totalBytes"), JSIConverter<double>::toJSI(runtime, arg.totalBytes));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "preloadLevel"), JSIConverter<margelo::nitro::video::PreloadLevel>::toJSI(runtime, arg.preloadLevel));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "retentionState"), JSIConverter<margelo::nitro::video::MemoryRetentionState>::toJSI(runtime, arg.retentionState));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "retentionState"), JSIConverter<margelo::nitro::video::RetentionLevel>::toJSI(runtime, arg.retentionState));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "isAttachedToView"), JSIConverter<bool>::toJSI(runtime, arg.isAttachedToView));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "isPlaying"), JSIConverter<bool>::toJSI(runtime, arg.isPlaying));
       return obj;
@@ -101,7 +101,7 @@ namespace margelo::nitro {
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "sourceBytes")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "totalBytes")))) return false;
       if (!JSIConverter<margelo::nitro::video::PreloadLevel>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "preloadLevel")))) return false;
-      if (!JSIConverter<margelo::nitro::video::MemoryRetentionState>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "retentionState")))) return false;
+      if (!JSIConverter<margelo::nitro::video::RetentionLevel>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "retentionState")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isAttachedToView")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPlaying")))) return false;
       return true;

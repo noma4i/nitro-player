@@ -28,6 +28,11 @@ final class VideoPreviewRuntime {
 
   // Total wall-clock budget for the AVPlayer-based HLS frame grab.
   private static let hlsGrabBudget: TimeInterval = 5
+  // AVPlayer decode poll tuning. Tied to decoder timing, not a cross-platform parity knob.
+  private static let readinessPollIntervalNs: UInt64 = 50_000_000
+  private static let pausedFramePollTimeout: TimeInterval = 0.3
+  private static let playingFramePollTimeout: TimeInterval = 1.5
+  private static let pixelBufferPollIntervalNs: UInt64 = 16_000_000
   private static let ciContext = CIContext()
 
   private let store = HlsCacheStore()
@@ -201,7 +206,7 @@ final class VideoPreviewRuntime {
       default:
         break
       }
-      try? await Task.sleep(nanoseconds: 50_000_000)
+      try? await Task.sleep(nanoseconds: Self.readinessPollIntervalNs)
     }
     return false
   }
@@ -226,14 +231,14 @@ final class VideoPreviewRuntime {
 
     // A paused player rarely yields a buffer, so try a cheap copy first and then
     // briefly play (muted, off-screen) to force the decoder to emit a frame.
-    if let buffer = await pollPixelBuffer(output: output, timeout: 0.3) {
+    if let buffer = await pollPixelBuffer(output: output, timeout: Self.pausedFramePollTimeout) {
       return convert(buffer, profile: profile)
     }
 
     player.play()
     let buffer = await pollPixelBuffer(
       output: output,
-      timeout: min(1.5, max(0, deadline.timeIntervalSinceNow))
+      timeout: min(Self.playingFramePollTimeout, max(0, deadline.timeIntervalSinceNow))
     )
     player.pause()
 
@@ -254,7 +259,7 @@ final class VideoPreviewRuntime {
          let buffer = output.copyPixelBuffer(forItemTime: itemTime, itemTimeForDisplay: nil) {
         return buffer
       }
-      try? await Task.sleep(nanoseconds: 16_000_000)
+      try? await Task.sleep(nanoseconds: Self.pixelBufferPollIntervalNs)
     }
     return nil
   }

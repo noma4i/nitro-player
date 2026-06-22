@@ -58,7 +58,7 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
     return HybridNitroPlayerUriNormalizer.normalize(input, applicationContext)
   }
 
-  private fun normalizeConfig(config: NativeNitroPlayerConfig): NativeNitroPlayerConfig {
+  private fun normalizeAndRouteConfig(config: NativeNitroPlayerConfig): NativeNitroPlayerConfig {
     val normalizedUri = normalizeUri(config.uri)
     val normalizedConfig = config.copy(uri = normalizedUri)
     val shouldUseHlsProxy = normalizedConfig.transport?.mode != NitroSourceTransportMode.DIRECT
@@ -81,7 +81,7 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
   }
 
   override fun fromUri(uri: String): HybridNitroPlayerSourceSpec {
-    val config = normalizeConfig(NativeNitroPlayerConfig(
+    val config = normalizeAndRouteConfig(NativeNitroPlayerConfig(
       uri = normalizeUri(uri),
       headers = null,
       metadata = null,
@@ -97,7 +97,7 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
 
   override fun fromNitroPlayerConfig(config: NativeNitroPlayerConfig): HybridNitroPlayerSourceSpec {
     val normalizedConfig = config.copy(uri = normalizeUri(config.uri))
-    val effectiveConfig = normalizeConfig(config)
+    val effectiveConfig = normalizeAndRouteConfig(config)
     return HybridNitroPlayerSource(
       config = effectiveConfig,
       originalConfig = normalizedConfig,

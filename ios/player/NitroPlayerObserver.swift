@@ -114,7 +114,9 @@ class NitroPlayerObserver: NSObject {
       self?.notifyDelegate { $0.onPlayerStatusChanged(status: status) }
     }
     
-    let interval = CMTime(seconds: 0.25, preferredTimescale: 600)
+    // Playback progress tick. parity: Android PROGRESS_UPDATE_INTERVAL_MS = 250ms.
+    let progressUpdateIntervalSeconds = 0.25
+    let interval = CMTime(seconds: progressUpdateIntervalSeconds, preferredTimescale: 600)
     playerProgressPeriodicObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] _ in
       guard let self, let player = self.player, let delegate = self.delegate, !delegate.isReleased else { return }
       

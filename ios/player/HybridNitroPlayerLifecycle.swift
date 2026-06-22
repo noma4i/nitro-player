@@ -243,7 +243,7 @@ extension HybridNitroPlayer {
     return currentSourceConfig()?.retention?.preload ?? .buffered
   }
 
-  func resolvedOffscreenRetention() -> OffscreenRetention {
+  func resolvedOffscreenRetention() -> RetentionLevel {
     guard hasActiveSource else {
       return .hot
     }
@@ -251,14 +251,16 @@ extension HybridNitroPlayer {
   }
 
   func resolvedPauseTrimDelayMs() -> Double? {
-    let delayMs = currentSourceConfig()?.retention?.trimDelayMs ?? 10000.0
+    // parity: Android HybridNitroPlayerLifecycle DEFAULT_TRIM_DELAY_MS = 10000.
+    let defaultTrimDelayMs = 10000.0
+    let delayMs = currentSourceConfig()?.retention?.trimDelayMs ?? defaultTrimDelayMs
     if delayMs.isInfinite {
       return nil
     }
     return max(0, delayMs)
   }
 
-  func currentRetentionState() -> MemoryRetentionState {
+  func currentRetentionState() -> RetentionLevel {
     guard hasActiveSource else {
       return .cold
     }

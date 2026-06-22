@@ -6,6 +6,7 @@ import type {
   NitroSourceStartup,
   NitroSourceTransportConfig
 } from './types/NitroPlayerConfig';
+import { SOURCE_POLICIES } from './types/NitroPlayerConfig';
 
 export interface NitroSourcePolicyDefaults {
   startup?: NitroSourceStartup;
@@ -90,4 +91,4 @@ export const SOURCE_POLICY_DEFAULTS: Record<NitroSourcePolicy, NitroSourcePolicy
 };
 
 export const isNitroSourcePolicy = (value: unknown): value is NitroSourcePolicy =>
-  value === 'auto' || value === 'feed' || value === 'hero' || value === 'thumbnail' || value === 'manual';
+  typeof value === 'string' && (SOURCE_POLICIES as readonly string[]).includes(value);

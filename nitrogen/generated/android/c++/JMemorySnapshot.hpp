@@ -10,10 +10,10 @@
 #include <fbjni/fbjni.h>
 #include "MemorySnapshot.hpp"
 
-#include "JMemoryRetentionState.hpp"
 #include "JPreloadLevel.hpp"
-#include "MemoryRetentionState.hpp"
+#include "JRetentionLevel.hpp"
 #include "PreloadLevel.hpp"
+#include "RetentionLevel.hpp"
 
 namespace margelo::nitro::video {
 
@@ -42,8 +42,8 @@ namespace margelo::nitro::video {
       double totalBytes = this->getFieldValue(fieldTotalBytes);
       static const auto fieldPreloadLevel = clazz->getField<JPreloadLevel>("preloadLevel");
       jni::local_ref<JPreloadLevel> preloadLevel = this->getFieldValue(fieldPreloadLevel);
-      static const auto fieldRetentionState = clazz->getField<JMemoryRetentionState>("retentionState");
-      jni::local_ref<JMemoryRetentionState> retentionState = this->getFieldValue(fieldRetentionState);
+      static const auto fieldRetentionState = clazz->getField<JRetentionLevel>("retentionState");
+      jni::local_ref<JRetentionLevel> retentionState = this->getFieldValue(fieldRetentionState);
       static const auto fieldIsAttachedToView = clazz->getField<jboolean>("isAttachedToView");
       jboolean isAttachedToView = this->getFieldValue(fieldIsAttachedToView);
       static const auto fieldIsPlaying = clazz->getField<jboolean>("isPlaying");
@@ -65,7 +65,7 @@ namespace margelo::nitro::video {
      */
     [[maybe_unused]]
     static jni::local_ref<JMemorySnapshot::javaobject> fromCpp(const MemorySnapshot& value) {
-      using JSignature = JMemorySnapshot(double, double, double, jni::alias_ref<JPreloadLevel>, jni::alias_ref<JMemoryRetentionState>, jboolean, jboolean);
+      using JSignature = JMemorySnapshot(double, double, double, jni::alias_ref<JPreloadLevel>, jni::alias_ref<JRetentionLevel>, jboolean, jboolean);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -74,7 +74,7 @@ namespace margelo::nitro::video {
         value.sourceBytes,
         value.totalBytes,
         JPreloadLevel::fromCpp(value.preloadLevel),
-        JMemoryRetentionState::fromCpp(value.retentionState),
+        JRetentionLevel::fromCpp(value.retentionState),
         value.isAttachedToView,
         value.isPlaying
       );
