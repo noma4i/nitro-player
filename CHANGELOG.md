@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.0.0-beta.1
+
+### Breaking Changes
+
+- Android: hand-written native code is realigned to domain-matched packages `com.nitroplay.video.<domain>` (`player`, `source`, `view`, `streaming`, `preview`, `support`, `bridge`). Codegen/autolinking-pinned packages (`com.margelo.nitro.video`, `com.nitroplay.video.bridge`) are unchanged. Consumers that referenced internal Android package paths must update them.
+- Removed dead/duplicate public TypeScript exports left over from the domain split: unused event aliases (`LoadEvent`, `LoadStartEvent`, `FirstFrameEvent`, `VolumeChangeEvent`) and the duplicate retention unions, which are now a single `RetentionLevel`.
+
+### Changed
+
+- Unified the cross-platform DSL: deduplicated enums and identity keys and aligned playback-state emission dedupe across TypeScript, iOS, and Android.
+- Split first-frame/preview generation out of the `HybridNitroPlayer` core into mirrored iOS and Android extensions.
+
+### Fixed
+
+- iOS and Android: `replaceSourceAsync` now preserves the early-play intent, so swapping the source while playing keeps the new source playing instead of pausing.
+- Example: Feed List rows keep a constant height while only the video surface mounts per viewability, fixing the scroll flicker and stuck-scroll behavior.
+
+### Build
+
+- `lib/` is tracked again (it was accidentally git-ignored during the refactor) and regenerated to match the refactored `src` domains, so GitHub-tag installs ship the prebuilt output.
+
 ## 1.1.0-beta.4
 
 ### Added
@@ -78,6 +99,7 @@
 ## 1.0.1
 
 ### Fixed
+
 - iOS: load `AVAsset` duration, video tracks, `naturalSize`, `preferredTransform`, and `estimatedDataRate` via async `load(...)` in `getAssetInformation()`, fixing metadata loading under AVFoundation's async property model.
 - iOS: derive video orientation from the preferred transform instead of the removed `AVAssetTrack.orientation`; `onLoad` emits `.unknown` orientation until it is computed.
 - iOS: simplify `AVAsset.estimatedMemoryUsage` to file-size-only for URL assets, dropping unreliable track-based estimation.
