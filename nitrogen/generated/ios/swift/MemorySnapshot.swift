@@ -18,42 +18,62 @@ public extension MemorySnapshot {
   /**
    * Create a new instance of `MemorySnapshot`.
    */
-  init(playerBytes: Double, sourceBytes: Double, totalBytes: Double, preloadLevel: PreloadLevel, retentionState: RetentionLevel, isAttachedToView: Bool, isPlaying: Bool) {
-    self.init(playerBytes, sourceBytes, totalBytes, preloadLevel, retentionState, isAttachedToView, isPlaying)
+  init(playerBytes: Double, sourceBytes: Double, totalBytes: Double, preloadLevel: PreloadLevel, retentionState: RetentionLevel, isAttachedToView: Bool, isPlaying: Bool, wantsToPlay: Bool, isFeedPoolEligible: Bool, isPinnedForFeedPool: Bool, isPinnedForResourcePressure: Bool) {
+    self.init(playerBytes, sourceBytes, totalBytes, preloadLevel, retentionState, isAttachedToView, isPlaying, wantsToPlay, isFeedPoolEligible, isPinnedForFeedPool, isPinnedForResourcePressure)
   }
 
   @inline(__always)
   var playerBytes: Double {
     return self.__playerBytes
   }
-  
+
   @inline(__always)
   var sourceBytes: Double {
     return self.__sourceBytes
   }
-  
+
   @inline(__always)
   var totalBytes: Double {
     return self.__totalBytes
   }
-  
+
   @inline(__always)
   var preloadLevel: PreloadLevel {
     return self.__preloadLevel
   }
-  
+
   @inline(__always)
   var retentionState: RetentionLevel {
     return self.__retentionState
   }
-  
+
   @inline(__always)
   var isAttachedToView: Bool {
     return self.__isAttachedToView
   }
-  
+
   @inline(__always)
   var isPlaying: Bool {
     return self.__isPlaying
+  }
+
+  @inline(__always)
+  var wantsToPlay: Bool {
+    return self.__wantsToPlay
+  }
+
+  @inline(__always)
+  var isFeedPoolEligible: Bool {
+    return self.__isFeedPoolEligible
+  }
+
+  @inline(__always)
+  var isPinnedForFeedPool: Bool {
+    return self.__isPinnedForFeedPool
+  }
+
+  @inline(__always)
+  var isPinnedForResourcePressure: Bool {
+    return self.__isPinnedForResourcePressure
   }
 }

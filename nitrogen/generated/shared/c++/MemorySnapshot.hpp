@@ -50,10 +50,14 @@ namespace margelo::nitro::video {
     RetentionLevel retentionState     SWIFT_PRIVATE;
     bool isAttachedToView     SWIFT_PRIVATE;
     bool isPlaying     SWIFT_PRIVATE;
+    bool wantsToPlay     SWIFT_PRIVATE;
+    bool isFeedPoolEligible     SWIFT_PRIVATE;
+    bool isPinnedForFeedPool     SWIFT_PRIVATE;
+    bool isPinnedForResourcePressure     SWIFT_PRIVATE;
 
   public:
     MemorySnapshot() = default;
-    explicit MemorySnapshot(double playerBytes, double sourceBytes, double totalBytes, PreloadLevel preloadLevel, RetentionLevel retentionState, bool isAttachedToView, bool isPlaying): playerBytes(playerBytes), sourceBytes(sourceBytes), totalBytes(totalBytes), preloadLevel(preloadLevel), retentionState(retentionState), isAttachedToView(isAttachedToView), isPlaying(isPlaying) {}
+    explicit MemorySnapshot(double playerBytes, double sourceBytes, double totalBytes, PreloadLevel preloadLevel, RetentionLevel retentionState, bool isAttachedToView, bool isPlaying, bool wantsToPlay, bool isFeedPoolEligible, bool isPinnedForFeedPool, bool isPinnedForResourcePressure): playerBytes(playerBytes), sourceBytes(sourceBytes), totalBytes(totalBytes), preloadLevel(preloadLevel), retentionState(retentionState), isAttachedToView(isAttachedToView), isPlaying(isPlaying), wantsToPlay(wantsToPlay), isFeedPoolEligible(isFeedPoolEligible), isPinnedForFeedPool(isPinnedForFeedPool), isPinnedForResourcePressure(isPinnedForResourcePressure) {}
 
   public:
     friend bool operator==(const MemorySnapshot& lhs, const MemorySnapshot& rhs) = default;
@@ -75,7 +79,11 @@ namespace margelo::nitro {
         JSIConverter<margelo::nitro::video::PreloadLevel>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "preloadLevel"))),
         JSIConverter<margelo::nitro::video::RetentionLevel>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "retentionState"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isAttachedToView"))),
-        JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPlaying")))
+        JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPlaying"))),
+        JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "wantsToPlay"))),
+        JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isFeedPoolEligible"))),
+        JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPinnedForFeedPool"))),
+        JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPinnedForResourcePressure")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::video::MemorySnapshot& arg) {
@@ -87,6 +95,10 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "retentionState"), JSIConverter<margelo::nitro::video::RetentionLevel>::toJSI(runtime, arg.retentionState));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "isAttachedToView"), JSIConverter<bool>::toJSI(runtime, arg.isAttachedToView));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "isPlaying"), JSIConverter<bool>::toJSI(runtime, arg.isPlaying));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "wantsToPlay"), JSIConverter<bool>::toJSI(runtime, arg.wantsToPlay));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "isFeedPoolEligible"), JSIConverter<bool>::toJSI(runtime, arg.isFeedPoolEligible));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "isPinnedForFeedPool"), JSIConverter<bool>::toJSI(runtime, arg.isPinnedForFeedPool));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "isPinnedForResourcePressure"), JSIConverter<bool>::toJSI(runtime, arg.isPinnedForResourcePressure));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -104,6 +116,10 @@ namespace margelo::nitro {
       if (!JSIConverter<margelo::nitro::video::RetentionLevel>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "retentionState")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isAttachedToView")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPlaying")))) return false;
+      if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "wantsToPlay")))) return false;
+      if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isFeedPoolEligible")))) return false;
+      if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPinnedForFeedPool")))) return false;
+      if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPinnedForResourcePressure")))) return false;
       return true;
     }
   };

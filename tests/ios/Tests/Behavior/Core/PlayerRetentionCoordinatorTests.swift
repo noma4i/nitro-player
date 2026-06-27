@@ -42,9 +42,12 @@ final class PlayerRetentionCoordinatorTests: XCTestCase {
 
   func testFeedHotPoolTrimsOnlyEligibleHotUnpinnedPlayers() {
     XCTAssertTrue(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot()))
+    XCTAssertTrue(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isAttachedToView: true)))
     XCTAssertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isFeedPoolEligible: false)))
     XCTAssertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(retentionLevel: .metadata)))
-    XCTAssertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isAttachedToView: true)))
+    XCTAssertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isPlaying: true)))
+    XCTAssertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(wantsToPlay: true)))
+    XCTAssertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isExternalPlaybackActive: true)))
   }
 
   func testFeedHotIdsKeepsPinnedPlusMostRecentRelaxedPlayers() {
@@ -57,6 +60,18 @@ final class PlayerRetentionCoordinatorTests: XCTestCase {
 
     let keep = PlayerRetentionCoordinator.feedHotIds(players: players, maxHotPlayers: 2)
 
-    XCTAssertEqual(keep, Set(["attached", "new"]))
+    XCTAssertEqual(keep, Set(["new", "attached"]))
+  }
+
+  func testFeedHotIdsKeepsPlaybackPinsOutsideRelaxedLimit() {
+    let players = [
+      FeedHotPlayerSnapshot(id: "old", activity: 1, retention: snapshot()),
+      FeedHotPlayerSnapshot(id: "new", activity: 3, retention: snapshot()),
+      FeedHotPlayerSnapshot(id: "playing", activity: 2, retention: snapshot(isPlaying: true))
+    ]
+
+    let keep = PlayerRetentionCoordinator.feedHotIds(players: players, maxHotPlayers: 1)
+
+    XCTAssertEqual(keep, Set(["playing"]))
   }
 }

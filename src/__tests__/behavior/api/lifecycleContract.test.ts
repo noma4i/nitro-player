@@ -47,7 +47,11 @@ const mockCreatePlayer = jest.fn((source: unknown) => ({
     preloadLevel: 'none',
     retentionState: 'cold',
     isAttachedToView: false,
-    isPlaying: false
+    isPlaying: false,
+    wantsToPlay: false,
+    isFeedPoolEligible: false,
+    isPinnedForFeedPool: false,
+    isPinnedForResourcePressure: false
   },
   volume: 1,
   muted: false,

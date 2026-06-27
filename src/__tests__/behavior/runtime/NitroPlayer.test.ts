@@ -34,7 +34,11 @@ jest.mock('../../../player/playerFactory', () => ({
       preloadLevel: 'buffered',
       retentionState: 'hot',
       isAttachedToView: false,
-      isPlaying: false
+      isPlaying: false,
+      wantsToPlay: false,
+      isFeedPoolEligible: true,
+      isPinnedForFeedPool: false,
+      isPinnedForResourcePressure: false
     },
     release,
     play: nativePlay,
@@ -86,7 +90,11 @@ describe('NitroPlayer delegation', () => {
         preloadLevel: 'buffered',
         retentionState: 'hot',
         isAttachedToView: false,
-        isPlaying: false
+        isPlaying: false,
+        wantsToPlay: false,
+        isFeedPoolEligible: true,
+        isPinnedForFeedPool: false,
+        isPinnedForResourcePressure: false
       },
       release: release,
       play: nativePlay,
@@ -220,7 +228,11 @@ describe('NitroPlayer async methods', () => {
         preloadLevel: 'buffered',
         retentionState: 'hot',
         isAttachedToView: false,
-        isPlaying: false
+        isPlaying: false,
+        wantsToPlay: false,
+        isFeedPoolEligible: true,
+        isPinnedForFeedPool: false,
+        isPinnedForResourcePressure: false
       },
       release,
       play: nativePlay,
@@ -452,7 +464,11 @@ describe('NitroPlayer getters', () => {
         preloadLevel: 'buffered',
         retentionState: 'hot',
         isAttachedToView: false,
-        isPlaying: false
+        isPlaying: false,
+        wantsToPlay: false,
+        isFeedPoolEligible: true,
+        isPinnedForFeedPool: false,
+        isPinnedForResourcePressure: false
       },
       release,
       play: nativePlay,

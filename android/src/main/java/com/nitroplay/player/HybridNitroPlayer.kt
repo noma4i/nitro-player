@@ -24,6 +24,7 @@ import com.nitroplay.video.support.errors.PlayerError
 import com.nitroplay.video.support.LifecycleGate
 import com.nitroplay.video.player.NitroPlayerManager
 import com.nitroplay.video.player.PlayerAppStateSnapshot
+import com.nitroplay.video.player.PlayerRetentionCoordinator
 import com.nitroplay.video.player.PlayerRetentionSnapshot
 import com.nitroplay.video.support.Threading.mainThreadProperty
 import com.nitroplay.video.support.Threading.runOnMainThread
@@ -636,10 +637,12 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     if (isReleased) return MemorySnapshot(
       playerBytes = 0.0, sourceBytes = 0.0, totalBytes = 0.0,
       preloadLevel = lifecycle.resolvedPreloadLevel(), retentionState = lifecycle.currentRetentionState(),
-      isAttachedToView = false, isPlaying = false
+      isAttachedToView = false, isPlaying = false, wantsToPlay = false,
+      isFeedPoolEligible = false, isPinnedForFeedPool = false, isPinnedForResourcePressure = false
     )
     val playerBytes = memorySize.toDouble()
     val sourceBytes = if (hasActiveSource) source.memorySize.toDouble() else 0.0
+    val retention = lifecycle.retentionSnapshot()
 
     return MemorySnapshot(
       playerBytes = playerBytes,
@@ -648,7 +651,11 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       preloadLevel = lifecycle.resolvedPreloadLevel(),
       retentionState = lifecycle.currentRetentionState(),
       isAttachedToView = isAttachedToView(),
-      isPlaying = loadedWithSource && player.isPlaying
+      isPlaying = loadedWithSource && player.isPlaying,
+      wantsToPlay = wantsToPlay,
+      isFeedPoolEligible = retention.isFeedPoolEligible,
+      isPinnedForFeedPool = PlayerRetentionCoordinator.isPinnedForFeedPool(retention),
+      isPinnedForResourcePressure = PlayerRetentionCoordinator.isPinnedForResourcePressure(retention)
     )
   }
 

@@ -37,7 +37,19 @@ data class MemorySnapshot(
   val isAttachedToView: Boolean,
   @DoNotStrip
   @Keep
-  val isPlaying: Boolean
+  val isPlaying: Boolean,
+  @DoNotStrip
+  @Keep
+  val wantsToPlay: Boolean,
+  @DoNotStrip
+  @Keep
+  val isFeedPoolEligible: Boolean,
+  @DoNotStrip
+  @Keep
+  val isPinnedForFeedPool: Boolean,
+  @DoNotStrip
+  @Keep
+  val isPinnedForResourcePressure: Boolean
 ) {
   /* primary constructor */
 
@@ -49,8 +61,8 @@ data class MemorySnapshot(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(playerBytes: Double, sourceBytes: Double, totalBytes: Double, preloadLevel: PreloadLevel, retentionState: RetentionLevel, isAttachedToView: Boolean, isPlaying: Boolean): MemorySnapshot {
-      return MemorySnapshot(playerBytes, sourceBytes, totalBytes, preloadLevel, retentionState, isAttachedToView, isPlaying)
+    private fun fromCpp(playerBytes: Double, sourceBytes: Double, totalBytes: Double, preloadLevel: PreloadLevel, retentionState: RetentionLevel, isAttachedToView: Boolean, isPlaying: Boolean, wantsToPlay: Boolean, isFeedPoolEligible: Boolean, isPinnedForFeedPool: Boolean, isPinnedForResourcePressure: Boolean): MemorySnapshot {
+      return MemorySnapshot(playerBytes, sourceBytes, totalBytes, preloadLevel, retentionState, isAttachedToView, isPlaying, wantsToPlay, isFeedPoolEligible, isPinnedForFeedPool, isPinnedForResourcePressure)
     }
   }
 }

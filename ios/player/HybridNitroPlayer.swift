@@ -373,12 +373,17 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
         preloadLevel: resolvedPreloadLevel(),
         retentionState: currentRetentionState(),
         isAttachedToView: false,
-        isPlaying: false
+        isPlaying: false,
+        wantsToPlay: false,
+        isFeedPoolEligible: false,
+        isPinnedForFeedPool: false,
+        isPinnedForResourcePressure: false
       )
     }
 
     let playerBytes = player.currentItem == nil ? 0 : max(bufferDuration * 256_000, 64_000)
     let sourceBytes = hasActiveSource ? Double((source as? HybridNitroPlayerSource)?.memorySize ?? 0) : 0
+    let retention = retentionSnapshot()
 
     return MemorySnapshot(
       playerBytes: playerBytes,
@@ -387,7 +392,11 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
       preloadLevel: resolvedPreloadLevel(),
       retentionState: currentRetentionState(),
       isAttachedToView: isAttachedToVideoView,
-      isPlaying: isPlaying
+      isPlaying: isPlaying,
+      wantsToPlay: wantsToPlay,
+      isFeedPoolEligible: retention.isFeedPoolEligible,
+      isPinnedForFeedPool: PlayerRetentionCoordinator.isPinnedForFeedPool(retention),
+      isPinnedForResourcePressure: PlayerRetentionCoordinator.isPinnedForResourcePressure(retention)
     )
   }
 

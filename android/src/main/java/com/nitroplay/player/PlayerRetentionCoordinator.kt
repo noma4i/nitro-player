@@ -27,7 +27,6 @@ internal object PlayerRetentionCoordinator {
   fun isPinnedForFeedPool(snapshot: PlayerRetentionSnapshot): Boolean {
     if (snapshot.isReleased || !snapshot.hasActiveSource) return false
     return snapshot.isPlaying ||
-      snapshot.isAttachedToView ||
       snapshot.wantsToPlay ||
       snapshot.isExternalPlaybackActive
   }

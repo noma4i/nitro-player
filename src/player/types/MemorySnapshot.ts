@@ -8,4 +8,8 @@ export interface MemorySnapshot {
   retentionState: RetentionLevel;
   isAttachedToView: boolean;
   isPlaying: boolean;
+  wantsToPlay: boolean;
+  isFeedPoolEligible: boolean;
+  isPinnedForFeedPool: boolean;
+  isPinnedForResourcePressure: boolean;
 }
