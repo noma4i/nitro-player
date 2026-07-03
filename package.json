@@ -1,6 +1,6 @@
 {
   "name": "@noma4i/nitro-play",
-  "version": "2.0.0-beta.1",
+  "version": "2.0.0-beta.2",
   "description": "Lightweight video player for React Native",
   "author": "Alexander Tsirel",
   "license": "MIT",
@@ -47,6 +47,8 @@
     "*.podspec",
     "react-native.config.js",
     "LICENSE",
+    "!example",
+    "!example/**",
     "!ios/build",
     "!android/build",
     "!**/__tests__",

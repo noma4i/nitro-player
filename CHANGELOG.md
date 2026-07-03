@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.0.0-beta.2
+
+### Added
+
+- Native three-slot feed ring playback through `NitroFeedRingPlayer`, `NitroFeedRingSlotView`, platform window planners, and the `./feedRingWindow` helper export.
+- Source policy buffer defaults and `configureSourcePolicy(policy, { buffer })` runtime overrides for future source preparations.
+- Opt-in feed adaptive quality with `adaptiveQuality`, throughput-estimate hysteresis, and a high-quality per-attach bitrate cap.
+- Stream diagnostics APIs: `streamCache.getStreamVariants`, `streamCache.getPlayersDiagnostics`, and `streamCache.getNetworkThroughputEstimate`.
+- iOS HLS proxy request ledger for player diagnostics and CDN throughput estimates.
+
+### Changed
+
+- Feed playback now uses a settle-only viewport commit contract and keeps native playback limited to the committed center slot.
+- Feed sources use a 6 Mbps peak-bitrate cap and 12 second forward-buffer bound by default.
+- HLS prefetch supports configurable leading-segment fetch count and initializes from the first resolved variant.
+- README now documents the current architecture, policy defaults, feed ring options, stream cache APIs, playback contracts, diagnostics, and component props.
+
+### Fixed
+
+- iOS feed looping seeks without rebuilding the player item, preserving seamless loop playback.
+- iOS and Android playback watchdogs are loop-aware and recover bounded startup or progress stalls.
+- Preview and prewarm paths preserve first-frame readiness while staying aligned with source identity and transport diagnostics.
+
 ## 2.0.0-beta.1
 
 ### Breaking Changes
