@@ -12,6 +12,22 @@
 namespace margelo::nitro::video { struct BandwidthData; }
 // Forward declaration of `BufferConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct BufferConfig; }
+// Forward declaration of `FeedRingCatalogItem` to properly resolve imports.
+namespace margelo::nitro::video { struct FeedRingCatalogItem; }
+// Forward declaration of `FeedRingCatalog` to properly resolve imports.
+namespace margelo::nitro::video { struct FeedRingCatalog; }
+// Forward declaration of `FeedRingSlotSnapshot` to properly resolve imports.
+namespace margelo::nitro::video { struct FeedRingSlotSnapshot; }
+// Forward declaration of `FeedRingSlotState` to properly resolve imports.
+namespace margelo::nitro::video { struct FeedRingSlotState; }
+// Forward declaration of `FeedRingSnapshot` to properly resolve imports.
+namespace margelo::nitro::video { struct FeedRingSnapshot; }
+// Forward declaration of `FeedRingViewport` to properly resolve imports.
+namespace margelo::nitro::video { struct FeedRingViewport; }
+// Forward declaration of `HybridNitroFeedRingPlayerFactorySpec` to properly resolve imports.
+namespace margelo::nitro::video { class HybridNitroFeedRingPlayerFactorySpec; }
+// Forward declaration of `HybridNitroFeedRingPlayerSpec` to properly resolve imports.
+namespace margelo::nitro::video { class HybridNitroFeedRingPlayerSpec; }
 // Forward declaration of `HybridNitroPlayerEventEmitterSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridNitroPlayerEventEmitterSpec; }
 // Forward declaration of `HybridNitroPlayerFactorySpec` to properly resolve imports.
@@ -90,6 +106,14 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 // Include C++ defined types
 #include "BandwidthData.hpp"
 #include "BufferConfig.hpp"
+#include "FeedRingCatalog.hpp"
+#include "FeedRingCatalogItem.hpp"
+#include "FeedRingSlotSnapshot.hpp"
+#include "FeedRingSlotState.hpp"
+#include "FeedRingSnapshot.hpp"
+#include "FeedRingViewport.hpp"
+#include "HybridNitroFeedRingPlayerFactorySpec.hpp"
+#include "HybridNitroFeedRingPlayerSpec.hpp"
 #include "HybridNitroPlayerEventEmitterSpec.hpp"
 #include "HybridNitroPlayerFactorySpec.hpp"
 #include "HybridNitroPlayerSourceFactorySpec.hpp"
@@ -137,6 +161,7 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include <string>
 #include <unordered_map>
 #include <variant>
+#include <vector>
 
 // C++ helpers for Swift
 #include "NitroPlay-Swift-Cxx-Bridge.hpp"
@@ -148,6 +173,10 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include <NitroModules/DateToChronoDate.hpp>
 
 // Forward declarations of Swift defined types
+// Forward declaration of `HybridNitroFeedRingPlayerFactorySpec_cxx` to properly resolve imports.
+namespace NitroPlay { class HybridNitroFeedRingPlayerFactorySpec_cxx; }
+// Forward declaration of `HybridNitroFeedRingPlayerSpec_cxx` to properly resolve imports.
+namespace NitroPlay { class HybridNitroFeedRingPlayerSpec_cxx; }
 // Forward declaration of `HybridNitroPlayerEventEmitterSpec_cxx` to properly resolve imports.
 namespace NitroPlay { class HybridNitroPlayerEventEmitterSpec_cxx; }
 // Forward declaration of `HybridNitroPlayerFactorySpec_cxx` to properly resolve imports.

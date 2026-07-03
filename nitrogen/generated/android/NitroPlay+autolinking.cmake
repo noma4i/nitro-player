@@ -33,6 +33,8 @@ target_sources(
   # Autolinking Setup
   ../nitrogen/generated/android/NitroPlayOnLoad.cpp
   # Shared Nitrogen C++ sources
+  ../nitrogen/generated/shared/c++/HybridNitroFeedRingPlayerSpec.cpp
+  ../nitrogen/generated/shared/c++/HybridNitroFeedRingPlayerFactorySpec.cpp
   ../nitrogen/generated/shared/c++/HybridNitroPlayerSpec.cpp
   ../nitrogen/generated/shared/c++/HybridNitroPlayerFactorySpec.cpp
   ../nitrogen/generated/shared/c++/HybridNitroPlayerEventEmitterSpec.cpp
@@ -41,6 +43,8 @@ target_sources(
   ../nitrogen/generated/shared/c++/HybridNitroPlayerViewManagerSpec.cpp
   ../nitrogen/generated/shared/c++/HybridNitroPlayerViewManagerFactorySpec.cpp
   # Android-specific Nitrogen C++ sources
+  ../nitrogen/generated/android/c++/JHybridNitroFeedRingPlayerSpec.cpp
+  ../nitrogen/generated/android/c++/JHybridNitroFeedRingPlayerFactorySpec.cpp
   ../nitrogen/generated/android/c++/JHybridNitroPlayerSpec.cpp
   ../nitrogen/generated/android/c++/JVariant_NullType_PlaybackError.cpp
   ../nitrogen/generated/android/c++/JHybridNitroPlayerFactorySpec.cpp

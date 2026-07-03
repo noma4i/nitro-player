@@ -35,7 +35,7 @@ final class VideoPreviewRuntime {
   private static let pixelBufferPollIntervalNs: UInt64 = 16_000_000
   private static let ciContext = CIContext()
 
-  private let store = HlsCacheStore()
+  private let store = HlsCacheStore.shared
   private let requestCoordinator = PreviewRequestCoordinator<VideoPreviewResult>()
 
   private init() {}

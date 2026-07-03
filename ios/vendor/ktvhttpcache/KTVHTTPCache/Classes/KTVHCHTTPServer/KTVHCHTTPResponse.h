@@ -18,5 +18,6 @@
 - (instancetype)init NS_UNAVAILABLE;
 
 - (instancetype)initWithConnection:(KTVHCHTTPConnection *)connection dataRequest:(KTVHCDataRequest *)dataRequest NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithConnection:(KTVHCHTTPConnection *)connection dataRequest:(KTVHCDataRequest *)dataRequest ledgerRequestId:(NSNumber *)ledgerRequestId;
 
 @end

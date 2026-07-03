@@ -11,6 +11,7 @@
 #import "KTVHCHTTPResponse.h"
 #import "KTVHCDataStorage.h"
 #import "KTVHCHTTPHeader.h"
+#import "KTVHCRequestLedger.h"
 #import "KTVHCURLTool.h"
 #import "KTVHCLog.h"
 
@@ -80,10 +81,11 @@
     }
     KTVHCLogHTTPConnection(@"%p, Accept request\nURL : %@", self, URL);
     KTVHCDataRequest *dataRequest = [[KTVHCDataRequest alloc] initWithURL:URL headers:request.allHeaderFields];
+    NSNumber *ledgerRequestId = [[KTVHCRequestLedger sharedLedger] beginRequestWithURL:URL];
     if ([URL.absoluteString containsString:@".m3u"]) {
-        return [[KTVHCHTTPHLSResponse alloc] initWithConnection:self dataRequest:dataRequest];
+        return [[KTVHCHTTPHLSResponse alloc] initWithConnection:self dataRequest:dataRequest ledgerRequestId:ledgerRequestId];
     }
-    return [[KTVHCHTTPResponse alloc] initWithConnection:self dataRequest:dataRequest];
+    return [[KTVHCHTTPResponse alloc] initWithConnection:self dataRequest:dataRequest ledgerRequestId:ledgerRequestId];
 }
 
 

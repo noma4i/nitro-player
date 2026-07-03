@@ -1,7 +1,16 @@
 import { resolveSource } from '../source/resolveSource';
 import type { ResolvableSource } from '../source/resolveSource';
 import { createUnavailableWarner, getNativeStreamRuntime } from '../support/nativeStreamRuntime';
-import type { StreamCacheConfig, StreamCacheNativeModule, StreamCacheStats, StreamHeaders, StreamSourceCacheStats } from './types';
+import type {
+  StreamCacheConfig,
+  StreamCacheNativeModule,
+  StreamCacheStats,
+  StreamHeaders,
+  StreamNetworkThroughputEstimate,
+  StreamPlayersDiagnostics,
+  StreamSourceCacheStats,
+  StreamVariant
+} from './types';
 
 export const DEFAULT_STREAM_CACHE_MAX_BYTES = 4 * 1024 * 1024 * 1024;
 
@@ -18,6 +27,8 @@ const DEFAULT_STREAM_CACHE_STATS: StreamSourceCacheStats = {
 };
 
 const NativeStreamCache = getNativeStreamRuntime<StreamCacheNativeModule>();
+const MIN_PREFETCH_SEGMENTS = 1;
+const MAX_PREFETCH_SEGMENTS = 6;
 
 const isHlsManifestUrl = (uri: string): boolean => {
   const withoutQuery = uri.split('?')[0]?.toLowerCase() ?? uri.toLowerCase();
@@ -28,7 +39,7 @@ class StreamCache {
   private readonly warnUnavailable = createUnavailableWarner('StreamCache');
 
   async prefetch(source: ResolvableSource, headers?: StreamHeaders): Promise<void> {
-    if (!NativeStreamCache?.prefetchFirstSegment) {
+    if (!NativeStreamCache?.prefetchLeadingSegments) {
       this.warnUnavailable();
       return;
     }
@@ -39,7 +50,7 @@ class StreamCache {
     }
 
     try {
-      await NativeStreamCache.prefetchFirstSegment(resolved.uri, resolved.headers);
+      await NativeStreamCache.prefetchLeadingSegments(resolved.uri, resolved.headers);
     } catch (error) {
       console.warn('[StreamCache] Prefetch failed', resolved.uri, error);
     }
@@ -83,6 +94,52 @@ class StreamCache {
     }
   }
 
+  async getPlayersDiagnostics(): Promise<StreamPlayersDiagnostics | null> {
+    if (!NativeStreamCache?.getPlayersDiagnostics) {
+      return null;
+    }
+    try {
+      return await NativeStreamCache.getPlayersDiagnostics();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Estimates upstream network throughput from proxy ledger entries that were
+   * backed by real CDN requests. Partial cache fills can slightly overstate the
+   * value, so callers should use hysteresis instead of a one-sample switch.
+   */
+  async getNetworkThroughputEstimate(): Promise<StreamNetworkThroughputEstimate | null> {
+    if (!NativeStreamCache?.getNetworkThroughputEstimate) {
+      return null;
+    }
+    try {
+      return await NativeStreamCache.getNetworkThroughputEstimate();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Discovers HLS master-playlist variants. Pair this with
+   * `configureSourcePolicy` to choose the playback cap used by future sources.
+   */
+  async getStreamVariants(source: ResolvableSource, headers?: StreamHeaders): Promise<StreamVariant[] | null> {
+    const resolved = resolveSource(source, headers);
+    if (!isHlsManifestUrl(resolved.uri)) {
+      return [];
+    }
+    if (!NativeStreamCache?.getStreamVariants) {
+      return null;
+    }
+    try {
+      return await NativeStreamCache.getStreamVariants(resolved.uri, resolved.headers);
+    } catch {
+      return null;
+    }
+  }
+
   async configure(config: StreamCacheConfig): Promise<boolean> {
     if (!NativeStreamCache?.configureCache) {
       this.warnUnavailable();
@@ -98,13 +155,18 @@ class StreamCache {
 }
 
 const normalizeConfig = (config: StreamCacheConfig): StreamCacheConfig => {
-  if (typeof config.maxBytes !== 'number') {
-    return {};
+  const normalized: StreamCacheConfig = {};
+
+  if (typeof config.maxBytes === 'number' && Number.isFinite(config.maxBytes) && config.maxBytes > 0) {
+    normalized.maxBytes = Math.floor(config.maxBytes);
   }
-  if (!Number.isFinite(config.maxBytes) || config.maxBytes <= 0) {
-    return {};
+
+  if (typeof config.prefetchSegments === 'number' && Number.isFinite(config.prefetchSegments)) {
+    const flooredSegments = Math.floor(config.prefetchSegments);
+    normalized.prefetchSegments = Math.min(MAX_PREFETCH_SEGMENTS, Math.max(MIN_PREFETCH_SEGMENTS, flooredSegments));
   }
-  return { maxBytes: Math.floor(config.maxBytes) };
+
+  return normalized;
 };
 
 export const streamCache = new StreamCache();

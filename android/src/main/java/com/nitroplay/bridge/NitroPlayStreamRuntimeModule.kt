@@ -40,9 +40,9 @@ class NitroPlayStreamRuntimeModule(private val reactContext: ReactApplicationCon
     }
 
     @ReactMethod
-    fun prefetchFirstSegment(url: String, headers: ReadableMap?, promise: Promise) {
+    fun prefetchLeadingSegments(url: String, headers: ReadableMap?, promise: Promise) {
         try {
-            HlsProxyRuntime.prefetchFirstSegment(url, headers, onComplete = {
+            HlsProxyRuntime.prefetchLeadingSegments(url, HlsHeaderCodec.decode(headers), onComplete = {
                 promise.resolve(true)
             }, onError = { err ->
                 promise.reject("prefetch_error", err)
@@ -63,9 +63,21 @@ class NitroPlayStreamRuntimeModule(private val reactContext: ReactApplicationCon
     }
 
     @ReactMethod
+    fun getStreamVariants(url: String, headers: ReadableMap?, promise: Promise) {
+        previewExecutor.execute {
+            try {
+                promise.resolve(HlsProxyRuntime.getStreamVariants(url, HlsHeaderCodec.decode(headers)))
+            } catch (err: Throwable) {
+                promise.reject("variants_error", err)
+            }
+        }
+    }
+
+    @ReactMethod
     fun configureCache(options: ReadableMap?, promise: Promise) {
         val maxBytes = if (options?.hasKey("maxBytes") == true) options.getDouble("maxBytes") else null
-        HlsProxyRuntime.configureCache(maxBytes)
+        val prefetchSegments = if (options?.hasKey("prefetchSegments") == true) options.getDouble("prefetchSegments") else null
+        HlsProxyRuntime.configureCache(maxBytes, prefetchSegments)
         promise.resolve(true)
     }
 
@@ -105,7 +117,7 @@ class NitroPlayStreamRuntimeModule(private val reactContext: ReactApplicationCon
         }
     }
 
-    // LifecycleEventListener — self-heal on foreground return
+    // LifecycleEventListener self-heals on foreground return.
     override fun onHostResume() {
         HlsProxyRuntime.onHostResume()
     }

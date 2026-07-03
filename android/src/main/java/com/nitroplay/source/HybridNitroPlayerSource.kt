@@ -116,6 +116,17 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
     return originalConfig.uri
   }
 
+  fun requestLeadingSegmentPrefetch() {
+    if (!isProxyRouteActive) {
+      return
+    }
+
+    HlsProxyRuntime.requestLeadingSegmentPrefetchAsync(
+      originalConfig.uri,
+      originalConfig.headers
+    )
+  }
+
   @Synchronized
   fun refreshPlaybackRouteForStartupRecovery(): Boolean {
     if (!supportsStartupRecovery()) {

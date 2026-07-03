@@ -1,6 +1,6 @@
 import { NitroPlayerRuntimeError } from '../support/errors/NitroPlayerError';
+import { DEFAULT_SOURCE_POLICY, isNitroSourcePolicy, resolveSourcePolicyDefaults } from './sourcePolicy';
 import { validateSourceConfig } from './sourceValidation';
-import { DEFAULT_SOURCE_POLICY, isNitroSourcePolicy, SOURCE_POLICY_DEFAULTS } from './sourcePolicy';
 import type {
   NativeNitroPlayerConfig,
   NitroSourceConfig,
@@ -88,7 +88,7 @@ const resolvePolicy = (config: NitroSourceConfig): NitroSourcePolicy => {
 const mergeConfig = (config: NitroSourceConfig): NativeNitroPlayerConfig & { policy: NitroSourcePolicy } => {
   const policy = resolvePolicy(config);
   validateSourceConfig(config);
-  const defaults = SOURCE_POLICY_DEFAULTS[policy];
+  const defaults = resolveSourcePolicyDefaults(policy);
   const merged: NativeNitroPlayerConfig & { policy: NitroSourcePolicy } = {
     uri: resolveUri(config.uri),
     headers: config.headers,

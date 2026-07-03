@@ -58,8 +58,9 @@ extension HybridNitroPlayer {
 
     self.playerItem = nil
     self.readyToDisplay = false
+    self.resetPlaybackMetrics()
 
-    if let source = self.source as? HybridNitroPlayerSource {
+    if let source = self.currentHybridSource() {
       source.trimToCold()
     }
 
@@ -96,7 +97,7 @@ extension HybridNitroPlayer {
         }
 
         do {
-          try await (self.source as? HybridNitroPlayerSource)?.warmMetadata()
+          try await self.currentHybridSource()?.warmMetadata()
           promise.resolve(withResult: ())
         } catch {
           promise.reject(withError: error)
@@ -129,12 +130,7 @@ extension HybridNitroPlayer {
   }
 
   func replaceSourceAsync(source: any HybridNitroPlayerSourceSpec) throws -> Promise<Void> {
-    // Preserve the early-play intent across the swap: `wantsToPlay` is true while
-    // the player is playing or waiting to play, so a swap mid-playback (or a
-    // play() issued right before the swap) must auto-resume the new source.
-    let shouldAutoPlay = wantsToPlay
-    wantsToPlay = false
-    cancelStartupRecovery()
+    let command = beginSourceCommand(allowAutoPlay: true)
     let promise = Promise<Void>()
     Task.detached(priority: .userInitiated) { [weak self] in
       guard let self else {
@@ -144,29 +140,40 @@ extension HybridNitroPlayer {
         )
         return
       }
-
-      await self.sourceLoader.cancel()
-
-      if let oldSource = self.source as? HybridNitroPlayerSource {
-        oldSource.trimToCold()
+      guard let command else {
+        promise.resolve(withResult: ())
+        return
       }
 
-      self.initTask?.cancel()
-      self.initTask = nil
-      self.artworkTask?.cancel()
-      self.artworkTask = nil
-      self.source = source
-      self.hasActiveSource = true
-      self.beginSourceGeneration()
-      let generation = self.sourceGeneration
-      self.resumePositionSeconds = 0
-      self.resetPlaybackError()
+      await self.sourceLoader.cancel()
+      command.oldSource?.trimToCold()
+
+      let accepted = self.mainThreadExecutor.run { () -> Bool in
+        guard self.lifecycleGate.shouldDeliverCallback(capturedGeneration: command.generation) else {
+          return false
+        }
+
+        self.sourceStorage = source
+        self.hasActiveSource = true
+        self.resumePositionSeconds = 0
+        self.resetPlaybackMetrics()
+        self.readyToDisplay = false
+        self.isCurrentlyBuffering = false
+        self.status = .loading
+        self.resetPlaybackError()
+        self.emitPlaybackState()
+        return true
+      }
+      guard accepted else {
+        promise.resolve(withResult: ())
+        return
+      }
 
       do {
         try await self.prepareBufferedState()
-        if shouldAutoPlay {
+        if command.shouldAutoPlay {
           await MainActor.run { [weak self] in
-            guard let self, !self.isReleased, self.sourceGeneration == generation else { return }
+            guard let self, self.lifecycleGate.shouldDeliverCallback(capturedGeneration: command.generation) else { return }
             // currentItem is set by prepareBufferedState, so play() takes the
             // synchronous start path and re-asserts wantsToPlay.
             try? self.play()
@@ -186,15 +193,24 @@ extension HybridNitroPlayer {
   }
 
   func clearSourceAsync() throws -> Promise<Void> {
+    let command = beginSourceCommand(allowAutoPlay: false)
     let promise = Promise<Void>()
-    clearCurrentSource()
+    guard let command else {
+      promise.resolve(withResult: ())
+      return promise
+    }
+
+    mainThreadExecutor.run {
+      guard lifecycleGate.shouldDeliverCallback(capturedGeneration: command.generation) else { return }
+      clearCurrentSource(beginGeneration: false)
+    }
     promise.resolve(withResult: ())
     return promise
   }
 
   func initializePlayerItem() async throws -> AVPlayerItem {
     // Ensure the source is a valid HybridNitroPlayerSource
-    guard let _hybridSource = source as? HybridNitroPlayerSource else {
+    guard let _hybridSource = currentHybridSource() else {
       status = .error
       throw PlayerError.invalidSource.error()
     }
@@ -277,7 +293,7 @@ extension HybridNitroPlayer {
     guard hasActiveSource else {
       return .cold
     }
-    return (source as? HybridNitroPlayerSource)?.retentionState ?? .cold
+    return currentHybridSource()?.retentionState ?? .cold
   }
 
   func currentRetentionLevel() -> PlayerRetentionLevel {
@@ -293,11 +309,13 @@ extension HybridNitroPlayer {
     }
   }
 
-  func clearCurrentSource() {
+  func clearCurrentSource(beginGeneration: Bool = true) {
     guard !isReleased else { return }
     wantsToPlay = false
     cancelStartupRecovery()
-    beginSourceGeneration()
+    if beginGeneration {
+      beginSourceGeneration()
+    }
 
     cancelPendingTrim()
     sourceLoader.cancelDetached()
@@ -306,12 +324,14 @@ extension HybridNitroPlayer {
     artworkTask?.cancel()
     artworkTask = nil
 
-    if let source = self.source as? HybridNitroPlayerSource {
+    if let source = self.currentHybridSource() {
       source.trimToCold()
     }
 
     hasActiveSource = false
+    sourceStorage = nil
     resumePositionSeconds = 0
+    resetPlaybackMetrics()
     player.pause()
     playerItem = nil
     readyToDisplay = false
@@ -322,14 +342,18 @@ extension HybridNitroPlayer {
     emitPlaybackState()
   }
 
-  func prepareBufferedState() async throws {
+  func prepareBufferedState(recreatePlayer: Bool = false) async throws {
     guard hasActiveSource else {
       return
     }
 
-    let activeSource = source
+    guard let activeSource = currentHybridSource() else {
+      return
+    }
+    activeSource.requestLeadingSegmentPrefetch()
     status = .loading
     readyToDisplay = false
+    updateCachedProgress(currentTime: resumePositionSeconds, bufferDuration: 0)
     resetPlaybackError()
     emitPlaybackState()
     let playerItem = try await self.sourceLoader.load {
@@ -340,20 +364,29 @@ extension HybridNitroPlayer {
       guard let self else {
         return
       }
-      guard !self.isReleased else {
-        return
-      }
-      guard self.hasActiveSource else {
-        return
-      }
-      guard (activeSource as AnyObject) === (self.source as AnyObject) else {
-        return
-      }
-      self.playerItem = playerItem
-      self.player.replaceCurrentItem(with: playerItem)
-      if resumeSeconds > 0 {
-        let time = CMTime(seconds: resumeSeconds, preferredTimescale: 1000)
-        self.player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+      self.mainThreadExecutor.run { [weak self] in
+        guard let self else {
+          return
+        }
+        guard !self.isReleased else {
+          return
+        }
+        guard self.hasActiveSource else {
+          return
+        }
+        guard let currentSource = self.currentHybridSource(),
+              (activeSource as AnyObject) === (currentSource as AnyObject) else {
+          return
+        }
+        if recreatePlayer {
+          self.recreatePlayerForRecovery()
+        }
+        self.playerItem = playerItem
+        self.player.replaceCurrentItem(with: playerItem)
+        if resumeSeconds > 0 {
+          let time = CMTime(seconds: resumeSeconds, preferredTimescale: 1000)
+          self.player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
+        }
       }
     }
   }
@@ -401,19 +434,21 @@ extension HybridNitroPlayer {
   func trimToMetadataRetention() {
     guard hasActiveSource else { return }
     resumePositionSeconds = currentTime.isNaN ? 0 : currentTime
+    updateCachedProgress(currentTime: resumePositionSeconds, bufferDuration: 0)
     player.pause()
+    updateCachedRate(0.0)
     playerItem = nil
     readyToDisplay = false
     replaceCurrentItem(nil)
     status = .idle
-    (source as? HybridNitroPlayerSource)?.trimToMetadata()
+    currentHybridSource()?.trimToMetadata()
     resetPlaybackError()
     emitPlaybackState()
   }
 
   func trimToColdRetention() {
     trimToMetadataRetention()
-    (source as? HybridNitroPlayerSource)?.trimToCold()
+    currentHybridSource()?.trimToCold()
   }
 
   func isFeedProfile() -> Bool {

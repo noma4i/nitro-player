@@ -4,7 +4,13 @@ import android.content.Context
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.bridge.WritableArray
+import java.io.IOException
+import java.net.HttpURLConnection
 import java.net.URLEncoder
+import java.net.URL
+import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import com.nitroplay.video.preview.VideoPreviewRuntime
 import com.nitroplay.video.streaming.cache.HlsCacheBudget
 import com.nitroplay.video.streaming.cache.HlsCacheStore
@@ -26,6 +32,8 @@ object HlsProxyRuntime {
   private var appContext: Context? = null
   private var configuredMaxCacheBytes = HlsCacheBudget.DEFAULT_MAX_BYTES
   private val prefetchDeduper = HlsPrefetchDeduper(PREFETCH_DEDUP_MS, PREFETCH_MAX_ENTRIES)
+  private val prefetchExecutor = Executors.newSingleThreadExecutor()
+  @Volatile private var prefetchSegmentCount = 2
 
   internal data class RuntimeStateSnapshot(
     val isRegistered: Boolean,
@@ -110,7 +118,7 @@ object HlsProxyRuntime {
     )
   }
 
-  fun prefetchFirstSegment(url: String, headers: ReadableMap?, onComplete: () -> Unit, onError: (Throwable) -> Unit) {
+  fun prefetchLeadingSegments(url: String, headers: Map<String, String>?, onComplete: () -> Unit, onError: (Throwable) -> Unit) {
     if (runtimeState.snapshot().isExplicitlyStopped) {
       onComplete()
       return
@@ -121,8 +129,8 @@ object HlsProxyRuntime {
     }
     ensureStarted()
 
-    val decodedHeaders = HlsHeaderCodec.decode(headers)
-    val dedupKey = HlsIdentity.requestKey(url, decodedHeaders)
+    val segmentCount = prefetchSegmentCount
+    val dedupKey = HlsIdentity.requestKey(url, headers)
     val shouldPrefetch = prefetchDeduper.shouldPrefetch(dedupKey)
 
     if (!shouldPrefetch) {
@@ -139,13 +147,26 @@ object HlsProxyRuntime {
 
     activeServer.prefetch(
       url,
-      decodedHeaders,
+      headers,
+      segmentCount,
       onComplete,
       { error ->
         prefetchDeduper.forget(dedupKey)
         onError(error)
       }
     )
+  }
+
+  fun requestLeadingSegmentPrefetchAsync(url: String, headers: Map<String, String>?) {
+    try {
+      prefetchExecutor.execute {
+        try {
+          prefetchLeadingSegments(url, headers, onComplete = {}, onError = {})
+        } catch (_: Throwable) {
+        }
+      }
+    } catch (_: RejectedExecutionException) {
+    }
   }
 
   fun getThumbnailUrl(url: String, headers: Map<String, String>?): String? {
@@ -177,15 +198,45 @@ object HlsProxyRuntime {
     putInt("streamFileCount", (stats?.get("streamFileCount") as? Int) ?: 0)
   }
 
-  fun configureCache(maxBytes: Double?) {
-    val normalized = HlsCacheBudget.normalize(maxBytes?.toLong() ?: HlsCacheBudget.DEFAULT_MAX_BYTES)
-    val context = synchronized(lock) {
-      configuredMaxCacheBytes = normalized
-      appContext
+  fun getStreamVariants(url: String, headers: Map<String, String>? = null): WritableArray {
+    val result = Arguments.createArray()
+    if (!HlsManifestUrl.matches(url)) {
+      return result
     }
-    serverSlot.current?.cacheStore?.setMaxBytes(normalized)
-    if (serverSlot.current == null && context != null) {
-      HlsCacheStore(context, normalized).close()
+
+    val manifest = fetchText(url, headers)
+    if (!HlsManifest.isMaster(manifest)) {
+      return result
+    }
+
+    HlsManifest.extractStreamVariants(manifest, url).forEach { variant ->
+      val map = Arguments.createMap()
+      map.putDouble("bandwidth", variant.bandwidth.toDouble())
+      variant.averageBandwidth?.let { map.putDouble("averageBandwidth", it.toDouble()) } ?: map.putNull("averageBandwidth")
+      variant.width?.let { map.putInt("width", it) } ?: map.putNull("width")
+      variant.height?.let { map.putInt("height", it) } ?: map.putNull("height")
+      variant.codecs?.let { map.putString("codecs", it) } ?: map.putNull("codecs")
+      map.putString("uri", variant.uri)
+      result.pushMap(map)
+    }
+    return result
+  }
+
+  fun configureCache(maxBytes: Double?, prefetchSegments: Double? = null) {
+    if (maxBytes != null) {
+      val normalized = HlsCacheBudget.normalize(maxBytes.toLong())
+      val context = synchronized(lock) {
+        configuredMaxCacheBytes = normalized
+        appContext
+      }
+      serverSlot.current?.cacheStore?.setMaxBytes(normalized)
+      if (serverSlot.current == null && context != null) {
+        HlsCacheStore(context, normalized).close()
+      }
+    }
+
+    if (prefetchSegments != null) {
+      prefetchSegmentCount = normalizePrefetchSegmentCount(prefetchSegments.toInt())
     }
   }
 
@@ -227,6 +278,10 @@ object HlsProxyRuntime {
     return synchronized(lock) { configuredMaxCacheBytes }
   }
 
+  internal fun configuredPrefetchSegmentCountForTests(): Int {
+    return prefetchSegmentCount
+  }
+
   internal fun registerForTests() {
     synchronized(lock) {
       isRegistered = true
@@ -247,6 +302,7 @@ object HlsProxyRuntime {
       isRegistered = false
       appContext = null
       configuredMaxCacheBytes = HlsCacheBudget.DEFAULT_MAX_BYTES
+      prefetchSegmentCount = 2
       prefetchDeduper.clear()
     }
     VideoPreviewRuntime.resetStateForTests()
@@ -265,6 +321,30 @@ object HlsProxyRuntime {
       if (ensureServerRunning(forceRestart = false, desiredPort = it)) {
         runtimeState.markAutoStarted()
       }
+    }
+  }
+
+  private fun fetchText(url: String, headers: Map<String, String>?): String {
+    val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+      connectTimeout = NanoHttpdConfig.TIMEOUT_MS
+      readTimeout = NanoHttpdConfig.TIMEOUT_MS
+      requestMethod = "GET"
+      headers?.forEach { (key, value) -> setRequestProperty(key, value) }
+    }
+    try {
+      val statusCode = connection.responseCode
+      if (statusCode >= 400) {
+        throw IOException("HTTP $statusCode")
+      }
+      connection.inputStream.use { stream ->
+        val data = stream.readBytes()
+        if (data.isEmpty()) {
+          throw IOException("Empty response body")
+        }
+        return data.toString(Charsets.UTF_8)
+      }
+    } finally {
+      connection.disconnect()
     }
   }
 
@@ -345,6 +425,10 @@ object HlsProxyRuntime {
     val context: Context,
     val startGeneration: Int
   )
+
+  private fun normalizePrefetchSegmentCount(count: Int): Int {
+    return count.coerceIn(1, 6)
+  }
 }
 
 internal data class PlaybackRouteResolution(

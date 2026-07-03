@@ -9,7 +9,29 @@ import AVFoundation
 import Foundation
 import NitroModules
 
+private enum InactiveNitroPlayerSource {
+  static let shared: HybridNitroPlayerSource = {
+    let config = NativeNitroPlayerConfig(
+      uri: "file:///dev/null",
+      headers: nil,
+      metadata: nil,
+      startup: .eager,
+      buffer: nil,
+      retention: nil,
+      transport: nil,
+      preview: nil
+    )
+    return try! HybridNitroPlayerSource(config: config)
+  }()
+}
+
 class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecked Sendable {
+  struct SourceCommand {
+    let generation: Int
+    let oldSource: HybridNitroPlayerSource?
+    let shouldAutoPlay: Bool
+  }
+
   struct FirstFrameContext {
     let sourceUri: String
     let headers: [String: String]?
@@ -32,12 +54,21 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
     let fingerprint: PlaybackStateFingerprint
   }
 
+  private struct PlaybackMetrics {
+    var currentTime: Double = 0
+    var duration: Double = Double.nan
+    var bufferDuration: Double = 0
+    var rate: Double = 0
+    var timeControlStatus: AVPlayer.TimeControlStatus = .paused
+  }
+
   /**
    * Player instance for video playback
    */
   var player: AVPlayer {
     didSet {
       playerObserver?.initializePlayerObservers()
+      applyLoopMode()
     }
     willSet {
       playerObserver?.invalidatePlayerObservers()
@@ -54,11 +85,12 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   var playerObserver: NitroPlayerObserver?
   let sourceLoader = SourceLoader()
   let playerMutationExecutor = PlayerMutationExecutor()
+  let mainThreadExecutor = MainThreadResourceExecutor()
   var artworkTask: Task<Void, Never>?
   var initTask: Task<Void, Never>?
   let lifecycleGate = LifecycleGate()
   var isReleased: Bool { lifecycleGate.isReleased }
-  var hasActiveSource = true
+  var hasActiveSource = false
   var lastError: PlaybackError?
   var readyToDisplay = false
   var resumePositionSeconds: Double = 0
@@ -73,9 +105,17 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   var firstFrame: onFirstFrameData?
   var firstFrameContext: FirstFrameContext?
   private let playbackStateEmissionGate = PlaybackStateEmissionGate()
+  private var playbackMetrics = PlaybackMetrics()
 
   private let startupRecoveryDelayNs: UInt64 = 250_000_000
   private let maxStartupRecoveryAttempts = 1
+
+  // Playback-start watchdog: a loaded item can stall before advancing with no error event, so the
+  // onError-driven startup recovery never fires. This re-prepares such a loaded-but-frozen item.
+  var playbackWatchdogTask: Task<Void, Never>?
+  var playbackWatchdogAttempts: Int = 0
+  private let playbackWatchdogDelayNs: UInt64 = 3_000_000_000
+  private let maxPlaybackWatchdogAttempts = 5
 
   func replaceCurrentItem(_ item: AVPlayerItem?) {
     let apply = { [weak self] in
@@ -93,16 +133,13 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
     DispatchQueue.main.async(execute: apply)
   }
 
-  init(source: (any HybridNitroPlayerSourceSpec)) throws {
-    self.source = source
+  override init() {
     self.eventEmitter = HybridNitroPlayerEventEmitter()
 
-    // Initialize AVPlayer with empty item
     self.player = AVPlayer()
     self.player.automaticallyWaitsToMinimizeStalling = false
 
     super.init()
-    beginSourceGeneration()
     self.playerObserver = NitroPlayerObserver(delegate: self)
     self.playerObserver?.initializePlayerObservers()
     self._eventEmitter?.onFirstFrameListenerAdded = { [weak self] in
@@ -110,6 +147,15 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
         self?.requestFirstFrameIfNeeded()
       }
     }
+    NitroPlayerManager.shared.register(player: self)
+    NitroPlayerManager.shared.touchFeedHotCandidate(self)
+  }
+
+  convenience init(source: (any HybridNitroPlayerSourceSpec)) throws {
+    self.init()
+    self.sourceStorage = source
+    self.hasActiveSource = true
+    beginSourceGeneration()
 
     initTask = Task { [weak self] in
       guard let self else { return }
@@ -123,7 +169,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
           }
         case .metadata:
           do {
-            try await (self.source as? HybridNitroPlayerSource)?.warmMetadata()
+            try await self.currentHybridSource()?.warmMetadata()
           } catch {
             // Ignore cancellation errors during initialization
           }
@@ -133,9 +179,6 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
       }
       self.initTask = nil
     }
-
-    NitroPlayerManager.shared.register(player: self)
-    NitroPlayerManager.shared.touchFeedHotCandidate(self)
   }
 
   deinit {
@@ -144,7 +187,11 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
 
   // MARK: - Hybrid Impl
 
-  var source: any HybridNitroPlayerSourceSpec
+  var sourceStorage: (any HybridNitroPlayerSourceSpec)?
+
+  var source: any HybridNitroPlayerSourceSpec {
+    return sourceStorage ?? InactiveNitroPlayerSource.shared
+  }
 
   var status: NitroPlayerStatus = .idle
   var wantsToPlay = false
@@ -195,36 +242,35 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
 
   var currentTime: Double {
     set {
-      resumePositionSeconds = max(0, newValue)
+      resumePositionSeconds = clampedPlaybackTime(newValue)
+      updateCachedProgress(currentTime: resumePositionSeconds)
       emitPlaybackState()
 
-      guard !isReleased, player.currentItem != nil else { return }
+      guard !isReleased, playerItem != nil else { return }
 
       player.seek(
         to: CMTime(seconds: resumePositionSeconds, preferredTimescale: 1000),
         toleranceBefore: .zero,
         toleranceAfter: .zero
       ) { [weak self] _ in
-        self?.emitPlaybackState()
+        guard let self else { return }
+        self.updateCachedProgress(currentTime: self.resumePositionSeconds)
+        self.emitPlaybackState()
       }
     }
     get {
-      if isReleased || player.currentItem == nil {
-        return resumePositionSeconds
-      }
-
-      return player.currentTime().seconds
+      playbackMetrics.currentTime
     }
   }
 
   var duration: Double {
     guard !isReleased else { return Double.nan }
-    return Double(player.currentItem?.duration.seconds ?? Double.nan)
+    return playbackMetrics.duration
   }
 
   var bufferDuration: Double {
     guard !isReleased else { return 0 }
-    return player.currentItem?.getBufferDuration() ?? 0
+    return playbackMetrics.bufferDuration
   }
 
   var bufferedPosition: Double {
@@ -239,14 +285,19 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
       }
 
       player.rate = Float(newValue)
+      updateCachedRate(newValue)
     }
     get {
       guard !isReleased else { return 0 }
-      return Double(player.rate)
+      return playbackMetrics.rate
     }
   }
 
-  var loop: Bool = false
+  var loop: Bool = false {
+    didSet {
+      applyLoopMode()
+    }
+  }
 
   var mixAudioMode: MixAudioMode = .auto
 
@@ -264,7 +315,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
 
   var isPlaying: Bool {
     guard !isReleased else { return false }
-    return player.rate != 0
+    return playbackMetrics.rate != 0
   }
 
   var isBuffering: Bool {
@@ -310,12 +361,22 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
     }
 
     let currentStatus = status
-    let currentTime = currentTime
-    let duration = duration
-    let bufferDuration = bufferDuration
-    let bufferedPosition = currentTime + bufferDuration
-    let rate = rate
-    let isPlaying = isPlaying
+    let duration = playbackMetrics.duration
+    let currentTime: Double
+    if currentStatus == .ended && duration.isFinite && duration > 0 {
+      currentTime = duration
+    } else {
+      currentTime = playbackMetrics.currentTime
+    }
+    let bufferDuration = playbackMetrics.bufferDuration
+    let bufferedPosition: Double
+    if duration.isFinite && duration > 0 {
+      bufferedPosition = min(duration, currentTime + bufferDuration)
+    } else {
+      bufferedPosition = currentTime + bufferDuration
+    }
+    let rate = playbackMetrics.rate
+    let isPlaying = rate != 0
     let isBuffering = isBuffering
     let isVisualReady = readyToDisplay
     let error = lastError.map { Variant_NullType_PlaybackError.second($0) }
@@ -381,8 +442,8 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
       )
     }
 
-    let playerBytes = player.currentItem == nil ? 0 : max(bufferDuration * 256_000, 64_000)
-    let sourceBytes = hasActiveSource ? Double((source as? HybridNitroPlayerSource)?.memorySize ?? 0) : 0
+    let playerBytes = playerItem == nil ? 0 : max(bufferDuration * 256_000, 64_000)
+    let sourceBytes = hasActiveSource ? Double(currentHybridSource()?.memorySize ?? 0) : 0
     let retention = retentionSnapshot()
 
     return MemorySnapshot(
@@ -410,6 +471,24 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
       return
     }
     _eventEmitter?.onPlaybackState(playbackState(from: snapshot))
+  }
+
+  private func sanitizedDuration(_ value: Double) -> Double {
+    value.isFinite && value >= 0 ? value : Double.nan
+  }
+
+  private func clampedPlaybackTime(_ value: Double) -> Double {
+    let finiteValue = value.isFinite ? value : 0
+    let positiveValue = max(0, finiteValue)
+    let duration = playbackMetrics.duration
+    guard duration.isFinite && duration > 0 else { return positiveValue }
+    return min(positiveValue, duration)
+  }
+
+  private func isAtPlaybackEnd() -> Bool {
+    let duration = playbackMetrics.duration
+    guard duration.isFinite && duration > 0 else { return false }
+    return playbackMetrics.currentTime >= duration - 0.05
   }
 
   private func playbackStatusIndex(_ status: NitroPlayerStatus) -> Int {
@@ -495,7 +574,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   }
 
   func currentSourceConfig() -> NativeNitroPlayerConfig? {
-    (source as? HybridNitroPlayerSource)?.config
+    currentHybridSource()?.config
   }
 
   func resolvedInitialization() -> NitroSourceStartup {
@@ -504,6 +583,51 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
 
   func resetPlaybackError() {
     lastError = nil
+  }
+
+  var cachedTimeControlStatus: AVPlayer.TimeControlStatus {
+    playbackMetrics.timeControlStatus
+  }
+
+  func resetPlaybackMetrics(currentTime: Double = 0, duration: Double = Double.nan) {
+    playbackMetrics.currentTime = max(0, currentTime.isFinite ? currentTime : 0)
+    playbackMetrics.duration = sanitizedDuration(duration)
+    playbackMetrics.bufferDuration = 0
+    playbackMetrics.rate = 0
+    playbackMetrics.timeControlStatus = .paused
+  }
+
+  func updateCachedProgress(currentTime: Double? = nil, bufferDuration: Double? = nil) {
+    if let currentTime {
+      playbackMetrics.currentTime = clampedPlaybackTime(currentTime)
+      resumePositionSeconds = playbackMetrics.currentTime
+    }
+    if let bufferDuration {
+      playbackMetrics.bufferDuration = max(0, bufferDuration.isFinite ? bufferDuration : 0)
+    }
+  }
+
+  func updateCachedDuration(_ duration: Double) {
+    playbackMetrics.duration = sanitizedDuration(duration)
+    playbackMetrics.currentTime = clampedPlaybackTime(playbackMetrics.currentTime)
+  }
+
+  func updateCachedRate(_ rate: Float) {
+    updateCachedRate(Double(rate))
+  }
+
+  func updateCachedRate(_ rate: Double) {
+    let normalizedRate = rate.isFinite ? rate : 0
+    playbackMetrics.rate = normalizedRate
+    if normalizedRate > 0 {
+      playbackMetrics.timeControlStatus = .playing
+    } else if !wantsToPlay {
+      playbackMetrics.timeControlStatus = .paused
+    }
+  }
+
+  func updateCachedTimeControlStatus(_ status: AVPlayer.TimeControlStatus) {
+    playbackMetrics.timeControlStatus = status
   }
 
   func setPlaybackError(code: NitroPlayerErrorCode, message: String) {
@@ -517,9 +641,35 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
     playbackStateEmissionGate.reset()
     firstFrame = nil
     firstFrameContext = nil
+    resetPlaybackMetrics(currentTime: 0)
     cancelFirstFrameRequest()
     cancelStartupRecovery()
+    cancelPlaybackWatchdog()
+    playbackWatchdogAttempts = 0
     _eventEmitter?.resetStickyState()
+  }
+
+  func beginSourceCommand(allowAutoPlay: Bool) -> SourceCommand? {
+    mainThreadExecutor.run {
+      guard !isReleased else { return nil }
+
+      let shouldAutoPlay = allowAutoPlay && wantsToPlay
+      let oldSource = currentHybridSource()
+
+      wantsToPlay = false
+      cancelPendingTrim()
+      initTask?.cancel()
+      initTask = nil
+      artworkTask?.cancel()
+      artworkTask = nil
+      beginSourceGeneration()
+
+      return SourceCommand(
+        generation: sourceGeneration,
+        oldSource: oldSource,
+        shouldAutoPlay: shouldAutoPlay
+      )
+    }
   }
 
   func markCurrentSourceLoaded() {
@@ -533,8 +683,186 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
     startupRecoveryTask = nil
   }
 
+  func cancelPlaybackWatchdog() {
+    playbackWatchdogTask?.cancel()
+    playbackWatchdogTask = nil
+  }
+
+  var playbackWatchdogAttemptCount: Int {
+    playbackWatchdogAttempts
+  }
+
+  var hasPendingPlaybackWatchdog: Bool {
+    playbackWatchdogTask != nil
+  }
+
+  func startCurrentItemPlayback() {
+    guard playerItem != nil else { return }
+    let targetRate: Float
+    if #available(iOS 16.0, tvOS 16.0, *) {
+      targetRate = player.defaultRate == 0 ? 1.0 : player.defaultRate
+    } else {
+      targetRate = 1.0
+    }
+    player.playImmediately(atRate: targetRate)
+    if player.rate == 0 {
+      player.rate = targetRate
+    }
+    updateCachedRate(targetRate)
+  }
+
+  private func applyLoopMode() {
+    player.actionAtItemEnd = loop ? .none : .pause
+  }
+
+  func recreatePlayerForRecovery() {
+    let oldPlayer = player
+    let nextPlayer = AVPlayer()
+    nextPlayer.automaticallyWaitsToMinimizeStalling = false
+    nextPlayer.isMuted = oldPlayer.isMuted
+    nextPlayer.volume = oldPlayer.volume
+    nextPlayer.preventsDisplaySleepDuringVideoPlayback = oldPlayer.preventsDisplaySleepDuringVideoPlayback
+    if #available(iOS 16.0, tvOS 16.0, *) {
+      nextPlayer.defaultRate = oldPlayer.defaultRate == 0 ? 1.0 : oldPlayer.defaultRate
+    }
+
+    oldPlayer.pause()
+    oldPlayer.replaceCurrentItem(with: nil)
+    player = nextPlayer
+    NitroPlayerManager.shared.rebindViews(for: self)
+  }
+
+  func refreshCurrentSourceAssetForPlaybackRestart() {
+    guard let source = currentHybridSource() else { return }
+    if source.refreshPlaybackRouteForStartupRecovery() {
+      return
+    }
+    source.releaseAsset()
+  }
+
+  func performSeamlessLoopSeek() {
+    guard !isReleased, hasActiveSource, playerItem != nil else { return }
+
+    updateCachedProgress(currentTime: 0)
+    emitPlaybackState()
+
+    player.seek(
+      to: .zero,
+      toleranceBefore: .zero,
+      toleranceAfter: .zero
+    ) { [weak self] _ in
+      DispatchQueue.main.async { [weak self] in
+        guard let self, !self.isReleased, self.wantsToPlay else { return }
+        if self.rate == 0 {
+          self.startCurrentItemPlayback()
+        }
+        self.updateCachedProgress(currentTime: 0)
+        self.emitPlaybackState()
+      }
+    }
+  }
+
+  // Arm the playback watchdog. Idempotent (no-op if already armed). After ~3s it verifies the player
+  // advanced since this window's baseline; on healthy (advanced / looped / near end) it resets the
+  // attempt counter and RE-ARMS to keep watching the whole playback, so a freeze AFTER initial progress
+  // is still caught. On a genuine stall it bounded-retries by re-preparing the loaded source.
+  func schedulePlaybackStartWatchdog() {
+    guard !isReleased, hasActiveSource, wantsToPlay else { return }
+    guard playbackWatchdogTask == nil else { return }
+    guard playbackWatchdogAttempts < maxPlaybackWatchdogAttempts else { return }
+
+    let generation = sourceGeneration
+    let startPositionSeconds = currentTime
+
+    playbackWatchdogTask = Task.detached(priority: .userInitiated) { [weak self] in
+      do {
+        try await Task.sleep(nanoseconds: self?.playbackWatchdogDelayNs ?? 0)
+      } catch {
+        return
+      }
+
+      DispatchQueue.main.async { [weak self] in
+        guard let self else { return }
+        self.playbackWatchdogTask = nil
+        guard !self.isReleased, self.hasActiveSource, self.wantsToPlay, self.sourceGeneration == generation else {
+          return
+        }
+
+        let currentSeconds = self.currentTime
+        let durationSeconds = self.duration
+        // Loop playback must advance or wrap; a player pinned near the end should recover.
+        let isNearEnd = !self.loop && durationSeconds.isFinite && currentSeconds.isFinite &&
+          currentSeconds >= durationSeconds - 0.25
+        // Relative advancement: any change since this window's baseline is healthy. abs() so a loop wrap
+        // (currentTime jumps back) reads as advancing, not a freeze. Near-end is healthy for non-loop playback.
+        // On healthy, RE-ARM to keep watching the whole playback (the re-arm rebaselines startPositionSeconds), so a
+        // freeze AFTER initial progress is still caught instead of disarming after the first window.
+        let changed = currentSeconds.isFinite &&
+          (!startPositionSeconds.isFinite || abs(currentSeconds - startPositionSeconds) > 0.01)
+        if self.rate > 0 && (changed || isNearEnd) {
+          self.playbackWatchdogAttempts = 0
+          self.schedulePlaybackStartWatchdog()
+          return
+        }
+
+        self.playbackWatchdogAttempts += 1
+        guard self.playbackWatchdogAttempts <= self.maxPlaybackWatchdogAttempts else { return }
+
+        // Loaded + wantsToPlay + no time progress is a stall even when AVPlayer reports
+        // waitingToPlayAtSpecifiedRate. Keeping that state on the watch loop strands the
+        // feed on the first frame with no error, so recover the loaded item directly.
+        if self.hasLoadedCurrentSource {
+          self.recoverStalledPlayback(generation: generation)
+        } else {
+          self.schedulePlaybackStartWatchdog()
+        }
+      }
+    }
+  }
+
+  private func recoverStalledPlayback(generation: Int) {
+    isCurrentlyBuffering = false
+    readyToDisplay = false
+    status = .loading
+    emitPlaybackState()
+
+    playbackWatchdogTask = Task.detached(priority: .userInitiated) { [weak self] in
+      guard let self else { return }
+      guard !self.isReleased, self.hasActiveSource, self.wantsToPlay, self.sourceGeneration == generation else {
+        return
+      }
+
+      // The HLS proxy is intentionally not restarted: it already serves this loaded source, and a
+      // decode/render stall does not need a new route. prepareBufferedState rebuilds the AVPlayerItem
+      // from the existing source; genuine route failures surface via the item-failed startup recovery.
+      self.initTask?.cancel()
+      self.initTask = nil
+      self.artworkTask?.cancel()
+      self.artworkTask = nil
+      self.refreshCurrentSourceAssetForPlaybackRestart()
+
+      do {
+        try await self.prepareBufferedState(recreatePlayer: true)
+        DispatchQueue.main.async { [weak self] in
+          guard let self else { return }
+          self.playbackWatchdogTask = nil
+          guard !self.isReleased, self.sourceGeneration == generation, self.wantsToPlay else { return }
+          self.startCurrentItemPlayback()
+          self.schedulePlaybackStartWatchdog()
+        }
+      } catch {
+        DispatchQueue.main.async { [weak self] in
+          guard let self else { return }
+          self.playbackWatchdogTask = nil
+          guard !self.isReleased, self.sourceGeneration == generation, self.wantsToPlay else { return }
+          self.schedulePlaybackStartWatchdog()
+        }
+      }
+    }
+  }
+
   func currentHybridSource() -> HybridNitroPlayerSource? {
-    source as? HybridNitroPlayerSource
+    sourceStorage as? HybridNitroPlayerSource
   }
 
   func shouldAttemptStartupRecovery() -> Bool {
@@ -583,7 +911,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
           guard let self, !self.isReleased, self.sourceGeneration == generation, self.wantsToPlay else {
             return
           }
-          self.player.play()
+          self.startCurrentItemPlayback()
         }
       } catch {
         DispatchQueue.main.async { [weak self] in
@@ -598,6 +926,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
 
   func failPlayback(message: String) {
     cancelStartupRecovery()
+    cancelPlaybackWatchdog()
     cancelFirstFrameRequest()
     wantsToPlay = false
     status = .error
@@ -611,7 +940,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   }
 
   func resolvePlayPauseStatus() -> NitroPlayerStatus {
-    if player.rate > 0 { return .playing }
+    if rate > 0 { return .playing }
     if wantsToPlay {
       switch status {
       case .buffering, .loading, .playing:
@@ -626,7 +955,11 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   func play() throws {
     guard !isReleased else { return }
     cancelPendingTrim()
+    let wasPlayIntentActive = wantsToPlay
     wantsToPlay = true
+    if !wasPlayIntentActive {
+      playbackWatchdogAttempts = 0
+    }
     NitroPlayerManager.shared.touchFeedHotCandidate(self)
 
     guard hasActiveSource else {
@@ -639,9 +972,30 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
       return
     }
 
-    if player.currentItem != nil {
-      player.play()
-      status = player.rate > 0 ? .playing : resolvePlayPauseStatus()
+    schedulePlaybackStartWatchdog()
+
+    if playerItem != nil {
+      if status == .ended || isAtPlaybackEnd() {
+        resumePositionSeconds = 0
+        updateCachedProgress(currentTime: 0)
+        status = .loading
+        emitPlaybackState()
+        player.seek(
+          to: CMTime(seconds: 0, preferredTimescale: 1000),
+          toleranceBefore: .zero,
+          toleranceAfter: .zero
+        ) { [weak self] _ in
+          guard let self, !self.isReleased, self.wantsToPlay else { return }
+          self.startCurrentItemPlayback()
+          self.status = self.rate > 0 ? .playing : self.resolvePlayPauseStatus()
+          self.isCurrentlyBuffering = false
+          self.emitPlaybackState()
+        }
+        return
+      }
+
+      startCurrentItemPlayback()
+      status = rate > 0 ? .playing : resolvePlayPauseStatus()
       isCurrentlyBuffering = false
       emitPlaybackState()
       return
@@ -662,7 +1016,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
         try await self.prepareBufferedState()
         DispatchQueue.main.async { [weak self] in
           guard let self, !self.isReleased, self.sourceGeneration == generation, self.wantsToPlay else { return }
-          self.player.play()
+          self.startCurrentItemPlayback()
         }
       } catch {
         DispatchQueue.main.async { [weak self] in
@@ -682,7 +1036,9 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
     guard !isReleased else { return }
     wantsToPlay = false
     cancelStartupRecovery()
+    cancelPlaybackWatchdog()
     player.pause()
+    updateCachedRate(0.0)
 
     if status != .ended && status != .idle {
       status = .paused
@@ -698,17 +1054,15 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   }
 
   func seekBy(time: Double) throws {
-    guard !isReleased, let currentItem = player.currentItem else {
+    guard !isReleased, playerItem != nil else {
       throw PlayerError.notInitialized.error()
     }
-
-    let currentItemTime = currentItem.currentTime()
 
     // Duration is NaN for live streams
     let fixedDuration = duration.isNaN ? Double.infinity : duration
 
     // Clap by <0, duration>
-    let newTime = max(0, min(currentItemTime.seconds + time, fixedDuration))
+    let newTime = max(0, min(currentTime + time, fixedDuration))
 
     currentTime = newTime
   }

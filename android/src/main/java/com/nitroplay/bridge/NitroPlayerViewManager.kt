@@ -49,6 +49,11 @@ class NitroPlayerViewManager : SimpleViewManager<NitroPlayerView>(), RNCNitroPla
     return NitroPlayerView(reactContext)
   }
 
+  override fun onDropViewInstance(view: NitroPlayerView) {
+    view.resetForDrop()
+    super.onDropViewInstance(view)
+  }
+
   override fun getExportedCustomDirectEventTypeConstants(): Map<String, Any> {
     return MapBuilder.builder<String, Any>()
       .put(NitroIdChange.EVENT_NAME, MapBuilder.of("registrationName", "onNitroIdChange"))

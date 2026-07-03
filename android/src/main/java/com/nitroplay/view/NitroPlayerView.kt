@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Color
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -158,6 +159,26 @@ class NitroPlayerView @JvmOverloads constructor(
     applySmallPlayerLayoutFixes()
   }
 
+  private fun detachPlayerViewSurface() {
+    fullscreenManager.dismiss()
+    globalLayoutListener?.let { playerView.viewTreeObserver.removeOnGlobalLayoutListener(it) }
+    globalLayoutListener = null
+    removeCallbacks(layoutRunnable)
+    playerView.player = null
+    playerView.keepScreenOn = false
+  }
+
+  fun resetForDrop() {
+    runOnMainThread {
+      detachPlayerViewSurface()
+      hybridPlayer?.notifyViewDetached()
+      hybridPlayer = null
+      useController = false
+      eventsEmitter = null
+      NitroPlayerManager.unregisterView(this)
+    }
+  }
+
   override fun requestLayout() {
     super.requestLayout()
 
@@ -165,6 +186,14 @@ class NitroPlayerView @JvmOverloads constructor(
     // This fix issue where exoplayer views where wrong sizes
     // Without it, controls, PictureInPicture, content fills, etc. don't work
     post(layoutRunnable)
+  }
+
+  override fun onInterceptTouchEvent(event: MotionEvent?): Boolean {
+    return useController && super.onInterceptTouchEvent(event)
+  }
+
+  override fun onTouchEvent(event: MotionEvent?): Boolean {
+    return useController && super.onTouchEvent(event)
   }
 
   @SuppressLint("PrivateResource")
@@ -200,10 +229,7 @@ class NitroPlayerView @JvmOverloads constructor(
   // -------- View Lifecycle Methods --------
   override fun onDetachedFromWindow() {
     try {
-      fullscreenManager.dismiss()
-      globalLayoutListener?.let { playerView.viewTreeObserver.removeOnGlobalLayoutListener(it) }
-      globalLayoutListener = null
-      removeCallbacks(layoutRunnable)
+      detachPlayerViewSurface()
       hybridPlayer?.notifyViewDetached()
       eventsEmitter?.onDetached()
     } finally {

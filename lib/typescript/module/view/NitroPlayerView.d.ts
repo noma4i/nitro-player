@@ -7,8 +7,7 @@ import type { ResizeMode } from './types/ResizeMode';
 import type { NitroSourceInput } from '../source/types/NitroPlayerConfig';
 import type { NitroPlayerDefaults } from '../player/types/NitroPlayerDefaults';
 import { NitroPlayer } from '../player/NitroPlayer';
-export interface NitroPlayerViewProps extends Partial<NitroPlayerViewEvents>, ViewProps {
-    source: NitroSourceInput;
+interface NitroPlayerViewBaseProps extends Partial<NitroPlayerViewEvents>, ViewProps {
     playerDefaults?: NitroPlayerDefaults;
     style?: ViewStyle;
     controls?: boolean;
@@ -16,6 +15,13 @@ export interface NitroPlayerViewProps extends Partial<NitroPlayerViewEvents>, Vi
     keepScreenAwake?: boolean;
     surfaceType?: SurfaceType;
 }
+export type NitroPlayerViewProps = NitroPlayerViewBaseProps & ({
+    source: NitroSourceInput;
+    player?: never;
+} | {
+    player: NitroPlayer;
+    source?: never;
+});
 export interface NitroPlayerViewRef {
     player: NitroPlayer;
     isAttached: boolean;

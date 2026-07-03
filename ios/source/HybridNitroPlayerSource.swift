@@ -213,6 +213,20 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
     return HlsManifestUrl.matches(originalConfig.uri)
   }
 
+  func requestLeadingSegmentPrefetch() {
+    guard isProxyRouteActive else {
+      return
+    }
+    let sourceUri = originalConfig.uri
+    let sourceHeaders = originalConfig.headers
+    Task.detached(priority: .utility) {
+      try? await HlsProxyRuntime.shared.prefetchLeadingSegments(
+        url: sourceUri,
+        headers: sourceHeaders
+      )
+    }
+  }
+
   func previewSourceUri() -> String {
     originalConfig.uri
   }

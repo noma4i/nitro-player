@@ -11,13 +11,17 @@ import { NitroPlayerEvents } from './NitroPlayerEvents';
 declare class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     private _player;
     private _source;
+    private _nativeSource;
+    private readonly _ownsNativePlayer;
     protected get player(): NitroPlayerImpl;
-    constructor(source: NitroSourceInput | NitroPlayerSource);
+    constructor(source: NitroSourceInput | NitroPlayerSource | NitroPlayerImpl);
+    static __fromNativePlayer(player: NitroPlayerImpl): NitroPlayer;
     /**
      * Releases the player's native resources and releases native state.
      * @internal
      */
     __destroy(): void;
+    private refreshNativeMemorySize;
     /**
      * Returns the native (hybrid) player instance.
      * Should not be used outside of the module.
@@ -25,6 +29,7 @@ declare class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
      */
     __getNativePlayer(): NitroPlayerImpl;
     private parseError;
+    private static isNativePlayer;
     /**
      * Updates the memory size of the player and its source. Should be called after any operation that changes the memory size of the player or its source.
      * @internal

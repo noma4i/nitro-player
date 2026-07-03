@@ -48,17 +48,17 @@ class HlsPreviewAndPrefetchBehaviorTest {
 
   @Test
   fun fmp4MediaPlaylist_resolvesInitAndFirstSegment() {
-    val (init, first) = HlsManifest.extractInitAndFirstSegment(fmp4MediaManifest)
+    val (init, segments) = HlsManifest.extractLeadingSegments(fmp4MediaManifest, 1)
     val base = "https://cdn.example.com/live/low/index.m3u8"
     assertEquals("https://cdn.example.com/live/low/init.mp4", HlsManifest.resolveUrl(base, init!!))
-    assertEquals("https://cdn.example.com/live/low/segment0.m4s", HlsManifest.resolveUrl(base, first!!))
+    assertEquals("https://cdn.example.com/live/low/segment0.m4s", HlsManifest.resolveUrl(base, segments.first()))
   }
 
   @Test
   fun tsMediaPlaylist_hasNoInitSegment() {
-    val (init, first) = HlsManifest.extractInitAndFirstSegment(tsMediaManifest)
+    val (init, segments) = HlsManifest.extractLeadingSegments(tsMediaManifest, 1)
     assertNull(init)
-    assertEquals("segment0.ts", first)
+    assertEquals(listOf("segment0.ts"), segments)
   }
 
   @Test
@@ -66,9 +66,9 @@ class HlsPreviewAndPrefetchBehaviorTest {
     val completions = AtomicInteger(0)
 
     repeat(550) { index ->
-      HlsProxyRuntime.prefetchFirstSegment(
+      HlsProxyRuntime.prefetchLeadingSegments(
         "https://cdn.example.com/live/$index/index.m3u8",
-        null,
+        null as Map<String, String>?,
         onComplete = { completions.incrementAndGet() },
         onError = { throw it }
       )
@@ -83,5 +83,23 @@ class HlsPreviewAndPrefetchBehaviorTest {
     HlsProxyRuntime.configureCache((512L * 1024L * 1024L).toDouble())
 
     assertEquals(512L * 1024L * 1024L, HlsProxyRuntime.configuredMaxCacheBytesForTests())
+  }
+
+  @Test
+  fun configureCacheWithoutMaxBytesKeepsExistingBudget() {
+    HlsProxyRuntime.configureCache((512L * 1024L * 1024L).toDouble())
+    HlsProxyRuntime.configureCache(null, 4.0)
+
+    assertEquals(512L * 1024L * 1024L, HlsProxyRuntime.configuredMaxCacheBytesForTests())
+    assertEquals(4, HlsProxyRuntime.configuredPrefetchSegmentCountForTests())
+  }
+
+  @Test
+  fun configureCacheClampsPrefetchSegments() {
+    HlsProxyRuntime.configureCache(null, 9.0)
+    assertEquals(6, HlsProxyRuntime.configuredPrefetchSegmentCountForTests())
+
+    HlsProxyRuntime.configureCache(null, 0.0)
+    assertEquals(1, HlsProxyRuntime.configuredPrefetchSegmentCountForTests())
   }
 }

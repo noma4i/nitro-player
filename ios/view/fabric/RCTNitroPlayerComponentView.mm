@@ -67,6 +67,14 @@ using namespace facebook::react;
   return NO;
 }
 
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+  if (![_view acceptsTouchEvents]) {
+    return nil;
+  }
+
+  return [super hitTest:point withEvent:event];
+}
+
 // Event emitter convenience method
 - (void)onNitroIdChange:(int)nitroId {
   auto eventEmitter =

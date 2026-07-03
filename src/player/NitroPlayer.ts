@@ -18,6 +18,8 @@ import { NitroPlayerEvents } from './NitroPlayerEvents';
 class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
   private _player: NitroPlayerImpl | undefined;
   private _source: NitroSourceDescriptor | null;
+  private _nativeSource: NitroPlayerSource | null;
+  private readonly _ownsNativePlayer: boolean;
 
   protected get player(): NitroPlayerImpl {
     if (this._player === undefined) {
@@ -27,13 +29,28 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     return this._player;
   }
 
-  constructor(source: NitroSourceInput | NitroPlayerSource) {
-    const player = createPlayer(source);
+  constructor(source: NitroSourceInput | NitroPlayerSource | NitroPlayerImpl) {
+    if (NitroPlayer.isNativePlayer(source)) {
+      super(source.eventEmitter);
+      this._player = source;
+      this._source = null;
+      this._nativeSource = null;
+      this._ownsNativePlayer = false;
+      return;
+    }
+
+    const { player, source: nativeSource } = createPlayer(source);
 
     // Initialize events
     super(player.eventEmitter);
     this._player = player;
     this._source = prepareSource(source);
+    this._nativeSource = nativeSource;
+    this._ownsNativePlayer = true;
+  }
+
+  static __fromNativePlayer(player: NitroPlayerImpl): NitroPlayer {
+    return new NitroPlayer(player);
   }
 
   /**
@@ -44,21 +61,31 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     const nativePlayer = this._player;
     if (nativePlayer === undefined) return;
 
-    const nativeSource = nativePlayer.source;
     this._player = undefined;
 
     this.clearAllEvents();
 
-    try {
-      nativePlayer.release();
-    } catch (error) {
-      // Best effort cleanup: teardown must never crash app unmount.
-      console.error('Failed to cleanup native player resources', error);
+    if (this._ownsNativePlayer) {
+      this.refreshNativeMemorySize(nativePlayer);
     }
+    this._nativeSource = null;
 
+    if (this._ownsNativePlayer) {
+      try {
+        nativePlayer.release();
+      } catch (error) {
+        // Best effort cleanup: teardown must never crash app unmount.
+        console.error('Failed to cleanup native player resources', error);
+      }
+    }
+  }
+
+  private refreshNativeMemorySize(nativePlayer: NitroPlayerImpl): void {
     try {
       NitroModules.updateMemorySize(nativePlayer);
-      NitroModules.updateMemorySize(nativeSource);
+      if (this._nativeSource !== null) {
+        NitroModules.updateMemorySize(this._nativeSource);
+      }
     } catch {
       // Best effort memory accounting for released hybrid objects.
     }
@@ -77,20 +104,30 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     return tryParseNativeNitroPlayerError(error);
   }
 
+  private static isNativePlayer(value: NitroSourceInput | NitroPlayerSource | NitroPlayerImpl): value is NitroPlayerImpl {
+    return Boolean(value && typeof value === 'object' && 'eventEmitter' in value && 'playbackState' in value);
+  }
+
   /**
    * Updates the memory size of the player and its source. Should be called after any operation that changes the memory size of the player or its source.
    * @internal
    */
   private refreshMemorySize() {
+    if (!this._ownsNativePlayer) {
+      return;
+    }
+
     // No-op once released: async paths (initialize/preload/replace/clear) call
     // this after awaiting a native promise, and release() may have run during
-    // the await — accessing `this.player` would throw `player/released`.
+    // the await; accessing `this.player` would throw `player/released`.
     if (this._player === undefined) {
       return;
     }
 
     NitroModules.updateMemorySize(this._player);
-    NitroModules.updateMemorySize(this._player.source);
+    if (this._nativeSource !== null) {
+      NitroModules.updateMemorySize(this._nativeSource);
+    }
   }
 
   private runSync<T>(operation: () => T): T {
@@ -282,8 +319,10 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     }
 
     this.refreshMemorySize();
-    await this.runAsync(() => this.player.replaceSourceAsync(createNativeNitroSource(nextSource)));
+    const nextNativeSource = createNativeNitroSource(nextSource);
+    await this.runAsync(() => this.player.replaceSourceAsync(nextNativeSource));
     this._source = nextSource;
+    this._nativeSource = nextNativeSource;
     this.refreshMemorySize();
   }
 
@@ -291,6 +330,7 @@ class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
     this.refreshMemorySize();
     await this.runAsync(() => this.player.clearSourceAsync());
     this._source = null;
+    this._nativeSource = null;
     this.refreshMemorySize();
   }
 }

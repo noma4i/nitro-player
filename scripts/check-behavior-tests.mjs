@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const roots = [
-  'src/__tests__',
+  'src',
   'android/src/test',
   'tests/ios/Tests'
 ];
@@ -21,6 +21,12 @@ const testFilePattern = /\.(kt|swift|tsx?|jsx?)$/;
 const violations = [];
 
 const walk = path => {
+  try {
+    statSync(path);
+  } catch {
+    return;
+  }
+
   for (const entry of readdirSync(path)) {
     const nextPath = join(path, entry);
     const stat = statSync(nextPath);

@@ -13,20 +13,21 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onPlayedToEnd(player: AVPlayer) {
+    if loop {
+      performSeamlessLoopSeek()
+      return
+    }
+
     cancelStartupRecovery()
     wantsToPlay = false
     status = .ended
     resetPlaybackError()
     emitPlaybackState()
-
-    if loop {
-      currentTime = 0
-      try? play()
-    }
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onRateChanged(rate: Float) {
+    updateCachedRate(rate)
     updateAndEmitPlaybackState()
   }
 
@@ -48,14 +49,27 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
   // lifecycle-audit:ignore(guarded-by-periodic-observer-guard)
   func onProgressUpdate(currentTime: Double, bufferDuration: Double) {
+    updateCachedProgress(currentTime: currentTime, bufferDuration: bufferDuration)
     emitPlaybackState()
+  }
+
+  // lifecycle-audit:ignore(guarded-by-notifyDelegate)
+  func onDurationChanged(duration: Double) {
+    updateCachedDuration(duration)
+    updateAndEmitPlaybackState()
+  }
+
+  // lifecycle-audit:ignore(guarded-by-notifyDelegate)
+  func onBufferDurationChanged(bufferDuration: Double) {
+    updateCachedProgress(bufferDuration: bufferDuration)
+    updateAndEmitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onPlaybackLikelyToKeepUp() {
     isCurrentlyBuffering = false
     resetPlaybackError()
-    if player.timeControlStatus != .waitingToPlayAtSpecifiedRate {
+    if cachedTimeControlStatus != .waitingToPlayAtSpecifiedRate {
       status = resolvePlayPauseStatus()
     }
     updateAndEmitPlaybackState()
@@ -63,6 +77,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onTimeControlStatusChanged(status: AVPlayer.TimeControlStatus) {
+    updateCachedTimeControlStatus(status)
     if player.status == .failed || playerItem?.status == .failed {
       let message = player.error?.localizedDescription ?? playerItem?.error?.localizedDescription ?? "Unknown playback error"
       if attemptStartupRecoveryIfNeeded(message: message) {
@@ -136,6 +151,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
     case .readyToPlay:
       guard let playerItem else { return }
+      updateCachedDuration(playerItem.duration.seconds)
       // Fire onLoad / first-frame only on the first ready of this source
       // generation; later READY transitions (rebuffer, seek) must not re-emit.
       let isFirstLoadForGeneration = !hasLoadedCurrentSource
@@ -166,6 +182,12 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       {
         isCurrentlyBuffering = false
         self.status = resolvePlayPauseStatus()
+      }
+
+      if wantsToPlay {
+        startCurrentItemPlayback()
+        self.status = rate > 0 ? .playing : resolvePlayPauseStatus()
+        schedulePlaybackStartWatchdog()
       }
 
     case .failed:
@@ -214,6 +236,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       isCurrentlyBuffering = true
       status = .loading
       readyToDisplay = false
+      resetPlaybackMetrics(currentTime: resumePositionSeconds)
       resetPlaybackError()
       updateAndEmitPlaybackState()
     } else {
@@ -221,6 +244,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       isCurrentlyBuffering = false
       readyToDisplay = false
       status = .idle
+      resetPlaybackMetrics(currentTime: resumePositionSeconds)
       resetPlaybackError()
       updateAndEmitPlaybackState()
     }

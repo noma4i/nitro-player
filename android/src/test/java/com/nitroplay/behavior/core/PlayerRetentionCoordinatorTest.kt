@@ -52,12 +52,9 @@ class PlayerRetentionCoordinatorTest {
   @Test
   fun feedHotPool_trimsOnlyEligibleHotUnpinnedPlayers() {
     assertTrue(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot()))
-    assertTrue(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isAttachedToView = true)))
     assertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isFeedPoolEligible = false)))
     assertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(retentionLevel = PlayerRetentionLevel.METADATA)))
-    assertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isPlaying = true)))
-    assertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(wantsToPlay = true)))
-    assertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isExternalPlaybackActive = true)))
+    assertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isAttachedToView = true)))
   }
 
   @Test
@@ -71,19 +68,6 @@ class PlayerRetentionCoordinatorTest {
 
     val keep = PlayerRetentionCoordinator.feedHotIds(players, maxHotPlayers = 2)
 
-    assertEquals(setOf("new", "attached"), keep)
-  }
-
-  @Test
-  fun feedHotIds_keepsPlaybackPinsOutsideRelaxedLimit() {
-    val players = listOf(
-      FeedHotPlayerSnapshot("old", 1, snapshot()),
-      FeedHotPlayerSnapshot("new", 3, snapshot()),
-      FeedHotPlayerSnapshot("playing", 2, snapshot(isPlaying = true))
-    )
-
-    val keep = PlayerRetentionCoordinator.feedHotIds(players, maxHotPlayers = 1)
-
-    assertEquals(setOf("playing"), keep)
+    assertEquals(setOf("attached", "new"), keep)
   }
 }

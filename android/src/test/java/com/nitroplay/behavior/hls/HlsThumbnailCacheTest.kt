@@ -94,6 +94,34 @@ class HlsThumbnailCacheTest {
   }
 
   @Test
+  fun independentThumbnailStoreSavePreservesSegmentIndex() {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    val staleThumbnailStore = HlsCacheStore(context)
+    val segmentStore = HlsCacheStore(context)
+    val segmentUrl = "https://cdn.example.com/live/segment0.ts"
+    val thumbnailUrl = "https://cdn.example.com/poster.jpg"
+
+    try {
+      segmentStore.put(segmentUrl, ByteArray(100) { 6 }, "stream1")
+      segmentStore.close()
+
+      staleThumbnailStore.putThumbnail(thumbnailUrl, ByteArray(50) { 7 })
+      staleThumbnailStore.close()
+
+      val reloaded = HlsCacheStore(context)
+      try {
+        assertNotNull(reloaded.getFilePath(segmentUrl))
+        assertNotNull(reloaded.getThumbnailPath(thumbnailUrl))
+      } finally {
+        reloaded.close()
+      }
+    } finally {
+      staleThumbnailStore.close()
+      segmentStore.close()
+    }
+  }
+
+  @Test
   fun clearThumbnails_persistsClearedIndexToDisk() {
     store.putThumbnail("https://cdn.example.com/poster.jpg", ByteArray(64) { 2 })
     store.clearThumbnails()

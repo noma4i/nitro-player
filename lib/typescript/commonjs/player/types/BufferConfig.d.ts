@@ -72,6 +72,7 @@ export interface BufferConfig {
      * The desired limit, in bits per second, of network bandwidth used for loading the current item.
      *
      * You can use {@linkcode preferredPeakBitRateForExpensiveNetworks} to set a different bit rate when on an expensive network (e.g. cellular).
+     * On Android this cap takes effect after track-selector mapping lands; current runtime behavior is iOS-only.
      * @platform ios, visionOS, tvOS
      */
     preferredPeakBitRate?: number;

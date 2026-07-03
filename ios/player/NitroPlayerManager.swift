@@ -18,6 +18,7 @@ class NitroPlayerManager {
   private var feedHotActivity: [ObjectIdentifier: UInt64] = [:]
   private var feedHotSequence: UInt64 = 0
   private var notificationObservers: [NSObjectProtocol] = []
+  private let mainThreadExecutor = MainThreadResourceExecutor()
 
   private init() {
     let center = NotificationCenter.default
@@ -82,6 +83,17 @@ class NitroPlayerManager {
     }
   }
 
+  func rebindViews(for player: HybridNitroPlayer) {
+    onMainThread {
+      for view in self.videoView.allObjects {
+        guard let viewPlayer = view.player as? HybridNitroPlayer, viewPlayer === player else {
+          continue
+        }
+        view.configureAVPlayerViewController(with: player.player)
+      }
+    }
+  }
+
   func touchFeedHotCandidate(_ player: HybridNitroPlayer) {
     onMainThread {
       if player.isFeedProfile() {
@@ -91,6 +103,16 @@ class NitroPlayerManager {
         self.feedHotActivity.removeValue(forKey: ObjectIdentifier(player))
       }
       self.rebalanceFeedHotPlayers()
+    }
+  }
+
+  func registeredPlayers() -> [HybridNitroPlayer] {
+    if Thread.isMainThread {
+      return players.allObjects
+    }
+
+    return mainThreadExecutor.run {
+      players.allObjects
     }
   }
 

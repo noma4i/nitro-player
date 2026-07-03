@@ -217,8 +217,8 @@ object VideoPreviewRuntime {
         mediaManifest = httpGetString(mediaManifestUrl, headers) ?: return null
       }
 
-      val (initSeg, firstSeg) = HlsManifest.extractInitAndFirstSegment(mediaManifest)
-      val segmentRef = firstSeg ?: return null
+      val (initSeg, segments) = HlsManifest.extractLeadingSegments(mediaManifest, 1)
+      val segmentRef = segments.firstOrNull() ?: return null
       val segmentBytes = httpGetBytes(HlsManifest.resolveUrl(mediaManifestUrl, segmentRef), headers) ?: return null
       // Fragmented MP4 segments need the init segment (ftyp+moov) prepended.
       val initBytes = initSeg?.let { httpGetBytes(HlsManifest.resolveUrl(mediaManifestUrl, it), headers) }

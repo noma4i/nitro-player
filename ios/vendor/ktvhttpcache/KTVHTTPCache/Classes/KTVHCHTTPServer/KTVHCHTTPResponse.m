@@ -9,6 +9,7 @@
 #import "KTVHCHTTPResponse.h"
 #import "KTVHCHTTPConnection.h"
 #import "KTVHCDataStorage.h"
+#import "KTVHCRequestLedger.h"
 #import "KTVHCLog.h"
 
 @interface KTVHCHTTPResponse () <KTVHCDataReaderDelegate>
@@ -16,6 +17,7 @@
 @property (nonatomic) BOOL waitingResponse;
 @property (nonatomic, strong) KTVHCDataReader *reader;
 @property (nonatomic, weak) KTVHCHTTPConnection *connection;
+@property (nonatomic, strong) NSNumber *ledgerRequestId;
 
 @end
 
@@ -23,10 +25,17 @@
 
 - (instancetype)initWithConnection:(KTVHCHTTPConnection *)connection dataRequest:(KTVHCDataRequest *)dataRequest
 {
+    return [self initWithConnection:connection dataRequest:dataRequest ledgerRequestId:[[KTVHCRequestLedger sharedLedger] beginRequestWithURL:dataRequest.URL]];
+}
+
+- (instancetype)initWithConnection:(KTVHCHTTPConnection *)connection dataRequest:(KTVHCDataRequest *)dataRequest ledgerRequestId:(NSNumber *)ledgerRequestId
+{
     if (self = [super init]) {
         KTVHCLogAlloc(self);
         self.connection = connection;
+        self.ledgerRequestId = ledgerRequestId;
         self.reader = [[KTVHCDataStorage storage] readerWithRequest:dataRequest];
+        self.reader.object = ledgerRequestId;
         self.reader.delegate = self;
         [self.reader prepare];
         KTVHCLogHTTPResponse(@"%p, Create response\nrequest : %@", self, dataRequest);
@@ -46,8 +55,13 @@
 {
     NSData *data = [self.reader readDataOfLength:length];
     KTVHCLogHTTPResponse(@"%p, Read data : %lld", self, (long long)data.length);
+    if (data.length > 0) {
+        [[KTVHCRequestLedger sharedLedger] markFirstByteForRequestId:self.ledgerRequestId];
+        [[KTVHCRequestLedger sharedLedger] addBytes:data.length forRequestId:self.ledgerRequestId];
+    }
     if (self.reader.isFinished) {
         KTVHCLogHTTPResponse(@"%p, Read data did finished", self);
+        [[KTVHCRequestLedger sharedLedger] markDoneForRequestId:self.ledgerRequestId];
         [self.reader close];
         [self.connection responseDidAbort:self];
     }
@@ -95,12 +109,16 @@
 - (BOOL)isDone
 {
     KTVHCLogHTTPResponse(@"%p, Check done : %d", self, self.reader.isFinished);
+    if (self.reader.isFinished) {
+        [[KTVHCRequestLedger sharedLedger] markDoneForRequestId:self.ledgerRequestId];
+    }
     return self.reader.isFinished;
 }
 
 - (void)connectionDidClose
 {
     KTVHCLogHTTPResponse(@"%p, Connection did closed : %lld, %lld", self, self.reader.response.contentLength, self.reader.readedLength);
+    [[KTVHCRequestLedger sharedLedger] markDoneForRequestId:self.ledgerRequestId];
     [self.reader close];
 }
 

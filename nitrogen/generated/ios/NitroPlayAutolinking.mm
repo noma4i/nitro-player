@@ -13,6 +13,7 @@
 #include "HybridNitroPlayerFactorySpecSwift.hpp"
 #include "HybridNitroPlayerSourceFactorySpecSwift.hpp"
 #include "HybridNitroPlayerViewManagerFactorySpecSwift.hpp"
+#include "HybridNitroFeedRingPlayerFactorySpecSwift.hpp"
 
 @interface NitroPlayAutolinking : NSObject
 @end
@@ -41,6 +42,13 @@
     "NitroPlayerViewManagerFactory",
     []() -> std::shared_ptr<HybridObject> {
       std::shared_ptr<HybridNitroPlayerViewManagerFactorySpec> hybridObject = NitroPlay::NitroPlayAutolinking::createNitroPlayerViewManagerFactory();
+      return hybridObject;
+    }
+  );
+  HybridObjectRegistry::registerHybridObjectConstructor(
+    "NitroFeedRingPlayerFactory",
+    []() -> std::shared_ptr<HybridObject> {
+      std::shared_ptr<HybridNitroFeedRingPlayerFactorySpec> hybridObject = NitroPlay::NitroPlayAutolinking::createNitroFeedRingPlayerFactory();
       return hybridObject;
     }
   );

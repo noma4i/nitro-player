@@ -39,6 +39,21 @@ internal class NitroPlayerListenerBridge(
         )
       )
     }
+
+    // The real first paint to the output surface. STATE_READY only means buffered; on Android the
+    // SurfaceView paints a frame later. Drive the visual-ready reveal from here so the JS cover
+    // dissolves exactly when a real frame is on screen (no black flash), and run poster extraction
+    // now that a frame actually exists.
+    override fun onRenderedFirstFrame(
+      eventTime: AnalyticsListener.EventTime,
+      output: Any,
+      renderTimeMs: Long
+    ) {
+      if (host.isReleased) return
+      host.readyToDisplay = true
+      host.requestFirstFrameIfNeeded()
+      host.emitPlaybackState()
+    }
   }
 
   val playerListener = object : Player.Listener {
@@ -62,7 +77,10 @@ internal class NitroPlayerListenerBridge(
           host.isCurrentlyBuffering = false
           host.lastError = null
           host.status = host.resolvePlayPauseStatus()
-          host.readyToDisplay = true
+          // readyToDisplay (-> isVisualReady, the JS cover-dissolve trigger) is intentionally NOT set
+          // here: STATE_READY means buffered, not painted. On Android SurfaceView there is a gap
+          // between STATE_READY and the actual first paint, so dissolving the cover here flashes
+          // black. It is set in analyticsListener.onRenderedFirstFrame (the real first paint).
 
           if (isFirstLoadForGeneration) {
             val generalVideoFormat = host.player.videoFormat

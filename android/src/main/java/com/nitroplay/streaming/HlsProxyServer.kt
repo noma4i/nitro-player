@@ -69,6 +69,7 @@ class HlsProxyServer(
     fun prefetch(
         url: String,
         headers: Map<String, String>?,
+        count: Int,
         onComplete: () -> Unit,
         onError: (Throwable) -> Unit,
         visitedUrls: MutableSet<String> = mutableSetOf(),
@@ -76,7 +77,7 @@ class HlsProxyServer(
     ) {
         try {
             executor.execute {
-                runPrefetch(url, headers, onComplete, onError, visitedUrls, streamKey)
+                runPrefetch(url, headers, count, onComplete, onError, visitedUrls, streamKey)
             }
         } catch (e: RejectedExecutionException) {
             onError(e)
@@ -86,6 +87,7 @@ class HlsProxyServer(
     private fun runPrefetch(
         url: String,
         headers: Map<String, String>?,
+        count: Int,
         onComplete: () -> Unit,
         onError: (Throwable) -> Unit,
         visitedUrls: MutableSet<String>,
@@ -101,31 +103,41 @@ class HlsProxyServer(
                     val variants = HlsManifest.extractVariants(manifest)
                     if (variants.isNotEmpty()) {
                         val resolved = HlsManifest.resolveUrl(url, variants[0])
-                        prefetch(resolved, headers, onComplete, onError, visitedUrls, streamKey)
+                        prefetch(resolved, headers, count, onComplete, onError, visitedUrls, streamKey)
                         return
                     }
                 }
-                val (initSeg, firstSeg) = HlsManifest.extractInitAndFirstSegment(manifest)
+                val (initSeg, segments) = HlsManifest.extractLeadingSegments(manifest, count)
+                val seenResources = mutableSetOf<String>()
                 if (initSeg != null) {
                     val resolved = HlsManifest.resolveUrl(url, initSeg)
-                    val resourceKey = HlsIdentity.requestKey(resolved, headers)
-                    if (!cacheStore.has(resourceKey)) {
-                        val data = fetchData(resolved, headers)
-                        putToCache(resourceKey, data, streamKey)
-                    }
+                    prefetchResource(resolved, headers, streamKey, seenResources)
                 }
-                if (firstSeg != null) {
-                    val resolved = HlsManifest.resolveUrl(url, firstSeg)
-                    val resourceKey = HlsIdentity.requestKey(resolved, headers)
-                    if (!cacheStore.has(resourceKey)) {
-                        val data = fetchData(resolved, headers)
-                        putToCache(resourceKey, data, streamKey)
-                    }
+                segments.forEach { segment ->
+                    val resolved = HlsManifest.resolveUrl(url, segment)
+                    prefetchResource(resolved, headers, streamKey, seenResources)
                 }
                 onComplete()
             } catch (e: Exception) {
                 onError(e)
             }
+    }
+
+    private fun prefetchResource(
+        url: String,
+        headers: Map<String, String>?,
+        streamKey: String,
+        seenResources: MutableSet<String>
+    ) {
+        if (!seenResources.add(url)) {
+            return
+        }
+
+        val resourceKey = HlsIdentity.requestKey(url, headers)
+        if (!cacheStore.has(resourceKey)) {
+            val data = fetchData(url, headers)
+            putToCache(resourceKey, data, streamKey)
+        }
     }
 
     private fun handleManifest(session: IHTTPSession): Response {

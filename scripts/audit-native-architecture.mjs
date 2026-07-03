@@ -120,11 +120,10 @@ const requiredMirrors = [
   ['ios/streaming/cache/HlsCacheBudget.swift', 'android/src/main/java/com/nitroplay/streaming/cache/HlsCacheBudget.kt'],
   ['ios/streaming/HlsPrefetchDeduper.swift', 'android/src/main/java/com/nitroplay/streaming/HlsPrefetchDeduper.kt'],
   ['ios/streaming/HlsRuntimeState.swift', 'android/src/main/java/com/nitroplay/streaming/HlsRuntimeState.kt'],
-  ['tests/ios/Tests/Behavior/Core/PlayerAppStatePolicyTests.swift', 'android/src/test/java/com/nitroplay/behavior/core/PlayerAppStatePolicyTest.kt'],
-  ['tests/ios/Tests/Behavior/Core/PlayerRetentionCoordinatorTests.swift', 'android/src/test/java/com/nitroplay/behavior/core/PlayerRetentionCoordinatorTest.kt'],
-  ['tests/ios/Tests/Behavior/Hls/PreviewRequestCoordinatorTests.swift', 'android/src/test/java/com/nitroplay/behavior/hls/PreviewRequestCoordinatorTest.kt'],
-  ['tests/ios/Tests/Behavior/Hls/HlsPrefetchDeduperTests.swift', 'android/src/test/java/com/nitroplay/behavior/hls/HlsPrefetchDeduperTest.kt'],
-  ['tests/ios/Tests/Behavior/Hls/HlsRuntimeStateTests.swift', 'android/src/test/java/com/nitroplay/behavior/hls/HlsRuntimeStateTest.kt']
+  ['tests/ios/Tests/NitroPlayFeedCoreTests/FeedRingCommandPlannerTests.swift', 'android/src/test/java/com/nitroplay/feed/FeedRingCommandPlannerTest.kt'],
+  ['tests/ios/Tests/NitroPlayFeedCoreTests/FeedRingWindowPlannerTests.swift', 'android/src/test/java/com/nitroplay/feed/FeedRingWindowPlannerTest.kt'],
+  ['tests/ios/Tests/NitroPlayFeedCoreTests/PlaybackWatchdogRecoveryTests.swift', 'android/src/test/java/com/nitroplay/behavior/playback/PlaybackWatchdogRecoveryTest.kt'],
+  ['tests/ios/Tests/NitroPlayFeedCoreTests/SourceCommandOrderingTests.swift', 'android/src/test/java/com/nitroplay/feed/SourceCommandOrderingTest.kt']
 ];
 
 for (const pair of requiredMirrors) {

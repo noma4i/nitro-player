@@ -19,6 +19,8 @@ protocol NitroPlayerObserverDelegate: AnyObject {
   func onTimeControlStatusChanged(status: AVPlayer.TimeControlStatus)
   func onPlayerStatusChanged(status: AVPlayer.Status)
   func onPlayerItemStatusChanged(status: AVPlayerItem.Status)
+  func onDurationChanged(duration: Double)
+  func onBufferDurationChanged(bufferDuration: Double)
   func onBandwidthUpdate(bitrate: Double)
   func onProgressUpdate(currentTime: Double, bufferDuration: Double)
   func onPlayerItemErrorLogEntry(statusCode: Int, comment: String?)
@@ -35,6 +37,8 @@ extension NitroPlayerObserverDelegate {
   func onTimeControlStatusChanged(status: AVPlayer.TimeControlStatus) {}
   func onPlayerStatusChanged(status: AVPlayer.Status) {}
   func onPlayerItemStatusChanged(status: AVPlayerItem.Status) {}
+  func onDurationChanged(duration: Double) {}
+  func onBufferDurationChanged(bufferDuration: Double) {}
   func onBandwidthUpdate(bitrate: Double) {}
   func onProgressUpdate(currentTime: Double, bufferDuration: Double) {}
   func onPlayerItemErrorLogEntry(statusCode: Int, comment: String?) {}
@@ -61,6 +65,8 @@ class NitroPlayerObserver: NSObject {
   var playbackLikelyToKeepUpObserver: NSKeyValueObservation?
   var playbackBufferFullObserver: NSKeyValueObservation?
   var playerItemStatusObserver: NSKeyValueObservation?
+  var playerItemDurationObserver: NSKeyValueObservation?
+  var playerItemLoadedTimeRangesObserver: NSKeyValueObservation?
   var playerItemAccessLogObserver: NSObjectProtocol?
   var playerItemErrorLogObserver: NSObjectProtocol?
   
@@ -99,10 +105,7 @@ class NitroPlayerObserver: NSObject {
       self?.notifyDelegate { $0.onRateChanged(rate: rate) }
     }
     
-    playerTimeControlStatusObserver = player.observe(\.timeControlStatus, options: [.new]) { [weak self] _, change in
-      guard let status = change.newValue else { return }
-      self?.notifyDelegate { $0.onTimeControlStatusChanged(status: status) }
-    }
+    observePlayerTimeControlStatus()
     
     playerVolumeObserver = player.observe(\.volume, options: [.new]) { [weak self] _, change in
       guard let volume = change.newValue else { return }
@@ -117,10 +120,23 @@ class NitroPlayerObserver: NSObject {
     // Playback progress tick. parity: Android PROGRESS_UPDATE_INTERVAL_MS = 250ms.
     let progressUpdateIntervalSeconds = 0.25
     let interval = CMTime(seconds: progressUpdateIntervalSeconds, preferredTimescale: 600)
-    playerProgressPeriodicObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] _ in
+    playerProgressPeriodicObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
       guard let self, let player = self.player, let delegate = self.delegate, !delegate.isReleased else { return }
       
-      delegate.onProgressUpdate(currentTime: player.currentTime().seconds, bufferDuration: player.currentItem?.getBufferDuration() ?? 0)
+      delegate.onProgressUpdate(currentTime: time.seconds, bufferDuration: player.currentItem?.getBufferDuration(at: time.seconds) ?? 0)
+    }
+  }
+
+  private func observePlayerTimeControlStatus() {
+    playerTimeControlStatusObserver?.invalidate()
+    guard let player else {
+      playerTimeControlStatusObserver = nil
+      return
+    }
+
+    playerTimeControlStatusObserver = player.observe(\.timeControlStatus, options: [.new, .initial]) { [weak self] _, change in
+      guard let status = change.newValue else { return }
+      self?.notifyDelegate { $0.onTimeControlStatusChanged(status: status) }
     }
   }
   
@@ -158,6 +174,18 @@ class NitroPlayerObserver: NSObject {
       guard let playerItem else { return }
       self?.notifyDelegate { $0.onPlayerItemStatusChanged(status: playerItem.status) }
     }
+
+    playerItemDurationObserver = playerItem.observe(\.duration, options: [.new, .initial]) { [weak self] item, change in
+      let duration = change.newValue ?? item.duration
+      self?.notifyDelegate { $0.onDurationChanged(duration: duration.seconds) }
+    }
+
+    playerItemLoadedTimeRangesObserver = playerItem.observe(\.loadedTimeRanges, options: [.new, .initial]) { [weak self, weak playerItem] _, _ in
+      guard let playerItem else { return }
+      self?.notifyDelegate { delegate in
+        delegate.onBufferDurationChanged(bufferDuration: playerItem.getBufferDuration(at: delegate.currentTime))
+      }
+    }
     
     observedPlayerItem = playerItem
   }
@@ -180,6 +208,10 @@ class NitroPlayerObserver: NSObject {
     clearBufferObservers()
     playerItemStatusObserver?.invalidate()
     playerItemStatusObserver = nil
+    playerItemDurationObserver?.invalidate()
+    playerItemDurationObserver = nil
+    playerItemLoadedTimeRangesObserver?.invalidate()
+    playerItemLoadedTimeRangesObserver = nil
     observedPlayerItem = nil
   }
   

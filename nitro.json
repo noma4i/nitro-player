@@ -41,6 +41,16 @@
         "language": "kotlin",
         "implementationClassName": "HybridNitroPlayerViewManagerFactory"
       }
+    },
+    "NitroFeedRingPlayerFactory": {
+      "ios": {
+        "language": "swift",
+        "implementationClassName": "HybridNitroFeedRingPlayerFactory"
+      },
+      "android": {
+        "language": "kotlin",
+        "implementationClassName": "HybridNitroFeedRingPlayerFactory"
+      }
     }
   }
 }

@@ -22,6 +22,7 @@ class HlsProxyServerBehaviorTest {
       server.prefetch(
         "https://cdn.example.com/live.m3u8",
         null,
+        2,
         onComplete = { completionError.set(AssertionError("prefetch should not complete after stop")) },
         onError = { completionError.set(it) }
       )

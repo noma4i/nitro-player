@@ -47,4 +47,16 @@ public final class NitroPlayAutolinking {
   public static func isNitroPlayerViewManagerFactoryRecyclable() -> Bool {
     return HybridNitroPlayerViewManagerFactory.self is any RecyclableView.Type
   }
+  
+  public static func createNitroFeedRingPlayerFactory() -> bridge.std__shared_ptr_HybridNitroFeedRingPlayerFactorySpec_ {
+    let hybridObject = HybridNitroFeedRingPlayerFactory()
+    return { () -> bridge.std__shared_ptr_HybridNitroFeedRingPlayerFactorySpec_ in
+      let __cxxWrapped = hybridObject.getCxxWrapper()
+      return __cxxWrapped.getCxxPart()
+    }()
+  }
+  
+  public static func isNitroFeedRingPlayerFactoryRecyclable() -> Bool {
+    return HybridNitroFeedRingPlayerFactory.self is any RecyclableView.Type
+  }
 }

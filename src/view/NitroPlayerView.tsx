@@ -12,8 +12,7 @@ import { NitroPlayer } from '../player/NitroPlayer';
 import { useNitroPlayer } from '../player/hooks/useNitroPlayer';
 import { NativeNitroPlayerView } from './NativeNitroPlayerView';
 
-export interface NitroPlayerViewProps extends Partial<NitroPlayerViewEvents>, ViewProps {
-  source: NitroSourceInput;
+interface NitroPlayerViewBaseProps extends Partial<NitroPlayerViewEvents>, ViewProps {
   playerDefaults?: NitroPlayerDefaults;
   style?: ViewStyle;
   controls?: boolean;
@@ -21,6 +20,8 @@ export interface NitroPlayerViewProps extends Partial<NitroPlayerViewEvents>, Vi
   keepScreenAwake?: boolean;
   surfaceType?: SurfaceType;
 }
+
+export type NitroPlayerViewProps = NitroPlayerViewBaseProps & ({ source: NitroSourceInput; player?: never } | { player: NitroPlayer; source?: never });
 
 export interface NitroPlayerViewRef {
   player: NitroPlayer;
@@ -48,7 +49,7 @@ const updateNativeProps = (
   manager: NitroPlayerViewManager,
   player: NitroPlayer,
   defaults: NitroPlayerDefaults | undefined,
-  props: Omit<NitroPlayerViewProps, 'source' | 'playerDefaults'>
+  props: Omit<NitroPlayerViewBaseProps, 'playerDefaults'>
 ) => {
   manager.surfaceType = props.surfaceType ?? 'surface';
   manager.controls = props.controls ?? false;
@@ -65,10 +66,14 @@ const updateNativeProps = (
 const isViewNotFound = (error: unknown): error is { code: 'view/not-found' } =>
   typeof error === 'object' && error !== null && 'code' in error && error.code === 'view/not-found';
 
-const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProps>(
+type NitroPlayerSurfaceProps = NitroPlayerViewBaseProps & {
+  player: NitroPlayer;
+};
+
+const NitroPlayerViewSurface = React.forwardRef<NitroPlayerViewRef, NitroPlayerSurfaceProps>(
   (
     {
-      source,
+      player,
       playerDefaults,
       controls = false,
       resizeMode = 'none',
@@ -83,7 +88,6 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
     },
     ref
   ) => {
-    const player = useNitroPlayer(source);
     const nitroId = React.useMemo(() => nitroIdCounter++, []);
     const nitroViewManager = React.useRef<NitroPlayerViewManager | null>(null);
     const isMountedRef = React.useRef(true);
@@ -250,6 +254,41 @@ const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProp
   }
 );
 
+const NitroPlayerViewWithSource = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewBaseProps & { source: NitroSourceInput }>(({ source, ...surfaceProps }, ref) => {
+  const player = useNitroPlayer(source);
+  return (
+    <NitroPlayerViewSurface
+      ref={ref}
+      player={player}
+      {...surfaceProps}
+    />
+  );
+});
+
+const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProps>((props, ref) => {
+  if ('player' in props && props.player) {
+    const { player, ...surfaceProps } = props;
+    return (
+      <NitroPlayerViewSurface
+        ref={ref}
+        player={player}
+        {...surfaceProps}
+      />
+    );
+  }
+
+  const { source, ...surfaceProps } = props;
+  return (
+    <NitroPlayerViewWithSource
+      ref={ref}
+      source={source}
+      {...surfaceProps}
+    />
+  );
+});
+
+NitroPlayerViewSurface.displayName = 'NitroPlayerViewSurface';
+NitroPlayerViewWithSource.displayName = 'NitroPlayerViewWithSource';
 NitroPlayerView.displayName = 'NitroPlayerView';
 
 export default React.memo(NitroPlayerView);

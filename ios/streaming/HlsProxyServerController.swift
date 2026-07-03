@@ -4,7 +4,7 @@ import UIKit
 final class HlsProxyServerController: NSObject {
   private let defaultPort: Int = 0
   private let prefetchClient = HlsNetworkClient()
-  private let prefetchCache = HlsCacheStore()
+  private let prefetchCache = HlsCacheStore.shared
   private let manifestRewriter = HlsManifestRewriter()
   private let stateQueue = DispatchQueue(label: "com.nitroplay.hls.ktv-proxy-state")
   private var requestedPort: Int = 0
@@ -68,11 +68,12 @@ final class HlsProxyServerController: NSObject {
     return proxyURL.absoluteString
   }
 
-  func prefetchFirstSegment(url: String, headers: [String: String]?) async throws {
-    try await prefetchFirstSegment(
+  func prefetchLeadingSegments(url: String, headers: [String: String]?, count: Int) async throws {
+    try await prefetchLeadingSegments(
       url: url,
       headers: headers,
-      streamKey: HlsIdentity.requestKey(url: url, headers: headers)
+      streamKey: HlsIdentity.requestKey(url: url, headers: headers),
+      count: count
     )
   }
 
@@ -92,6 +93,46 @@ final class HlsProxyServerController: NSObject {
       "maxSize": maxCacheBytes,
       "streamSize": stats["streamSize"] as? Int ?? 0,
       "streamFileCount": stats["streamFileCount"] as? Int ?? 0
+    ]
+  }
+
+  func getStreamVariants(url: String, headers: [String: String]?) async throws -> [[String: Any]] {
+    let manifest = try await prefetchClient.fetchText(url: url, headers: headers)
+    guard manifestRewriter.isMasterPlaylist(manifest) else {
+      return []
+    }
+    return manifestRewriter.extractStreamVariants(manifest: manifest, baseUrl: url)
+  }
+
+  func requestLedgerSnapshot() -> [[String: Any]] {
+    KTVHCRequestLedger.shared().snapshot().compactMap { $0 as? [String: Any] }
+  }
+
+  func getNetworkThroughputEstimate() -> [String: Any] {
+    let nowMs = Date().timeIntervalSince1970 * 1000
+    let samples = requestLedgerSnapshot()
+      .compactMap { Self.networkThroughputSample(from: $0) }
+      .sorted { $0.doneMs < $1.doneMs }
+      .suffix(10)
+
+    guard !samples.isEmpty else {
+      return [
+        "bps": 0,
+        "samples": 0,
+        "newestAgeMs": NSNull()
+      ]
+    }
+
+    let reciprocalSum = samples.reduce(0.0) { partial, sample in
+      partial + (1.0 / sample.bps)
+    }
+    let harmonicMean = Double(samples.count) / reciprocalSum
+    let newestDoneMs = samples.map { $0.doneMs }.max() ?? nowMs
+
+    return [
+      "bps": harmonicMean,
+      "samples": samples.count,
+      "newestAgeMs": max(0, nowMs - newestDoneMs)
     ]
   }
 
@@ -171,33 +212,57 @@ final class HlsProxyServerController: NSObject {
     KTVHTTPCache.cacheSetMaxCacheLength(Int64(maxCacheBytes))
   }
 
-  private func prefetchFirstSegment(url: String, headers: [String: String]?, streamKey: String) async throws {
+  private static func networkThroughputSample(from entry: [String: Any]) -> (bps: Double, doneMs: Double)? {
+    guard
+      (entry["usedNetwork"] as? NSNumber)?.boolValue == true,
+      let bytes = entry["bytes"] as? NSNumber,
+      bytes.int64Value >= 100_000,
+      let startMs = entry["tStartMs"] as? NSNumber,
+      let doneMs = entry["tDoneMs"] as? NSNumber
+    else {
+      return nil
+    }
+
+    let durationSeconds = (doneMs.doubleValue - startMs.doubleValue) / 1000
+    guard durationSeconds > 0 else {
+      return nil
+    }
+
+    return (bps: Double(bytes.int64Value) * 8 / durationSeconds, doneMs: doneMs.doubleValue)
+  }
+
+  private func prefetchLeadingSegments(url: String, headers: [String: String]?, streamKey: String, count: Int) async throws {
     let manifest = try await prefetchClient.fetchText(url: url, headers: headers)
     if manifestRewriter.isMasterPlaylist(manifest) {
       if let firstVariant = manifestRewriter.extractVariantUrls(manifest).first {
         let resolved = manifestRewriter.resolveUrl(base: url, relative: firstVariant)
-        try await prefetchFirstSegment(url: resolved, headers: headers, streamKey: streamKey)
+        try await prefetchLeadingSegments(url: resolved, headers: headers, streamKey: streamKey, count: count)
       }
       return
     }
 
-    let (initSegment, firstSegment) = manifestRewriter.extractInitAndFirstSegment(manifest)
+    let (initSegment, segments) = manifestRewriter.extractLeadingSegments(manifest, count: count)
+    var seenResources = Set<String>()
     if let initSegment {
       let resolved = manifestRewriter.resolveUrl(base: url, relative: initSegment)
-      let resourceKey = HlsIdentity.requestKey(url: resolved, headers: headers)
-      if !prefetchCache.has(url: resourceKey) {
-        let data = try await prefetchThroughProxy(url: resolved, headers: headers)
-        prefetchCache.put(url: resourceKey, data: data, streamKey: streamKey)
-      }
+      try await prefetchResource(url: resolved, headers: headers, streamKey: streamKey, seenResources: &seenResources)
     }
 
-    if let firstSegment {
-      let resolved = manifestRewriter.resolveUrl(base: url, relative: firstSegment)
-      let resourceKey = HlsIdentity.requestKey(url: resolved, headers: headers)
-      if !prefetchCache.has(url: resourceKey) {
-        let data = try await prefetchThroughProxy(url: resolved, headers: headers)
-        prefetchCache.put(url: resourceKey, data: data, streamKey: streamKey)
-      }
+    for segment in segments {
+      let resolved = manifestRewriter.resolveUrl(base: url, relative: segment)
+      try await prefetchResource(url: resolved, headers: headers, streamKey: streamKey, seenResources: &seenResources)
+    }
+  }
+
+  private func prefetchResource(url: String, headers: [String: String]?, streamKey: String, seenResources: inout Set<String>) async throws {
+    guard seenResources.insert(url).inserted else {
+      return
+    }
+
+    let resourceKey = HlsIdentity.requestKey(url: url, headers: headers)
+    if !prefetchCache.has(url: resourceKey) {
+      let data = try await prefetchThroughProxy(url: url, headers: headers)
+      prefetchCache.put(url: resourceKey, data: data, streamKey: streamKey)
     }
   }
 

@@ -11,6 +11,7 @@
 #import "KTVHCDataUnitPool.h"
 #import "KTVHCDownload.h"
 #import "KTVHCHLSTool.h"
+#import "KTVHCRequestLedger.h"
 #import "KTVHCLog.h"
 
 @interface KTVHCHTTPHLSResponse ()
@@ -21,6 +22,7 @@
 @property (nonatomic, strong) NSData *data;
 @property (nonatomic, strong) KTVHCDataUnit *unit;
 @property (nonatomic, strong) NSURLSessionDataTask *task;
+@property (nonatomic, strong) NSNumber *ledgerRequestId;
 
 @end
 
@@ -28,15 +30,22 @@
 
 - (instancetype)initWithConnection:(KTVHCHTTPConnection *)connection dataRequest:(KTVHCDataRequest *)dataRequest
 {
+    return [self initWithConnection:connection dataRequest:dataRequest ledgerRequestId:[[KTVHCRequestLedger sharedLedger] beginRequestWithURL:dataRequest.URL]];
+}
+
+- (instancetype)initWithConnection:(KTVHCHTTPConnection *)connection dataRequest:(KTVHCDataRequest *)dataRequest ledgerRequestId:(NSNumber *)ledgerRequestId
+{
     if (self = [super init]) {
         KTVHCLogAlloc(self);
         KTVHCLogHTTPHLSResponse(@"%p, Create response\nrequest : %@", self, dataRequest);
         self.connection = connection;
+        self.ledgerRequestId = ledgerRequestId;
         self.unit = [[KTVHCDataUnitPool pool] unitWithURL:dataRequest.URL];
         NSURL *completeURL = self.unit.completeURL;
         if (completeURL) {
             self.data = [NSData dataWithContentsOfURL:completeURL];
         } else {
+            [[KTVHCRequestLedger sharedLedger] markUsedNetworkForRequestId:self.ledgerRequestId];
             __weak typeof(self) weakSelf = self;
             self.task = [[KTVHCHLSTool tool] taskWithURL:dataRequest.URL completionHandler:^(NSData *data, NSError *error) {
                 __strong typeof(weakSelf) strongSelf = weakSelf;
@@ -72,6 +81,11 @@
 {
     KTVHCLogHTTPHLSResponse(@"%p, Read data : %lld", self, (long long)self.data.length);
     self.readedLength = self.data.length;
+    if (self.data.length > 0) {
+        [[KTVHCRequestLedger sharedLedger] markFirstByteForRequestId:self.ledgerRequestId];
+        [[KTVHCRequestLedger sharedLedger] addBytes:self.data.length forRequestId:self.ledgerRequestId];
+        [[KTVHCRequestLedger sharedLedger] markDoneForRequestId:self.ledgerRequestId];
+    }
     return self.data;
 }
 
@@ -110,12 +124,16 @@
 - (BOOL)isDone
 {
     KTVHCLogHTTPHLSResponse(@"%p, Check done : %lld", self, self.unit.totalLength);
+    if (self.readedLength > 0) {
+        [[KTVHCRequestLedger sharedLedger] markDoneForRequestId:self.ledgerRequestId];
+    }
     return self.readedLength > 0;
 }
 
 - (void)connectionDidClose
 {
     KTVHCLogHTTPHLSResponse(@"%p, Connection did closed : %lld, %lld", self, self.unit.totalLength, self.unit.cacheLength);
+    [[KTVHCRequestLedger sharedLedger] markDoneForRequestId:self.ledgerRequestId];
     [self.task cancel];
 }
 

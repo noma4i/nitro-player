@@ -288,6 +288,18 @@ import UIKit
     }
   }
 
+  public override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+    guard controls else {
+      return false
+    }
+
+    return super.point(inside: point, with: event)
+  }
+
+  @objc public func acceptsTouchEvents() -> Bool {
+    return controls
+  }
+
   public func enterFullscreen() throws {
     guard let playerViewController else {
       throw NitroPlayerViewError.viewIsDeallocated.error()

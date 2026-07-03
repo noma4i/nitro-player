@@ -15,10 +15,13 @@
 #include <fbjni/fbjni.h>
 #include <NitroModules/HybridObjectRegistry.hpp>
 
+#include "JHybridNitroFeedRingPlayerSpec.hpp"
+#include "JFunc_void.hpp"
+#include "JFunc_void_FeedRingSlotState.hpp"
+#include "JHybridNitroFeedRingPlayerFactorySpec.hpp"
 #include "JHybridNitroPlayerSpec.hpp"
 #include "JHybridNitroPlayerFactorySpec.hpp"
 #include "JHybridNitroPlayerEventEmitterSpec.hpp"
-#include "JFunc_void.hpp"
 #include "JFunc_void_BandwidthData.hpp"
 #include "JFunc_void_onLoadData.hpp"
 #include "JFunc_void_onLoadStartData.hpp"
@@ -65,16 +68,27 @@ struct JHybridNitroPlayerViewManagerFactorySpecImpl: public jni::JavaClass<JHybr
     return javaPart->getJHybridNitroPlayerViewManagerFactorySpec();
   }
 };
+struct JHybridNitroFeedRingPlayerFactorySpecImpl: public jni::JavaClass<JHybridNitroFeedRingPlayerFactorySpecImpl, JHybridNitroFeedRingPlayerFactorySpec::JavaPart> {
+  static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/video/HybridNitroFeedRingPlayerFactory;";
+  static std::shared_ptr<JHybridNitroFeedRingPlayerFactorySpec> create() {
+    static const auto constructorFn = javaClassStatic()->getConstructor<JHybridNitroFeedRingPlayerFactorySpecImpl::javaobject()>();
+    jni::local_ref<JHybridNitroFeedRingPlayerFactorySpec::JavaPart> javaPart = javaClassStatic()->newObject(constructorFn);
+    return javaPart->getJHybridNitroFeedRingPlayerFactorySpec();
+  }
+};
 
 void registerAllNatives() {
   using namespace margelo::nitro;
   using namespace margelo::nitro::video;
 
   // Register native JNI methods
+  margelo::nitro::video::JHybridNitroFeedRingPlayerSpec::CxxPart::registerNatives();
+  margelo::nitro::video::JFunc_void_cxx::registerNatives();
+  margelo::nitro::video::JFunc_void_FeedRingSlotState_cxx::registerNatives();
+  margelo::nitro::video::JHybridNitroFeedRingPlayerFactorySpec::CxxPart::registerNatives();
   margelo::nitro::video::JHybridNitroPlayerSpec::CxxPart::registerNatives();
   margelo::nitro::video::JHybridNitroPlayerFactorySpec::CxxPart::registerNatives();
   margelo::nitro::video::JHybridNitroPlayerEventEmitterSpec::CxxPart::registerNatives();
-  margelo::nitro::video::JFunc_void_cxx::registerNatives();
   margelo::nitro::video::JFunc_void_BandwidthData_cxx::registerNatives();
   margelo::nitro::video::JFunc_void_onLoadData_cxx::registerNatives();
   margelo::nitro::video::JFunc_void_onLoadStartData_cxx::registerNatives();
@@ -105,6 +119,12 @@ void registerAllNatives() {
     "NitroPlayerViewManagerFactory",
     []() -> std::shared_ptr<HybridObject> {
       return JHybridNitroPlayerViewManagerFactorySpecImpl::create();
+    }
+  );
+  HybridObjectRegistry::registerHybridObjectConstructor(
+    "NitroFeedRingPlayerFactory",
+    []() -> std::shared_ptr<HybridObject> {
+      return JHybridNitroFeedRingPlayerFactorySpecImpl::create();
     }
   );
 }

@@ -7,6 +7,11 @@ import { tryParseNativeNitroPlayerError } from '../support/errors/NitroPlayerErr
 
 const NitroPlayerFactory = NitroModules.createHybridObject<NitroPlayerFactory>('NitroPlayerFactory');
 
+export interface CreatedNitroPlayer {
+  player: NitroPlayer;
+  source: NitroPlayerSource;
+}
+
 /**
  * @internal
  * Creates a Native NitroPlayer instance.
@@ -14,13 +19,14 @@ const NitroPlayerFactory = NitroModules.createHybridObject<NitroPlayerFactory>('
  * @param source - The source of the video to play
  * @returns The Native NitroPlayer instance
  */
-export const createPlayer = (source: NitroSourceInput | NitroPlayerSource): NitroPlayer => {
+export const createPlayer = (source: NitroSourceInput | NitroPlayerSource): CreatedNitroPlayer => {
   try {
-    if (isNitroPlayerSource(source)) {
-      return NitroPlayerFactory.createPlayer(source);
-    }
+    const nativeSource = isNitroPlayerSource(source) ? source : createNativeNitroSource(source);
 
-    return NitroPlayerFactory.createPlayer(createNativeNitroSource(source));
+    return {
+      player: NitroPlayerFactory.createPlayer(nativeSource),
+      source: nativeSource
+    };
   } catch (error) {
     throw tryParseNativeNitroPlayerError(error);
   }

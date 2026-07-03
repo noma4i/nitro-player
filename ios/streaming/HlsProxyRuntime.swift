@@ -12,6 +12,7 @@ final class HlsProxyRuntime {
   private let controller = HlsProxyServerController()
   private let prefetchDeduper = HlsPrefetchDeduper(window: 60, maxEntries: 500)
   private let runtimeQueue = DispatchQueue(label: "com.nitroplay.hls.proxy-runtime")
+  private var prefetchSegmentCount = 2
 
   private init() {}
 
@@ -36,7 +37,7 @@ final class HlsProxyRuntime {
     resolvePlaybackRoute(url: url, headers: headers).url
   }
 
-  func prefetchFirstSegment(url: String, headers: [String: String]?) async throws {
+  func prefetchLeadingSegments(url: String, headers: [String: String]?) async throws {
     guard !runtimeQueue.sync(execute: { runtimeState.snapshot().isExplicitlyStopped }) else {
       return
     }
@@ -45,6 +46,7 @@ final class HlsProxyRuntime {
     }
 
     ensureStarted()
+    let segmentCount = runtimeQueue.sync { prefetchSegmentCount }
 
     let dedupKey = HlsIdentity.requestKey(url: url, headers: headers)
     let shouldPrefetch = prefetchDeduper.shouldPrefetch(key: dedupKey)
@@ -54,7 +56,7 @@ final class HlsProxyRuntime {
     }
 
     do {
-      try await controller.prefetchFirstSegment(url: url, headers: headers)
+      try await controller.prefetchLeadingSegments(url: url, headers: headers, count: segmentCount)
     } catch {
       prefetchDeduper.forget(key: dedupKey)
       throw error
@@ -69,8 +71,30 @@ final class HlsProxyRuntime {
     controller.getCacheStats(streamKey: HlsIdentity.requestKey(url: url, headers: headers))
   }
 
-  func configureCache(maxBytes: Int) {
-    controller.configureCache(maxBytes: maxBytes)
+  func getStreamVariants(url: String, headers: [String: String]?) async throws -> [[String: Any]] {
+    guard HlsManifestUrl.matches(url) else {
+      return []
+    }
+    return try await controller.getStreamVariants(url: url, headers: headers)
+  }
+
+  func requestLedgerSnapshot() -> [[String: Any]] {
+    controller.requestLedgerSnapshot()
+  }
+
+  func getNetworkThroughputEstimate() -> [String: Any] {
+    controller.getNetworkThroughputEstimate()
+  }
+
+  func configureCache(maxBytes: Int?, prefetchSegments: Int?) {
+    if let maxBytes {
+      controller.configureCache(maxBytes: maxBytes)
+    }
+    if let prefetchSegments {
+      runtimeQueue.sync {
+        prefetchSegmentCount = Self.normalizePrefetchSegmentCount(prefetchSegments)
+      }
+    }
   }
 
   func getThumbnailUrl(url: String, headers: [String: String]?) async -> String? {
@@ -123,5 +147,9 @@ final class HlsProxyRuntime {
         }
       }
     }
+  }
+
+  private static func normalizePrefetchSegmentCount(_ count: Int) -> Int {
+    min(6, max(1, count))
   }
 }

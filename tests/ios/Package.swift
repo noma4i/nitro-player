@@ -1,18 +1,23 @@
-// swift-tools-version:5.9
+// swift-tools-version: 5.9
+
 import PackageDescription
 
 let package = Package(
-  name: "NitroPlayTests",
-  platforms: [.macOS(.v12)],
+  name: "NitroPlayFeedTests",
+  platforms: [
+    .iOS(.v13),
+    .macOS(.v13)
+  ],
+  products: [],
   targets: [
     .target(
-      name: "NitroPlayLogic",
-      path: "Sources"
+      name: "NitroPlayFeedCore",
+      path: "Sources/NitroPlayFeedCore"
     ),
     .testTarget(
-      name: "NitroPlayUnitTests",
-      dependencies: ["NitroPlayLogic"],
-      path: "Tests"
+      name: "NitroPlayFeedCoreTests",
+      dependencies: ["NitroPlayFeedCore"],
+      path: "Tests/NitroPlayFeedCoreTests"
     )
   ]
 )

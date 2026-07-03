@@ -220,6 +220,7 @@ class HlsCacheStore(context: Context, maxBytes: Long = HlsCacheBudget.DEFAULT_MA
 
     @Synchronized
     private fun saveIndex() {
+        mergeDiskIndex()
         val json = JSONObject()
         index.forEach { (url, entry) ->
             val obj = JSONObject()
@@ -231,6 +232,32 @@ class HlsCacheStore(context: Context, maxBytes: Long = HlsCacheBudget.DEFAULT_MA
             json.put(url, obj)
         }
         indexFile.writeText(json.toString())
+    }
+
+    private fun mergeDiskIndex() {
+        if (!indexFile.exists()) return
+        try {
+            val text = indexFile.readText()
+            if (text.isBlank()) return
+            val json = JSONObject(text)
+            json.keys().forEach { key ->
+                if (index.containsKey(key)) return@forEach
+                val obj = json.getJSONObject(key)
+                val entry = HlsCacheEntry(
+                    url = key,
+                    fileName = obj.getString("fileName"),
+                    size = obj.getLong("size"),
+                    streamKey = if (obj.has("streamKey") && !obj.isNull("streamKey")) obj.getString("streamKey") else null,
+                    createdAt = obj.getLong("createdAt"),
+                    lastAccess = obj.getLong("lastAccess")
+                )
+                val file = File(cacheDir, entry.fileName)
+                if (isSafeFileName(entry.fileName) && file.exists() && file.length() > 0L && file.length() == entry.size) {
+                    index[key] = entry
+                }
+            }
+        } catch (_: Exception) {
+        }
     }
 
     private fun sha256(input: String): String {

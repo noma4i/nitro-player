@@ -5,6 +5,8 @@ import OSLog
 private let cacheLogger = Logger(subsystem: "com.nitroplay.hls", category: "CacheStore")
 
 final class HlsCacheStore {
+  static let shared = HlsCacheStore()
+
   private var maxBytes: Int
   private let ttlSeconds: TimeInterval = 7 * 24 * 60 * 60
   private let cacheDir: URL

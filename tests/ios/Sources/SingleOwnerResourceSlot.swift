@@ -1,1 +1,0 @@
-../../../ios/support/SingleOwnerResourceSlot.swift

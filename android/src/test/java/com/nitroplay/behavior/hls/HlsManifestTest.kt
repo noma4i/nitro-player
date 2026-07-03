@@ -58,31 +58,109 @@ class HlsManifestTest {
   }
 
   @Test
+  fun extractStreamVariants_returnsAttributes_fromMasterManifest() {
+    val manifest = """
+      #EXTM3U
+      #EXT-X-STREAM-INF:BANDWIDTH=4200000,AVERAGE-BANDWIDTH=3900000,RESOLUTION=720x1280,CODECS="avc1.64001f,mp4a.40.2"
+      720p/index.m3u8
+      #EXT-X-STREAM-INF:BANDWIDTH=8500000,RESOLUTION=1080x1920
+      https://cdn.example.com/video/1080p/index.m3u8
+    """.trimIndent()
+
+    val variants = HlsManifest.extractStreamVariants(manifest, "https://cdn.example.com/video/master.m3u8")
+
+    assertEquals(2, variants.size)
+    assertEquals(4200000, variants[0].bandwidth)
+    assertEquals(3900000, variants[0].averageBandwidth)
+    assertEquals(720, variants[0].width)
+    assertEquals(1280, variants[0].height)
+    assertEquals("avc1.64001f,mp4a.40.2", variants[0].codecs)
+    assertEquals("https://cdn.example.com/video/720p/index.m3u8", variants[0].uri)
+    assertEquals(8500000, variants[1].bandwidth)
+    assertEquals(null, variants[1].averageBandwidth)
+    assertEquals(1080, variants[1].width)
+    assertEquals(1920, variants[1].height)
+    assertEquals(null, variants[1].codecs)
+    assertEquals("https://cdn.example.com/video/1080p/index.m3u8", variants[1].uri)
+  }
+
+  @Test
   fun extractVariants_returnsEmpty_forMediaManifest() {
     val variants = HlsManifest.extractVariants(mediaManifest)
     assertTrue(variants.isEmpty())
   }
 
   @Test
-  fun extractInitAndFirstSegment_returnsInitFromMap() {
-    val (init, first) = HlsManifest.extractInitAndFirstSegment(mediaManifest)
+  fun extractLeadingSegments_returnsInitFromMap() {
+    val (init, segments) = HlsManifest.extractLeadingSegments(mediaManifest, 1)
     assertEquals("init.mp4", init)
-    assertEquals("segment0.ts", first)
+    assertEquals(listOf("segment0.ts"), segments)
   }
 
   @Test
-  fun extractInitAndFirstSegment_returnsNullForEmpty() {
-    val (init, first) = HlsManifest.extractInitAndFirstSegment("#EXTM3U\n#EXT-X-ENDLIST")
+  fun extractLeadingSegments_returnsNullForEmpty() {
+    val (init, segments) = HlsManifest.extractLeadingSegments("#EXTM3U\n#EXT-X-ENDLIST", 2)
     assertNull(init)
-    assertNull(first)
+    assertTrue(segments.isEmpty())
   }
 
   @Test
-  fun extractInitAndFirstSegment_noMap_returnsNullInit() {
+  fun extractLeadingSegments_noMap_returnsNullInit() {
     val manifest = "#EXTM3U\n#EXTINF:10.0,\nsegment0.ts"
-    val (init, first) = HlsManifest.extractInitAndFirstSegment(manifest)
+    val (init, segments) = HlsManifest.extractLeadingSegments(manifest, 1)
     assertNull(init)
-    assertEquals("segment0.ts", first)
+    assertEquals(listOf("segment0.ts"), segments)
+  }
+
+  @Test
+  fun extractLeadingSegments_honorsCount() {
+    val manifest = """
+      #EXTM3U
+      #EXTINF:10.0,
+      segment0.ts
+      #EXTINF:10.0,
+      segment1.ts
+      #EXTINF:10.0,
+      segment2.ts
+      #EXTINF:10.0,
+      segment3.ts
+    """.trimIndent()
+
+    val (_, segments) = HlsManifest.extractLeadingSegments(manifest, 2)
+
+    assertEquals(listOf("segment0.ts", "segment1.ts"), segments)
+  }
+
+  @Test
+  fun extractLeadingSegments_countAbovePlaylistLengthReturnsAllSegments() {
+    val (_, segments) = HlsManifest.extractLeadingSegments(mediaManifest, 6)
+
+    assertEquals(listOf("segment0.ts", "segment1.ts"), segments)
+  }
+
+  @Test
+  fun extractLeadingSegments_returnsMapAndLeadingSegments() {
+    val (init, segments) = HlsManifest.extractLeadingSegments(mediaManifest, 2)
+
+    assertEquals("init.mp4", init)
+    assertEquals(listOf("segment0.ts", "segment1.ts"), segments)
+  }
+
+  @Test
+  fun extractLeadingSegments_preservesRepeatedUriEntries() {
+    val manifest = """
+      #EXTM3U
+      #EXT-X-BYTERANGE:100@0
+      shared.ts
+      #EXT-X-BYTERANGE:100@100
+      shared.ts
+      #EXT-X-BYTERANGE:100@200
+      next.ts
+    """.trimIndent()
+
+    val (_, segments) = HlsManifest.extractLeadingSegments(manifest, 3)
+
+    assertEquals(listOf("shared.ts", "shared.ts", "next.ts"), segments)
   }
 
   @Test

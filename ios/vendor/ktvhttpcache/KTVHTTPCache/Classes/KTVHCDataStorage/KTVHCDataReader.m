@@ -11,6 +11,7 @@
 #import "KTVHCDataSourceManager.h"
 #import "KTVHCDataUnitPool.h"
 #import "KTVHCDataCallback.h"
+#import "KTVHCRequestLedger.h"
 #import "KTVHCLog.h"
 
 @interface KTVHCDataReader () <KTVHCDataSourceManagerDelegate>
@@ -167,6 +168,9 @@
     NSMutableArray<id<KTVHCDataSource>> *sources = [NSMutableArray array];
     [sources addObjectsFromArray:fileSources];
     [sources addObjectsFromArray:networkSources];
+    if (networkSources.count > 0 && [self.object isKindOfClass:[NSNumber class]]) {
+        [[KTVHCRequestLedger sharedLedger] markUsedNetworkForRequestId:(NSNumber *)self.object];
+    }
     self.sourceManager = [[KTVHCDataSourceManager alloc] initWithSources:sources delegate:self delegateQueue:self.internalDelegateQueue];
     [self.sourceManager prepare];
 }

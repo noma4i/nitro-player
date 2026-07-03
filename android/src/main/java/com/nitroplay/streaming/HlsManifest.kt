@@ -1,5 +1,14 @@
 package com.nitroplay.video.streaming
 
+data class HlsStreamVariant(
+    val bandwidth: Int,
+    val averageBandwidth: Int?,
+    val width: Int?,
+    val height: Int?,
+    val codecs: String?,
+    val uri: String
+)
+
 object HlsManifest {
     private const val STREAM_INF = "#EXT-X-STREAM-INF"
     private const val MAP_TAG = "#EXT-X-MAP"
@@ -8,38 +17,58 @@ object HlsManifest {
     fun isMaster(manifest: String): Boolean = manifest.contains(STREAM_INF)
 
     fun extractVariants(manifest: String): List<String> {
+        return extractStreamVariants(manifest, null).map { it.uri }
+    }
+
+    fun extractStreamVariants(manifest: String, baseUrl: String?): List<HlsStreamVariant> {
         val lines = manifest.split("\n")
-        val urls = mutableListOf<String>()
+        val variants = mutableListOf<HlsStreamVariant>()
         var i = 0
         while (i < lines.size) {
             val line = lines[i].trim()
             if (line.startsWith(STREAM_INF) && i + 1 < lines.size) {
                 val next = lines[i + 1].trim()
                 if (!next.startsWith("#") && next.isNotEmpty()) {
-                    urls.add(next)
+                    val attributes = parseAttributeList(line)
+                    val resolution = parseResolution(attributes["RESOLUTION"])
+                    variants.add(
+                        HlsStreamVariant(
+                            bandwidth = attributes["BANDWIDTH"]?.toIntOrNull() ?: 0,
+                            averageBandwidth = attributes["AVERAGE-BANDWIDTH"]?.toIntOrNull(),
+                            width = resolution?.first,
+                            height = resolution?.second,
+                            codecs = attributes["CODECS"],
+                            uri = baseUrl?.let { resolveUrl(it, next) } ?: next
+                        )
+                    )
                 }
                 i += 1
             }
             i += 1
         }
-        return urls
+        return variants
     }
 
-    fun extractInitAndFirstSegment(manifest: String): Pair<String?, String?> {
+    fun extractLeadingSegments(manifest: String, count: Int): Pair<String?, List<String>> {
         val lines = manifest.split("\n")
+        val targetCount = count.coerceAtLeast(0)
         var initSeg: String? = null
-        var firstSeg: String? = null
+        val segments = mutableListOf<String>()
         for (raw in lines) {
             val line = raw.trim()
             if (line.startsWith(MAP_TAG)) {
                 extractUri(line)?.let { initSeg = it }
             }
             if (!line.startsWith("#") && line.isNotEmpty()) {
-                firstSeg = line
-                break
+                if (segments.size < targetCount) {
+                    segments.add(line)
+                }
+                if (segments.size >= targetCount) {
+                    break
+                }
             }
         }
-        return Pair(initSeg, firstSeg)
+        return Pair(initSeg, segments)
     }
 
     fun rewriteMaster(
@@ -129,6 +158,48 @@ object HlsManifest {
     }
 
     private val URI_REGEX = Regex("URI=\"([^\"]+)\"")
+
+    private fun parseAttributeList(line: String): Map<String, String> {
+        val start = line.indexOf(':')
+        if (start < 0) return emptyMap()
+
+        val attributes = mutableMapOf<String, String>()
+        val key = StringBuilder()
+        val value = StringBuilder()
+        var readingKey = true
+        var insideQuotes = false
+
+        for (index in (start + 1) until line.length) {
+            val char = line[index]
+            when {
+                char == '"' -> insideQuotes = !insideQuotes
+                readingKey && char == '=' -> readingKey = false
+                !insideQuotes && char == ',' -> {
+                    val normalizedKey = key.toString().trim()
+                    if (normalizedKey.isNotEmpty()) {
+                        attributes[normalizedKey] = value.toString().trim()
+                    }
+                    key.clear()
+                    value.clear()
+                    readingKey = true
+                }
+                readingKey -> key.append(char)
+                else -> value.append(char)
+            }
+        }
+
+        val normalizedKey = key.toString().trim()
+        if (normalizedKey.isNotEmpty()) {
+            attributes[normalizedKey] = value.toString().trim()
+        }
+        return attributes
+    }
+
+    private fun parseResolution(value: String?): Pair<Int, Int>? {
+        val parts = value?.lowercase()?.split("x", limit = 2)?.mapNotNull { it.toIntOrNull() } ?: return null
+        if (parts.size != 2) return null
+        return Pair(parts[0], parts[1])
+    }
 
     private fun extractUri(line: String): String? {
         return URI_REGEX.find(line)?.groups?.get(1)?.value

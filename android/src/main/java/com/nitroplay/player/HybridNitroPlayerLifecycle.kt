@@ -66,7 +66,12 @@ internal class NitroPlayerLifecycle(
 
     val mediaSource = hybridSource.createOrGetMediaSource()
 
-    replacePlayerInstance(loadControl, attachPlaybackListeners = true)
+    if (host.reusePlayerInstanceForSourceChanges) {
+      host.listenerBridge.stopProgressUpdates()
+      attachPlaybackListenersIfNeeded()
+    } else {
+      replacePlayerInstance(loadControl, attachPlaybackListeners = true)
+    }
 
     host.loadedWithSource = true
     host.player.setMediaSource(mediaSource)
@@ -91,24 +96,48 @@ internal class NitroPlayerLifecycle(
     host.listenerBridge.stopProgressUpdates()
     host.player.removeListener(host.listenerBridge.playerListener)
     host.player.removeAnalyticsListener(host.listenerBridge.analyticsListener)
+    host.playbackListenersAttached = false
     host.player.release()
     host.player = host.createExoPlayer(loadControl)
     host.rebindCurrentPlayerView()
     if (attachPlaybackListeners) {
       host.player.addListener(host.listenerBridge.playerListener)
       host.player.addAnalyticsListener(host.listenerBridge.analyticsListener)
+      host.playbackListenersAttached = true
     }
+    // A fresh ExoPlayer defaults to playWhenReady=false. Reconcile it to the current play
+    // intent so a recreation (init/trim/re-init) that happens after the last play() never
+    // strands a should-be-playing instance paused. The single choke point for recreation, so
+    // every path (initializePlayer, trim, clearCurrentSourceState) stays intent-consistent.
+    host.player.playWhenReady = host.wantsToPlay
   }
 
-  fun clearCurrentSourceState(sourceToTrim: HybridNitroPlayerSource?) {
+  private fun attachPlaybackListenersIfNeeded() {
+    if (host.playbackListenersAttached) {
+      return
+    }
+
+    host.player.addListener(host.listenerBridge.playerListener)
+    host.player.addAnalyticsListener(host.listenerBridge.analyticsListener)
+    host.playbackListenersAttached = true
+  }
+
+  fun clearCurrentSourceState(sourceToTrim: HybridNitroPlayerSource?, beginGeneration: Boolean = true) {
     host.wantsToPlay = false
     cancelPendingTrim()
     host.cancelStartupRecovery()
-    host.beginSourceGeneration()
+    if (beginGeneration) {
+      host.beginSourceGeneration()
+    }
     host.listenerBridge.stopProgressUpdates()
     sourceToTrim?.sourceLoader?.cancel()
     sourceToTrim?.trimToCold()
-    replacePlayerInstance(DefaultLoadControl.Builder().build(), attachPlaybackListeners = false)
+    if (host.reusePlayerInstanceForSourceChanges) {
+      host.player.stop()
+      host.player.clearMediaItems()
+    } else {
+      replacePlayerInstance(DefaultLoadControl.Builder().build(), attachPlaybackListeners = false)
+    }
     host.allocator = null
     host.loadedWithSource = false
     host.hasActiveSource = false
@@ -261,7 +290,13 @@ internal class NitroPlayerLifecycle(
 
     if (host.loadedWithSource) {
       host.desiredCurrentTimeMs = host.player.currentPosition
-      replacePlayerInstance(DefaultLoadControl.Builder().build(), attachPlaybackListeners = false)
+      if (host.reusePlayerInstanceForSourceChanges) {
+        host.listenerBridge.stopProgressUpdates()
+        host.player.stop()
+        host.player.clearMediaItems()
+      } else {
+        replacePlayerInstance(DefaultLoadControl.Builder().build(), attachPlaybackListeners = false)
+      }
       host.allocator = null
       host.loadedWithSource = false
     }
