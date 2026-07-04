@@ -4,21 +4,20 @@
 
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
-import { Text, View } from 'react-native';
 import App from '../App';
 
 jest.mock('react-native-safe-area-context', () => {
-  const React = require('react');
-  const { View } = require('react-native');
+  const ReactRuntime = require('react');
+  const { View: NativeView } = require('react-native');
   return {
-    SafeAreaProvider: ({ children }: { children: React.ReactNode }) => <View>{children}</View>,
-    SafeAreaView: ({ children }: { children: React.ReactNode }) => <View>{children}</View>
+    SafeAreaProvider: ({ children }: { children: React.ReactNode }) => ReactRuntime.createElement(NativeView, null, children),
+    SafeAreaView: ({ children }: { children: React.ReactNode }) => ReactRuntime.createElement(NativeView, null, children)
   };
 });
 
 jest.mock('@noma4i/nitro-play', () => {
-  const React = require('react');
-  const { Text, View } = require('react-native');
+  const ReactRuntime = require('react');
+  const { Text: NativeText, View: NativeView } = require('react-native');
 
   const mockPlayer = {
     play: jest.fn(),
@@ -30,8 +29,8 @@ jest.mock('@noma4i/nitro-play', () => {
     addEventListener: jest.fn(() => ({ remove: jest.fn() }))
   };
 
-  const NitroPlayerView = React.forwardRef((_props: unknown, ref: React.Ref<unknown>) => {
-    React.useImperativeHandle(ref, () => ({
+  const NitroPlayerView = ReactRuntime.forwardRef((_props: unknown, ref: React.Ref<unknown>) => {
+    ReactRuntime.useImperativeHandle(ref, () => ({
       player: mockPlayer,
       isAttached: true,
       enterFullscreen: jest.fn(),
@@ -40,9 +39,9 @@ jest.mock('@noma4i/nitro-play', () => {
     }));
 
     return (
-      <View>
-        <Text>NitroPlayerView Mock</Text>
-      </View>
+      <NativeView>
+        <NativeText>NitroPlayerView Mock</NativeText>
+      </NativeView>
     );
   });
 
@@ -85,7 +84,11 @@ test('renders example lab', async () => {
   });
 
   const text = JSON.stringify(root!.toJSON());
-  expect(text).toContain('NitroPlay Example Lab');
+  expect(text).toContain('NitroPlay Example');
+  expect(text).toContain('Playback Lab');
+  expect(text).toContain('Smoke');
+  expect(text).toContain('Stress');
+  expect(text).toContain('System');
   expect(text).toContain('Hero Playback');
   expect(text).toContain('Feed Stress');
   expect(text).toContain('Runtime Utilities');

@@ -27,6 +27,119 @@ export const isHlsManifestSource = (source: NitroSourceConfig): source is NitroS
   return source.uri.split('?')[0]?.toLowerCase().endsWith('.m3u8') === true;
 };
 
+export const EXAMPLE_SCREEN_GROUPS = [
+  {
+    key: 'smoke',
+    label: 'Smoke',
+    summary: 'Core playback, preview, cache, and paged feed reuse.',
+    accent: '#66d19e'
+  },
+  {
+    key: 'stress',
+    label: 'Stress',
+    summary: 'Mount, unmount, swap, recycle, and teardown pressure.',
+    accent: '#f7b955'
+  },
+  {
+    key: 'system',
+    label: 'System',
+    summary: 'AppState, preload, and async lifecycle ordering.',
+    accent: '#8cc7ff'
+  }
+] as const;
+
+export type ExampleScreenGroupKey = (typeof EXAMPLE_SCREEN_GROUPS)[number]['key'];
+
+export type ExampleScreenCatalogItem = {
+  key: string;
+  label: string;
+  shortLabel: string;
+  group: ExampleScreenGroupKey;
+  headline: string;
+  summary: string;
+  contract: string;
+};
+
+export const EXAMPLE_SCREEN_CATALOG = [
+  {
+    key: 'home',
+    label: 'Playback Lab',
+    shortLabel: 'Lab',
+    group: 'smoke',
+    headline: 'Playback, stream cache, preview generation, and paged feed reuse.',
+    summary: 'Default consumer surface for direct MP4, proxied HLS, header identity, and feed reuse.',
+    contract: 'hero playback + runtime utilities + consumer feed'
+  },
+  {
+    key: 'lifecycle-churn',
+    label: 'Lifecycle Churn',
+    shortLabel: 'Churn',
+    group: 'stress',
+    headline: 'Mount and unmount a playing surface on a repeatable cadence.',
+    summary: 'Exercises native release ordering while playback callbacks may still be in flight.',
+    contract: 'view attach/detach + release safety'
+  },
+  {
+    key: 'source-swap',
+    label: 'Source Swap',
+    shortLabel: 'Swap',
+    group: 'stress',
+    headline: 'Replace the active source while the player stays mounted.',
+    summary: 'Alternates direct MP4 and proxied HLS through replaceSourceAsync, including rapid swaps.',
+    contract: 'generation safety + source identity'
+  },
+  {
+    key: 'feed-list',
+    label: 'Feed List Churn',
+    shortLabel: 'Feed',
+    group: 'stress',
+    headline: 'Recycle a FlatList whose visible rows own live player surfaces.',
+    summary: 'Mounts players only for viewable rows to match real feed churn without changing row height.',
+    contract: 'list recycling + hot pool pressure'
+  },
+  {
+    key: 'buffer-interrupt',
+    label: 'Buffer Interrupt',
+    shortLabel: 'Buffer',
+    group: 'stress',
+    headline: 'Interrupt buffering with release and clear-source operations.',
+    summary: 'Targets buffering-to-teardown paths for emit-after-release and stale callback safety.',
+    contract: 'buffering teardown + error surface'
+  },
+  {
+    key: 'bg-lifecycle',
+    label: 'Background Lifecycle',
+    shortLabel: 'Background',
+    group: 'system',
+    headline: 'Observe AppState transitions against background playback policy.',
+    summary: 'Toggles playInBackground while logging active/background transitions.',
+    contract: 'app state + background audio policy'
+  },
+  {
+    key: 'preload-race',
+    label: 'Preload Race',
+    shortLabel: 'Preload',
+    group: 'system',
+    headline: 'Resolve preload promises across release and source replacement.',
+    summary: 'Starts preload and immediately releases or replaces the source to prove stale work is bounded.',
+    contract: 'async preload + generation cancellation'
+  }
+] as const satisfies readonly ExampleScreenCatalogItem[];
+
+export type ExampleScreenKey = (typeof EXAMPLE_SCREEN_CATALOG)[number]['key'];
+
+export const getExampleScreen = (key: ExampleScreenKey): (typeof EXAMPLE_SCREEN_CATALOG)[number] => {
+  return EXAMPLE_SCREEN_CATALOG.find(item => item.key === key) ?? EXAMPLE_SCREEN_CATALOG[0];
+};
+
+export const getExampleScreensByGroup = (group: ExampleScreenGroupKey): readonly (typeof EXAMPLE_SCREEN_CATALOG)[number][] => {
+  return EXAMPLE_SCREEN_CATALOG.filter(item => item.group === group);
+};
+
+export const getExampleScreenCountByGroup = (group: ExampleScreenGroupKey): number => {
+  return EXAMPLE_SCREEN_CATALOG.filter(item => item.group === group).length;
+};
+
 export const HERO_SOURCES = {
   startupProxy: {
     key: 'startupProxy',

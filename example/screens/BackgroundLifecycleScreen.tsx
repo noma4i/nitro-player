@@ -1,22 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { AppState, ScrollView, Text, View, type AppStateStatus } from 'react-native';
-import {
-  NitroPlayerView,
-  usePlaybackState,
-  type NitroPlayer,
-} from '@noma4i/nitro-play';
+import { NitroPlayerView, usePlaybackState, type NitroPlayer } from '@noma4i/nitro-play';
 import { LONG_HLS_SOURCE } from '../scenarioModel';
-import {
-  ActionButton,
-  EventLog,
-  Metric,
-  SectionTitle,
-  appendLog,
-  styles,
-  toErrorMessage,
-  truncate,
-  usePlayerViewHandle,
-} from '../shared';
+import { ActionButton, EventLog, Metric, SectionTitle, appendLog, styles, toErrorMessage, truncate, usePlayerViewHandle } from '../shared';
 
 const SCREEN_KEY = 'bg-lifecycle';
 
@@ -57,7 +43,7 @@ export function BackgroundLifecycleScreen() {
     } catch (error) {
       setLastError(toErrorMessage(error));
     }
-  }, [playInBackground, player]);
+  }, [playInBackground, player, viewRef]);
 
   const togglePlay = () => {
     const activePlayer = viewRef.current?.player;
@@ -76,7 +62,9 @@ export function BackgroundLifecycleScreen() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}>
       <SectionTitle
         title="Background Lifecycle"
         subtitle="Play a stream and log AppState active/background transitions. Toggle playInBackground, then background the app to observe behavior."
@@ -126,17 +114,32 @@ export function BackgroundLifecycleScreen() {
       </View>
 
       <View style={styles.metricsGrid}>
-        <Metric label="status" value={status} testID={`${SCREEN_KEY}-metric-status`} />
-        <Metric label="app state" value={appStateValue} testID={`${SCREEN_KEY}-metric-appstate`} />
+        <Metric
+          label="status"
+          value={status}
+          testID={`${SCREEN_KEY}-metric-status`}
+        />
+        <Metric
+          label="app state"
+          value={appStateValue}
+          testID={`${SCREEN_KEY}-metric-appstate`}
+        />
         <Metric
           label="bg audio"
           value={playInBackground ? 'on' : 'off'}
           testID={`${SCREEN_KEY}-metric-background`}
         />
-        <Metric label="last error" value={truncate(lastError)} testID={`${SCREEN_KEY}-metric-error`} />
+        <Metric
+          label="last error"
+          value={truncate(lastError)}
+          testID={`${SCREEN_KEY}-metric-error`}
+        />
       </View>
 
-      <EventLog entries={log} testID={`${SCREEN_KEY}-log`} />
+      <EventLog
+        entries={log}
+        testID={`${SCREEN_KEY}-log`}
+      />
     </ScrollView>
   );
 }

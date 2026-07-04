@@ -2,28 +2,46 @@ import {
   CONSUMER_FEED_ITEMS,
   CONSUMER_PAGE_SIZE,
   CONSUMER_PREFETCH_WINDOW,
+  EXAMPLE_SCREEN_CATALOG,
+  EXAMPLE_SCREEN_GROUPS,
   FEED_SOURCES,
   HERO_SOURCES,
   buildConsumerCardSource,
+  getExampleScreen,
+  getExampleScreenCountByGroup,
   getActiveWindow,
   getVisibleConsumerItems,
   isHlsManifestSource,
-  toStreamRuntimeSource,
+  toStreamRuntimeSource
 } from '../scenarioModel';
 
 describe('Example App scenario model', () => {
+  it('keeps the example screen catalog grouped and uniquely keyed', () => {
+    const keys = EXAMPLE_SCREEN_CATALOG.map(item => item.key);
+    const groups = EXAMPLE_SCREEN_GROUPS.map(item => item.key);
+
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys[0]).toBe('home');
+    expect(groups).toEqual(['smoke', 'stress', 'system']);
+    expect(getExampleScreen('home').label).toBe('Playback Lab');
+    expect(getExampleScreenCountByGroup('smoke')).toBe(1);
+    expect(getExampleScreenCountByGroup('stress')).toBe(4);
+    expect(getExampleScreenCountByGroup('system')).toBe(2);
+    expect(EXAMPLE_SCREEN_CATALOG.every(item => groups.includes(item.group))).toBe(true);
+  });
+
   it('covers hero playback modes used by the lab', () => {
     expect(HERO_SOURCES.startupProxy.source).toEqual(
       expect.objectContaining({
         policy: 'feed',
-        preview: expect.objectContaining({ mode: 'always' }),
+        preview: expect.objectContaining({ mode: 'always' })
       })
     );
     expect(HERO_SOURCES.profileStream.source).toEqual(
       expect.objectContaining({
         headers: { 'X-Nitro-Scenario': 'profile-feed' },
         policy: 'feed',
-        preview: expect.objectContaining({ mode: 'listener' }),
+        preview: expect.objectContaining({ mode: 'listener' })
       })
     );
     expect(HERO_SOURCES.directMp4.source).toEqual(
@@ -31,13 +49,15 @@ describe('Example App scenario model', () => {
         policy: 'thumbnail',
         transport: { mode: 'direct' },
         retention: expect.objectContaining({ preload: 'metadata', offscreen: 'hot', feedPoolEligible: false }),
-        preview: expect.objectContaining({ mode: 'manual' }),
+        preview: expect.objectContaining({ mode: 'manual' })
       })
     );
   });
 
   it('keeps same-HLS feed sources isolated by harmless headers', () => {
-    const hlsFeedSources = FEED_SOURCES.map(item => item.source).filter(isHlsManifestSource).map(toStreamRuntimeSource);
+    const hlsFeedSources = FEED_SOURCES.map(item => item.source)
+      .filter(isHlsManifestSource)
+      .map(toStreamRuntimeSource);
 
     expect(hlsFeedSources).toHaveLength(2);
     expect(hlsFeedSources[0]).toEqual(expect.objectContaining({ headers: { 'X-Nitro-Scenario': 'profile-feed' } }));
@@ -66,7 +86,7 @@ describe('Example App scenario model', () => {
         policy: 'hero',
         retention: expect.objectContaining({ preload: 'buffered', offscreen: 'hot', feedPoolEligible: true }),
         preview: expect.objectContaining({ mode: 'listener', maxWidth: 512, maxHeight: 512 }),
-        metadata: expect.objectContaining({ title: 'Page 1 Home Stream', subtitle: 'page 1, row 1' }),
+        metadata: expect.objectContaining({ title: 'Page 1 Home Stream', subtitle: 'page 1, row 1' })
       })
     );
 
@@ -76,7 +96,7 @@ describe('Example App scenario model', () => {
         headers: { 'X-Nitro-Scenario': 'topic-feed' },
         retention: expect.objectContaining({ preload: 'metadata', offscreen: 'metadata', trimDelayMs: 6000, feedPoolEligible: true }),
         preview: expect.objectContaining({ mode: 'listener' }),
-        metadata: expect.objectContaining({ title: 'Page 2 Topic Stream', subtitle: 'page 2, row 5' }),
+        metadata: expect.objectContaining({ title: 'Page 2 Topic Stream', subtitle: 'page 2, row 5' })
       })
     );
   });
