@@ -45,6 +45,9 @@ Pod::Spec.new do |s|
     "GCC_PREPROCESSOR_DEFINITIONS" => "$(inherited) FOLLY_NO_CONFIG FOLLY_CFG_NO_COROUTINES FOLLY_MOBILE",
     "HEADER_SEARCH_PATHS" => [
       "$(inherited)",
+      "\"${PODS_TARGET_SRCROOT}/nitrogen/generated/shared/c++\"",
+      "\"${PODS_TARGET_SRCROOT}/nitrogen/generated/ios\"",
+      "\"${PODS_TARGET_SRCROOT}/nitrogen/generated/ios/c++\"",
       "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/KTVHTTPCache\"",
       "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/KTVHTTPCache/Classes/KTVHCCommon\"",
       "\"${PODS_TARGET_SRCROOT}/ios/vendor/ktvhttpcache/KTVHTTPCache/Classes/KTVHCDataStorage\"",
