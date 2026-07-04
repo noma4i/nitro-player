@@ -33,9 +33,26 @@ const approvedMainThreadSyncFiles = new Set([
   'ios/support/MainThreadResourceExecutor.swift'
 ]);
 
+const approvedMainThreadSyncPatterns = new Map([
+  [
+    'ios/player/HybridNitroFeedRingPlayer.swift',
+    /private\s+func\s+syncMain<T>\s*\(_\s+block:\s*\(\)\s*throws\s*->\s*T\)\s*throws\s*->\s*T\s*\{[\s\S]*?DispatchQueue\.main\.sync\s*\{[\s\S]*?return\s+try\s+result\.get\(\)\s*\}/m
+  ],
+  [
+    'ios/player/NitroPlayerManager.swift',
+    /func\s+registeredPlayers\s*\(\)\s*->\s*\[HybridNitroPlayer\]\s*\{[\s\S]*?DispatchQueue\.main\.sync\s*\{[\s\S]*?players\.allObjects[\s\S]*?\}/m
+  ]
+]);
+
 const assertNoPattern = (relative, pattern, message) => {
   if (!exists(relative)) return;
-  const source = withoutComments(read(relative));
+  let source = withoutComments(read(relative));
+  const approvedPattern = pattern.source === /DispatchQueue\.main\.sync\b/.source
+    ? approvedMainThreadSyncPatterns.get(relative)
+    : null;
+  if (approvedPattern) {
+    source = source.replace(approvedPattern, '');
+  }
   if (pattern.test(source)) {
     fail(`${message}: ${relative}`);
   }

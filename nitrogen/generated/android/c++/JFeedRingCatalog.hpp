@@ -48,7 +48,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "FeedRingCatalog" and the the Kotlin data class "FeedRingCatalog".
+   * The C++ JNI bridge between the C++ struct "FeedRingCatalog" and the Kotlin data class "FeedRingCatalog".
    */
   struct JFeedRingCatalog final: public jni::JavaClass<JFeedRingCatalog> {
   public:
@@ -68,16 +68,16 @@ namespace margelo::nitro::video {
       jni::local_ref<jni::JArrayClass<JFeedRingCatalogItem>> items = this->getFieldValue(fieldItems);
       return FeedRingCatalog(
         revision,
-        [&]() {
-          size_t __size = items->size();
+        [&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<FeedRingCatalogItem> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = items->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }()
+        }(items)
       );
     }
 
@@ -93,16 +93,16 @@ namespace margelo::nitro::video {
       return create(
         clazz,
         value.revision,
-        [&]() {
-          size_t __size = value.items.size();
+        [&](auto&& __input) {
+          size_t __size = __input.size();
           jni::local_ref<jni::JArrayClass<JFeedRingCatalogItem>> __array = jni::JArrayClass<JFeedRingCatalogItem>::newArray(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            const auto& __element = value.items[__i];
+            const auto& __element = __input[__i];
             auto __elementJni = JFeedRingCatalogItem::fromCpp(__element);
             __array->setElement(__i, *__elementJni);
           }
           return __array;
-        }()
+        }(value.items)
       );
     }
   };

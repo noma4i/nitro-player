@@ -27,6 +27,9 @@ export interface StreamNetworkThroughputEstimate {
 }
 
 export interface StreamProxyLedgerEntry {
+  client: 'player' | 'preview' | 'prefetch';
+  clientPort: number | null;
+  userAgent: string | null;
   urlTail: string;
   isPlaylist: boolean;
   tStartMs: number;
@@ -48,12 +51,77 @@ export interface StreamPlayerAccessLogDiagnostics {
   uri: string | null;
 }
 
+export interface StreamPlayerBufferDiagnostics {
+  minBufferMs: number | null;
+  maxBufferMs: number | null;
+  bufferForPlaybackMs: number | null;
+  bufferForPlaybackAfterRebufferMs: number | null;
+  backBufferDurationMs: number | null;
+  preferredForwardBufferDurationMs: number | null;
+  preferredPeakBitRate: number | null;
+}
+
+export interface StreamPlayerLoadControlDiagnostics {
+  minBufferMs: number;
+  maxBufferMs: number;
+  bufferForPlaybackMs: number;
+  bufferForPlaybackAfterRebufferMs: number;
+  backBufferDurationMs: number;
+}
+
+export interface StreamPlayerPlaybackConfigDiagnostics {
+  preferredPeakBitRate: number | null;
+  loadControl: StreamPlayerLoadControlDiagnostics;
+}
+
+export interface StreamPlayerTrackDiagnostics {
+  width: number | null;
+  height: number | null;
+  bitrate: number | null;
+  codecs: string | null;
+}
+
+export interface StreamPlayerContentFrameDiagnostics {
+  width: number;
+  height: number;
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+export interface StreamPlayerMatteCropDiagnostics {
+  scale: number;
+  activeTopFraction: number;
+  activeBottomFraction: number;
+  activeHeightFraction: number;
+  activeCenterYFraction: number;
+  sampleWidth: number;
+  sampleHeight: number;
+}
+
+export interface StreamPlayerViewDiagnostics {
+  width: number;
+  height: number;
+  resizeMode: number;
+  contentFrame: StreamPlayerContentFrameDiagnostics | null;
+  matteCrop: StreamPlayerMatteCropDiagnostics | null;
+}
+
 export interface StreamPlayerDiagnostics {
   automaticallyWaitsToMinimizeStalling: boolean;
   playbackWatchdogAttempts: number;
   cachedTimeControlStatus: string;
   sourceUri: string | null;
+  currentItemUrl: string | null;
+  sourceBuffer: StreamPlayerBufferDiagnostics | null;
+  activePlaybackConfig: StreamPlayerPlaybackConfigDiagnostics | null;
+  preferredPeakBitRate: number | null;
+  timeControlStatus: number;
+  rate: number;
   accessLog: StreamPlayerAccessLogDiagnostics | null;
+  selectedVideoTrack: StreamPlayerTrackDiagnostics | null;
+  playerView: StreamPlayerViewDiagnostics | null;
 }
 
 export interface StreamPlayersDiagnostics {

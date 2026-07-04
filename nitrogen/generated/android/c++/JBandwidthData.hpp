@@ -17,7 +17,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "BandwidthData" and the the Kotlin data class "BandwidthData".
+   * The C++ JNI bridge between the C++ struct "BandwidthData" and the Kotlin data class "BandwidthData".
    */
   struct JBandwidthData final: public jni::JavaClass<JBandwidthData> {
   public:

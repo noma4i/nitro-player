@@ -14,6 +14,8 @@ final class HlsProxyServerController: NSObject {
   private var observersRegistered = false
   private var notificationObservers: [NSObjectProtocol] = []
   private var maxCacheBytes = HlsCacheBudget.defaultMaxBytes
+  private let proxyClientHeaderName = "X-Nitro-Play-Client"
+  private let proxyClientPrefetch = "prefetch"
 
   override init() {
     super.init()
@@ -106,6 +108,29 @@ final class HlsProxyServerController: NSObject {
 
   func requestLedgerSnapshot() -> [[String: Any]] {
     KTVHCRequestLedger.shared().snapshot().compactMap { $0 as? [String: Any] }
+  }
+
+  func hasOpenNetworkRequests(url: String, headers: [String: String]?, client: String) -> Bool {
+    let streamKey = Self.streamStem(from: url)
+    guard !streamKey.isEmpty else {
+      return false
+    }
+
+    return requestLedgerSnapshot().contains { entry in
+      guard (entry["client"] as? String) == client else {
+        return false
+      }
+      guard (entry["usedNetwork"] as? NSNumber)?.boolValue == true else {
+        return false
+      }
+      guard entry["tDoneMs"] is NSNull else {
+        return false
+      }
+      guard let urlTail = entry["urlTail"] as? String else {
+        return false
+      }
+      return urlTail.contains(streamKey)
+    }
   }
 
   func getNetworkThroughputEstimate() -> [String: Any] {
@@ -231,6 +256,14 @@ final class HlsProxyServerController: NSObject {
     return (bps: Double(bytes.int64Value) * 8 / durationSeconds, doneMs: doneMs.doubleValue)
   }
 
+  private static func streamStem(from url: String) -> String {
+    let fileName = URL(string: url)?.lastPathComponent ?? String(url.split(separator: "/").last ?? "")
+    guard let hlsRange = fileName.range(of: "-hls", options: .caseInsensitive) else {
+      return fileName
+    }
+    return String(fileName[..<hlsRange.lowerBound])
+  }
+
   private func prefetchLeadingSegments(url: String, headers: [String: String]?, streamKey: String, count: Int) async throws {
     let manifest = try await prefetchClient.fetchText(url: url, headers: headers)
     if manifestRewriter.isMasterPlaylist(manifest) {
@@ -282,9 +315,13 @@ final class HlsProxyServerController: NSObject {
 
     return try await prefetchClient.fetchData(
       url: proxyURL.absoluteString,
-      headers: nil,
+      headers: prefetchRequestHeaders(),
       cachePolicy: .reloadIgnoringLocalCacheData
     )
+  }
+
+  private func prefetchRequestHeaders() -> [String: String] {
+    [proxyClientHeaderName: proxyClientPrefetch]
   }
 
   private func normalizedHeaders(_ headers: [String: String]?) -> [String: String] {

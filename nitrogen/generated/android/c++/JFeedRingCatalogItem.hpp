@@ -45,7 +45,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "FeedRingCatalogItem" and the the Kotlin data class "FeedRingCatalogItem".
+   * The C++ JNI bridge between the C++ struct "FeedRingCatalogItem" and the Kotlin data class "FeedRingCatalogItem".
    */
   struct JFeedRingCatalogItem final: public jni::JavaClass<JFeedRingCatalogItem> {
   public:

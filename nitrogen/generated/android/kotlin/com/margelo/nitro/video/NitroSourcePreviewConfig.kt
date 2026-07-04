@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -34,6 +35,26 @@ data class NitroSourcePreviewConfig(
   val quality: Double?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is NitroSourcePreviewConfig) return false
+    return Objects.deepEquals(this.mode, other.mode)
+      && Objects.deepEquals(this.autoThumbnail, other.autoThumbnail)
+      && Objects.deepEquals(this.maxWidth, other.maxWidth)
+      && Objects.deepEquals(this.maxHeight, other.maxHeight)
+      && Objects.deepEquals(this.quality, other.quality)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      mode,
+      autoThumbnail,
+      maxWidth,
+      maxHeight,
+      quality
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

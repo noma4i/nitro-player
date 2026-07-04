@@ -18,7 +18,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "onLoadData" and the the Kotlin data class "onLoadData".
+   * The C++ JNI bridge between the C++ struct "onLoadData" and the Kotlin data class "onLoadData".
    */
   struct JonLoadData final: public jni::JavaClass<JonLoadData> {
   public:

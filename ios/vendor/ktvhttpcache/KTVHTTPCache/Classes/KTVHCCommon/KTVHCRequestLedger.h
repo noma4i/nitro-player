@@ -7,6 +7,8 @@ NS_ASSUME_NONNULL_BEGIN
 + (instancetype)sharedLedger;
 
 - (NSNumber *)beginRequestWithURL:(NSURL *)URL;
+- (NSNumber *)beginRequestWithURL:(NSURL *)URL client:(nullable NSString *)client;
+- (NSNumber *)beginRequestWithURL:(NSURL *)URL client:(nullable NSString *)client clientPort:(nullable NSNumber *)clientPort userAgent:(nullable NSString *)userAgent;
 - (void)markFirstByteForRequestId:(NSNumber *)requestId;
 - (void)addBytes:(NSUInteger)bytes forRequestId:(NSNumber *)requestId;
 - (void)markDoneForRequestId:(NSNumber *)requestId;

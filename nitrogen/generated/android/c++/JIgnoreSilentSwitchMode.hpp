@@ -15,7 +15,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "IgnoreSilentSwitchMode" and the the Kotlin enum "IgnoreSilentSwitchMode".
+   * The C++ JNI bridge between the C++ enum "IgnoreSilentSwitchMode" and the Kotlin enum "IgnoreSilentSwitchMode".
    */
   struct JIgnoreSilentSwitchMode final: public jni::JavaClass<JIgnoreSilentSwitchMode> {
   public:

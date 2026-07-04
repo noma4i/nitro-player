@@ -15,7 +15,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "SourceType" and the the Kotlin enum "SourceType".
+   * The C++ JNI bridge between the C++ enum "SourceType" and the Kotlin enum "SourceType".
    */
   struct JSourceType final: public jni::JavaClass<JSourceType> {
   public:

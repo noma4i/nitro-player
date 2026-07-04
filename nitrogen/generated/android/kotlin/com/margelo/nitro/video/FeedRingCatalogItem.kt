@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -31,6 +32,24 @@ data class FeedRingCatalogItem(
   val source: NativeNitroPlayerConfig?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is FeedRingCatalogItem) return false
+    return Objects.deepEquals(this.index, other.index)
+      && Objects.deepEquals(this.momentId, other.momentId)
+      && Objects.deepEquals(this.sourceKey, other.sourceKey)
+      && Objects.deepEquals(this.source, other.source)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      index,
+      momentId,
+      sourceKey,
+      source
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

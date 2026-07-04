@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -52,6 +53,38 @@ data class BufferConfig(
   val preferredMaximumResolutionForExpensiveNetworks: Resolution?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is BufferConfig) return false
+    return Objects.deepEquals(this.livePlayback, other.livePlayback)
+      && Objects.deepEquals(this.minBufferMs, other.minBufferMs)
+      && Objects.deepEquals(this.maxBufferMs, other.maxBufferMs)
+      && Objects.deepEquals(this.bufferForPlaybackMs, other.bufferForPlaybackMs)
+      && Objects.deepEquals(this.bufferForPlaybackAfterRebufferMs, other.bufferForPlaybackAfterRebufferMs)
+      && Objects.deepEquals(this.backBufferDurationMs, other.backBufferDurationMs)
+      && Objects.deepEquals(this.preferredForwardBufferDurationMs, other.preferredForwardBufferDurationMs)
+      && Objects.deepEquals(this.preferredPeakBitRate, other.preferredPeakBitRate)
+      && Objects.deepEquals(this.preferredMaximumResolution, other.preferredMaximumResolution)
+      && Objects.deepEquals(this.preferredPeakBitRateForExpensiveNetworks, other.preferredPeakBitRateForExpensiveNetworks)
+      && Objects.deepEquals(this.preferredMaximumResolutionForExpensiveNetworks, other.preferredMaximumResolutionForExpensiveNetworks)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      livePlayback,
+      minBufferMs,
+      maxBufferMs,
+      bufferForPlaybackMs,
+      bufferForPlaybackAfterRebufferMs,
+      backBufferDurationMs,
+      preferredForwardBufferDurationMs,
+      preferredPeakBitRate,
+      preferredMaximumResolution,
+      preferredPeakBitRateForExpensiveNetworks,
+      preferredMaximumResolutionForExpensiveNetworks
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

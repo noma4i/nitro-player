@@ -14,6 +14,10 @@
 #import "KTVHCRequestLedger.h"
 #import "KTVHCURLTool.h"
 #import "KTVHCLog.h"
+#import "../../Vendors/CocoaAsyncSocket/GCDAsyncSocket.h"
+
+static NSString * const KTVHCRequestClientHeaderName = @"X-Nitro-Play-Client";
+static NSString * const KTVHCRequestClientHeaderNameLowercase = @"x-nitro-play-client";
 
 @implementation KTVHCHTTPConnection
 
@@ -80,13 +84,35 @@
         KTVHCLogHTTPConnection(@"%p, Receive redirect request\nURL : %@", self, URL);
     }
     KTVHCLogHTTPConnection(@"%p, Accept request\nURL : %@", self, URL);
-    KTVHCDataRequest *dataRequest = [[KTVHCDataRequest alloc] initWithURL:URL headers:request.allHeaderFields];
-    NSNumber *ledgerRequestId = [[KTVHCRequestLedger sharedLedger] beginRequestWithURL:URL];
+    NSMutableDictionary *requestHeaders = [request.allHeaderFields mutableCopy] ?: [NSMutableDictionary dictionary];
+    NSString *client = requestHeaders[KTVHCRequestClientHeaderName] ?: requestHeaders[KTVHCRequestClientHeaderNameLowercase];
+    NSString *userAgent = [self userAgentFromHeaders:requestHeaders];
+    NSNumber *clientPort = [self clientPort];
+    [requestHeaders removeObjectForKey:KTVHCRequestClientHeaderName];
+    [requestHeaders removeObjectForKey:KTVHCRequestClientHeaderNameLowercase];
+    KTVHCDataRequest *dataRequest = [[KTVHCDataRequest alloc] initWithURL:URL headers:requestHeaders];
+    NSNumber *ledgerRequestId = [[KTVHCRequestLedger sharedLedger] beginRequestWithURL:URL client:client clientPort:clientPort userAgent:userAgent];
     if ([URL.absoluteString containsString:@".m3u"]) {
         return [[KTVHCHTTPHLSResponse alloc] initWithConnection:self dataRequest:dataRequest ledgerRequestId:ledgerRequestId];
     }
     return [[KTVHCHTTPResponse alloc] initWithConnection:self dataRequest:dataRequest ledgerRequestId:ledgerRequestId];
 }
 
+- (NSNumber *)clientPort
+{
+    uint16_t port = [asyncSocket connectedPort];
+    return port > 0 ? @(port) : nil;
+}
+
+- (NSString *)userAgentFromHeaders:(NSDictionary *)headers
+{
+    for (NSString *key in headers) {
+        if ([key caseInsensitiveCompare:@"User-Agent"] == NSOrderedSame) {
+            id value = headers[key];
+            return [value isKindOfClass:[NSString class]] ? value : nil;
+        }
+    }
+    return nil;
+}
 
 @end

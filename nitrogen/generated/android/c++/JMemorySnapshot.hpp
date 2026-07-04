@@ -20,7 +20,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "MemorySnapshot" and the the Kotlin data class "MemorySnapshot".
+   * The C++ JNI bridge between the C++ struct "MemorySnapshot" and the Kotlin data class "MemorySnapshot".
    */
   struct JMemorySnapshot final: public jni::JavaClass<JMemorySnapshot> {
   public:

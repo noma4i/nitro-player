@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.0.0-beta.3
+
+### Added
+
+- Android playback configuration extraction with `NitroPlayerPlaybackConfig`, covering load-control buffer fields, bitrate caps, player rebuild decisions, and track-selector updates.
+- Android `TextureMatteCropDetector` for detecting vertical matte content in texture-backed player views, with behavior coverage for matte detection, non-matte frames, and scale caps.
+- Stream proxy ledger fields for request client, local proxy port, user agent, and player diagnostics attribution.
+
+### Changed
+
+- iOS and Android source preparation now avoid duplicate startup fetch state by relying on the original source config for HLS recovery, preview identity, and leading-segment prefetch decisions.
+- iOS preview generation coalesces requests by decode identity, tags preview proxy traffic, waits for active player requests to drain, and prefers cache-only first-frame reuse for HLS surfaces.
+- Android player rebuilds now separate buffer/load-control changes from bitrate-only updates so reused players can update track selection without unnecessary replacement.
+
+### Fixed
+
+- iOS HLS first-frame and preview paths now avoid redundant direct decoding for HLS manifests, sample leading-cache-friendly offsets, and recover a cached HLS first frame once the attached player is ready.
+- iOS HLS proxy diagnostics now preserve client, port, and user-agent context while stripping internal client tags before forwarding upstream requests.
+- Android playback state, listener, audio-focus, diagnostics, and view paths now apply the shared playback configuration and texture matte crop behavior consistently.
+
 ## 2.0.0-beta.2
 
 ### Added

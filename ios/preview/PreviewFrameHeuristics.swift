@@ -7,6 +7,7 @@ enum PreviewFrameHeuristics {
   // Sample a few timestamps and keep the first non-black frame, so an intro fade
   // does not yield a black thumbnail. Mirrors the Android FRAME_SAMPLE_OFFSETS_US.
   static let frameSampleOffsets: [Double] = [0, 0.5, 1, 2, 3]
+  static let hlsLeadingCacheFrameSampleOffsets: [Double] = [0, 0.5, 1]
 
   // Downsamples the frame to an 8x8 grid and treats it as black when the peak luma
   // stays below a small threshold. Mirrors the Android isMostlyBlack heuristic.

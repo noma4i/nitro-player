@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -34,6 +35,26 @@ data class onFirstFrameData(
   val fromCache: Boolean
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is onFirstFrameData) return false
+    return Objects.deepEquals(this.uri, other.uri)
+      && Objects.deepEquals(this.width, other.width)
+      && Objects.deepEquals(this.height, other.height)
+      && Objects.deepEquals(this.sourceUri, other.sourceUri)
+      && Objects.deepEquals(this.fromCache, other.fromCache)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      uri,
+      width,
+      height,
+      sourceUri,
+      fromCache
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

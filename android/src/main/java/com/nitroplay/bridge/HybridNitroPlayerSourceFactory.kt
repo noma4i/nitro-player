@@ -100,8 +100,7 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
     val effectiveConfig = normalizeAndRouteConfig(config)
     return HybridNitroPlayerSource(
       config = effectiveConfig,
-      originalConfig = normalizedConfig,
-      isProxyRouteActive = effectiveConfig.uri != normalizedConfig.uri
+      originalConfig = normalizedConfig
     )
   }
 

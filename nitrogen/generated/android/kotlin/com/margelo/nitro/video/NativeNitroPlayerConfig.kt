@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -43,6 +44,32 @@ data class NativeNitroPlayerConfig(
   val preview: NitroSourcePreviewConfig?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is NativeNitroPlayerConfig) return false
+    return Objects.deepEquals(this.uri, other.uri)
+      && Objects.deepEquals(this.headers, other.headers)
+      && Objects.deepEquals(this.metadata, other.metadata)
+      && Objects.deepEquals(this.startup, other.startup)
+      && Objects.deepEquals(this.buffer, other.buffer)
+      && Objects.deepEquals(this.retention, other.retention)
+      && Objects.deepEquals(this.transport, other.transport)
+      && Objects.deepEquals(this.preview, other.preview)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      uri,
+      headers,
+      metadata,
+      startup,
+      buffer,
+      retention,
+      transport,
+      preview
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

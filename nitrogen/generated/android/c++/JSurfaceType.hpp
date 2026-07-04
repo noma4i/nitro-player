@@ -15,7 +15,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "SurfaceType" and the the Kotlin enum "SurfaceType".
+   * The C++ JNI bridge between the C++ enum "SurfaceType" and the Kotlin enum "SurfaceType".
    */
   struct JSurfaceType final: public jni::JavaClass<JSurfaceType> {
   public:

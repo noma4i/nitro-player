@@ -23,6 +23,9 @@ extension HybridNitroPlayer {
       width: width,
       height: height
     )
+    if readyToDisplay {
+      requestFirstFrameIfNeeded()
+    }
   }
 
   func emitFirstFrame(uri: String, width: Double, height: Double, sourceUri: String, fromCache: Bool) {
@@ -62,6 +65,23 @@ extension HybridNitroPlayer {
 
     let generation = sourceGeneration
     if firstFrameTask != nil {
+      return
+    }
+
+    if HlsManifestUrl.matches(context.sourceUri) {
+      if let cached = VideoPreviewRuntime.shared.peekFirstFrame(
+        url: context.sourceUri,
+        headers: context.headers,
+        preview: currentSourceConfig()?.preview
+      ) {
+        emitFirstFrame(
+          uri: cached.uri,
+          width: context.width,
+          height: context.height,
+          sourceUri: context.sourceUri,
+          fromCache: true
+        )
+      }
       return
     }
 

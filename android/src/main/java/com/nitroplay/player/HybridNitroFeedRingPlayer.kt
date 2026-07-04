@@ -43,7 +43,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
   private val commandPlanner = FeedRingCommandPlanner()
   private val sourceCatalog = mutableMapOf<Int, CatalogItem>()
   private val listenerRegistry = ListenerRegistry()
-  private var isReleased = false
+  private var released = false
   private var slotListenersConfigured = false
   @Volatile
   private var cachedMemorySize = 0L
@@ -51,7 +51,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
   override fun getPlayer(slotId: Double): HybridNitroPlayerSpec {
     val normalizedSlotId = normalizeSlotId(slotId.toInt())
     return runOnMainThreadSync {
-      if (isReleased) {
+      if (released) {
         throw IllegalStateException("Feed ring player is released")
       }
 
@@ -62,7 +62,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
   override fun replaceCatalog(catalog: FeedRingCatalog) {
     val items = catalog.items.map { item -> parseCatalogItem(item) }
     runOnMainThreadSync {
-      if (isReleased) {
+      if (released) {
         return@runOnMainThreadSync
       }
 
@@ -91,7 +91,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
     )
 
     runOnMainThread {
-      if (isReleased) {
+      if (released) {
         return@runOnMainThread
       }
 
@@ -114,7 +114,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
         centerIndex = plannerSnapshot.centerIndex?.toDouble(),
         playbackAllowed = plannerSnapshot.playbackAllowed,
         muted = plannerSnapshot.muted,
-        released = isReleased,
+        released = released,
         slots = slots.map { slot -> snapshotSlot(slot) }.toTypedArray()
       )
     }
@@ -131,9 +131,11 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
 
   override fun release() {
     runOnMainThreadSync {
-      if (isReleased) return@runOnMainThreadSync
+      if (released) {
+        return@runOnMainThreadSync
+      }
 
-      isReleased = true
+      released = true
       listenerRegistry.clearAll()
       slots.forEach { slot ->
         slot.desiredPlay = false
@@ -236,7 +238,9 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
       player.replaceSourceAsync(source)
         .then {
           runOnMainThread {
-            if (isReleased || slot.generation != capturedGeneration) return@runOnMainThread
+            if (released || slot.generation != capturedGeneration) {
+              return@runOnMainThread
+            }
 
             slot.lastError = null
             slot.lastTransition = "ready"
@@ -252,7 +256,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
         }
         .catch { error ->
           runOnMainThread {
-            if (isReleased || slot.generation != capturedGeneration) {
+            if (released || slot.generation != capturedGeneration) {
               return@runOnMainThread
             }
 
@@ -293,7 +297,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
       val capturedGeneration = slot.generation
       player.clearSourceAsync().catch { error ->
         runOnMainThread {
-          if (isReleased || slot.generation != capturedGeneration) {
+          if (released || slot.generation != capturedGeneration) {
             return@runOnMainThread
           }
 
@@ -368,7 +372,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
       hasLoadedSource = player.hasLoadedCurrentSource,
       watchdogAttempts = player.playbackWatchdogAttemptCount.toDouble(),
       watchdogPending = player.hasPendingPlaybackWatchdog,
-      nativePlaybackState = playbackStateName(player.player.playbackState),
+      nativePlaybackState = playbackStateName(player.currentPlayerOrNull()?.playbackState ?: Player.STATE_IDLE),
       status = playbackState.status.name.lowercase(),
       lastTransition = slot.lastTransition,
       lastError = slot.lastError

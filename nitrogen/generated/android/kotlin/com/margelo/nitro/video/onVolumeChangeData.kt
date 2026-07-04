@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -25,6 +26,20 @@ data class onVolumeChangeData(
   val muted: Boolean
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is onVolumeChangeData) return false
+    return Objects.deepEquals(this.volume, other.volume)
+      && Objects.deepEquals(this.muted, other.muted)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      volume,
+      muted
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

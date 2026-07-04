@@ -15,7 +15,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "NitroPlayerErrorCode" and the the Kotlin enum "NitroPlayerErrorCode".
+   * The C++ JNI bridge between the C++ enum "NitroPlayerErrorCode" and the Kotlin enum "NitroPlayerErrorCode".
    */
   struct JNitroPlayerErrorCode final: public jni::JavaClass<JNitroPlayerErrorCode> {
   public:

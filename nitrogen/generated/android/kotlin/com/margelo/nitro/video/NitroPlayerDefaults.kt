@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -43,6 +44,32 @@ data class NitroPlayerDefaults(
   val playWhenInactive: Boolean?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is NitroPlayerDefaults) return false
+    return Objects.deepEquals(this.loop, other.loop)
+      && Objects.deepEquals(this.muted, other.muted)
+      && Objects.deepEquals(this.volume, other.volume)
+      && Objects.deepEquals(this.rate, other.rate)
+      && Objects.deepEquals(this.mixAudioMode, other.mixAudioMode)
+      && Objects.deepEquals(this.ignoreSilentSwitchMode, other.ignoreSilentSwitchMode)
+      && Objects.deepEquals(this.playInBackground, other.playInBackground)
+      && Objects.deepEquals(this.playWhenInactive, other.playWhenInactive)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      loop,
+      muted,
+      volume,
+      rate,
+      mixAudioMode,
+      ignoreSilentSwitchMode,
+      playInBackground,
+      playWhenInactive
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

@@ -19,7 +19,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "PlaybackError" and the the Kotlin data class "PlaybackError".
+   * The C++ JNI bridge between the C++ struct "PlaybackError" and the Kotlin data class "PlaybackError".
    */
   struct JPlaybackError final: public jni::JavaClass<JPlaybackError> {
   public:

@@ -21,7 +21,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "BufferConfig" and the the Kotlin data class "BufferConfig".
+   * The C++ JNI bridge between the C++ struct "BufferConfig" and the Kotlin data class "BufferConfig".
    */
   struct JBufferConfig final: public jni::JavaClass<JBufferConfig> {
   public:

@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -31,6 +32,24 @@ data class NitroSourceRetentionConfig(
   val feedPoolEligible: Boolean?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is NitroSourceRetentionConfig) return false
+    return Objects.deepEquals(this.preload, other.preload)
+      && Objects.deepEquals(this.offscreen, other.offscreen)
+      && Objects.deepEquals(this.trimDelayMs, other.trimDelayMs)
+      && Objects.deepEquals(this.feedPoolEligible, other.feedPoolEligible)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      preload,
+      offscreen,
+      trimDelayMs,
+      feedPoolEligible
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

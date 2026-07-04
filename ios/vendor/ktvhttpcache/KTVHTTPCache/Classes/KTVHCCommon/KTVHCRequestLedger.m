@@ -35,13 +35,28 @@ static NSUInteger const KTVHCRequestLedgerLimit = 200;
 
 - (NSNumber *)beginRequestWithURL:(NSURL *)URL
 {
+    return [self beginRequestWithURL:URL client:nil];
+}
+
+- (NSNumber *)beginRequestWithURL:(NSURL *)URL client:(NSString *)client
+{
+    return [self beginRequestWithURL:URL client:client clientPort:nil userAgent:nil];
+}
+
+- (NSNumber *)beginRequestWithURL:(NSURL *)URL client:(NSString *)client clientPort:(NSNumber *)clientPort userAgent:(NSString *)userAgent
+{
     NSNumber *requestId = nil;
+    NSString *normalizedClient = [self normalizedClient:client];
+    NSString *userAgentTail = [self userAgentTail:userAgent];
     os_unfair_lock_lock(&_lock);
     requestId = @(_nextRequestId++);
     NSMutableDictionary *entry = [@{
         @"requestId": requestId,
         @"url": URL.absoluteString ?: @"",
         @"urlTail": [self urlTailForURL:URL],
+        @"client": normalizedClient,
+        @"clientPort": clientPort ?: [NSNull null],
+        @"userAgent": userAgentTail ?: [NSNull null],
         @"isPlaylist": @([self isPlaylistURL:URL]),
         @"tStartMs": @([self nowMs]),
         @"bytes": @(0),
@@ -149,6 +164,22 @@ static NSUInteger const KTVHCRequestLedgerLimit = 200;
     NSUInteger start = components.count > 2 ? components.count - 2 : 0;
     NSArray<NSString *> *tail = [components subarrayWithRange:NSMakeRange(start, components.count - start)];
     return [tail componentsJoinedByString:@"/"];
+}
+
+- (NSString *)normalizedClient:(NSString *)client
+{
+    if ([client isEqualToString:@"preview"] || [client isEqualToString:@"prefetch"]) {
+        return client;
+    }
+    return @"player";
+}
+
+- (NSString *)userAgentTail:(NSString *)userAgent
+{
+    if (userAgent.length <= 40) {
+        return userAgent.length > 0 ? userAgent : nil;
+    }
+    return [userAgent substringFromIndex:userAgent.length - 40];
 }
 
 - (BOOL)isPlaylistURL:(NSURL *)URL

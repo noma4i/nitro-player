@@ -17,7 +17,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "onVolumeChangeData" and the the Kotlin data class "onVolumeChangeData".
+   * The C++ JNI bridge between the C++ struct "onVolumeChangeData" and the Kotlin data class "onVolumeChangeData".
    */
   struct JonVolumeChangeData final: public jni::JavaClass<JonVolumeChangeData> {
   public:

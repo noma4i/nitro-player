@@ -21,7 +21,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "FeedRingSnapshot" and the the Kotlin data class "FeedRingSnapshot".
+   * The C++ JNI bridge between the C++ struct "FeedRingSnapshot" and the Kotlin data class "FeedRingSnapshot".
    */
   struct JFeedRingSnapshot final: public jni::JavaClass<JFeedRingSnapshot> {
   public:
@@ -59,16 +59,16 @@ namespace margelo::nitro::video {
         static_cast<bool>(playbackAllowed),
         static_cast<bool>(muted),
         static_cast<bool>(released),
-        [&]() {
-          size_t __size = slots->size();
+        [&](auto&& __input) {
+          size_t __size = __input->size();
           std::vector<FeedRingSlotSnapshot> __vector;
           __vector.reserve(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            auto __element = slots->getElement(__i);
+            auto __element = __input->getElement(__i);
             __vector.push_back(__element->toCpp());
           }
           return __vector;
-        }()
+        }(slots)
       );
     }
 
@@ -90,16 +90,16 @@ namespace margelo::nitro::video {
         value.playbackAllowed,
         value.muted,
         value.released,
-        [&]() {
-          size_t __size = value.slots.size();
+        [&](auto&& __input) {
+          size_t __size = __input.size();
           jni::local_ref<jni::JArrayClass<JFeedRingSlotSnapshot>> __array = jni::JArrayClass<JFeedRingSlotSnapshot>::newArray(__size);
           for (size_t __i = 0; __i < __size; __i++) {
-            const auto& __element = value.slots[__i];
+            const auto& __element = __input[__i];
             auto __elementJni = JFeedRingSlotSnapshot::fromCpp(__element);
             __array->setElement(__i, *__elementJni);
           }
           return __array;
-        }()
+        }(value.slots)
       );
     }
   };

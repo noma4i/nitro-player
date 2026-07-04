@@ -28,7 +28,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "PlaybackState" and the the Kotlin data class "PlaybackState".
+   * The C++ JNI bridge between the C++ struct "PlaybackState" and the Kotlin data class "PlaybackState".
    */
   struct JPlaybackState final: public jni::JavaClass<JPlaybackState> {
   public:

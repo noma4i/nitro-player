@@ -17,8 +17,6 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
   lateinit var config: NativeNitroPlayerConfig
     private set
   private lateinit var originalConfig: NativeNitroPlayerConfig
-  var isProxyRouteActive: Boolean = false
-    private set
 
   private var mediaItem: MediaItem? = null
   private var mediaSource: MediaSource? = null
@@ -33,13 +31,11 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
 
   constructor(
     config: NativeNitroPlayerConfig,
-    originalConfig: NativeNitroPlayerConfig = config,
-    isProxyRouteActive: Boolean = false
+    originalConfig: NativeNitroPlayerConfig = config
   ) : this() {
     this.uri = config.uri
     this.config = config
     this.originalConfig = originalConfig
-    this.isProxyRouteActive = isProxyRouteActive
   }
 
   private fun createOrGetMediaItem(): MediaItem {
@@ -117,7 +113,7 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
   }
 
   fun requestLeadingSegmentPrefetch() {
-    if (!isProxyRouteActive) {
+    if (!supportsStartupRecovery()) {
       return
     }
 
@@ -142,7 +138,6 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
     )
     config = originalConfig.copy(uri = resolution.url)
     uri = resolution.url
-    isProxyRouteActive = resolution.isProxying
     return resolution.isProxying
   }
 

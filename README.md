@@ -120,7 +120,7 @@ configureSourcePolicy('feed', {
 | Field | Platform | Native mapping |
 | --- | --- | --- |
 | `preferredForwardBufferDurationMs` | iOS, visionOS, tvOS | Applied to `AVPlayerItem.preferredForwardBufferDuration` before item attach. |
-| `preferredPeakBitRate` | iOS, visionOS, tvOS | Applied to `AVPlayerItem.preferredPeakBitRate` before item attach. Android peak-bitrate track-selector mapping is planned. |
+| `preferredPeakBitRate` | iOS, visionOS, tvOS, Android | Applied to `AVPlayerItem.preferredPeakBitRate` before item attach. On Android, applied as `DefaultTrackSelector.setMaxVideoBitrate`. |
 | `preferredMaximumResolution` | iOS, visionOS, tvOS | Applied to `AVPlayerItem.preferredMaximumResolution` before item attach. |
 | `preferredPeakBitRateForExpensiveNetworks` | iOS, visionOS, tvOS | Applied to `AVPlayerItem.preferredPeakBitRateForExpensiveNetworks`. |
 | `preferredMaximumResolutionForExpensiveNetworks` | iOS, visionOS, tvOS | Applied to `AVPlayerItem.preferredMaximumResolutionForExpensiveNetworks`. |

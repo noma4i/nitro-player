@@ -15,7 +15,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "PreloadLevel" and the the Kotlin enum "PreloadLevel".
+   * The C++ JNI bridge between the C++ enum "PreloadLevel" and the Kotlin enum "PreloadLevel".
    */
   struct JPreloadLevel final: public jni::JavaClass<JPreloadLevel> {
   public:

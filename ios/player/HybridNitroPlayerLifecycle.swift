@@ -350,7 +350,6 @@ extension HybridNitroPlayer {
     guard let activeSource = currentHybridSource() else {
       return
     }
-    activeSource.requestLeadingSegmentPrefetch()
     status = .loading
     readyToDisplay = false
     updateCachedProgress(currentTime: resumePositionSeconds, bufferDuration: 0)

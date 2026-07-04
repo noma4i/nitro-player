@@ -28,12 +28,17 @@ final class VideoPreviewRuntime {
 
   // Total wall-clock budget for the AVPlayer-based HLS frame grab.
   private static let hlsGrabBudget: TimeInterval = 5
+  // A peak below every variant forces AVFoundation to pick the lowest one; a single-frame grab never needs more.
+  private static let previewPeakBitRate: Double = 1
   // AVPlayer decode poll tuning. Tied to decoder timing, not a cross-platform parity knob.
   private static let readinessPollIntervalNs: UInt64 = 50_000_000
   private static let pausedFramePollTimeout: TimeInterval = 0.3
   private static let playingFramePollTimeout: TimeInterval = 1.5
+  private static let playerRequestIdlePollIntervalNs: UInt64 = 50_000_000
   private static let pixelBufferPollIntervalNs: UInt64 = 16_000_000
   private static let ciContext = CIContext()
+  private static let proxyClientHeaderName = "X-Nitro-Play-Client"
+  private static let proxyClientPreview = "preview"
 
   private let store = HlsCacheStore.shared
   private let requestCoordinator = PreviewRequestCoordinator<VideoPreviewResult>()
@@ -58,13 +63,14 @@ final class VideoPreviewRuntime {
     preview: NitroSourcePreviewConfig?
   ) -> PreviewRequest<VideoPreviewResult>? {
     let profile = VideoPreviewProfile.from(config: preview)
+    let decodeKey = HlsIdentity.requestKey(url: url, headers: headers)
     let cacheKey = HlsIdentity.previewKey(url: url, headers: headers, profile: profile)
 
     if let cached = store.getThumbnailPath(url: cacheKey) {
       return requestCoordinator.cached(VideoPreviewResult(uri: cached.absoluteString, fromCache: true))
     }
 
-    return requestCoordinator.acquire(key: cacheKey) {
+    return requestCoordinator.acquire(key: decodeKey) {
       TaskPreviewJob(task: Task<VideoPreviewResult?, Never> {
         await self.generatePreview(
           cacheKey: cacheKey,
@@ -104,8 +110,10 @@ final class VideoPreviewRuntime {
   ) async -> VideoPreviewResult? {
     if Task.isCancelled { return nil }
 
+    let isHls = HlsManifestUrl.matches(url)
+
     // 1) Direct decode: progressive containers (mp4/mov) open straight from the URL.
-    if let image = decodeDirect(url: url, headers: headers, profile: profile) {
+    if !isHls, let image = decodeDirect(url: url, headers: headers, profile: profile) {
       return persistThumbnail(image, cacheKey: cacheKey, profile: profile)
     }
 
@@ -113,6 +121,9 @@ final class VideoPreviewRuntime {
     //    no standalone MPEG-TS file importer, so decoding a downloaded bare .ts
     //    segment fails with AVError -11828 (FileFormatNotRecognized). Grab a frame
     //    through AVPlayer's HLS pipeline instead, which handles both .ts and fMP4.
+    guard await waitForPlayerRequestsToDrain(isHls: isHls, url: url, headers: headers) else {
+      return nil
+    }
     if let image = await decodeHlsViaPlayer(url: url, headers: headers, profile: profile) {
       return persistThumbnail(image, cacheKey: cacheKey, profile: profile)
     }
@@ -143,14 +154,19 @@ final class VideoPreviewRuntime {
     headers: [String: String]?,
     profile: VideoPreviewProfile
   ) async -> CGImage? {
-    guard let assetUrl = URL(string: url) else { return nil }
+    let route = HlsManifestUrl.matches(url)
+      ? HlsProxyRuntime.shared.resolvePlaybackRoute(url: url, headers: headers)
+      : HlsProxyRouteResolution(url: url, isProxying: false)
+    guard let assetUrl = URL(string: route.url) else { return nil }
+    let assetHeaders = route.isProxying ? taggedHeaders(headers) : headers
     var options: [String: Any] = [:]
-    if let headers, !headers.isEmpty {
-      options["AVURLAssetHTTPHeaderFieldsKey"] = headers
+    if let assetHeaders, !assetHeaders.isEmpty {
+      options["AVURLAssetHTTPHeaderFieldsKey"] = assetHeaders
     }
 
     let asset = AVURLAsset(url: assetUrl, options: options)
     let item = AVPlayerItem(asset: asset)
+    item.preferredPeakBitRate = Self.previewPeakBitRate
     let output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
       kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
     ])
@@ -172,7 +188,7 @@ final class VideoPreviewRuntime {
 
     let isLive = item.duration.isIndefinite
     var fallback: CGImage?
-    for offset in PreviewFrameHeuristics.frameSampleOffsets {
+    for offset in PreviewFrameHeuristics.hlsLeadingCacheFrameSampleOffsets {
       if Task.isCancelled || Date() >= deadline { break }
       guard let image = await grabFrame(
         player: player,
@@ -192,6 +208,30 @@ final class VideoPreviewRuntime {
       }
     }
     return fallback
+  }
+
+  private func taggedHeaders(_ headers: [String: String]?) -> [String: String] {
+    var tagged = headers ?? [:]
+    tagged[Self.proxyClientHeaderName] = Self.proxyClientPreview
+    return tagged
+  }
+
+  private func waitForPlayerRequestsToDrain(isHls: Bool, url: String, headers: [String: String]?) async -> Bool {
+    guard isHls else {
+      return true
+    }
+
+    let deadline = Date().addingTimeInterval(Self.hlsGrabBudget)
+    while Date() < deadline {
+      if Task.isCancelled {
+        return false
+      }
+      if !HlsProxyRuntime.shared.hasOpenPlayerNetworkRequests(url: url, headers: headers) {
+        return true
+      }
+      try? await Task.sleep(nanoseconds: Self.playerRequestIdlePollIntervalNs)
+    }
+    return false
   }
 
   @MainActor

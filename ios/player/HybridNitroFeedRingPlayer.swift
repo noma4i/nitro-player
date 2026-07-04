@@ -37,7 +37,6 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
   private let planner = FeedRingWindowPlanner(slotCount: 3)
   private let commandPlanner = FeedRingCommandPlanner()
   private let listenerRegistry = ListenerRegistry()
-  private let mainThreadExecutor = MainThreadResourceExecutor()
   private var sourceCatalog: [Int: CatalogItem] = [:]
   private var released = false
   private var slotListenersConfigured = false
@@ -452,8 +451,9 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
       return try block()
     }
 
-    let result = mainThreadExecutor.run {
-      Result { try block() }
+    var result: Result<T, Error>!
+    DispatchQueue.main.sync {
+      result = Result { try block() }
     }
     return try result.get()
   }

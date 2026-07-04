@@ -51,8 +51,7 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
     let normalized = normalizedConfig(from: normalizedInput)
     return try HybridNitroPlayerSource(
       config: normalized,
-      originalConfig: normalizedInput,
-      isProxyRouteActive: normalized.uri != normalizedInput.uri
+      originalConfig: normalizedInput
     )
   }
 

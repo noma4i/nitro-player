@@ -17,7 +17,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "LivePlaybackParams" and the the Kotlin data class "LivePlaybackParams".
+   * The C++ JNI bridge between the C++ struct "LivePlaybackParams" and the Kotlin data class "LivePlaybackParams".
    */
   struct JLivePlaybackParams final: public jni::JavaClass<JLivePlaybackParams> {
   public:

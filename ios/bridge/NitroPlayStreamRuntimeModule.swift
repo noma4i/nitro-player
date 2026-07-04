@@ -122,8 +122,16 @@ class NitroPlayStreamRuntime: NSObject, RCTBridgeModule {
       "playbackWatchdogAttempts": player.playbackWatchdogAttemptCount,
       "cachedTimeControlStatus": timeControlStatusName(player.cachedTimeControlStatus),
       "sourceUri": player.currentHybridSource()?.originalConfig.uri ?? NSNull(),
+      "currentItemUrl": currentItemUrl(player.playerItem) ?? NSNull(),
+      "preferredPeakBitRate": player.playerItem?.preferredPeakBitRate ?? NSNull(),
+      "timeControlStatus": player.player.timeControlStatus.rawValue,
+      "rate": player.player.rate,
       "accessLog": accessLogDiagnostics(player.playerItem?.accessLog()?.events.last) ?? NSNull()
     ]
+  }
+
+  private static func currentItemUrl(_ item: AVPlayerItem?) -> String? {
+    (item?.asset as? AVURLAsset)?.url.absoluteString
   }
 
   private static func accessLogDiagnostics(_ event: AVPlayerItemAccessLogEvent?) -> [String: Any]? {

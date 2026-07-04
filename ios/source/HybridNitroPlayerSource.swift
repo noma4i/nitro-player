@@ -14,7 +14,6 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
   private var _retentionState: RetentionLevel = .cold
   private var _config: NativeNitroPlayerConfig
   private var _url: URL
-  private var _isProxyRouteActive: Bool
   private let stateLock = NSLock()
   let originalConfig: NativeNitroPlayerConfig
 
@@ -56,14 +55,9 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
   }
   private let sourceLoader = SourceLoader()
 
-  var isProxyRouteActive: Bool {
-    get { stateLock.lock(); defer { stateLock.unlock() }; return _isProxyRouteActive }
-  }
-
   init(
     config: NativeNitroPlayerConfig,
-    originalConfig: NativeNitroPlayerConfig? = nil,
-    isProxyRouteActive: Bool? = nil
+    originalConfig: NativeNitroPlayerConfig? = nil
   ) throws {
     self.originalConfig = originalConfig ?? config
     self._config = config
@@ -73,7 +67,6 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
     }
 
     self._url = url
-    self._isProxyRouteActive = isProxyRouteActive ?? false
 
     super.init()
   }
@@ -213,20 +206,6 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
     return HlsManifestUrl.matches(originalConfig.uri)
   }
 
-  func requestLeadingSegmentPrefetch() {
-    guard isProxyRouteActive else {
-      return
-    }
-    let sourceUri = originalConfig.uri
-    let sourceHeaders = originalConfig.headers
-    Task.detached(priority: .utility) {
-      try? await HlsProxyRuntime.shared.prefetchLeadingSegments(
-        url: sourceUri,
-        headers: sourceHeaders
-      )
-    }
-  }
-
   func previewSourceUri() -> String {
     originalConfig.uri
   }
@@ -260,7 +239,6 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
       preview: originalConfig.preview
     )
     _url = nextUrl
-    _isProxyRouteActive = resolution.isProxying
     stateLock.unlock()
 
     return resolution.isProxying

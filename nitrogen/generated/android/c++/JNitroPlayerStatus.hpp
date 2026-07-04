@@ -15,7 +15,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "NitroPlayerStatus" and the the Kotlin enum "NitroPlayerStatus".
+   * The C++ JNI bridge between the C++ enum "NitroPlayerStatus" and the Kotlin enum "NitroPlayerStatus".
    */
   struct JNitroPlayerStatus final: public jni::JavaClass<JNitroPlayerStatus> {
   public:

@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -52,6 +53,38 @@ data class MemorySnapshot(
   val isPinnedForResourcePressure: Boolean
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is MemorySnapshot) return false
+    return Objects.deepEquals(this.playerBytes, other.playerBytes)
+      && Objects.deepEquals(this.sourceBytes, other.sourceBytes)
+      && Objects.deepEquals(this.totalBytes, other.totalBytes)
+      && Objects.deepEquals(this.preloadLevel, other.preloadLevel)
+      && Objects.deepEquals(this.retentionState, other.retentionState)
+      && Objects.deepEquals(this.isAttachedToView, other.isAttachedToView)
+      && Objects.deepEquals(this.isPlaying, other.isPlaying)
+      && Objects.deepEquals(this.wantsToPlay, other.wantsToPlay)
+      && Objects.deepEquals(this.isFeedPoolEligible, other.isFeedPoolEligible)
+      && Objects.deepEquals(this.isPinnedForFeedPool, other.isPinnedForFeedPool)
+      && Objects.deepEquals(this.isPinnedForResourcePressure, other.isPinnedForResourcePressure)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      playerBytes,
+      sourceBytes,
+      totalBytes,
+      preloadLevel,
+      retentionState,
+      isAttachedToView,
+      isPlaying,
+      wantsToPlay,
+      isFeedPoolEligible,
+      isPinnedForFeedPool,
+      isPinnedForResourcePressure
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -25,6 +26,20 @@ data class onLoadStartData(
   val source: HybridNitroPlayerSourceSpec
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is onLoadStartData) return false
+    return Objects.deepEquals(this.sourceType, other.sourceType)
+      && Objects.deepEquals(this.source, other.source)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      sourceType,
+      source
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

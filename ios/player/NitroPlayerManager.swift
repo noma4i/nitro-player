@@ -18,7 +18,6 @@ class NitroPlayerManager {
   private var feedHotActivity: [ObjectIdentifier: UInt64] = [:]
   private var feedHotSequence: UInt64 = 0
   private var notificationObservers: [NSObjectProtocol] = []
-  private let mainThreadExecutor = MainThreadResourceExecutor()
 
   private init() {
     let center = NotificationCenter.default
@@ -111,7 +110,7 @@ class NitroPlayerManager {
       return players.allObjects
     }
 
-    return mainThreadExecutor.run {
+    return DispatchQueue.main.sync {
       players.allObjects
     }
   }

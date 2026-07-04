@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -94,6 +95,66 @@ data class FeedRingSlotSnapshot(
   val lastError: String?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is FeedRingSlotSnapshot) return false
+    return Objects.deepEquals(this.slotId, other.slotId)
+      && Objects.deepEquals(this.assignedIndex, other.assignedIndex)
+      && Objects.deepEquals(this.momentId, other.momentId)
+      && Objects.deepEquals(this.sourceKey, other.sourceKey)
+      && Objects.deepEquals(this.generation, other.generation)
+      && Objects.deepEquals(this.desiredPlay, other.desiredPlay)
+      && Objects.deepEquals(this.attached, other.attached)
+      && Objects.deepEquals(this.prepared, other.prepared)
+      && Objects.deepEquals(this.ready, other.ready)
+      && Objects.deepEquals(this.playing, other.playing)
+      && Objects.deepEquals(this.buffering, other.buffering)
+      && Objects.deepEquals(this.currentTime, other.currentTime)
+      && Objects.deepEquals(this.duration, other.duration)
+      && Objects.deepEquals(this.bufferDuration, other.bufferDuration)
+      && Objects.deepEquals(this.bufferedPosition, other.bufferedPosition)
+      && Objects.deepEquals(this.rate, other.rate)
+      && Objects.deepEquals(this.wantsToPlay, other.wantsToPlay)
+      && Objects.deepEquals(this.retentionState, other.retentionState)
+      && Objects.deepEquals(this.hasLoadedSource, other.hasLoadedSource)
+      && Objects.deepEquals(this.watchdogAttempts, other.watchdogAttempts)
+      && Objects.deepEquals(this.watchdogPending, other.watchdogPending)
+      && Objects.deepEquals(this.nativePlaybackState, other.nativePlaybackState)
+      && Objects.deepEquals(this.status, other.status)
+      && Objects.deepEquals(this.lastTransition, other.lastTransition)
+      && Objects.deepEquals(this.lastError, other.lastError)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      slotId,
+      assignedIndex,
+      momentId,
+      sourceKey,
+      generation,
+      desiredPlay,
+      attached,
+      prepared,
+      ready,
+      playing,
+      buffering,
+      currentTime,
+      duration,
+      bufferDuration,
+      bufferedPosition,
+      rate,
+      wantsToPlay,
+      retentionState,
+      hasLoadedSource,
+      watchdogAttempts,
+      watchdogPending,
+      nativePlaybackState,
+      status,
+      lastTransition,
+      lastError
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

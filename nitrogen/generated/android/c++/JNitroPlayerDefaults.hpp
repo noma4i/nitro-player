@@ -21,7 +21,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "NitroPlayerDefaults" and the the Kotlin data class "NitroPlayerDefaults".
+   * The C++ JNI bridge between the C++ struct "NitroPlayerDefaults" and the Kotlin data class "NitroPlayerDefaults".
    */
   struct JNitroPlayerDefaults final: public jni::JavaClass<JNitroPlayerDefaults> {
   public:

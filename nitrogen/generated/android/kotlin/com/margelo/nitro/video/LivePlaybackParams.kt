@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -34,6 +35,26 @@ data class LivePlaybackParams(
   val targetOffsetMs: Double?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is LivePlaybackParams) return false
+    return Objects.deepEquals(this.minPlaybackSpeed, other.minPlaybackSpeed)
+      && Objects.deepEquals(this.maxPlaybackSpeed, other.maxPlaybackSpeed)
+      && Objects.deepEquals(this.maxOffsetMs, other.maxOffsetMs)
+      && Objects.deepEquals(this.minOffsetMs, other.minOffsetMs)
+      && Objects.deepEquals(this.targetOffsetMs, other.targetOffsetMs)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      minPlaybackSpeed,
+      maxPlaybackSpeed,
+      maxOffsetMs,
+      minOffsetMs,
+      targetOffsetMs
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

@@ -17,7 +17,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "Resolution" and the the Kotlin data class "Resolution".
+   * The C++ JNI bridge between the C++ struct "Resolution" and the Kotlin data class "Resolution".
    */
   struct JResolution final: public jni::JavaClass<JResolution> {
   public:

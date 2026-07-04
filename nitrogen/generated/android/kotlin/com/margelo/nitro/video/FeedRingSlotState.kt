@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -43,6 +44,32 @@ data class FeedRingSlotState(
   val duration: Double
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is FeedRingSlotState) return false
+    return Objects.deepEquals(this.slotId, other.slotId)
+      && Objects.deepEquals(this.generation, other.generation)
+      && Objects.deepEquals(this.assignedIndex, other.assignedIndex)
+      && Objects.deepEquals(this.ready, other.ready)
+      && Objects.deepEquals(this.playing, other.playing)
+      && Objects.deepEquals(this.buffering, other.buffering)
+      && Objects.deepEquals(this.currentTime, other.currentTime)
+      && Objects.deepEquals(this.duration, other.duration)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      slotId,
+      generation,
+      assignedIndex,
+      ready,
+      playing,
+      buffering,
+      currentTime,
+      duration
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

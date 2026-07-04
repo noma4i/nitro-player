@@ -15,7 +15,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "RetentionLevel" and the the Kotlin enum "RetentionLevel".
+   * The C++ JNI bridge between the C++ enum "RetentionLevel" and the Kotlin enum "RetentionLevel".
    */
   struct JRetentionLevel final: public jni::JavaClass<JRetentionLevel> {
   public:

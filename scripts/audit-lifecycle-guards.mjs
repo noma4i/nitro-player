@@ -155,7 +155,7 @@ const extractBlockBody = (sanitizedLines, tokenLine, lookaheadForBrace = 3) => {
 // treated as safe. Covered wrappers: notifyDelegate { ... } (Swift),
 // runOnMainThread { ... } / runOnMainThreadSync { ... } (Kotlin).
 // A guard token that proves a wrapper body is release/generation-safe.
-const WRAPPER_GUARD = /(!?\s*(self\.|host\.|delegate\.)?isReleased|[A-Za-z]*[Gg]eneration\s*==|shouldDeliverCallback\(|shouldEmit\(\))/;
+const WRAPPER_GUARD = /(!?\s*(self\.|host\.|delegate\.)?isReleased|\breleased\b|[A-Za-z]*[Gg]eneration\s*(==|!=)|shouldDeliverCallback\(|shouldEmit\(\))/;
 
 const stripGuardedWrappers = bodyText => {
   // `notifyDelegate` guards `!delegate.isReleased` internally, so it is always
@@ -314,9 +314,11 @@ const SWIFT_GUARD = [
 const KOTLIN_GUARD = [
   // early return: `if (host.isReleased) return`
   /if\s*\([^)]*\b(host\.)?isReleased[^)]*\)\s*return/,
+  /if\s*\([^)]*\breleased\b[^)]*\)\s*return/,
+  /if\s*\([^)]*\breleased\b[^)]*\)\s*\{?/,
   // positive wrapping guard: `if (!isReleased && ...) { <access> }`
   /if\s*\(\s*![^)]*\bisReleased\b/,
-  /[A-Za-z]*[Gg]eneration\s*==/,
+  /[A-Za-z]*[Gg]eneration\s*(==|!=)/,
   /shouldDeliverCallback\(/
 ];
 

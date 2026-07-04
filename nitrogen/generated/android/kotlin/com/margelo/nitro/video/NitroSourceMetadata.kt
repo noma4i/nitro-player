@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -34,6 +35,26 @@ data class NitroSourceMetadata(
   val imageUri: String?
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is NitroSourceMetadata) return false
+    return Objects.deepEquals(this.title, other.title)
+      && Objects.deepEquals(this.subtitle, other.subtitle)
+      && Objects.deepEquals(this.description, other.description)
+      && Objects.deepEquals(this.artist, other.artist)
+      && Objects.deepEquals(this.imageUri, other.imageUri)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      title,
+      subtitle,
+      description,
+      artist,
+      imageUri
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

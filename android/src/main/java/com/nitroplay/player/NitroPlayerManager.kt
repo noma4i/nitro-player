@@ -157,6 +157,10 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
     }
   }
 
+  fun registeredPlayers(): List<HybridNitroPlayer> {
+    return runOnMainThreadSync { players.keys.toList() }
+  }
+
   fun updateNitroPlayerViewNitroId(oldNitroId: Int, newNitroId: Int, view: NitroPlayerView) {
     runOnMainThread {
       if (oldNitroId != -1) {

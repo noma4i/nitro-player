@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -43,6 +44,32 @@ data class FeedRingSnapshot(
   val slots: Array<FeedRingSlotSnapshot>
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is FeedRingSnapshot) return false
+    return Objects.deepEquals(this.catalogRevision, other.catalogRevision)
+      && Objects.deepEquals(this.viewportRevision, other.viewportRevision)
+      && Objects.deepEquals(this.catalogSize, other.catalogSize)
+      && Objects.deepEquals(this.centerIndex, other.centerIndex)
+      && Objects.deepEquals(this.playbackAllowed, other.playbackAllowed)
+      && Objects.deepEquals(this.muted, other.muted)
+      && Objects.deepEquals(this.released, other.released)
+      && Objects.deepEquals(this.slots, other.slots)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      catalogRevision,
+      viewportRevision,
+      catalogSize,
+      centerIndex,
+      playbackAllowed,
+      muted,
+      released,
+      slots
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

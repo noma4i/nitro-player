@@ -15,7 +15,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ enum "NitroPlayerOrientation" and the the Kotlin enum "NitroPlayerOrientation".
+   * The C++ JNI bridge between the C++ enum "NitroPlayerOrientation" and the Kotlin enum "NitroPlayerOrientation".
    */
   struct JNitroPlayerOrientation final: public jni::JavaClass<JNitroPlayerOrientation> {
   public:

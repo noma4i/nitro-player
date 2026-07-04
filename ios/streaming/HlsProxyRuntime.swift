@@ -82,6 +82,10 @@ final class HlsProxyRuntime {
     controller.requestLedgerSnapshot()
   }
 
+  func hasOpenPlayerNetworkRequests(url: String, headers: [String: String]?) -> Bool {
+    controller.hasOpenNetworkRequests(url: url, headers: headers, client: "player")
+  }
+
   func getNetworkThroughputEstimate() -> [String: Any] {
     controller.getNetworkThroughputEstimate()
   }

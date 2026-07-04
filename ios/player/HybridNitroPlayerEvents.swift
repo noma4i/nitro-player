@@ -173,7 +173,6 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
             width: width,
             height: height
           )
-          requestFirstFrameIfNeeded()
         }
       }
 

@@ -51,6 +51,7 @@ internal class NitroPlayerListenerBridge(
     ) {
       if (host.isReleased) return
       host.readyToDisplay = true
+      host.currentNitroPlayerView?.get()?.refreshVisualFitAfterFirstFrame()
       host.requestFirstFrameIfNeeded()
       host.emitPlaybackState()
     }
@@ -84,15 +85,7 @@ internal class NitroPlayerListenerBridge(
 
           if (isFirstLoadForGeneration) {
             val generalVideoFormat = host.player.videoFormat
-            val currentTracks = host.player.currentTracks
-
-            val selectedVideoTrackGroup = currentTracks.groups.find { group -> group.type == C.TRACK_TYPE_VIDEO && group.isSelected }
-            val selectedVideoTrackFormat = if (selectedVideoTrackGroup != null && selectedVideoTrackGroup.length > 0) {
-              selectedVideoTrackGroup.getTrackFormat(0)
-            } else {
-              null
-            }
-
+            val selectedVideoTrackFormat = host.selectedVideoTrackFormat()
             val width = selectedVideoTrackFormat?.width ?: generalVideoFormat?.width ?: 0
             val height = selectedVideoTrackFormat?.height ?: generalVideoFormat?.height ?: 0
             val rotationDegrees = selectedVideoTrackFormat?.rotationDegrees ?: generalVideoFormat?.rotationDegrees

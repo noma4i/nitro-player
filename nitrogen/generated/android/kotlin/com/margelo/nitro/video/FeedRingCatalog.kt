@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -25,6 +26,20 @@ data class FeedRingCatalog(
   val items: Array<FeedRingCatalogItem>
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is FeedRingCatalog) return false
+    return Objects.deepEquals(this.revision, other.revision)
+      && Objects.deepEquals(this.items, other.items)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      revision,
+      items
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

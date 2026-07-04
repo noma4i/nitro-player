@@ -5,9 +5,12 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Color
+import android.graphics.Matrix
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.LayoutInflater
+import android.view.TextureView
+import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageButton
@@ -34,6 +37,11 @@ class NitroPlayerView @JvmOverloads constructor(
   attrs: AttributeSet? = null,
   defStyleAttr: Int = 0
 ) : FrameLayout(context, attrs, defStyleAttr) {
+  companion object {
+    private const val MATTE_SAMPLE_SIZE = 96
+    private const val MATTE_CROP_DELAY_MS = 80L
+  }
+
   var hybridPlayer: HybridNitroPlayer? = null
     set(value) {
       // Clear the SurfaceView when player is about to be set to null
@@ -108,7 +116,10 @@ class NitroPlayerView @JvmOverloads constructor(
     }
 
   private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
+  private var pendingMatteCropRunnable: Runnable? = null
   private val fullscreenManager = FullscreenDialogManager(this)
+  internal var matteCropDiagnostics: TextureMatteCropResult? = null
+    private set
 
   var eventsEmitter: NitroPlayerViewEventsEmitter? = null
 
@@ -130,6 +141,23 @@ class NitroPlayerView @JvmOverloads constructor(
 
   private fun applyResizeMode() {
     playerView.resizeMode = resizeMode.toAspectRatioFrameLayout()
+    if (!canApplyTextureMatteCrop()) {
+      resetTextureTransform()
+    }
+    playerView.requestLayout()
+    playerView.invalidate()
+  }
+
+  internal fun syncPlayerViewLayout() {
+    applyResizeMode()
+    scheduleTextureMatteCrop(resetBeforeSample = false)
+    requestLayout()
+    invalidate()
+  }
+
+  internal fun refreshVisualFitAfterFirstFrame() {
+    applyResizeMode()
+    scheduleTextureMatteCrop(resetBeforeSample = true)
   }
 
   @SuppressLint("InflateParams")
@@ -163,6 +191,9 @@ class NitroPlayerView @JvmOverloads constructor(
     fullscreenManager.dismiss()
     globalLayoutListener?.let { playerView.viewTreeObserver.removeOnGlobalLayoutListener(it) }
     globalLayoutListener = null
+    pendingMatteCropRunnable?.let { removeCallbacks(it) }
+    pendingMatteCropRunnable = null
+    resetTextureTransform()
     removeCallbacks(layoutRunnable)
     playerView.player = null
     playerView.keepScreenOn = false
@@ -285,5 +316,74 @@ class NitroPlayerView @JvmOverloads constructor(
 
     playerView.findViewById<ImageButton>(androidx.media3.ui.R.id.exo_fullscreen)
       ?.setImageResource(iconRes)
+  }
+
+  private fun canApplyTextureMatteCrop(): Boolean {
+    return resizeMode == ResizeMode.COVER && surfaceType == SurfaceType.TEXTURE
+  }
+
+  private fun scheduleTextureMatteCrop(resetBeforeSample: Boolean) {
+    pendingMatteCropRunnable?.let { removeCallbacks(it) }
+    pendingMatteCropRunnable = null
+    if (!canApplyTextureMatteCrop()) {
+      return
+    }
+
+    if (resetBeforeSample) {
+      resetTextureTransform()
+    }
+
+    val nextRunnable = Runnable {
+      pendingMatteCropRunnable = null
+      applyTextureMatteCrop()
+    }
+    pendingMatteCropRunnable = nextRunnable
+    postDelayed(nextRunnable, MATTE_CROP_DELAY_MS)
+  }
+
+  private fun applyTextureMatteCrop() {
+    val textureView = findTextureView(playerView) ?: return
+    if (!textureView.isAvailable || textureView.width <= 0 || textureView.height <= 0) {
+      return
+    }
+
+    val sample = textureView.getBitmap(MATTE_SAMPLE_SIZE, MATTE_SAMPLE_SIZE) ?: return
+    val crop = TextureMatteCropDetector.detect(sample)
+    sample.recycle()
+
+    if (crop == null) {
+      resetTextureTransform()
+      return
+    }
+
+    val centerY = textureView.height.toFloat() * crop.activeCenterYFraction
+    val centerX = textureView.width.toFloat() / 2f
+    val matrix = Matrix().apply {
+      postScale(crop.scale, crop.scale, centerX, centerY)
+      postTranslate(0f, textureView.height.toFloat() / 2f - centerY)
+    }
+    textureView.setTransform(matrix)
+    matteCropDiagnostics = crop
+  }
+
+  private fun resetTextureTransform() {
+    findTextureView(playerView)?.setTransform(Matrix())
+    matteCropDiagnostics = null
+  }
+
+  private fun findTextureView(view: View): TextureView? {
+    if (view is TextureView) {
+      return view
+    }
+    if (view !is ViewGroup) {
+      return null
+    }
+    for (index in 0 until view.childCount) {
+      val textureView = findTextureView(view.getChildAt(index))
+      if (textureView != null) {
+        return textureView
+      }
+    }
+    return null
   }
 }

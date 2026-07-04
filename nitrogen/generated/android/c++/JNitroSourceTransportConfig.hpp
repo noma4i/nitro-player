@@ -19,7 +19,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "NitroSourceTransportConfig" and the the Kotlin data class "NitroSourceTransportConfig".
+   * The C++ JNI bridge between the C++ struct "NitroSourceTransportConfig" and the Kotlin data class "NitroSourceTransportConfig".
    */
   struct JNitroSourceTransportConfig final: public jni::JavaClass<JNitroSourceTransportConfig> {
   public:

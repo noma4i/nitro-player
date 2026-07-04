@@ -5,7 +5,6 @@ import android.os.Looper
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.upstream.DefaultAllocator
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
@@ -24,11 +23,6 @@ internal class NitroPlayerLifecycle(
   private val trimHandler = Handler(Looper.getMainLooper())
 
   private companion object {
-    private const val DEFAULT_MIN_BUFFER_DURATION_MS = 5000
-    private const val DEFAULT_MAX_BUFFER_DURATION_MS = 10000
-    private const val DEFAULT_BUFFER_FOR_PLAYBACK_DURATION_MS = 1000
-    private const val DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_DURATION_MS = 2000
-    private const val DEFAULT_BACK_BUFFER_DURATION_MS = 0
     // parity: iOS HybridNitroPlayerLifecycle defaultTrimDelayMs = 10000.
     private const val DEFAULT_TRIM_DELAY_MS = 10000.0
   }
@@ -43,35 +37,8 @@ internal class NitroPlayerLifecycle(
 
     val hybridSource = host.source as? HybridNitroPlayerSource ?: throw PlayerError.InvalidSource
 
-    host.allocator = DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
-
-    val currentAllocator = host.allocator ?: return
-    val bufferConfig = host.bufferConfig
-    val loadControl = DefaultLoadControl.Builder()
-      .setAllocator(currentAllocator)
-      .setBufferDurationsMs(
-        bufferConfig?.minBufferMs?.toInt() ?: DEFAULT_MIN_BUFFER_DURATION_MS,
-        bufferConfig?.maxBufferMs?.toInt() ?: DEFAULT_MAX_BUFFER_DURATION_MS,
-        bufferConfig?.bufferForPlaybackMs?.toInt()
-          ?: DEFAULT_BUFFER_FOR_PLAYBACK_DURATION_MS,
-        bufferConfig?.bufferForPlaybackAfterRebufferMs?.toInt()
-          ?: DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_DURATION_MS
-      )
-      .setBackBuffer(
-        bufferConfig?.backBufferDurationMs?.toInt()
-          ?: DEFAULT_BACK_BUFFER_DURATION_MS,
-        false
-      )
-      .build()
-
     val mediaSource = hybridSource.createOrGetMediaSource()
-
-    if (host.reusePlayerInstanceForSourceChanges) {
-      host.listenerBridge.stopProgressUpdates()
-      attachPlaybackListenersIfNeeded()
-    } else {
-      replacePlayerInstance(loadControl, attachPlaybackListeners = true)
-    }
+    configurePlayerInstanceForCurrentSource(attachPlaybackListeners = true)
 
     host.loadedWithSource = true
     host.player.setMediaSource(mediaSource)
@@ -89,16 +56,36 @@ internal class NitroPlayerLifecycle(
     host.listenerBridge.startProgressUpdates()
   }
 
+  fun configurePlayerInstanceForCurrentSource(attachPlaybackListeners: Boolean) {
+    val playbackConfig = NitroPlayerPlaybackConfig.from(host.bufferConfig)
+    if (
+      !host.reusePlayerInstanceForSourceChanges ||
+      playbackConfig.requiresPlayerRebuild(host.activePlaybackConfig) ||
+      host.allocator == null
+    ) {
+      replacePlayerInstance(playbackConfig, attachPlaybackListeners)
+      return
+    }
+
+    host.listenerBridge.stopProgressUpdates()
+    host.applyPlaybackConfig(playbackConfig)
+    if (attachPlaybackListeners) {
+      attachPlaybackListenersIfNeeded()
+    }
+    host.player.playWhenReady = host.wantsToPlay
+  }
+
   fun replacePlayerInstance(
-    loadControl: DefaultLoadControl,
+    playbackConfig: NitroPlayerPlaybackConfig,
     attachPlaybackListeners: Boolean
   ) {
     host.listenerBridge.stopProgressUpdates()
-    host.player.removeListener(host.listenerBridge.playerListener)
-    host.player.removeAnalyticsListener(host.listenerBridge.analyticsListener)
+    host.currentPlayerOrNull()?.removeListener(host.listenerBridge.playerListener)
+    host.currentPlayerOrNull()?.removeAnalyticsListener(host.listenerBridge.analyticsListener)
     host.playbackListenersAttached = false
-    host.player.release()
-    host.player = host.createExoPlayer(loadControl)
+    host.currentPlayerOrNull()?.release()
+    host.allocator = DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
+    host.player = host.createExoPlayer(playbackConfig)
     host.rebindCurrentPlayerView()
     if (attachPlaybackListeners) {
       host.player.addListener(host.listenerBridge.playerListener)
@@ -110,6 +97,17 @@ internal class NitroPlayerLifecycle(
     // strands a should-be-playing instance paused. The single choke point for recreation, so
     // every path (initializePlayer, trim, clearCurrentSourceState) stays intent-consistent.
     host.player.playWhenReady = host.wantsToPlay
+  }
+
+  private fun releasePlayerInstance() {
+    host.listenerBridge.stopProgressUpdates()
+    host.currentPlayerOrNull()?.removeListener(host.listenerBridge.playerListener)
+    host.currentPlayerOrNull()?.removeAnalyticsListener(host.listenerBridge.analyticsListener)
+    host.playbackListenersAttached = false
+    host.currentPlayerOrNull()?.release()
+    host.allocator = null
+    host.clearPlayerInstance()
+    host.rebindCurrentPlayerView()
   }
 
   private fun attachPlaybackListenersIfNeeded() {
@@ -133,10 +131,10 @@ internal class NitroPlayerLifecycle(
     sourceToTrim?.sourceLoader?.cancel()
     sourceToTrim?.trimToCold()
     if (host.reusePlayerInstanceForSourceChanges) {
-      host.player.stop()
-      host.player.clearMediaItems()
+      host.currentPlayerOrNull()?.stop()
+      host.currentPlayerOrNull()?.clearMediaItems()
     } else {
-      replacePlayerInstance(DefaultLoadControl.Builder().build(), attachPlaybackListeners = false)
+      releasePlayerInstance()
     }
     host.allocator = null
     host.loadedWithSource = false
@@ -289,13 +287,15 @@ internal class NitroPlayerLifecycle(
     val hybridSource = host.source as? HybridNitroPlayerSource ?: return
 
     if (host.loadedWithSource) {
-      host.desiredCurrentTimeMs = host.player.currentPosition
+      host.currentPlayerOrNull()?.let { currentPlayer ->
+        host.desiredCurrentTimeMs = currentPlayer.currentPosition
+      }
       if (host.reusePlayerInstanceForSourceChanges) {
         host.listenerBridge.stopProgressUpdates()
-        host.player.stop()
-        host.player.clearMediaItems()
+        host.currentPlayerOrNull()?.stop()
+        host.currentPlayerOrNull()?.clearMediaItems()
       } else {
-        replacePlayerInstance(DefaultLoadControl.Builder().build(), attachPlaybackListeners = false)
+        releasePlayerInstance()
       }
       host.allocator = null
       host.loadedWithSource = false

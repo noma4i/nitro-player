@@ -17,7 +17,7 @@ namespace margelo::nitro::video {
   using namespace facebook;
 
   /**
-   * The C++ JNI bridge between the C++ struct "onFirstFrameData" and the the Kotlin data class "onFirstFrameData".
+   * The C++ JNI bridge between the C++ struct "onFirstFrameData" and the Kotlin data class "onFirstFrameData".
    */
   struct JonFirstFrameData final: public jni::JavaClass<JonFirstFrameData> {
   public:

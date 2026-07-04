@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 import com.margelo.nitro.core.NullType
 
 /**
@@ -52,6 +53,38 @@ data class PlaybackState(
   val nativeTimestampMs: Double
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is PlaybackState) return false
+    return Objects.deepEquals(this.status, other.status)
+      && Objects.deepEquals(this.currentTime, other.currentTime)
+      && Objects.deepEquals(this.duration, other.duration)
+      && Objects.deepEquals(this.bufferDuration, other.bufferDuration)
+      && Objects.deepEquals(this.bufferedPosition, other.bufferedPosition)
+      && Objects.deepEquals(this.rate, other.rate)
+      && Objects.deepEquals(this.isPlaying, other.isPlaying)
+      && Objects.deepEquals(this.isBuffering, other.isBuffering)
+      && Objects.deepEquals(this.isVisualReady, other.isVisualReady)
+      && Objects.deepEquals(this.error, other.error)
+      && Objects.deepEquals(this.nativeTimestampMs, other.nativeTimestampMs)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      status,
+      currentTime,
+      duration,
+      bufferDuration,
+      bufferedPosition,
+      rate,
+      isPlaying,
+      isBuffering,
+      isVisualReady,
+      error,
+      nativeTimestampMs
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**

@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.video.HybridNitroPlayer
 import com.margelo.nitro.video.MixAudioMode
@@ -94,7 +95,9 @@ class AudioFocusManager() {
 
   private fun determineRequiredMixMode(): MixAudioMode? {
     val activePlayers = players.filter { player ->
-      player.player.isPlaying && player.player.volume != 0f
+      player.currentMediaPlayer()?.let { mediaPlayer ->
+        mediaPlayer.isPlaying && mediaPlayer.volume != 0f
+      } == true
     }
 
     if (activePlayers.isEmpty()) {
@@ -201,7 +204,7 @@ class AudioFocusManager() {
   private fun pauseActivePlayers() {
     Threading.runOnMainThread {
       players.forEach { player ->
-        player.player.let { mediaPlayer ->
+        player.currentMediaPlayer()?.let { mediaPlayer ->
           if (mediaPlayer.volume != 0f && mediaPlayer.isPlaying) {
             mediaPlayer.pause()
           }
@@ -214,7 +217,7 @@ class AudioFocusManager() {
     Threading.runOnMainThread {
       isDucking = true
       players.forEach { player ->
-        player.player.let { mediaPlayer ->
+        player.currentMediaPlayer()?.let { mediaPlayer ->
           if (!preDuckVolumes.containsKey(player)) {
             preDuckVolumes[player] = mediaPlayer.volume
           }
@@ -229,7 +232,7 @@ class AudioFocusManager() {
     Threading.runOnMainThread {
       isDucking = true
       players.forEach { player ->
-        player.player.let { mediaPlayer ->
+        player.currentMediaPlayer()?.let { mediaPlayer ->
           val originalVolume = preDuckVolumes.remove(player)
           if (originalVolume != null) {
             mediaPlayer.volume = originalVolume
@@ -242,6 +245,8 @@ class AudioFocusManager() {
 
   fun isDucking(): Boolean = isDucking
 
+  private fun HybridNitroPlayer.currentMediaPlayer(): ExoPlayer? = currentPlayerOrNull()
+
   /**
    * Returns the player's volume captured before the current duck, or null when
    * the player is not currently ducked. Callers that need to snapshot the real
@@ -249,4 +254,3 @@ class AudioFocusManager() {
    */
   fun preDuckVolume(player: HybridNitroPlayer): Float? = preDuckVolumes[player]
 }
-

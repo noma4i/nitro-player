@@ -9,6 +9,7 @@ package com.margelo.nitro.video
 
 import androidx.annotation.Keep
 import com.facebook.proguard.annotations.DoNotStrip
+import java.util.Objects
 
 
 /**
@@ -34,6 +35,26 @@ data class onLoadData(
   val orientation: NitroPlayerOrientation
 ) {
   /* primary constructor */
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is onLoadData) return false
+    return Objects.deepEquals(this.currentTime, other.currentTime)
+      && Objects.deepEquals(this.duration, other.duration)
+      && Objects.deepEquals(this.height, other.height)
+      && Objects.deepEquals(this.width, other.width)
+      && Objects.deepEquals(this.orientation, other.orientation)
+  }
+
+  override fun hashCode(): Int {
+    return arrayOf<Any?>(
+      currentTime,
+      duration,
+      height,
+      width,
+      orientation
+    ).contentDeepHashCode()
+  }
 
   companion object {
     /**
