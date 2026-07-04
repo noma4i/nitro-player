@@ -1965,12 +1965,12 @@ __metadata:
     "@types/react": "npm:^19.0.10"
     jest: "npm:^29.7.0"
     jest-environment-jsdom: "npm:^30.3.0"
-    nitrogen: "npm:^0.35.2"
+    nitrogen: "npm:0.35.10"
     react: "npm:19.2.0"
     react-dom: "npm:19.2.0"
     react-native: "npm:0.83.4"
     react-native-builder-bob: "npm:^0.40.0"
-    react-native-nitro-modules: "npm:^0.35.2"
+    react-native-nitro-modules: "npm:^0.35.10"
     ts-jest: "npm:^29.2.5"
     typescript: "npm:^5.2.2"
   peerDependencies:
@@ -2215,14 +2215,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ts-morph/common@npm:~0.28.1":
-  version: 0.28.1
-  resolution: "@ts-morph/common@npm:0.28.1"
+"@ts-morph/common@npm:~0.29.0":
+  version: 0.29.0
+  resolution: "@ts-morph/common@npm:0.29.0"
   dependencies:
     minimatch: "npm:^10.0.1"
     path-browserify: "npm:^1.0.1"
     tinyglobby: "npm:^0.2.14"
-  checksum: 10c0/d51276d840997e0f8f83e04f8b1689135bb12588a7ddbed575f87848d5737eeae31e242685d6449de27573e8ed30892157fea643393cb875e175f2711200bc50
+  checksum: 10c0/97ab8ca66558b817e5475a8893ee1476ab760a3ac71fa9868413d95ddbaaf909eda81716e3a8d14291cbf449e624af66de81bcddd3ec2e36525728b4edf5e8ee
   languageName: node
   linkType: hard
 
@@ -5429,18 +5429,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nitrogen@npm:^0.35.2":
-  version: 0.35.2
-  resolution: "nitrogen@npm:0.35.2"
+"nitrogen@npm:0.35.10":
+  version: 0.35.10
+  resolution: "nitrogen@npm:0.35.10"
   dependencies:
     chalk: "npm:^5.3.0"
-    react-native-nitro-modules: "npm:^0.35.2"
-    ts-morph: "npm:^27.0.0"
+    react-native-nitro-modules: "npm:^0.35.10"
+    ts-morph: "npm:^28.0.0"
     yargs: "npm:^18.0.0"
-    zod: "npm:^4.0.5"
+    zod: "npm:^4.4.3"
   bin:
     nitrogen: lib/index.js
-  checksum: 10c0/a470f9e9e35b0ed636c553f401957ffb768c1015cb2e134232b7f0db72d78e014ee36dba413b55dabfa19cf7c09d251e896f4fb68e321defdd5b9c20bdbd97f2
+  checksum: 10c0/3ef8a6b558e5080e894104c7731dacc5dc85623642a3d453a392fbbbf01d8bbba7e7f31deb4bc4fda14b3c61088882566b1b8434c6e9e676742693cab63f8019
   languageName: node
   linkType: hard
 
@@ -5941,13 +5941,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-nitro-modules@npm:^0.35.2":
-  version: 0.35.2
-  resolution: "react-native-nitro-modules@npm:0.35.2"
+"react-native-nitro-modules@npm:^0.35.10":
+  version: 0.35.10
+  resolution: "react-native-nitro-modules@npm:0.35.10"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/6136f36ac1dc01dface7a4765b3258c8c8c766bc77c53765dfa6a29ff9f2091b13ce3e2a8a651e515cda045d125fc6fdd4f450cb4aabb0ab94c3d6b4b7b55b77
+  checksum: 10c0/55c117c418abfb1223053eb93b8604bd7b6edc22ee9568a7017888a78f51dfa8ae5f2d11906c4cf6c87ae41b05ba099dc8958082b8aa1cfe8e1c7c1f3e9aff0e
   languageName: node
   linkType: hard
 
@@ -6685,13 +6685,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ts-morph@npm:^27.0.0":
-  version: 27.0.2
-  resolution: "ts-morph@npm:27.0.2"
+"ts-morph@npm:^28.0.0":
+  version: 28.0.0
+  resolution: "ts-morph@npm:28.0.0"
   dependencies:
-    "@ts-morph/common": "npm:~0.28.1"
+    "@ts-morph/common": "npm:~0.29.0"
     code-block-writer: "npm:^13.0.3"
-  checksum: 10c0/224715cc6d97b8ff5afd3986f9629f912a0ebd83eaecbdca91c35cf10a98f607c663f666e7ea5e6afab00563d00dc80fa7a13552cc7f1cef735261c3217d0863
+  checksum: 10c0/969570a5e983b4193735fff43878ce7b78787b4860bf3d23f330c86d7de707286969e5a82d486dce333eea27bf9d373a46f9de58a80c0bf86d2a462620563a55
   languageName: node
   linkType: hard
 
@@ -7118,9 +7118,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod@npm:^4.0.5":
-  version: 4.3.6
-  resolution: "zod@npm:4.3.6"
-  checksum: 10c0/860d25a81ab41d33aa25f8d0d07b091a04acb426e605f396227a796e9e800c44723ed96d0f53a512b57be3d1520f45bf69c0cb3b378a232a00787a2609625307
+"zod@npm:^4.4.3":
+  version: 4.4.3
+  resolution: "zod@npm:4.4.3"
+  checksum: 10c0/7ea31b558e88f9faf44f31dd185e2e1cbf51fed3081787fb96cc2534749b50c0acfc6da7f0922a7353ed092dd358c7d50c28ea96c94d04af64191bd33152eca3
   languageName: node
   linkType: hard
