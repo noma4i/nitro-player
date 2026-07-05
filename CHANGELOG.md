@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased
+## 2.0.0-beta.4
+
+### Performance
+
+- Memoized source preparation with a WeakMap object cache and branded prepared-source fast path, added per-field native prop diffing and callback-ref subscriptions in `NitroPlayerView`, added selector overloads for `usePlaybackState`, and cached prepared catalog entries in `NitroFeedRingPlayer`.
+- Reworked native playback tick paths on both platforms with main-thread playback-state emission gates, listener early-outs before snapshot/fingerprint allocation, item-scoped periodic time observer lifecycle on iOS, volatile cached playback getters and single-hop seek planning on Android, and async source-swap coordination on iOS without main-thread sync.
+- Raised the feed hot pool to the full three-slot ring size, coalesced feed-pool rebalancing into one main-turn pass, restored feed-pool pin semantics so idle attached views are not pinned, and enabled Android ExoPlayer instance reuse for source changes by default.
+- Changed the Android HLS proxy to stream segments through while tee-writing cache files, dedupe in-flight segment fetches, run a single eviction pass after writes, and use a shared in-memory cache index; iOS proxy state now stays in one sync domain and segment bytes are stored only in the KTV cache.
+- Moved iOS HLS first-frame decoding off the main actor, replaced preview wait polling with an open-request counter, uses generator-first HLS decode with AVPlayer fallback, and on Android skips doomed direct MediaMetadataRetriever attempts for HLS while reusing cached leading segments.
 
 ### Breaking Changes
 

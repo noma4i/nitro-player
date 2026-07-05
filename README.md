@@ -5,15 +5,15 @@ React Native video playback package with hybrid Nitro players, a three-slot nati
 ## Installation
 
 ```sh
-yarn add @noma4i/nitro-play react-native-nitro-modules
+yarn add @noma4i/nitro-play@github:noma4i/nitro-player#v2.0.0-beta.4 react-native-nitro-modules
 ```
 
 ```sh
-npm install @noma4i/nitro-play react-native-nitro-modules
+npm install @noma4i/nitro-play@github:noma4i/nitro-player#v2.0.0-beta.4 react-native-nitro-modules
 ```
 
 ```sh
-pnpm add @noma4i/nitro-play react-native-nitro-modules
+pnpm add @noma4i/nitro-play@github:noma4i/nitro-player#v2.0.0-beta.4 react-native-nitro-modules
 ```
 
 `react-native-nitro-modules >= 0.35.0` is required. React and React Native come from the host app.
