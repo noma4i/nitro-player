@@ -58,6 +58,7 @@ class NitroPlayerObserver: NSObject {
   var playerVolumeObserver: NSKeyValueObservation?
   var playerStatusObserver: NSKeyValueObservation?
   var playerProgressPeriodicObserver: Any?
+  private var progressObserverLifecycle = PeriodicTimeObserverLifecycle()
   
   // Player item observers
   var playbackEndedObserver: NSObjectProtocol?
@@ -117,13 +118,32 @@ class NitroPlayerObserver: NSObject {
       self?.notifyDelegate { $0.onPlayerStatusChanged(status: status) }
     }
     
-    // Playback progress tick. parity: Android PROGRESS_UPDATE_INTERVAL_MS = 250ms.
-    let progressUpdateIntervalSeconds = 0.25
-    let interval = CMTime(seconds: progressUpdateIntervalSeconds, preferredTimescale: 600)
-    playerProgressPeriodicObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-      guard let self, let player = self.player, let delegate = self.delegate, !delegate.isReleased else { return }
-      
-      delegate.onProgressUpdate(currentTime: time.seconds, bufferDuration: player.currentItem?.getBufferDuration(at: time.seconds) ?? 0)
+    updateProgressPeriodicObserver(player: player, hasCurrentItem: player.currentItem != nil)
+  }
+
+  private func updateProgressPeriodicObserver(player: AVPlayer?, hasCurrentItem: Bool) {
+    switch progressObserverLifecycle.update(hasCurrentItem: hasCurrentItem) {
+    case .install:
+      guard let player, playerProgressPeriodicObserver == nil else { return }
+      // Playback progress tick. parity: Android PROGRESS_UPDATE_INTERVAL_MS = 250ms.
+      let progressUpdateIntervalSeconds = 0.25
+      let interval = CMTime(seconds: progressUpdateIntervalSeconds, preferredTimescale: 600)
+      playerProgressPeriodicObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
+        guard let self, let delegate = self.delegate, !delegate.isReleased else { return }
+        delegate.onProgressUpdate(currentTime: time.seconds, bufferDuration: delegate.bufferDuration)
+      }
+    case .remove:
+      removeProgressPeriodicObserver(player: player)
+    case .none:
+      break
+    }
+  }
+
+  private func removeProgressPeriodicObserver(player: AVPlayer?) {
+    if let periodicObserver = playerProgressPeriodicObserver {
+      let targetPlayer = player ?? observedPlayer
+      targetPlayer?.removeTimeObserver(periodicObserver)
+      playerProgressPeriodicObserver = nil
     }
   }
 
@@ -169,6 +189,7 @@ class NitroPlayerObserver: NSObject {
     }
 
     setupBufferObservers(for: playerItem)
+    updateProgressPeriodicObserver(player: player, hasCurrentItem: true)
     
     playerItemStatusObserver = playerItem.observe(\.status, options: [.new]) { [weak self, weak playerItem] _, change in
       guard let playerItem else { return }
@@ -191,6 +212,7 @@ class NitroPlayerObserver: NSObject {
   }
   
   func invalidatePlayerItemObservers() {
+    updateProgressPeriodicObserver(player: player ?? observedPlayer, hasCurrentItem: false)
     // Remove NotificationCenter observers
     if let playbackEndedObserver = playbackEndedObserver {
       NotificationCenter.default.removeObserver(playbackEndedObserver)
@@ -228,10 +250,8 @@ class NitroPlayerObserver: NSObject {
     playerStatusObserver?.invalidate()
     playerStatusObserver = nil
     // Remove periodic time observer from player
-    if let periodicObserver = playerProgressPeriodicObserver {
-      let targetPlayer = player ?? observedPlayer
-      targetPlayer?.removeTimeObserver(periodicObserver)
-      playerProgressPeriodicObserver = nil
+    if progressObserverLifecycle.invalidate() == .remove {
+      removeProgressPeriodicObserver(player: player ?? observedPlayer)
     }
     observedPlayer = nil
   }

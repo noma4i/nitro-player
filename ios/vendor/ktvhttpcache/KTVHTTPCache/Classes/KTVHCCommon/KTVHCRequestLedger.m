@@ -8,6 +8,7 @@ static NSUInteger const KTVHCRequestLedgerLimit = 200;
 @property (nonatomic) os_unfair_lock lock;
 @property (nonatomic) NSUInteger nextRequestId;
 @property (nonatomic, strong) NSMutableArray<NSMutableDictionary *> *entries;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *openNetworkRequestCounts;
 
 @end
 
@@ -29,6 +30,7 @@ static NSUInteger const KTVHCRequestLedgerLimit = 200;
         _lock = OS_UNFAIR_LOCK_INIT;
         _nextRequestId = 1;
         _entries = [NSMutableArray array];
+        _openNetworkRequestCounts = [NSMutableDictionary dictionary];
     }
     return self;
 }
@@ -58,13 +60,19 @@ static NSUInteger const KTVHCRequestLedgerLimit = 200;
         @"clientPort": clientPort ?: [NSNull null],
         @"userAgent": userAgentTail ?: [NSNull null],
         @"isPlaylist": @([self isPlaylistURL:URL]),
+        @"streamKey": [self streamKeyForURL:URL],
+        @"countedOpenNetwork": @(NO),
         @"tStartMs": @([self nowMs]),
         @"bytes": @(0),
         @"usedNetwork": @(NO)
     } mutableCopy];
     [_entries addObject:entry];
     if (_entries.count > KTVHCRequestLedgerLimit) {
-        [_entries removeObjectsInRange:NSMakeRange(0, _entries.count - KTVHCRequestLedgerLimit)];
+        NSRange trimRange = NSMakeRange(0, _entries.count - KTVHCRequestLedgerLimit);
+        for (NSMutableDictionary *trimmedEntry in [_entries subarrayWithRange:trimRange]) {
+            [self decrementOpenNetworkCountForEntryLocked:trimmedEntry];
+        }
+        [_entries removeObjectsInRange:trimRange];
     }
     os_unfair_lock_unlock(&_lock);
     return requestId;
@@ -105,6 +113,7 @@ static NSUInteger const KTVHCRequestLedgerLimit = 200;
     os_unfair_lock_lock(&_lock);
     NSMutableDictionary *entry = [self entryForRequestIdLocked:requestId];
     if (entry && !entry[@"tDoneMs"]) {
+        [self decrementOpenNetworkCountForEntryLocked:entry];
         entry[@"tDoneMs"] = @([self nowMs]);
     }
     os_unfair_lock_unlock(&_lock);
@@ -119,8 +128,24 @@ static NSUInteger const KTVHCRequestLedgerLimit = 200;
     NSMutableDictionary *entry = [self entryForRequestIdLocked:requestId];
     if (entry) {
         entry[@"usedNetwork"] = @(YES);
+        [self incrementOpenNetworkCountForEntryLocked:entry];
     }
     os_unfair_lock_unlock(&_lock);
+}
+
+- (NSUInteger)openNetworkRequestCountForClient:(NSString *)client streamKey:(NSString *)streamKey
+{
+    NSString *normalizedClient = [self normalizedClient:client];
+    NSString *normalizedStreamKey = streamKey ?: @"";
+    if (normalizedStreamKey.length == 0) {
+        return 0;
+    }
+
+    NSString *counterKey = [self counterKeyForClient:normalizedClient streamKey:normalizedStreamKey];
+    os_unfair_lock_lock(&_lock);
+    NSUInteger count = [_openNetworkRequestCounts[counterKey] unsignedIntegerValue];
+    os_unfair_lock_unlock(&_lock);
+    return count;
 }
 
 - (NSArray<NSDictionary *> *)snapshot
@@ -137,6 +162,7 @@ static NSUInteger const KTVHCRequestLedgerLimit = 200;
         }
         [copy removeObjectForKey:@"url"];
         [copy removeObjectForKey:@"requestId"];
+        [copy removeObjectForKey:@"countedOpenNetwork"];
         [snapshot addObject:copy];
     }
     os_unfair_lock_unlock(&_lock);
@@ -153,6 +179,53 @@ static NSUInteger const KTVHCRequestLedgerLimit = 200;
     return nil;
 }
 
+- (void)incrementOpenNetworkCountForEntryLocked:(NSMutableDictionary *)entry
+{
+    if ([entry[@"countedOpenNetwork"] boolValue]) {
+        return;
+    }
+    if (entry[@"tDoneMs"]) {
+        return;
+    }
+    NSString *streamKey = [self stringValue:entry[@"streamKey"]];
+    if (streamKey.length == 0) {
+        return;
+    }
+
+    NSString *client = [self normalizedClient:[self stringValue:entry[@"client"]]];
+    NSString *counterKey = [self counterKeyForClient:client streamKey:streamKey];
+    NSUInteger count = [_openNetworkRequestCounts[counterKey] unsignedIntegerValue];
+    _openNetworkRequestCounts[counterKey] = @(count + 1);
+    entry[@"countedOpenNetwork"] = @(YES);
+}
+
+- (void)decrementOpenNetworkCountForEntryLocked:(NSMutableDictionary *)entry
+{
+    if (![entry[@"countedOpenNetwork"] boolValue]) {
+        return;
+    }
+    NSString *streamKey = [self stringValue:entry[@"streamKey"]];
+    if (streamKey.length == 0) {
+        entry[@"countedOpenNetwork"] = @(NO);
+        return;
+    }
+
+    NSString *client = [self normalizedClient:[self stringValue:entry[@"client"]]];
+    NSString *counterKey = [self counterKeyForClient:client streamKey:streamKey];
+    NSUInteger count = [_openNetworkRequestCounts[counterKey] unsignedIntegerValue];
+    if (count <= 1) {
+        [_openNetworkRequestCounts removeObjectForKey:counterKey];
+    } else {
+        _openNetworkRequestCounts[counterKey] = @(count - 1);
+    }
+    entry[@"countedOpenNetwork"] = @(NO);
+}
+
+- (NSString *)counterKeyForClient:(NSString *)client streamKey:(NSString *)streamKey
+{
+    return [NSString stringWithFormat:@"%@\n%@", [self normalizedClient:client], streamKey ?: @""];
+}
+
 - (NSString *)urlTailForURL:(NSURL *)URL
 {
     NSArray<NSString *> *components = [URL.pathComponents filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(NSString *component, NSDictionary *bindings) {
@@ -166,12 +239,34 @@ static NSUInteger const KTVHCRequestLedgerLimit = 200;
     return [tail componentsJoinedByString:@"/"];
 }
 
+- (NSString *)streamKeyForURL:(NSURL *)URL
+{
+    NSString *fileName = URL.lastPathComponent;
+    if (fileName.length == 0) {
+        NSArray<NSString *> *components = [URL.pathComponents filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(NSString *component, NSDictionary *bindings) {
+            return component.length > 0 && ![component isEqualToString:@"/"];
+        }]];
+        fileName = components.lastObject ?: URL.host ?: URL.absoluteString ?: @"";
+    }
+
+    NSRange hlsRange = [fileName rangeOfString:@"-hls" options:NSCaseInsensitiveSearch];
+    if (hlsRange.location == NSNotFound) {
+        return fileName;
+    }
+    return [fileName substringToIndex:hlsRange.location];
+}
+
 - (NSString *)normalizedClient:(NSString *)client
 {
     if ([client isEqualToString:@"preview"] || [client isEqualToString:@"prefetch"]) {
         return client;
     }
     return @"player";
+}
+
+- (NSString *)stringValue:(id)value
+{
+    return [value isKindOfClass:[NSString class]] ? value : @"";
 }
 
 - (NSString *)userAgentTail:(NSString *)userAgent

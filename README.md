@@ -30,16 +30,16 @@ No extra setup is required beyond React Native autolinking.
 
 ## Architecture
 
-NitroPlay uses Nitro hybrid objects for `NitroPlayer`, `NitroPlayerView`, and `NitroFeedRingPlayer`. Normal single-player views attach one native player to one view. Feed playback uses a three-slot native ring driven by `FeedRingWindowPlanner`: the planner maps the active index to previous/current/next slots, replaces only changed sources, and commits a single playable slot per viewport. HLS sources can route through a shared localhost caching proxy: iOS uses the vendored KTVHTTPCache fork, Android uses a NanoHTTPD proxy, and both share JS `streamCache` and `videoPreview` entry points for transport prefetch, cache stats, variant discovery, and first-frame preview.
+NitroPlay uses Nitro hybrid objects for `NitroPlayer`, `NitroPlayerView`, and `NitroFeedRingPlayer`. Normal single-player views attach one native player to one view. Feed playback uses a three-slot native ring driven by `FeedRingWindowPlanner`: the planner maps the active index to previous/current/next slots, replaces only changed sources, and commits a single playable slot per viewport. HLS sources play direct by default and can route through a shared localhost caching proxy when `transport.mode: 'proxy'` is set or when feed retention opts into the cache path: iOS uses the vendored KTVHTTPCache fork, Android uses a NanoHTTPD proxy, and both share JS `streamCache` and `videoPreview` entry points for transport prefetch, cache stats, throughput estimation, and first-frame preview.
 
 ## Quick Start
 
 ```tsx
-import { NitroVideo } from '@noma4i/nitro-play';
+import { NitroPlayerView } from '@noma4i/nitro-play';
 
 export function FeedCard() {
   return (
-    <NitroVideo
+    <NitroPlayerView
       source={{
         uri: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
         policy: 'feed'
@@ -56,13 +56,12 @@ export function FeedCard() {
 
 | Surface | Purpose |
 | --- | --- |
-| `NitroVideo` / `NitroPlayerView` | React component backed by a native player. |
+| `NitroPlayerView` | React component backed by a native player. |
 | `NitroPlayer` | Imperative player API for source, playback, events, memory, and audio controls. |
 | `NitroFeedRingPlayer` | Three-slot native feed controller for full-screen vertical feeds. |
 | `NitroFeedRingSlotView` | Native view that attaches to one ring slot. |
 | `prepareSource(input)` | Resolves assets, validates source config, applies source policy defaults, and builds stable source identities. |
-| `configureSourcePolicy(policy, overrides)` | Configures policy buffer defaults for future source preparations. |
-| `streamCache` | HLS transport prefetch, cache stats, cache clear, variant discovery, player diagnostics, and throughput estimate. |
+| `streamCache` | HLS transport prefetch, cache stats, cache clear, and throughput estimate. |
 | `videoPreview` | Generated and cache-only first-frame lookup. |
 | `useNitroPlayer(source?)` | Hook that creates and releases an imperative player. |
 | `usePlaybackState(player)` | Hook that subscribes to `onPlaybackState`. |
@@ -84,24 +83,11 @@ export function FeedCard() {
 | `transport` | `NitroSourceTransportConfig` | Explicit transport routing override. |
 | `preview` | `NitroSourcePreviewConfig` | Explicit first-frame preview behavior. |
 
-Policy merge precedence is:
-
-1. Explicit per-source fields such as `source.buffer`.
-2. Runtime overrides from `configureSourcePolicy(policy, { buffer })`.
-3. Built-in policy defaults.
-
-`configureSourcePolicy` affects future source preparations only. It does not mutate already prepared descriptors, already attached items, or a native feed catalog that has already been sent.
-
-```ts
-import { configureSourcePolicy } from '@noma4i/nitro-play';
-
-configureSourcePolicy('feed', {
-  buffer: {
-    preferredPeakBitRate: 6_000_000,
-    preferredForwardBufferDurationMs: 12_000
-  }
-});
-```
+Policy merge precedence is explicit per-source fields over built-in policy
+defaults. Object sections (`buffer`, `retention`, `transport`, `preview`) merge
+per field, so `buffer: { preferredPeakBitRate }` keeps the policy's other buffer
+fields. `startup` is scalar, so an explicit value replaces the policy default.
+The `manual` policy has no defaults; omitted sections stay undefined.
 
 ## Playback Policies
 
@@ -113,7 +99,13 @@ configureSourcePolicy('feed', {
 | `thumbnail` | `lazy` | `preload: none`, `offscreen: cold`, `trimDelayMs: 0`, `feedPoolEligible: false` | `mode: auto` | `mode: manual`, no auto thumbnail, `480x480`, quality `70` | none |
 | `manual` | none | none | none | none | none |
 
-`NitroFeedRingPlayer` always normalizes catalog entries through the `feed` policy and forces ring slots to `retention.preload: 'buffered'` so the native slot owns the attached item. This is separate from ordinary `policy: 'feed'` single-player usage, where built-in retention preload remains `metadata`.
+`NitroFeedRingPlayer` always normalizes catalog entries through the `feed` policy and forces ring slots to `retention.preload: 'buffered'` so the native slot owns the attached item. This is separate from ordinary `policy: 'feed'` single-player usage, where built-in retention preload remains `metadata`. When adaptive feed quality is enabled, buffer precedence is item explicit fields, then the adaptive decision, then policy defaults; an item's explicit `preferredPeakBitRate` is never overwritten by adaptive quality.
+
+For HLS sources, `transport.mode: 'auto'` is direct by default. Sources with
+`retention.feedPoolEligible: true`, including the built-in `feed` policy, keep
+automatic proxy/cache routing. Use `transport.mode: 'proxy'` to opt any HLS
+source into the proxy path, or `transport.mode: 'direct'` to force direct
+playback.
 
 ## BufferConfig
 
@@ -156,7 +148,7 @@ configureSourcePolicy('feed', {
 | `adaptiveConfig.downThresholdBps` | `9000000` | A `high` decision switches back to `low` when `estimateBps < downThresholdBps`. |
 | `adaptiveConfig.highMaxBitrate` | `10000000` | Per-source `preferredPeakBitRate` used for later attaches while the decision is `high`. |
 
-Adaptive state lives inside each `NitroFeedRingPlayer` instance. On every `commitViewport`, the ring fire-and-forgets `streamCache.getNetworkThroughputEstimate()`, updates its decision with hysteresis, and re-sends the latest catalog when the decision changes. The decision applies to subsequent source attaches. It does not mutate the currently playing item mid-play. Android currently returns no throughput estimate from the native stream module, so the JS wrapper returns `null` and the decision remains `low`.
+Adaptive state lives inside each `NitroFeedRingPlayer` instance. On every `commitViewport`, the ring fire-and-forgets `streamCache.getNetworkThroughputEstimate()`, updates its decision with hysteresis, and re-sends the latest catalog when the decision changes. The decision applies to subsequent source attaches. It does not mutate the currently playing item mid-play. Android currently returns no throughput estimate from the Nitro stream cache object, so the JS wrapper returns `null` and the decision remains `low`.
 
 ```tsx
 import { FullScreenFeed } from '@components/Moment';
@@ -182,24 +174,9 @@ The app integration knob is `VIDEO_STREAM_QUALITY.feed.adaptive`, currently `fal
 | `streamCache.clear()` | `Promise<boolean>` | Clears stream cache. Returns `true` when native clear is unavailable. |
 | `streamCache.getStats()` | `Promise<StreamCacheStats>` | Returns total cache size, file count, and max size. Default max size is 4 GiB. |
 | `streamCache.getStats(source, headers?)` | `Promise<StreamSourceCacheStats>` | Returns total cache stats plus stream-specific size and file count. |
-| `streamCache.getStreamVariants(source, headers?)` | `Promise<StreamVariant[] \| null>` | Parses HLS master playlists into variant rows. Returns `[]` for non-HLS or media playlists, `null` when native support is absent or fails. |
-| `streamCache.getPlayersDiagnostics()` | `Promise<StreamPlayersDiagnostics \| null>` | Returns player access-log diagnostics and the proxy request ledger. |
 | `streamCache.getNetworkThroughputEstimate()` | `Promise<StreamNetworkThroughputEstimate \| null>` | iOS returns a harmonic mean over recent real-network proxy fetches. Android or missing native methods return `null`. |
 
-`StreamVariant` contains `{ bandwidth, averageBandwidth, width, height, codecs, uri }`. Use it to inspect a master playlist before choosing a policy cap for future sources.
-
-```ts
-import { streamCache } from '@noma4i/nitro-play';
-
-const variants = await streamCache.getStreamVariants({
-  uri: 'https://example.com/master.m3u8',
-  headers: { Authorization: token }
-});
-
-console.log(variants?.map(variant => [variant.height, variant.bandwidth]));
-```
-
-The HLS proxy rewrites master and media playlists to loopback URLs, preserves header-aware identity, and caches segment bytes. iOS proxies through KTVHTTPCache and records a bounded 200-entry request ledger. Android proxies through NanoHTTPD and uses the package cache store. Leading-segment prefetch resolves the first variant from a master playlist, fetches an init segment when present, then fetches `N` media segments.
+The HLS proxy rewrites master and media playlists to loopback URLs, preserves header-aware identity, and caches segment bytes. iOS proxies through KTVHTTPCache and records a bounded 200-entry request ledger. Android proxies through NanoHTTPD and uses the package cache store. Playback uses this proxy only for explicit proxy routing or feed-pool-eligible auto routing; ordinary auto HLS playback is direct. Leading-segment prefetch resolves the first variant from a master playlist, fetches an init segment when present, then fetches `N` media segments.
 
 `getNetworkThroughputEstimate()` filters the iOS ledger to real CDN-backed requests with `usedNetwork === true`, completed timing, and `bytes >= 100000`, takes the most recent 10 samples, and returns the harmonic mean in bits per second plus `samples` and `newestAgeMs`. Partial cache fills can slightly overstate throughput, so adaptive callers use hysteresis.
 
@@ -225,9 +202,9 @@ The HLS proxy rewrites master and media playlists to loopback URLs, preserves he
 | First frame | `isVisualReady` and `onFirstFrame` are sticky for the active source generation. |
 | Local files | Absolute local file paths are accepted and normalized internally to `file://` URLs. Prefer canonical `file://` URIs when app code owns the path. |
 
-## `NitroVideo` and `NitroPlayerView`
+## `NitroPlayerView`
 
-`NitroVideo` is the exported component name; `NitroPlayerView` is the same component exported as the default alias.
+`NitroPlayerView` is the exported React component for declarative source ownership or attaching an existing `NitroPlayer`.
 
 | Prop | Type | Notes |
 | --- | --- | --- |
@@ -326,8 +303,6 @@ Diagnostics globals are installed only in DEV builds.
 | `__YUPI_FEED_VIDEO_DIAGNOSTICS__` | `globalThis.__YUPI_FEED_VIDEO_DIAGNOSTICS__?.commitHistory?.()` | Recent viewport commits by feed owner. |
 | `__YUPI_FEED_VIDEO_DIAGNOSTICS__` | `globalThis.__YUPI_FEED_VIDEO_DIAGNOSTICS__?.stallTimeline?.()` | Slot transition timeline used for stall analysis. |
 | `__YUPI_FEED_VIDEO_DIAGNOSTICS__` | `globalThis.__YUPI_FEED_VIDEO_DIAGNOSTICS__?.stallSummary?.()` | Playing-and-buffering interval summary. |
-| `__YUPI_TRANSPORT_DIAGNOSTICS__` | `await globalThis.__YUPI_TRANSPORT_DIAGNOSTICS__?.players?.()` | Player access logs and proxy request ledger. The iOS proxy ledger is bounded to 200 entries. |
-| `__YUPI_TRANSPORT_DIAGNOSTICS__` | `await globalThis.__YUPI_TRANSPORT_DIAGNOSTICS__?.variants?.(url)` | HLS variant discovery through `streamCache.getStreamVariants`. |
 | `__YUPI_TRANSPORT_DIAGNOSTICS__` | `globalThis.__YUPI_TRANSPORT_DIAGNOSTICS__?.adaptive?.()` | Current feed adaptive state: `{ enabled, decision, lastEstimate }`. |
 | `__YUPI_PREWARM_DIAGNOSTICS__` | `globalThis.__YUPI_PREWARM_DIAGNOSTICS__?.snapshot()` | App-level video prewarm queue state and history entries with `kind`, `startedAt`, and `finishedAt`. |
 

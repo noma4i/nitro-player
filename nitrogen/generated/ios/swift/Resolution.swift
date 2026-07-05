@@ -26,7 +26,7 @@ public extension Resolution {
   var width: Double {
     return self.__width
   }
-  
+
   @inline(__always)
   var height: Double {
     return self.__height

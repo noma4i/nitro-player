@@ -28,7 +28,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onRateChanged(rate: Float) {
     updateCachedRate(rate)
-    updateAndEmitPlaybackState()
+    emitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
@@ -44,7 +44,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onPlaybackBufferEmpty() {
     enterBuffering()
-    updateAndEmitPlaybackState()
+    emitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-periodic-observer-guard)
@@ -56,13 +56,13 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onDurationChanged(duration: Double) {
     updateCachedDuration(duration)
-    updateAndEmitPlaybackState()
+    emitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onBufferDurationChanged(bufferDuration: Double) {
     updateCachedProgress(bufferDuration: bufferDuration)
-    updateAndEmitPlaybackState()
+    emitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
@@ -72,7 +72,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
     if cachedTimeControlStatus != .waitingToPlayAtSpecifiedRate {
       status = resolvePlayPauseStatus()
     }
-    updateAndEmitPlaybackState()
+    emitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
@@ -111,7 +111,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       break
     }
 
-    updateAndEmitPlaybackState()
+    emitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
@@ -201,7 +201,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       break
     }
 
-    updateAndEmitPlaybackState()
+    emitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
@@ -237,7 +237,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       readyToDisplay = false
       resetPlaybackMetrics(currentTime: resumePositionSeconds)
       resetPlaybackError()
-      updateAndEmitPlaybackState()
+      emitPlaybackState()
     } else {
       // Clean up state when playerItem is cleared
       isCurrentlyBuffering = false
@@ -245,12 +245,8 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       status = .idle
       resetPlaybackMetrics(currentTime: resumePositionSeconds)
       resetPlaybackError()
-      updateAndEmitPlaybackState()
+      emitPlaybackState()
     }
-  }
-
-  func updateAndEmitPlaybackState() {
-    emitPlaybackState()
   }
 
   private func enterBuffering() {

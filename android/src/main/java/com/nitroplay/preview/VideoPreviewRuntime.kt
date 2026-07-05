@@ -9,13 +9,15 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.concurrent.Callable
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import kotlin.math.roundToInt
 import com.nitroplay.video.streaming.HlsIdentity
 import com.nitroplay.video.streaming.HlsManifest
+import com.nitroplay.video.streaming.HlsManifestUrl
 import com.nitroplay.video.streaming.cache.HlsCacheStore
+import com.nitroplay.video.support.Threading.postToMainThread
 
 data class VideoPreviewProfile(
   val maxWidth: Int,
@@ -38,22 +40,53 @@ data class VideoPreviewResult(
   val fromCache: Boolean
 )
 
-object VideoPreviewRuntime {
-  private class CachedPreviewRequest(
-    private val result: VideoPreviewResult
-  ) : PreviewRequest<VideoPreviewResult> {
-    override val isCancelled: Boolean = false
-    override fun await(): VideoPreviewResult = result
-    override fun cancel() = Unit
+internal interface PreviewDecodeBackend {
+  fun decodeBitmapFromUrl(url: String, headers: Map<String, String>?): Bitmap?
+  fun decodeBitmapFromFile(file: File): Bitmap?
+  fun fetchBytes(url: String, headers: Map<String, String>?): ByteArray?
+}
+
+private object AndroidPreviewDecodeBackend : PreviewDecodeBackend {
+  override fun decodeBitmapFromUrl(url: String, headers: Map<String, String>?): Bitmap? {
+    val retriever = MediaMetadataRetriever()
+    return try {
+      retriever.setDataSource(url, headers ?: emptyMap())
+      VideoPreviewRuntime.grabRepresentativeFrame(retriever)
+    } catch (_: Exception) {
+      null
+    } finally {
+      try {
+        retriever.release()
+      } catch (_: Exception) {
+      }
+    }
   }
 
+  override fun decodeBitmapFromFile(file: File): Bitmap? {
+    val retriever = MediaMetadataRetriever()
+    return try {
+      retriever.setDataSource(file.absolutePath)
+      VideoPreviewRuntime.grabRepresentativeFrame(retriever)
+    } finally {
+      try {
+        retriever.release()
+      } catch (_: Exception) {
+      }
+    }
+  }
+
+  override fun fetchBytes(url: String, headers: Map<String, String>?): ByteArray? {
+    return HlsPreviewHttpClient.fetchBytes(url, headers)
+  }
+}
+
+object VideoPreviewRuntime {
   private val lock = Any()
   private val executor = Executors.newFixedThreadPool(2)
-  private val callbackExecutor = Executors.newFixedThreadPool(2)
   private val requestCoordinator = PreviewRequestCoordinator<String, VideoPreviewResult>()
   private var previewStore: HlsCacheStore? = null
   private var appContext: Context? = null
-  private const val HTTP_TIMEOUT_MS = 8000
+  private var decodeBackend: PreviewDecodeBackend = AndroidPreviewDecodeBackend
   private val FRAME_SAMPLE_OFFSETS_US = longArrayOf(0L, 500_000L, 1_000_000L, 2_000_000L, 3_000_000L)
 
   fun register(context: Context) {
@@ -77,23 +110,27 @@ object VideoPreviewRuntime {
   internal fun startFirstFrameRequest(url: String, headers: Map<String, String>?, preview: NitroSourcePreviewConfig?): PreviewRequest<VideoPreviewResult>? {
     val store = ensureStore() ?: return null
     val cacheKey = HlsIdentity.previewKey(url, headers, preview)
-    store.getThumbnailPath(cacheKey)?.let { return CachedPreviewRequest(VideoPreviewResult(uri = it, fromCache = true)) }
 
     return synchronized(lock) {
       store.getThumbnailPath(cacheKey)?.let { cached ->
-        return@synchronized CachedPreviewRequest(VideoPreviewResult(uri = cached, fromCache = true))
+        return@synchronized cachedPreviewRequest(VideoPreviewResult(uri = cached, fromCache = true))
       }
 
       requestCoordinator.acquire(cacheKey) {
-        executor.submit(Callable {
+        submitPreviewWork {
           generatePreview(store, cacheKey, url, headers, VideoPreviewProfile.from(preview))
-        })
+        }
       }
     }
   }
 
-  internal fun dispatchFirstFrameAwait(work: () -> Unit): Future<*> {
-    return callbackExecutor.submit(work)
+  internal fun dispatchFirstFrameAwait(request: PreviewRequest<VideoPreviewResult>, onComplete: (VideoPreviewResult?) -> Unit): Future<*> {
+    return request.onComplete { preview ->
+      request.cancel()
+      postToMainThread {
+        onComplete(preview)
+      }
+    }
   }
 
   fun peekFirstFrame(url: String, headers: Map<String, String>?, preview: NitroSourcePreviewConfig?): VideoPreviewResult? {
@@ -112,11 +149,31 @@ object VideoPreviewRuntime {
 
   internal fun acquirePreviewRequestForTests(
     cacheKey: String,
-    supplier: () -> Future<VideoPreviewResult?>
+    supplier: () -> PreviewWork<VideoPreviewResult>
   ): PreviewRequest<VideoPreviewResult> {
     return synchronized(lock) {
       requestCoordinator.acquire(cacheKey, supplier)
     }
+  }
+
+  internal fun completedPreviewWorkForTests(result: VideoPreviewResult?): PreviewWork<VideoPreviewResult> {
+    return PreviewWork.completed(result)
+  }
+
+  internal fun setDecodeBackendForTests(backend: PreviewDecodeBackend?) {
+    synchronized(lock) {
+      decodeBackend = backend ?: AndroidPreviewDecodeBackend
+    }
+  }
+
+  internal fun generatePreviewForTests(
+    store: HlsCacheStore,
+    cacheKey: String,
+    url: String,
+    headers: Map<String, String>? = null,
+    profile: VideoPreviewProfile = VideoPreviewProfile(maxWidth = 480, maxHeight = 480, quality = 70)
+  ): VideoPreviewResult? {
+    return generatePreview(store, cacheKey, url, headers, profile)
   }
 
   fun resetStateForTests() {
@@ -125,6 +182,7 @@ object VideoPreviewRuntime {
       previewStore?.close()
       previewStore = null
       appContext = null
+      decodeBackend = AndroidPreviewDecodeBackend
     }
   }
 
@@ -145,20 +203,24 @@ object VideoPreviewRuntime {
     headers: Map<String, String>?,
     profile: VideoPreviewProfile
   ): VideoPreviewResult? {
-    // 1) Direct decode: fast path for progressive containers (mp4, mov, ...).
-    decodeBitmapFromUrl(url, headers)?.let { raw ->
-      return storeBitmap(store, cacheKey, raw, profile)
+    if (!HlsManifestUrl.matches(url)) {
+      // Direct decode: fast path for progressive containers (mp4, mov, ...).
+      decodeBackend.decodeBitmapFromUrl(url, headers)?.let { raw ->
+        return storeBitmap(store, cacheKey, raw, profile)
+      }
+      return null
     }
-    // 2) MediaMetadataRetriever cannot open an HLS .m3u8 manifest, so decode the
-    //    first media segment directly into a Bitmap.
-    //    Emulator caveat: SwiftShader/goldfish GPUs read back a BLACK frame for an
-    //    MPEG-TS segment here, even though ExoPlayer renders the real video on its
-    //    hardware overlay. The frame decodes correctly on real devices (progressive
-    //    MP4 reads back fine even on the emulator -- this is TS-readback specific).
-    //    No in-app readback path (this, PixelCopy, TextureView.getBitmap) avoids the
-    //    emulator limitation, so we keep the lightweight segment decode rather than
-    //    pulling in media3-transformer's ExperimentalFrameExtractor for no emulator gain.
-    decodeFirstHlsSegment(url, headers)?.let { raw ->
+
+    // MediaMetadataRetriever cannot open an HLS .m3u8 manifest, so decode the
+    // first media segment directly into a Bitmap.
+    // Emulator caveat: SwiftShader/goldfish GPUs read back a BLACK frame for an
+    // MPEG-TS segment here, even though ExoPlayer renders the real video on its
+    // hardware overlay. The frame decodes correctly on real devices (progressive
+    // MP4 reads back fine even on the emulator -- this is TS-readback specific).
+    // No in-app readback path (this, PixelCopy, TextureView.getBitmap) avoids the
+    // emulator limitation, so we keep the lightweight segment decode rather than
+    // pulling in media3-transformer's ExperimentalFrameExtractor for no emulator gain.
+    decodeFirstHlsSegment(store, url, headers)?.let { raw ->
       return storeBitmap(store, cacheKey, raw, profile)
     }
     return null
@@ -191,22 +253,7 @@ object VideoPreviewRuntime {
     }
   }
 
-  private fun decodeBitmapFromUrl(url: String, headers: Map<String, String>?): Bitmap? {
-    val retriever = MediaMetadataRetriever()
-    return try {
-      retriever.setDataSource(url, headers ?: emptyMap())
-      grabRepresentativeFrame(retriever)
-    } catch (_: Exception) {
-      null
-    } finally {
-      try {
-        retriever.release()
-      } catch (_: Exception) {
-      }
-    }
-  }
-
-  private fun decodeFirstHlsSegment(url: String, headers: Map<String, String>?): Bitmap? {
+  private fun decodeFirstHlsSegment(store: HlsCacheStore, url: String, headers: Map<String, String>?): Bitmap? {
     return try {
       val manifest = httpGetString(url, headers) ?: return null
       var mediaManifestUrl = url
@@ -219,9 +266,10 @@ object VideoPreviewRuntime {
 
       val (initSeg, segments) = HlsManifest.extractLeadingSegments(mediaManifest, 1)
       val segmentRef = segments.firstOrNull() ?: return null
-      val segmentBytes = httpGetBytes(HlsManifest.resolveUrl(mediaManifestUrl, segmentRef), headers) ?: return null
+      val segmentUrl = HlsManifest.resolveUrl(mediaManifestUrl, segmentRef)
+      val segmentBytes = cachedOrFetchBytes(store, segmentUrl, headers) ?: return null
       // Fragmented MP4 segments need the init segment (ftyp+moov) prepended.
-      val initBytes = initSeg?.let { httpGetBytes(HlsManifest.resolveUrl(mediaManifestUrl, it), headers) }
+      val initBytes = initSeg?.let { cachedOrFetchBytes(store, HlsManifest.resolveUrl(mediaManifestUrl, it), headers) }
 
       val temp = File.createTempFile("nitroplay-preview", null, appContext?.cacheDir)
       try {
@@ -229,16 +277,7 @@ object VideoPreviewRuntime {
           initBytes?.let { out.write(it) }
           out.write(segmentBytes)
         }
-        val retriever = MediaMetadataRetriever()
-        try {
-          retriever.setDataSource(temp.absolutePath)
-          grabRepresentativeFrame(retriever)
-        } finally {
-          try {
-            retriever.release()
-          } catch (_: Exception) {
-          }
-        }
+        decodeBackend.decodeBitmapFromFile(temp)
       } finally {
         temp.delete()
       }
@@ -249,7 +288,7 @@ object VideoPreviewRuntime {
 
   // Samples a few timestamps and returns the first non-black frame (falling back
   // to the earliest available frame), so an intro fade does not yield a black thumbnail.
-  private fun grabRepresentativeFrame(retriever: MediaMetadataRetriever): Bitmap? {
+  internal fun grabRepresentativeFrame(retriever: MediaMetadataRetriever): Bitmap? {
     var fallback: Bitmap? = null
     for (offsetUs in FRAME_SAMPLE_OFFSETS_US) {
       val frame = try {
@@ -291,26 +330,13 @@ object VideoPreviewRuntime {
     return maxLuma < 18
   }
 
-  private fun httpGetBytes(url: String, headers: Map<String, String>?): ByteArray? {
-    var connection: HttpURLConnection? = null
-    return try {
-      connection = (URL(url).openConnection() as HttpURLConnection).apply {
-        connectTimeout = HTTP_TIMEOUT_MS
-        readTimeout = HTTP_TIMEOUT_MS
-        instanceFollowRedirects = true
-        headers?.forEach { (key, value) -> setRequestProperty(key, value) }
-      }
-      if (connection.responseCode !in 200..299) return null
-      connection.inputStream.use { it.readBytes() }
-    } catch (_: Exception) {
-      null
-    } finally {
-      connection?.disconnect()
-    }
+  private fun cachedOrFetchBytes(store: HlsCacheStore, url: String, headers: Map<String, String>?): ByteArray? {
+    val resourceKey = HlsIdentity.requestKey(url, headers)
+    return store.get(resourceKey) ?: decodeBackend.fetchBytes(url, headers)
   }
 
   private fun httpGetString(url: String, headers: Map<String, String>?): String? {
-    return httpGetBytes(url, headers)?.toString(Charsets.UTF_8)
+    return decodeBackend.fetchBytes(url, headers)?.toString(Charsets.UTF_8)
   }
 
   internal fun scaleBitmap(bitmap: Bitmap, profile: VideoPreviewProfile): Bitmap {
@@ -329,5 +355,67 @@ object VideoPreviewRuntime {
       (bitmap.height * scale).roundToInt().coerceAtLeast(1),
       true
     )
+  }
+
+  private fun submitPreviewWork(work: () -> VideoPreviewResult?): PreviewWork<VideoPreviewResult> {
+    val completion = CompletableFuture<VideoPreviewResult?>()
+    val submitted = executor.submit {
+      try {
+        if (!completion.isCancelled) {
+          completion.complete(work())
+        }
+      } catch (_: Exception) {
+        completion.complete(null)
+      }
+    }
+    return PreviewWork(completion) {
+      submitted.cancel(true)
+    }
+  }
+
+  private fun cachedPreviewRequest(result: VideoPreviewResult): PreviewRequest<VideoPreviewResult> {
+    return object : PreviewRequest<VideoPreviewResult> {
+      @Volatile
+      override var isCancelled: Boolean = false
+        private set
+
+      override fun await(): VideoPreviewResult? {
+        return if (isCancelled) null else result
+      }
+
+      override fun onComplete(callback: (VideoPreviewResult?) -> Unit): Future<*> {
+        return executor.submit {
+          if (!isCancelled) {
+            callback(result)
+          }
+        }
+      }
+
+      override fun cancel() {
+        isCancelled = true
+      }
+    }
+  }
+}
+
+private object HlsPreviewHttpClient {
+  private const val HTTP_TIMEOUT_MS = 8000
+
+  fun fetchBytes(url: String, headers: Map<String, String>?): ByteArray? {
+    var connection: HttpURLConnection? = null
+    return try {
+      connection = (URL(url).openConnection() as HttpURLConnection).apply {
+        connectTimeout = HTTP_TIMEOUT_MS
+        readTimeout = HTTP_TIMEOUT_MS
+        instanceFollowRedirects = true
+        headers?.forEach { (key, value) -> setRequestProperty(key, value) }
+      }
+      if (connection.responseCode !in 200..299) return null
+      connection.inputStream.use { it.readBytes() }
+    } catch (_: Exception) {
+      null
+    } finally {
+      connection?.disconnect()
+    }
   }
 }

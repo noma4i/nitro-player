@@ -92,7 +92,7 @@ public extension BufferConfig {
   var livePlayback: LivePlaybackParams? {
     return self.__livePlayback.value
   }
-  
+
   @inline(__always)
   var minBufferMs: Double? {
     return { () -> Double? in
@@ -104,7 +104,7 @@ public extension BufferConfig {
       }
     }()
   }
-  
+
   @inline(__always)
   var maxBufferMs: Double? {
     return { () -> Double? in
@@ -116,7 +116,7 @@ public extension BufferConfig {
       }
     }()
   }
-  
+
   @inline(__always)
   var bufferForPlaybackMs: Double? {
     return { () -> Double? in
@@ -128,7 +128,7 @@ public extension BufferConfig {
       }
     }()
   }
-  
+
   @inline(__always)
   var bufferForPlaybackAfterRebufferMs: Double? {
     return { () -> Double? in
@@ -140,7 +140,7 @@ public extension BufferConfig {
       }
     }()
   }
-  
+
   @inline(__always)
   var backBufferDurationMs: Double? {
     return { () -> Double? in
@@ -152,7 +152,7 @@ public extension BufferConfig {
       }
     }()
   }
-  
+
   @inline(__always)
   var preferredForwardBufferDurationMs: Double? {
     return { () -> Double? in
@@ -164,7 +164,7 @@ public extension BufferConfig {
       }
     }()
   }
-  
+
   @inline(__always)
   var preferredPeakBitRate: Double? {
     return { () -> Double? in
@@ -176,12 +176,12 @@ public extension BufferConfig {
       }
     }()
   }
-  
+
   @inline(__always)
   var preferredMaximumResolution: Resolution? {
     return self.__preferredMaximumResolution.value
   }
-  
+
   @inline(__always)
   var preferredPeakBitRateForExpensiveNetworks: Double? {
     return { () -> Double? in
@@ -193,7 +193,7 @@ public extension BufferConfig {
       }
     }()
   }
-  
+
   @inline(__always)
   var preferredMaximumResolutionForExpensiveNetworks: Resolution? {
     return self.__preferredMaximumResolutionForExpensiveNetworks.value

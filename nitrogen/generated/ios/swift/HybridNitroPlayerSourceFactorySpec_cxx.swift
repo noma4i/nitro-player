@@ -84,7 +84,7 @@ open class HybridNitroPlayerSourceFactorySpec_cxx {
     }
   }
 
-  
+
 
   /**
    * Get the memory size of the Swift class (plus size of any other allocations)
@@ -121,7 +121,7 @@ open class HybridNitroPlayerSourceFactorySpec_cxx {
   }
 
   // Properties
-  
+
 
   // Methods
   @inline(__always)
@@ -138,7 +138,7 @@ open class HybridNitroPlayerSourceFactorySpec_cxx {
       return bridge.create_Result_std__shared_ptr_HybridNitroPlayerSourceSpec__(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func fromNitroPlayerConfig(config: NativeNitroPlayerConfig) -> bridge.Result_std__shared_ptr_HybridNitroPlayerSourceSpec__ {
     do {

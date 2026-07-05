@@ -2,10 +2,8 @@ package com.margelo.nitro.video
 
 import android.os.Handler
 import android.os.Looper
-import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.exoplayer.upstream.DefaultAllocator
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
 import com.nitroplay.video.support.errors.LibraryError
@@ -27,7 +25,7 @@ internal class NitroPlayerLifecycle(
     private const val DEFAULT_TRIM_DELAY_MS = 10000.0
   }
 
-  fun initializePlayer() {
+  fun initializePlayer(forceRebuild: Boolean = false) {
     if (host.isReleased || !host.hasActiveSource) return
     cancelPendingTrim()
 
@@ -38,7 +36,7 @@ internal class NitroPlayerLifecycle(
     val hybridSource = host.source as? HybridNitroPlayerSource ?: throw PlayerError.InvalidSource
 
     val mediaSource = hybridSource.createOrGetMediaSource()
-    configurePlayerInstanceForCurrentSource(attachPlaybackListeners = true)
+    configurePlayerInstanceForCurrentSource(attachPlaybackListeners = true, forceRebuild = forceRebuild)
 
     host.loadedWithSource = true
     host.player.setMediaSource(mediaSource)
@@ -56,12 +54,18 @@ internal class NitroPlayerLifecycle(
     host.listenerBridge.startProgressUpdates()
   }
 
-  fun configurePlayerInstanceForCurrentSource(attachPlaybackListeners: Boolean) {
+  fun configurePlayerInstanceForCurrentSource(
+    attachPlaybackListeners: Boolean,
+    forceRebuild: Boolean = false
+  ) {
     val playbackConfig = NitroPlayerPlaybackConfig.from(host.bufferConfig)
-    if (
-      !host.reusePlayerInstanceForSourceChanges ||
-      playbackConfig.requiresPlayerRebuild(host.activePlaybackConfig) ||
-      host.allocator == null
+    if (PlayerInstanceReusePolicy.shouldRebuildForSourceChange(
+        forceRebuild = forceRebuild,
+        reuseForSourceChanges = host.reusePlayerInstanceForSourceChanges,
+        nextPlaybackConfig = playbackConfig,
+        activePlaybackConfig = host.activePlaybackConfig,
+        hasAllocator = host.allocator != null
+      )
     ) {
       replacePlayerInstance(playbackConfig, attachPlaybackListeners)
       return
@@ -84,7 +88,6 @@ internal class NitroPlayerLifecycle(
     host.currentPlayerOrNull()?.removeAnalyticsListener(host.listenerBridge.analyticsListener)
     host.playbackListenersAttached = false
     host.currentPlayerOrNull()?.release()
-    host.allocator = DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
     host.player = host.createExoPlayer(playbackConfig)
     host.rebindCurrentPlayerView()
     if (attachPlaybackListeners) {
@@ -130,13 +133,9 @@ internal class NitroPlayerLifecycle(
     host.listenerBridge.stopProgressUpdates()
     sourceToTrim?.sourceLoader?.cancel()
     sourceToTrim?.trimToCold()
-    if (host.reusePlayerInstanceForSourceChanges) {
-      host.currentPlayerOrNull()?.stop()
-      host.currentPlayerOrNull()?.clearMediaItems()
-    } else {
+    if (PlayerInstanceReusePolicy.shouldReleaseForRetentionTrim()) {
       releasePlayerInstance()
     }
-    host.allocator = null
     host.loadedWithSource = false
     host.hasActiveSource = false
     host.desiredCurrentTimeMs = 0L
@@ -290,14 +289,9 @@ internal class NitroPlayerLifecycle(
       host.currentPlayerOrNull()?.let { currentPlayer ->
         host.desiredCurrentTimeMs = currentPlayer.currentPosition
       }
-      if (host.reusePlayerInstanceForSourceChanges) {
-        host.listenerBridge.stopProgressUpdates()
-        host.currentPlayerOrNull()?.stop()
-        host.currentPlayerOrNull()?.clearMediaItems()
-      } else {
+      if (PlayerInstanceReusePolicy.shouldReleaseForRetentionTrim()) {
         releasePlayerInstance()
       }
-      host.allocator = null
       host.loadedWithSource = false
     }
 

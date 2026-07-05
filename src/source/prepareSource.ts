@@ -19,6 +19,8 @@ type DescriptorBrand = {
 
 export type PreparedNitroSource = NitroSourceDescriptor & DescriptorBrand;
 
+const objectSourceCache = new WeakMap<object, PreparedNitroSource>();
+
 const stableSerialize = (value: unknown): string => {
   if (value === undefined) {
     return 'undefined';
@@ -38,7 +40,7 @@ const stableSerialize = (value: unknown): string => {
     .join(',')}}`;
 };
 
-const resolveUri = (uri: NitroSourceUri): string => {
+export const resolveUri = (uri: NitroSourceUri): string => {
   if (typeof uri === 'string') {
     if (!uri) {
       throw new NitroPlayerRuntimeError('source/invalid-uri', 'Invalid source URI');
@@ -85,62 +87,53 @@ const resolvePolicy = (config: NitroSourceConfig): NitroSourcePolicy => {
   return candidate;
 };
 
+const mergeConfigSection = <T extends object>(defaults: T | undefined, override: T | undefined): T | undefined => {
+  if (override === undefined) {
+    return defaults;
+  }
+  if (typeof override !== 'object' || override === null || Array.isArray(override)) {
+    return override;
+  }
+  return {
+    ...defaults,
+    ...override
+  };
+};
+
 const mergeConfig = (config: NitroSourceConfig): NativeNitroPlayerConfig & { policy: NitroSourcePolicy } => {
   const policy = resolvePolicy(config);
-  validateSourceConfig(config);
   const defaults = resolveSourcePolicyDefaults(policy);
   const merged: NativeNitroPlayerConfig & { policy: NitroSourcePolicy } = {
     uri: resolveUri(config.uri),
     headers: config.headers,
     metadata: config.metadata,
     startup: config.startup ?? defaults.startup,
-    buffer: config.buffer ?? defaults.buffer,
-    retention: {
-      ...defaults.retention,
-      ...config.retention
-    },
-    transport: {
-      ...defaults.transport,
-      ...config.transport
-    },
-    preview: {
-      ...defaults.preview,
-      ...config.preview
-    },
+    buffer: mergeConfigSection(defaults.buffer, config.buffer),
+    retention: mergeConfigSection(defaults.retention, config.retention),
+    transport: mergeConfigSection(defaults.transport, config.transport),
+    preview: mergeConfigSection(defaults.preview, config.preview),
     policy
   };
-
-  if (!defaults.retention && !config.retention) {
-    merged.retention = undefined;
-  }
-  if (!defaults.transport && !config.transport) {
-    merged.transport = undefined;
-  }
-  if (!defaults.preview && !config.preview) {
-    merged.preview = undefined;
-  }
 
   validateSourceConfig(merged);
   return merged;
 };
 
 const buildIdentity = (config: NativeNitroPlayerConfig & { policy: NitroSourcePolicy }): NitroSourceIdentity => {
-  const requestKey = stableSerialize({
-    uri: config.uri,
-    headers: config.headers
-  });
-  const previewKey = stableSerialize({
-    requestKey,
-    preview: config.preview
-  });
   const playbackKey = stableSerialize(config);
 
-  return { playbackKey, requestKey, previewKey };
+  return { playbackKey };
 };
 
 export const prepareSource = (input: NitroSourceInput): PreparedNitroSource => {
   if (isPreparedSource(input)) {
     return input;
+  }
+  if (input && typeof input === 'object') {
+    const cached = objectSourceCache.get(input);
+    if (cached) {
+      return cached;
+    }
   }
 
   const config = mergeConfig(toConfig(input));
@@ -158,7 +151,11 @@ export const prepareSource = (input: NitroSourceInput): PreparedNitroSource => {
     [DESCRIPTOR_BRAND]: true as const
   };
 
-  return Object.freeze(descriptor);
+  const prepared = Object.freeze(descriptor);
+  if (input && typeof input === 'object') {
+    objectSourceCache.set(input, prepared);
+  }
+  return prepared;
 };
 
 export const toNativeSourceConfig = (source: NitroSourceInput): NativeNitroPlayerConfig => {

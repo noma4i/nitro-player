@@ -294,7 +294,7 @@ class HlsManifestTest {
 
   // -- CRLF parity (NP-PARITY-02): a \r from a CRLF manifest must never leak
   // into a proxied URL. URLEncoder would encode it as %0D and break the request.
-  // Mirrors the same fixture in HlsManifestRewriterTests.swift on iOS.
+  // Mirrors the same CRLF fixture used by the iOS manifest parser.
 
   @Test
   fun rewriteMedia_crlfDoesNotLeakCarriageReturn() {

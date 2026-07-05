@@ -7,6 +7,8 @@ import com.facebook.proguard.annotations.DoNotStrip
 import com.margelo.nitro.NitroModules
 import com.nitroplay.video.streaming.HlsManifestUrl
 import com.nitroplay.video.streaming.HlsProxyRuntime
+import com.nitroplay.video.source.HlsTransportRouteMode
+import com.nitroplay.video.source.HlsTransportRoutePolicy
 import java.io.File
 
 internal object HybridNitroPlayerUriNormalizer {
@@ -48,6 +50,11 @@ internal object HybridNitroPlayerUriNormalizer {
 
 @DoNotStrip
 class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
+  private data class RoutedConfig(
+    val config: NativeNitroPlayerConfig,
+    val isProxyRouteActive: Boolean
+  )
+
   private val applicationContext: Context
     get() = NitroModules.applicationContext
       ?: throw IllegalStateException(
@@ -58,30 +65,51 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
     return HybridNitroPlayerUriNormalizer.normalize(input, applicationContext)
   }
 
-  private fun normalizeAndRouteConfig(config: NativeNitroPlayerConfig): NativeNitroPlayerConfig {
+  private fun transportMode(mode: NitroSourceTransportMode?): HlsTransportRouteMode? {
+    return when (mode) {
+      NitroSourceTransportMode.AUTO -> HlsTransportRouteMode.AUTO
+      NitroSourceTransportMode.DIRECT -> HlsTransportRouteMode.DIRECT
+      NitroSourceTransportMode.PROXY -> HlsTransportRouteMode.PROXY
+      null -> null
+    }
+  }
+
+  private fun shouldUseHlsProxy(config: NativeNitroPlayerConfig, normalizedUri: String): Boolean {
+    return HlsTransportRoutePolicy.shouldUseProxyForPlayback(
+      mode = transportMode(config.transport?.mode),
+      isHls = HlsManifestUrl.matches(normalizedUri),
+      feedPoolEligible = config.retention?.feedPoolEligible == true
+    )
+  }
+
+  private fun normalizeAndRouteConfig(config: NativeNitroPlayerConfig): RoutedConfig {
+    HlsProxyRuntime.register(applicationContext)
     val normalizedUri = normalizeUri(config.uri)
     val normalizedConfig = config.copy(uri = normalizedUri)
-    val shouldUseHlsProxy = normalizedConfig.transport?.mode != NitroSourceTransportMode.DIRECT
+    val shouldUseHlsProxy = shouldUseHlsProxy(normalizedConfig, normalizedUri)
     val route = if (shouldUseHlsProxy && HlsManifestUrl.matches(normalizedUri)) {
       HlsProxyRuntime.resolvePlaybackRoute(normalizedUri, normalizedConfig.headers)
     } else {
       null
     }
 
-    return NativeNitroPlayerConfig(
-      uri = route?.url ?: normalizedUri,
-      headers = normalizedConfig.headers,
-      metadata = normalizedConfig.metadata,
-      startup = normalizedConfig.startup,
-      buffer = normalizedConfig.buffer,
-      retention = normalizedConfig.retention,
-      transport = normalizedConfig.transport,
-      preview = normalizedConfig.preview
+    return RoutedConfig(
+      config = NativeNitroPlayerConfig(
+        uri = route?.url ?: normalizedUri,
+        headers = normalizedConfig.headers,
+        metadata = normalizedConfig.metadata,
+        startup = normalizedConfig.startup,
+        buffer = normalizedConfig.buffer,
+        retention = normalizedConfig.retention,
+        transport = normalizedConfig.transport,
+        preview = normalizedConfig.preview
+      ),
+      isProxyRouteActive = route?.isProxying == true
     )
   }
 
   override fun fromUri(uri: String): HybridNitroPlayerSourceSpec {
-    val config = normalizeAndRouteConfig(NativeNitroPlayerConfig(
+    val route = normalizeAndRouteConfig(NativeNitroPlayerConfig(
       uri = normalizeUri(uri),
       headers = null,
       metadata = null,
@@ -92,15 +120,19 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec() {
       preview = null
     ))
 
-    return HybridNitroPlayerSource(config)
+    return HybridNitroPlayerSource(
+      config = route.config,
+      isProxyRouteActive = route.isProxyRouteActive
+    )
   }
 
   override fun fromNitroPlayerConfig(config: NativeNitroPlayerConfig): HybridNitroPlayerSourceSpec {
     val normalizedConfig = config.copy(uri = normalizeUri(config.uri))
-    val effectiveConfig = normalizeAndRouteConfig(config)
+    val route = normalizeAndRouteConfig(config)
     return HybridNitroPlayerSource(
-      config = effectiveConfig,
-      originalConfig = normalizedConfig
+      config = route.config,
+      originalConfig = normalizedConfig,
+      isProxyRouteActive = route.isProxyRouteActive
     )
   }
 

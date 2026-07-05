@@ -18,7 +18,7 @@ public extension NitroSourceMetadata {
   /**
    * Create a new instance of `NitroSourceMetadata`.
    */
-  init(title: String?, subtitle: String?, description: String?, artist: String?, imageUri: String?) {
+  init(title: String?, subtitle: String?, artist: String?, imageUri: String?) {
     self.init({ () -> bridge.std__optional_std__string_ in
       if let __unwrappedValue = title {
         return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
@@ -27,12 +27,6 @@ public extension NitroSourceMetadata {
       }
     }(), { () -> bridge.std__optional_std__string_ in
       if let __unwrappedValue = subtitle {
-        return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
-      } else {
-        return .init()
-      }
-    }(), { () -> bridge.std__optional_std__string_ in
-      if let __unwrappedValue = description {
         return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
       } else {
         return .init()
@@ -63,7 +57,7 @@ public extension NitroSourceMetadata {
       }
     }()
   }
-  
+
   @inline(__always)
   var subtitle: String? {
     return { () -> String? in
@@ -75,19 +69,7 @@ public extension NitroSourceMetadata {
       }
     }()
   }
-  
-  @inline(__always)
-  var description: String? {
-    return { () -> String? in
-      if bridge.has_value_std__optional_std__string_(self.__description) {
-        let __unwrapped = bridge.get_std__optional_std__string_(self.__description)
-        return String(__unwrapped)
-      } else {
-        return nil
-      }
-    }()
-  }
-  
+
   @inline(__always)
   var artist: String? {
     return { () -> String? in
@@ -99,7 +81,7 @@ public extension NitroSourceMetadata {
       }
     }()
   }
-  
+
   @inline(__always)
   var imageUri: String? {
     return { () -> String? in

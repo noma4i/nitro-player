@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)addBytes:(NSUInteger)bytes forRequestId:(NSNumber *)requestId;
 - (void)markDoneForRequestId:(NSNumber *)requestId;
 - (void)markUsedNetworkForRequestId:(NSNumber *)requestId;
+- (NSUInteger)openNetworkRequestCountForClient:(NSString *)client streamKey:(NSString *)streamKey;
 - (NSArray<NSDictionary *> *)snapshot;
 
 @end

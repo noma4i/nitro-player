@@ -68,4 +68,17 @@ class ListenerRegistryTest {
     registry.emit<() -> Unit>("event") { it() }
     assertTrue(!called)
   }
+
+  @Test
+  fun add_afterEventListEmptied_reachesNewListener() {
+    val registry = ListenerRegistry()
+    var count = 0
+    val first = registry.add("event", { count++ } as () -> Unit)
+    first.remove()
+
+    registry.add("event", { count++ } as () -> Unit)
+    registry.emit<() -> Unit>("event") { it() }
+
+    assertEquals(1, count)
+  }
 }

@@ -63,6 +63,10 @@ export interface NitroFeedRingPlayerOptions {
      * sources stay on the configured feed policy cap. Android currently returns
      * no throughput estimate, so the decision remains low there.
      *
+     * Adaptive buffer precedence is item explicit buffer fields, then the adaptive
+     * decision, then the selected source policy defaults. Explicit item
+     * `preferredPeakBitRate` is never overwritten by adaptive quality.
+     *
      * Decision updates apply to subsequent source attaches. The currently playing
      * item is not mutated mid-play.
      */
@@ -78,10 +82,14 @@ export interface NitroFeedRingAdaptiveSnapshot {
 export declare class NitroFeedRingPlayer {
     private readonly nativeRing;
     private readonly players;
+    private readonly sourceObjectIds;
+    private preparedCatalogItemCache;
+    private nextSourceObjectId;
     private released;
     private adaptiveEnabled;
     private adaptiveDecision;
     private adaptiveConfig;
+    private adaptiveThroughputInFlight;
     private lastEstimate;
     private lastCatalogState;
     private lastNativeCatalogRevision;
@@ -92,6 +100,12 @@ export declare class NitroFeedRingPlayer {
     commitViewport(state: NitroFeedRingViewportState): void;
     adaptiveSnapshot(): NitroFeedRingAdaptiveSnapshot;
     private replaceNativeCatalog;
+    private resolvePreparedCatalogItem;
+    private retainPreparedCatalogEntries;
+    private isAllowedPreparedCatalogVariant;
+    private resolveCatalogItemIdentityKey;
+    private resolveSourceObjectId;
+    private buildPreparedCatalogItemCacheKey;
     private resolveNativeCatalogRevision;
     private configureAdaptiveState;
     private updateAdaptiveDecision;

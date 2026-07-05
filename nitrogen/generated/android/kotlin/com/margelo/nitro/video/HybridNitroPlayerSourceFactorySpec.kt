@@ -25,13 +25,13 @@ import com.margelo.nitro.core.HybridObject
 )
 abstract class HybridNitroPlayerSourceFactorySpec: HybridObject() {
   // Properties
-  
+
 
   // Methods
   @DoNotStrip
   @Keep
   abstract fun fromUri(uri: String): HybridNitroPlayerSourceSpec
-  
+
   @DoNotStrip
   @Keep
   abstract fun fromNitroPlayerConfig(config: NativeNitroPlayerConfig): HybridNitroPlayerSourceSpec

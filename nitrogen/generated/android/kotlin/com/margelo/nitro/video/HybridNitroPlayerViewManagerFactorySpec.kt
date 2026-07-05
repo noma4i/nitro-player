@@ -25,7 +25,7 @@ import com.margelo.nitro.core.HybridObject
 )
 abstract class HybridNitroPlayerViewManagerFactorySpec: HybridObject() {
   // Properties
-  
+
 
   // Methods
   @DoNotStrip

@@ -42,6 +42,10 @@ namespace margelo::nitro::video { class HybridNitroPlayerSpec; }
 namespace margelo::nitro::video { class HybridNitroPlayerViewManagerFactorySpec; }
 // Forward declaration of `HybridNitroPlayerViewManagerSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridNitroPlayerViewManagerSpec; }
+// Forward declaration of `HybridNitroStreamCacheSpec` to properly resolve imports.
+namespace margelo::nitro::video { class HybridNitroStreamCacheSpec; }
+// Forward declaration of `HybridNitroVideoPreviewSpec` to properly resolve imports.
+namespace margelo::nitro::video { class HybridNitroVideoPreviewSpec; }
 // Forward declaration of `IgnoreSilentSwitchMode` to properly resolve imports.
 namespace margelo::nitro::video { enum class IgnoreSilentSwitchMode; }
 // Forward declaration of `ListenerSubscription` to properly resolve imports.
@@ -78,6 +82,14 @@ namespace margelo::nitro::video { enum class NitroSourceStartup; }
 namespace margelo::nitro::video { struct NitroSourceTransportConfig; }
 // Forward declaration of `NitroSourceTransportMode` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroSourceTransportMode; }
+// Forward declaration of `NitroStreamCacheConfig` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroStreamCacheConfig; }
+// Forward declaration of `NitroStreamCacheStats` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroStreamCacheStats; }
+// Forward declaration of `NitroStreamNetworkThroughputEstimate` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroStreamNetworkThroughputEstimate; }
+// Forward declaration of `NitroStreamSourceCacheStats` to properly resolve imports.
+namespace margelo::nitro::video { struct NitroStreamSourceCacheStats; }
 // Forward declaration of `PlaybackError` to properly resolve imports.
 namespace margelo::nitro::video { struct PlaybackError; }
 // Forward declaration of `PlaybackState` to properly resolve imports.
@@ -121,6 +133,8 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "HybridNitroPlayerSpec.hpp"
 #include "HybridNitroPlayerViewManagerFactorySpec.hpp"
 #include "HybridNitroPlayerViewManagerSpec.hpp"
+#include "HybridNitroStreamCacheSpec.hpp"
+#include "HybridNitroVideoPreviewSpec.hpp"
 #include "IgnoreSilentSwitchMode.hpp"
 #include "ListenerSubscription.hpp"
 #include "LivePlaybackParams.hpp"
@@ -139,6 +153,10 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "NitroSourceStartup.hpp"
 #include "NitroSourceTransportConfig.hpp"
 #include "NitroSourceTransportMode.hpp"
+#include "NitroStreamCacheConfig.hpp"
+#include "NitroStreamCacheStats.hpp"
+#include "NitroStreamNetworkThroughputEstimate.hpp"
+#include "NitroStreamSourceCacheStats.hpp"
 #include "PlaybackError.hpp"
 #include "PlaybackState.hpp"
 #include "PreloadLevel.hpp"
@@ -191,6 +209,10 @@ namespace NitroPlay { class HybridNitroPlayerSpec_cxx; }
 namespace NitroPlay { class HybridNitroPlayerViewManagerFactorySpec_cxx; }
 // Forward declaration of `HybridNitroPlayerViewManagerSpec_cxx` to properly resolve imports.
 namespace NitroPlay { class HybridNitroPlayerViewManagerSpec_cxx; }
+// Forward declaration of `HybridNitroStreamCacheSpec_cxx` to properly resolve imports.
+namespace NitroPlay { class HybridNitroStreamCacheSpec_cxx; }
+// Forward declaration of `HybridNitroVideoPreviewSpec_cxx` to properly resolve imports.
+namespace NitroPlay { class HybridNitroVideoPreviewSpec_cxx; }
 
 // Include Swift defined types
 #if __has_include("NitroPlay-Swift.h")

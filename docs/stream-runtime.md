@@ -109,4 +109,4 @@ fall back to network playback instead of surfacing a stale file to the player.
 | Preview cleanup                   | `videoPreview.clear()` removes preview artifacts without touching stream cache |
 | `replaceSourceAsync()`            | Old transport and preview work cannot leak into the new source generation      |
 
-The internal native module is named `NitroPlayStreamRuntime`, and the supported JS utility surfaces are `streamCache` and `videoPreview`.
+The internal Nitro hybrid surfaces are split by public utility: `NitroStreamCache` backs `streamCache`, and `NitroVideoPreview` backs `videoPreview`.

@@ -1,13 +1,23 @@
 import type { HybridObject } from 'react-native-nitro-modules';
 import type { NativeNitroPlayerConfig } from '../../source/types/NitroPlayerConfig';
-import type { NitroPlayerSourceBase } from '../../source/types/NitroPlayerSourceBase';
+import type { NitroPlayerInformation } from '../../player/types/NitroPlayerInformation';
 
 /**
  * A source for a {@link NitroPlayer}.
  * Source cannot be changed after it is created. If you need to update the source, you need to create a new one.
  * It provides functions to get information about the asset.
  */
-export interface NitroPlayerSource extends HybridObject<{ ios: 'swift'; android: 'kotlin' }>, NitroPlayerSourceBase {}
+export interface NitroPlayerSource extends HybridObject<{ ios: 'swift'; android: 'kotlin' }> {
+  /**
+   * The URI of the asset.
+   */
+  readonly uri: string;
+
+  /**
+   * Get the information about the asset.
+   */
+  getAssetInformationAsync(): Promise<NitroPlayerInformation>;
+}
 
 export interface NitroPlayerSourceFactory extends HybridObject<{ ios: 'swift'; android: 'kotlin' }> {
   fromUri(uri: string): NitroPlayerSource;

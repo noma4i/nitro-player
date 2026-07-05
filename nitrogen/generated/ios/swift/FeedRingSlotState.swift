@@ -32,12 +32,12 @@ public extension FeedRingSlotState {
   var slotId: Double {
     return self.__slotId
   }
-  
+
   @inline(__always)
   var generation: Double {
     return self.__generation
   }
-  
+
   @inline(__always)
   var assignedIndex: Double? {
     return { () -> Double? in
@@ -49,27 +49,27 @@ public extension FeedRingSlotState {
       }
     }()
   }
-  
+
   @inline(__always)
   var ready: Bool {
     return self.__ready
   }
-  
+
   @inline(__always)
   var playing: Bool {
     return self.__playing
   }
-  
+
   @inline(__always)
   var buffering: Bool {
     return self.__buffering
   }
-  
+
   @inline(__always)
   var currentTime: Double {
     return self.__currentTime
   }
-  
+
   @inline(__always)
   var duration: Double {
     return self.__duration

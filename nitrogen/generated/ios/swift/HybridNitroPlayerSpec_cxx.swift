@@ -84,7 +84,7 @@ open class HybridNitroPlayerSpec_cxx {
     }
   }
 
-  
+
 
   /**
    * Get the memory size of the Swift class (plus size of any other allocations)
@@ -130,7 +130,7 @@ open class HybridNitroPlayerSpec_cxx {
       }()
     }
   }
-  
+
   public final var eventEmitter: bridge.std__shared_ptr_HybridNitroPlayerEventEmitterSpec_ {
     @inline(__always)
     get {
@@ -140,35 +140,35 @@ open class HybridNitroPlayerSpec_cxx {
       }()
     }
   }
-  
+
   public final var playbackState: PlaybackState {
     @inline(__always)
     get {
       return self.__implementation.playbackState
     }
   }
-  
+
   public final var memorySnapshot: MemorySnapshot {
     @inline(__always)
     get {
       return self.__implementation.memorySnapshot
     }
   }
-  
+
   public final var status: Int32 {
     @inline(__always)
     get {
       return self.__implementation.status.rawValue
     }
   }
-  
+
   public final var duration: Double {
     @inline(__always)
     get {
       return self.__implementation.duration
     }
   }
-  
+
   public final var volume: Double {
     @inline(__always)
     get {
@@ -179,7 +179,7 @@ open class HybridNitroPlayerSpec_cxx {
       self.__implementation.volume = newValue
     }
   }
-  
+
   public final var currentTime: Double {
     @inline(__always)
     get {
@@ -190,21 +190,21 @@ open class HybridNitroPlayerSpec_cxx {
       self.__implementation.currentTime = newValue
     }
   }
-  
+
   public final var bufferDuration: Double {
     @inline(__always)
     get {
       return self.__implementation.bufferDuration
     }
   }
-  
+
   public final var bufferedPosition: Double {
     @inline(__always)
     get {
       return self.__implementation.bufferedPosition
     }
   }
-  
+
   public final var muted: Bool {
     @inline(__always)
     get {
@@ -215,7 +215,7 @@ open class HybridNitroPlayerSpec_cxx {
       self.__implementation.muted = newValue
     }
   }
-  
+
   public final var loop: Bool {
     @inline(__always)
     get {
@@ -226,7 +226,7 @@ open class HybridNitroPlayerSpec_cxx {
       self.__implementation.loop = newValue
     }
   }
-  
+
   public final var rate: Double {
     @inline(__always)
     get {
@@ -237,7 +237,7 @@ open class HybridNitroPlayerSpec_cxx {
       self.__implementation.rate = newValue
     }
   }
-  
+
   public final var mixAudioMode: Int32 {
     @inline(__always)
     get {
@@ -248,7 +248,7 @@ open class HybridNitroPlayerSpec_cxx {
       self.__implementation.mixAudioMode = margelo.nitro.video.MixAudioMode(rawValue: newValue)!
     }
   }
-  
+
   public final var ignoreSilentSwitchMode: Int32 {
     @inline(__always)
     get {
@@ -259,7 +259,7 @@ open class HybridNitroPlayerSpec_cxx {
       self.__implementation.ignoreSilentSwitchMode = margelo.nitro.video.IgnoreSilentSwitchMode(rawValue: newValue)!
     }
   }
-  
+
   public final var playInBackground: Bool {
     @inline(__always)
     get {
@@ -270,7 +270,7 @@ open class HybridNitroPlayerSpec_cxx {
       self.__implementation.playInBackground = newValue
     }
   }
-  
+
   public final var playWhenInactive: Bool {
     @inline(__always)
     get {
@@ -281,21 +281,21 @@ open class HybridNitroPlayerSpec_cxx {
       self.__implementation.playWhenInactive = newValue
     }
   }
-  
+
   public final var isPlaying: Bool {
     @inline(__always)
     get {
       return self.__implementation.isPlaying
     }
   }
-  
+
   public final var isBuffering: Bool {
     @inline(__always)
     get {
       return self.__implementation.isBuffering
     }
   }
-  
+
   public final var isVisualReady: Bool {
     @inline(__always)
     get {
@@ -322,7 +322,7 @@ open class HybridNitroPlayerSpec_cxx {
       return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func preload() -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
@@ -341,7 +341,7 @@ open class HybridNitroPlayerSpec_cxx {
       return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func play() -> bridge.Result_void_ {
     do {
@@ -352,7 +352,7 @@ open class HybridNitroPlayerSpec_cxx {
       return bridge.create_Result_void_(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func pause() -> bridge.Result_void_ {
     do {
@@ -363,7 +363,7 @@ open class HybridNitroPlayerSpec_cxx {
       return bridge.create_Result_void_(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func seekBy(time: Double) -> bridge.Result_void_ {
     do {
@@ -374,7 +374,7 @@ open class HybridNitroPlayerSpec_cxx {
       return bridge.create_Result_void_(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func seekTo(time: Double) -> bridge.Result_void_ {
     do {
@@ -385,7 +385,7 @@ open class HybridNitroPlayerSpec_cxx {
       return bridge.create_Result_void_(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func replaceSourceAsync(source: bridge.std__shared_ptr_HybridNitroPlayerSourceSpec_) -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
@@ -408,7 +408,7 @@ open class HybridNitroPlayerSpec_cxx {
       return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func clearSourceAsync() -> bridge.Result_std__shared_ptr_Promise_void___ {
     do {
@@ -427,7 +427,7 @@ open class HybridNitroPlayerSpec_cxx {
       return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func release() -> bridge.Result_void_ {
     do {

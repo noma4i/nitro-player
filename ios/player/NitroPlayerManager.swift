@@ -11,12 +11,13 @@ import AVFoundation
 class NitroPlayerManager {
   // MARK: - Singleton
   static let shared = NitroPlayerManager()
-  private let maxHotFeedPlayers = 2
+  private let maxHotFeedPlayers = 3
 
   private var players = NSHashTable<HybridNitroPlayer>.weakObjects()
   private var videoView = NSHashTable<NitroPlayerComponentView>.weakObjects()
   private var feedHotActivity: [ObjectIdentifier: UInt64] = [:]
   private var feedHotSequence: UInt64 = 0
+  private var feedHotRebalanceScheduled = false
   private var notificationObservers: [NSObjectProtocol] = []
 
   private init() {
@@ -62,7 +63,7 @@ class NitroPlayerManager {
     onMainThread {
       self.players.remove(player)
       self.feedHotActivity.removeValue(forKey: ObjectIdentifier(player))
-      self.rebalanceFeedHotPlayers()
+      self.scheduleFeedHotRebalance()
     }
   }
 
@@ -78,7 +79,7 @@ class NitroPlayerManager {
   func unregister(view: NitroPlayerComponentView) {
     onMainThread {
       self.videoView.remove(view)
-      self.rebalanceFeedHotPlayers()
+      self.scheduleFeedHotRebalance()
     }
   }
 
@@ -101,7 +102,7 @@ class NitroPlayerManager {
       } else {
         self.feedHotActivity.removeValue(forKey: ObjectIdentifier(player))
       }
-      self.rebalanceFeedHotPlayers()
+      self.scheduleFeedHotRebalance()
     }
   }
 
@@ -164,16 +165,33 @@ class NitroPlayerManager {
   }
 
   func applicationDidReceiveMemoryWarning() {
-    for player in players.allObjects {
+    let registeredPlayers = players.allObjects
+    for player in registeredPlayers {
       player.trimForResourcePressure()
     }
-    feedHotActivity = feedHotActivity.filter { id, _ in
-      players.allObjects.contains { ObjectIdentifier($0) == id }
-    }
-    rebalanceFeedHotPlayers()
+    let registeredPlayerIds = Set(registeredPlayers.map(ObjectIdentifier.init))
+    feedHotActivity = feedHotActivity.filter { registeredPlayerIds.contains($0.key) }
+    feedHotRebalanceScheduled = false
+    rebalanceFeedHotPlayersNow()
   }
 
-  private func rebalanceFeedHotPlayers() {
+  private func scheduleFeedHotRebalance() {
+    guard !feedHotRebalanceScheduled else {
+      return
+    }
+
+    feedHotRebalanceScheduled = true
+    DispatchQueue.main.async { [weak self] in
+      guard let self, self.feedHotRebalanceScheduled else {
+        return
+      }
+
+      self.feedHotRebalanceScheduled = false
+      self.rebalanceFeedHotPlayersNow()
+    }
+  }
+
+  private func rebalanceFeedHotPlayersNow() {
     let feedPlayers = players.allObjects.filter { $0.isFeedProfile() }
     if feedPlayers.isEmpty {
       feedHotActivity.removeAll()

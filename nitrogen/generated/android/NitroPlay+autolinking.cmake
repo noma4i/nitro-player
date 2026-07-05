@@ -42,6 +42,8 @@ target_sources(
   ../nitrogen/generated/shared/c++/HybridNitroPlayerSourceFactorySpec.cpp
   ../nitrogen/generated/shared/c++/HybridNitroPlayerViewManagerSpec.cpp
   ../nitrogen/generated/shared/c++/HybridNitroPlayerViewManagerFactorySpec.cpp
+  ../nitrogen/generated/shared/c++/HybridNitroStreamCacheSpec.cpp
+  ../nitrogen/generated/shared/c++/HybridNitroVideoPreviewSpec.cpp
   # Android-specific Nitrogen C++ sources
   ../nitrogen/generated/android/c++/JHybridNitroFeedRingPlayerSpec.cpp
   ../nitrogen/generated/android/c++/JHybridNitroFeedRingPlayerFactorySpec.cpp
@@ -53,6 +55,11 @@ target_sources(
   ../nitrogen/generated/android/c++/JHybridNitroPlayerSourceFactorySpec.cpp
   ../nitrogen/generated/android/c++/JHybridNitroPlayerViewManagerSpec.cpp
   ../nitrogen/generated/android/c++/JHybridNitroPlayerViewManagerFactorySpec.cpp
+  ../nitrogen/generated/android/c++/JHybridNitroStreamCacheSpec.cpp
+  ../nitrogen/generated/android/c++/JVariant_NullType_NitroStreamNetworkThroughputEstimate.cpp
+  ../nitrogen/generated/android/c++/JVariant_NullType_Double.cpp
+  ../nitrogen/generated/android/c++/JHybridNitroVideoPreviewSpec.cpp
+  ../nitrogen/generated/android/c++/JVariant_NullType_String.cpp
 )
 
 # From node_modules/react-native/ReactAndroid/cmake-utils/folly-flags.cmake

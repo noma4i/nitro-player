@@ -42,6 +42,7 @@ const createNativeRing = () => ({
 });
 
 type FeedRingModule = typeof import('../NitroFeedRingPlayer');
+type PrepareSourceModule = typeof import('../../source/prepareSource');
 type CatalogPayloadItem = {
   sourceKey?: string;
   source?: {
@@ -73,18 +74,39 @@ const loadModule = () => {
       getNetworkThroughputEstimate
     }
   }));
+  jest.doMock('../../source/prepareSource', () => {
+    const actual = jest.requireActual('../../source/prepareSource') as PrepareSourceModule;
+    return {
+      ...actual,
+      prepareSource: jest.fn(actual.prepareSource)
+    };
+  });
 
   const module = require('../NitroFeedRingPlayer') as FeedRingModule;
-  return { ...module, nativeRing, createRingPlayer, createHybridObject, updateMemorySize, getNetworkThroughputEstimate };
+  const prepareSourceModule = require('../../source/prepareSource') as PrepareSourceModule;
+  return {
+    ...module,
+    nativeRing,
+    createRingPlayer,
+    createHybridObject,
+    updateMemorySize,
+    getNetworkThroughputEstimate,
+    prepareSource: prepareSourceModule.prepareSource as jest.Mock
+  };
 };
 
 const getCatalogPayloadItems = (nativeRing: ReturnType<typeof createNativeRing>): CatalogPayloadItem[] => nativeRing.replaceCatalog.mock.calls[0][0].items as CatalogPayloadItem[];
+const flushPromises = async () => {
+  await Promise.resolve();
+  await Promise.resolve();
+};
 
 describe('NitroFeedRingPlayer', () => {
   afterEach(() => {
     jest.dontMock('react-native');
     jest.dontMock('react-native-nitro-modules');
     jest.dontMock('../../streaming/streamCache');
+    jest.dontMock('../../source/prepareSource');
   });
 
   it('sends catalog payload with feed policy defaults owned by the library', () => {
@@ -132,27 +154,6 @@ describe('NitroFeedRingPlayer', () => {
     expect(payload.items[0].sourceKey).toEqual(expect.any(String));
   });
 
-  it('uses configured feed policy buffer for subsequent catalog payloads', () => {
-    const { NitroFeedRingPlayer, nativeRing } = loadModule();
-    const { configureSourcePolicy } = require('../../source/sourcePolicy') as typeof import('../../source/sourcePolicy');
-    const ring = new NitroFeedRingPlayer();
-
-    configureSourcePolicy('feed', {
-      buffer: {
-        preferredPeakBitRate: 10_000_000
-      }
-    });
-    ring.replaceCatalog({
-      revision: 12,
-      items: [{ index: 3, momentId: 'moment-3', source: 'https://cdn.example/video.m3u8' }]
-    });
-
-    expect(nativeRing.replaceCatalog.mock.calls[0][0].items[0].source.buffer).toEqual({
-      preferredPeakBitRate: 10_000_000,
-      preferredForwardBufferDurationMs: 12_000
-    });
-  });
-
   it('keeps adaptive quality disabled by default', () => {
     const { NitroFeedRingPlayer, nativeRing, getNetworkThroughputEstimate } = loadModule();
     const ring = new NitroFeedRingPlayer();
@@ -196,8 +197,7 @@ describe('NitroFeedRingPlayer', () => {
       playbackAllowed: true,
       muted: false
     });
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushPromises();
 
     expect(getNetworkThroughputEstimate).toHaveBeenCalledTimes(1);
     expect(nativeRing.replaceCatalog).toHaveBeenCalledTimes(2);
@@ -211,6 +211,138 @@ describe('NitroFeedRingPlayer', () => {
       decision: 'high',
       lastEstimate: { bps: 24_000_000, samples: 4, newestAgeMs: 20 }
     });
+  });
+
+  it('keeps explicit item peak bitrate ahead of adaptive feed decisions', async () => {
+    const { NitroFeedRingPlayer, nativeRing, getNetworkThroughputEstimate } = loadModule();
+    getNetworkThroughputEstimate.mockResolvedValue({ bps: 24_000_000, samples: 4, newestAgeMs: 20 });
+    const ring = new NitroFeedRingPlayer({ adaptiveQuality: true });
+    const source = {
+      uri: 'https://cdn.example/video.m3u8',
+      buffer: {
+        preferredPeakBitRate: 4_000_000,
+        minBufferMs: 1500
+      }
+    };
+
+    ring.replaceCatalog({
+      revision: 18,
+      items: [{ index: 1, momentId: 'moment-1', source }]
+    });
+    expect(nativeRing.replaceCatalog.mock.calls[0][0].items[0].source.buffer).toEqual({
+      preferredPeakBitRate: 4_000_000,
+      preferredForwardBufferDurationMs: 12_000,
+      minBufferMs: 1500
+    });
+
+    ring.commitViewport({
+      revision: 3,
+      centerIndex: 1,
+      playbackAllowed: true,
+      muted: false
+    });
+    await flushPromises();
+
+    expect(nativeRing.replaceCatalog).toHaveBeenCalledTimes(2);
+    expect(nativeRing.replaceCatalog.mock.calls[1][0].items[0].source.buffer).toEqual({
+      preferredPeakBitRate: 4_000_000,
+      preferredForwardBufferDurationMs: 12_000,
+      minBufferMs: 1500
+    });
+  });
+
+  it('reuses prepared catalog item cache for repeated catalog state', () => {
+    const { NitroFeedRingPlayer, nativeRing, prepareSource } = loadModule();
+    const ring = new NitroFeedRingPlayer();
+    const source = { uri: 'https://cdn.example/video.m3u8', policy: 'feed' as const };
+    const catalog = {
+      revision: 31,
+      items: [{ index: 1, momentId: 'moment-1', source }]
+    };
+
+    ring.replaceCatalog(catalog);
+    ring.replaceCatalog(catalog);
+
+    expect(nativeRing.replaceCatalog).toHaveBeenCalledTimes(2);
+    expect(prepareSource).toHaveBeenCalledTimes(1);
+    expect(nativeRing.replaceCatalog.mock.calls[1][0].items[0].source).toEqual(nativeRing.replaceCatalog.mock.calls[0][0].items[0].source);
+  });
+
+  it('reuses cached adaptive low and high source variants when decisions flip back', async () => {
+    const { NitroFeedRingPlayer, nativeRing, getNetworkThroughputEstimate, prepareSource } = loadModule();
+    getNetworkThroughputEstimate.mockResolvedValueOnce({ bps: 24_000_000, samples: 4, newestAgeMs: 20 }).mockResolvedValueOnce({ bps: 1_000_000, samples: 4, newestAgeMs: 20 });
+    const ring = new NitroFeedRingPlayer({ adaptiveQuality: true });
+    const source = { uri: 'https://cdn.example/video.m3u8', policy: 'feed' as const };
+
+    ring.replaceCatalog({
+      revision: 32,
+      items: [{ index: 1, momentId: 'moment-1', source }]
+    });
+    expect(prepareSource).toHaveBeenCalledTimes(1);
+
+    ring.commitViewport({
+      revision: 1,
+      centerIndex: 1,
+      playbackAllowed: true,
+      muted: false
+    });
+    await flushPromises();
+    expect(prepareSource).toHaveBeenCalledTimes(2);
+    expect(nativeRing.replaceCatalog.mock.calls[1][0].items[0].source.buffer.preferredPeakBitRate).toBe(10_000_000);
+
+    ring.commitViewport({
+      revision: 2,
+      centerIndex: 1,
+      playbackAllowed: true,
+      muted: false
+    });
+    await flushPromises();
+    expect(prepareSource).toHaveBeenCalledTimes(2);
+    expect(nativeRing.replaceCatalog).toHaveBeenCalledTimes(3);
+    expect(nativeRing.replaceCatalog.mock.calls[2][0].items[0].source.buffer.preferredPeakBitRate).toBe(6_000_000);
+  });
+
+  it('dedupes in-flight adaptive throughput queries across viewport commits', async () => {
+    const { NitroFeedRingPlayer, getNetworkThroughputEstimate } = loadModule();
+    let resolveEstimate: (estimate: StreamNetworkThroughputEstimate | null) => void = () => undefined;
+    getNetworkThroughputEstimate.mockReturnValueOnce(
+      new Promise<StreamNetworkThroughputEstimate | null>(resolve => {
+        resolveEstimate = resolve;
+      })
+    );
+    const ring = new NitroFeedRingPlayer({ adaptiveQuality: true });
+    ring.replaceCatalog({
+      revision: 33,
+      items: [{ index: 1, momentId: 'moment-1', source: 'https://cdn.example/video.m3u8' }]
+    });
+
+    ring.commitViewport({
+      revision: 1,
+      centerIndex: 1,
+      playbackAllowed: true,
+      muted: false
+    });
+    ring.commitViewport({
+      revision: 2,
+      centerIndex: 1,
+      playbackAllowed: true,
+      muted: false
+    });
+
+    expect(getNetworkThroughputEstimate).toHaveBeenCalledTimes(1);
+
+    resolveEstimate(null);
+    await flushPromises();
+    getNetworkThroughputEstimate.mockResolvedValueOnce(null);
+    ring.commitViewport({
+      revision: 3,
+      centerIndex: 1,
+      playbackAllowed: true,
+      muted: false
+    });
+    await flushPromises();
+
+    expect(getNetworkThroughputEstimate).toHaveBeenCalledTimes(2);
   });
 
   it('keys catalog sources by moment content identity without volatile URI parts', () => {
@@ -350,6 +482,8 @@ describe('NitroFeedRingPlayer', () => {
         artist: 'Yupi'
       },
       buffer: {
+        preferredPeakBitRate: 6_000_000,
+        preferredForwardBufferDurationMs: 12_000,
         minBufferMs: 1200,
         livePlayback: {
           targetOffsetMs: 5000

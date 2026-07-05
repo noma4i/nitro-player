@@ -48,7 +48,7 @@ namespace margelo::nitro::video {
   }
 
   // Properties
-  
+
 
   // Methods
   std::shared_ptr<HybridNitroPlayerSpec> JHybridNitroPlayerFactorySpec::createPlayer(const std::shared_ptr<HybridNitroPlayerSourceSpec>& source) {

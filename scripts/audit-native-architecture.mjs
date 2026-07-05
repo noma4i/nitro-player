@@ -29,9 +29,7 @@ const withoutComments = source => source
   .map(line => line.replace(/\/\/.*$/, ''))
   .join('\n');
 
-const approvedMainThreadSyncFiles = new Set([
-  'ios/support/MainThreadResourceExecutor.swift'
-]);
+const approvedMainThreadSyncFiles = new Set();
 
 const approvedMainThreadSyncPatterns = new Map([
   [
@@ -133,12 +131,13 @@ if (process.argv.includes('--self-test')) {
 const requiredMirrors = [
   ['ios/player/PlayerAppStatePolicy.swift', 'android/src/main/java/com/nitroplay/player/PlayerAppStatePolicy.kt'],
   ['ios/player/PlayerRetentionCoordinator.swift', 'android/src/main/java/com/nitroplay/player/PlayerRetentionCoordinator.kt'],
+  ['ios/source/HlsTransportRoutePolicy.swift', 'android/src/main/java/com/nitroplay/source/HlsTransportRoutePolicy.kt'],
   ['ios/preview/PreviewRequestCoordinator.swift', 'android/src/main/java/com/nitroplay/preview/PreviewRequestCoordinator.kt'],
   ['ios/streaming/cache/HlsCacheBudget.swift', 'android/src/main/java/com/nitroplay/streaming/cache/HlsCacheBudget.kt'],
   ['ios/streaming/HlsPrefetchDeduper.swift', 'android/src/main/java/com/nitroplay/streaming/HlsPrefetchDeduper.kt'],
-  ['ios/streaming/HlsRuntimeState.swift', 'android/src/main/java/com/nitroplay/streaming/HlsRuntimeState.kt'],
   ['tests/ios/Tests/NitroPlayFeedCoreTests/FeedRingCommandPlannerTests.swift', 'android/src/test/java/com/nitroplay/feed/FeedRingCommandPlannerTest.kt'],
   ['tests/ios/Tests/NitroPlayFeedCoreTests/FeedRingWindowPlannerTests.swift', 'android/src/test/java/com/nitroplay/feed/FeedRingWindowPlannerTest.kt'],
+  ['tests/ios/Tests/Behavior/HlsTransportRoutePolicyTests.swift', 'android/src/test/java/com/nitroplay/behavior/hls/HlsTransportRoutePolicyTest.kt'],
   ['tests/ios/Tests/NitroPlayFeedCoreTests/PlaybackWatchdogRecoveryTests.swift', 'android/src/test/java/com/nitroplay/behavior/playback/PlaybackWatchdogRecoveryTest.kt'],
   ['tests/ios/Tests/NitroPlayFeedCoreTests/SourceCommandOrderingTests.swift', 'android/src/test/java/com/nitroplay/feed/SourceCommandOrderingTest.kt']
 ];

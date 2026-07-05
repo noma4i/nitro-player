@@ -168,6 +168,7 @@ internal class NitroPlayerListenerBridge(
 
     override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
       if (host.isReleased) return
+      host.updateCachedRate(playbackParameters.speed.toDouble())
       host.emitPlaybackState()
     }
 
@@ -187,9 +188,16 @@ internal class NitroPlayerListenerBridge(
 
   fun startProgressUpdates() {
     stopProgressUpdates()
+    if (!host.loadedWithSource || !host.hasActiveSource) {
+      return
+    }
     progressRunnable = object : Runnable {
       override fun run() {
         if (host.isReleased) return
+        if (!host.loadedWithSource || !host.hasActiveSource) {
+          stopProgressUpdates()
+          return
+        }
         if (host.player.playbackState != Player.STATE_IDLE && host.player.playbackState != Player.STATE_ENDED) {
           host.emitPlaybackState()
           progressHandler.postDelayed(this, PROGRESS_UPDATE_INTERVAL_MS)

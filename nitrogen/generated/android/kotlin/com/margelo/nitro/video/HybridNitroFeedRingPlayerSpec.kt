@@ -25,34 +25,34 @@ import com.margelo.nitro.core.HybridObject
 )
 abstract class HybridNitroFeedRingPlayerSpec: HybridObject() {
   // Properties
-  
+
 
   // Methods
   @DoNotStrip
   @Keep
   abstract fun getPlayer(slotId: Double): HybridNitroPlayerSpec
-  
+
   @DoNotStrip
   @Keep
   abstract fun replaceCatalog(catalog: FeedRingCatalog): Unit
-  
+
   @DoNotStrip
   @Keep
   abstract fun commitViewport(viewport: FeedRingViewport): Unit
-  
+
   @DoNotStrip
   @Keep
   abstract fun snapshot(): FeedRingSnapshot
-  
+
   abstract fun addSlotStateListener(listener: (state: FeedRingSlotState) -> Unit): ListenerSubscription
-  
+
   @DoNotStrip
   @Keep
   private fun addSlotStateListener_cxx(listener: Func_void_FeedRingSlotState): ListenerSubscription {
     val __result = addSlotStateListener(listener)
     return __result
   }
-  
+
   @DoNotStrip
   @Keep
   abstract fun release(): Unit

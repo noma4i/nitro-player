@@ -4,12 +4,9 @@ import UIKit
 final class HlsProxyServerController: NSObject {
   private let defaultPort: Int = 0
   private let prefetchClient = HlsNetworkClient()
-  private let prefetchCache = HlsCacheStore.shared
-  private let manifestRewriter = HlsManifestRewriter()
+  private let manifestParser = HlsManifestParser()
   private let stateQueue = DispatchQueue(label: "com.nitroplay.hls.ktv-proxy-state")
   private var requestedPort: Int = 0
-  private var shouldBeRunning = false
-  private var wasExplicitlyStopped = false
   private var needsRestartOnActive = false
   private var observersRegistered = false
   private var notificationObservers: [NSObjectProtocol] = []
@@ -22,21 +19,18 @@ final class HlsProxyServerController: NSObject {
     applyMaxCacheBytes(HlsCacheBudget.defaultMaxBytes)
   }
 
-  func start(port: Int?) {
+  func start(port: Int?) -> Bool {
     let resolvedPort = (port ?? defaultPort) > 0 ? (port ?? defaultPort) : defaultPort
     stateQueue.sync {
       requestedPort = resolvedPort
-      shouldBeRunning = true
-      wasExplicitlyStopped = false
+      needsRestartOnActive = false
     }
     registerObserversIfNeeded()
-    _ = ensureListening(forceRestart: true)
+    return ensureListening(port: resolvedPort, forceRestart: true)
   }
 
   func stop() {
     stateQueue.sync {
-      shouldBeRunning = false
-      wasExplicitlyStopped = true
       needsRestartOnActive = false
     }
     unregisterObservers()
@@ -44,16 +38,6 @@ final class HlsProxyServerController: NSObject {
   }
 
   func proxiedManifestUrl(for url: String, headers: [String: String]?) -> String? {
-    let needsObservers = stateQueue.sync { () -> Bool in
-      if !shouldBeRunning && !wasExplicitlyStopped {
-        shouldBeRunning = true
-        return true
-      }
-      return false
-    }
-    if needsObservers {
-      registerObserversIfNeeded()
-    }
     guard ensureListening(forceRestart: false),
           let originalURL = URL(string: url)
     else {
@@ -70,15 +54,6 @@ final class HlsProxyServerController: NSObject {
     return proxyURL.absoluteString
   }
 
-  func prefetchLeadingSegments(url: String, headers: [String: String]?, count: Int) async throws {
-    try await prefetchLeadingSegments(
-      url: url,
-      headers: headers,
-      streamKey: HlsIdentity.requestKey(url: url, headers: headers),
-      count: count
-    )
-  }
-
   func getCacheStats() -> [String: Any] {
     return [
       "totalSize": Int(KTVHTTPCache.cacheTotalCacheLength()),
@@ -87,26 +62,17 @@ final class HlsProxyServerController: NSObject {
     ]
   }
 
-  func getCacheStats(streamKey: String) -> [String: Any] {
-    let stats = prefetchCache.getCacheStats(streamKey: streamKey)
+  func getStreamCacheStats() -> [String: Any] {
     return [
       "totalSize": Int(KTVHTTPCache.cacheTotalCacheLength()),
       "fileCount": HlsKtvCacheStats.fileCount(from: KTVHTTPCache.cacheAllCacheItems()),
       "maxSize": maxCacheBytes,
-      "streamSize": stats["streamSize"] as? Int ?? 0,
-      "streamFileCount": stats["streamFileCount"] as? Int ?? 0
+      "streamSize": 0,
+      "streamFileCount": 0
     ]
   }
 
-  func getStreamVariants(url: String, headers: [String: String]?) async throws -> [[String: Any]] {
-    let manifest = try await prefetchClient.fetchText(url: url, headers: headers)
-    guard manifestRewriter.isMasterPlaylist(manifest) else {
-      return []
-    }
-    return manifestRewriter.extractStreamVariants(manifest: manifest, baseUrl: url)
-  }
-
-  func requestLedgerSnapshot() -> [[String: Any]] {
+  private func requestLedgerSnapshot() -> [[String: Any]] {
     KTVHCRequestLedger.shared().snapshot().compactMap { $0 as? [String: Any] }
   }
 
@@ -116,21 +82,7 @@ final class HlsProxyServerController: NSObject {
       return false
     }
 
-    return requestLedgerSnapshot().contains { entry in
-      guard (entry["client"] as? String) == client else {
-        return false
-      }
-      guard (entry["usedNetwork"] as? NSNumber)?.boolValue == true else {
-        return false
-      }
-      guard entry["tDoneMs"] is NSNull else {
-        return false
-      }
-      guard let urlTail = entry["urlTail"] as? String else {
-        return false
-      }
-      return urlTail.contains(streamKey)
-    }
+    return KTVHCRequestLedger.shared().openNetworkRequestCount(forClient: client, streamKey: streamKey) > 0
   }
 
   func getNetworkThroughputEstimate() -> [String: Any] {
@@ -169,7 +121,6 @@ final class HlsProxyServerController: NSObject {
 
   func clearCache() {
     KTVHTTPCache.cacheDeleteAllCaches()
-    prefetchCache.clearAll()
   }
 
   deinit {
@@ -182,12 +133,15 @@ final class HlsProxyServerController: NSObject {
   }
 
   private func ensureListening(forceRestart: Bool) -> Bool {
-    let running = stateQueue.sync { shouldBeRunning }
-    guard running else {
-      return false
+    if KTVHTTPCache.proxyIsRunning() && !forceRestart {
+      return true
     }
-    registerObserversIfNeeded()
 
+    let port = stateQueue.sync { requestedPort }
+    return ensureListening(port: port, forceRestart: forceRestart)
+  }
+
+  private func ensureListening(port: Int, forceRestart: Bool) -> Bool {
     if KTVHTTPCache.proxyIsRunning() && !forceRestart {
       return true
     }
@@ -196,7 +150,6 @@ final class HlsProxyServerController: NSObject {
       KTVHTTPCache.proxyStop()
     }
 
-    let port = stateQueue.sync { requestedPort }
     KTVHTTPCache.proxySetPort(UInt16(max(0, port)))
     KTVHTTPCache.downloadSetWhitelistHeaderKeys([
       "Authorization",
@@ -233,7 +186,6 @@ final class HlsProxyServerController: NSObject {
 
   private func applyMaxCacheBytes(_ bytes: Int) {
     maxCacheBytes = HlsCacheBudget.normalize(bytes)
-    prefetchCache.setMaxBytes(maxCacheBytes)
     KTVHTTPCache.cacheSetMaxCacheLength(Int64(maxCacheBytes))
   }
 
@@ -264,39 +216,35 @@ final class HlsProxyServerController: NSObject {
     return String(fileName[..<hlsRange.lowerBound])
   }
 
-  private func prefetchLeadingSegments(url: String, headers: [String: String]?, streamKey: String, count: Int) async throws {
+  func prefetchLeadingSegments(url: String, headers: [String: String]?, count: Int) async throws {
     let manifest = try await prefetchClient.fetchText(url: url, headers: headers)
-    if manifestRewriter.isMasterPlaylist(manifest) {
-      if let firstVariant = manifestRewriter.extractVariantUrls(manifest).first {
-        let resolved = manifestRewriter.resolveUrl(base: url, relative: firstVariant)
-        try await prefetchLeadingSegments(url: resolved, headers: headers, streamKey: streamKey, count: count)
+    if manifestParser.isMasterPlaylist(manifest) {
+      if let firstVariant = manifestParser.extractVariantUrls(manifest).first {
+        let resolved = manifestParser.resolveUrl(base: url, relative: firstVariant)
+        try await prefetchLeadingSegments(url: resolved, headers: headers, count: count)
       }
       return
     }
 
-    let (initSegment, segments) = manifestRewriter.extractLeadingSegments(manifest, count: count)
+    let (initSegment, segments) = manifestParser.extractLeadingSegments(manifest, count: count)
     var seenResources = Set<String>()
     if let initSegment {
-      let resolved = manifestRewriter.resolveUrl(base: url, relative: initSegment)
-      try await prefetchResource(url: resolved, headers: headers, streamKey: streamKey, seenResources: &seenResources)
+      let resolved = manifestParser.resolveUrl(base: url, relative: initSegment)
+      try await prefetchResource(url: resolved, headers: headers, seenResources: &seenResources)
     }
 
     for segment in segments {
-      let resolved = manifestRewriter.resolveUrl(base: url, relative: segment)
-      try await prefetchResource(url: resolved, headers: headers, streamKey: streamKey, seenResources: &seenResources)
+      let resolved = manifestParser.resolveUrl(base: url, relative: segment)
+      try await prefetchResource(url: resolved, headers: headers, seenResources: &seenResources)
     }
   }
 
-  private func prefetchResource(url: String, headers: [String: String]?, streamKey: String, seenResources: inout Set<String>) async throws {
+  private func prefetchResource(url: String, headers: [String: String]?, seenResources: inout Set<String>) async throws {
     guard seenResources.insert(url).inserted else {
       return
     }
 
-    let resourceKey = HlsIdentity.requestKey(url: url, headers: headers)
-    if !prefetchCache.has(url: resourceKey) {
-      let data = try await prefetchThroughProxy(url: url, headers: headers)
-      prefetchCache.put(url: resourceKey, data: data, streamKey: streamKey)
-    }
+    _ = try await prefetchThroughProxy(url: url, headers: headers)
   }
 
   private func prefetchThroughProxy(url: String, headers: [String: String]?) async throws -> Data {
@@ -333,33 +281,26 @@ final class HlsProxyServerController: NSObject {
 
   private func handleWillResignActive() {
     stateQueue.sync {
-      if shouldBeRunning {
-        needsRestartOnActive = true
-      }
+      needsRestartOnActive = true
     }
   }
 
   private func handleDidEnterBackground() {
     stateQueue.sync {
-      if shouldBeRunning {
-        needsRestartOnActive = true
-      }
+      needsRestartOnActive = true
     }
   }
 
   private func handleDidBecomeActive() {
-    let pendingRestart = stateQueue.sync { () -> Bool? in
-      guard shouldBeRunning else {
-        return nil
-      }
+    let pendingRestart = stateQueue.sync { () -> Bool in
       let pending = needsRestartOnActive
       needsRestartOnActive = false
       return pending
     }
-    guard pendingRestart != nil else {
+    guard pendingRestart else {
       return
     }
-    _ = ensureListening(forceRestart: pendingRestart == true || !KTVHTTPCache.proxyIsRunning())
+    _ = ensureListening(forceRestart: true)
   }
 
   private func registerObserversIfNeeded() {

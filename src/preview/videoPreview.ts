@@ -1,21 +1,16 @@
 import { resolveSource } from '../source/resolveSource';
 import type { ResolvableSource } from '../source/resolveSource';
-import { createUnavailableWarner, getNativeStreamRuntime } from '../support/nativeStreamRuntime';
+import type { NitroVideoPreview } from '../bridge/nitro/NitroVideoPreview.nitro';
+import { createNativeNitroObject, createUnavailableWarner } from '../support/nativeNitroObject';
 import type { StreamHeaders } from '../streaming/types';
 
-interface VideoPreviewNativeModule {
-  getThumbnailUrl: (url: string, headers?: StreamHeaders) => Promise<string | null>;
-  peekThumbnailUrl?: (url: string, headers?: StreamHeaders) => Promise<string | null>;
-  clearPreview?: () => Promise<boolean>;
-}
-
-const NativePreview = getNativeStreamRuntime<VideoPreviewNativeModule>();
+const NativePreview = createNativeNitroObject<NitroVideoPreview>('NitroVideoPreview');
 
 class VideoPreview {
   private readonly warnUnavailable = createUnavailableWarner('VideoPreview');
 
   async getFirstFrame(source: ResolvableSource, headers?: StreamHeaders): Promise<string | null> {
-    if (!NativePreview?.getThumbnailUrl) {
+    if (!NativePreview) {
       this.warnUnavailable();
       return null;
     }
@@ -31,7 +26,7 @@ class VideoPreview {
   }
 
   async peekFirstFrame(source: ResolvableSource, headers?: StreamHeaders): Promise<string | null> {
-    if (!NativePreview?.peekThumbnailUrl) {
+    if (!NativePreview) {
       return null;
     }
 
@@ -46,7 +41,7 @@ class VideoPreview {
   }
 
   async clear(): Promise<boolean> {
-    if (!NativePreview?.clearPreview) {
+    if (!NativePreview) {
       return true;
     }
     try {

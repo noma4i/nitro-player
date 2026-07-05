@@ -1,6 +1,7 @@
 package com.nitroplay.video.behavior.runtime
 
 import android.os.Looper
+import com.margelo.nitro.video.PlaybackCachedState
 import com.nitroplay.video.support.Threading
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
@@ -69,6 +70,43 @@ class PlayerThreadingBehaviorTest {
     })
 
     assertEquals("inline", result)
+  }
+
+  @Test
+  fun cachedPlaybackGetters_fromBackgroundDoNotWaitForPausedMainLooper() {
+    val cachedState = PlaybackCachedState()
+    Threading.runOnMainThread {
+      cachedState.loop = true
+      cachedState.muted = true
+      cachedState.rate = 1.25
+      cachedState.isBuffering = true
+      cachedState.isVisualReady = true
+    }
+    ShadowLooper.idleMainLooper()
+
+    val result = AtomicReference<List<Any>?>()
+    val error = AtomicReference<Throwable?>()
+    val finished = CountDownLatch(1)
+
+    Thread {
+      try {
+        result.set(listOf(
+          cachedState.loop,
+          cachedState.muted,
+          cachedState.rate,
+          cachedState.isBuffering,
+          cachedState.isVisualReady
+        ))
+      } catch (throwable: Throwable) {
+        error.set(throwable)
+      } finally {
+        finished.countDown()
+      }
+    }.start()
+
+    assertTrue("Cached getters must return without a main-looper drain", finished.await(1, TimeUnit.SECONDS))
+    assertEquals(null, error.get())
+    assertEquals(listOf(true, true, 1.25, true, true), result.get())
   }
 
   private fun drainMainLooperUntil(latch: CountDownLatch, timeoutMs: Long) {

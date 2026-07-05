@@ -64,7 +64,7 @@ namespace margelo::nitro::video {
 
   public:
     // Properties
-    
+
 
   public:
     // Methods

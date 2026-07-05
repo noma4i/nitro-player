@@ -29,7 +29,6 @@ export interface NitroPlayerViewRef {
     exitFullscreen: () => void;
     addEventListener: <Event extends keyof NitroPlayerViewEvents>(event: Event, callback: NitroPlayerViewEvents[Event]) => ListenerSubscription;
 }
-declare const _default: React.NamedExoticComponent<NitroPlayerViewProps & React.RefAttributes<NitroPlayerViewRef>>;
-export default _default;
-export declare const NitroVideo: React.NamedExoticComponent<NitroPlayerViewProps & React.RefAttributes<NitroPlayerViewRef>>;
+declare const MemoizedNitroPlayerView: React.NamedExoticComponent<NitroPlayerViewProps & React.RefAttributes<NitroPlayerViewRef>>;
+export default MemoizedNitroPlayerView;
 //# sourceMappingURL=NitroPlayerView.d.ts.map

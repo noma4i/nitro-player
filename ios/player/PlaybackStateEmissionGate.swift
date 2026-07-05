@@ -49,11 +49,9 @@ struct PlaybackStateFingerprint: Equatable, Sendable {
 
 final class PlaybackStateEmissionGate {
   private var lastFingerprint: PlaybackStateFingerprint?
-  private let lock = NSLock()
 
   func shouldEmit(fingerprint: PlaybackStateFingerprint) -> Bool {
-    lock.lock()
-    defer { lock.unlock() }
+    assertMainThread()
     if fingerprint == lastFingerprint {
       return false
     }
@@ -62,8 +60,15 @@ final class PlaybackStateEmissionGate {
   }
 
   func reset() {
-    lock.lock()
+    assertMainThread()
     lastFingerprint = nil
-    lock.unlock()
+  }
+
+  private func assertMainThread() {
+    // Playback-state emission is main-thread only: periodic observer uses
+    // queue .main and AVPlayer KVO callbacks dispatch through notifyDelegate.
+    #if DEBUG
+    assert(Thread.isMainThread)
+    #endif
   }
 }

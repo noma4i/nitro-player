@@ -14,6 +14,7 @@ object Threading {
   // Bounds the cross-thread wait so a blocked main thread surfaces as an error
   // instead of an indefinite block (ANR). Generous: only trips on a real hang.
   private const val MAIN_THREAD_SYNC_TIMEOUT_MS = 5_000L
+  private val mainHandler = Handler(Looper.getMainLooper())
 
   @JvmStatic
   fun runOnMainThread(action: () -> Unit) {
@@ -29,7 +30,12 @@ object Threading {
     }
 
     // Post the action to the main thread
-    Handler(NitroModules.applicationContext!!.mainLooper).post {
+    postToMainThread(action)
+  }
+
+  @JvmStatic
+  fun postToMainThread(action: () -> Unit) {
+    mainHandler.post {
       action()
     }
   }
@@ -43,7 +49,7 @@ object Threading {
       // Post the action to the main thread and wait for the result, bounded so
       // a blocked main thread fails fast instead of hanging this thread forever.
       val futureTask = FutureTask(action)
-      Handler(Looper.getMainLooper()).post(futureTask)
+      mainHandler.post(futureTask)
       try {
         futureTask.get(MAIN_THREAD_SYNC_TIMEOUT_MS, TimeUnit.MILLISECONDS)
       } catch (e: TimeoutException) {

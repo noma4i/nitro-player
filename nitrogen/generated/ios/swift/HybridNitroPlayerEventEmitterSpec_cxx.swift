@@ -84,7 +84,7 @@ open class HybridNitroPlayerEventEmitterSpec_cxx {
     }
   }
 
-  
+
 
   /**
    * Get the memory size of the Swift class (plus size of any other allocations)
@@ -121,7 +121,7 @@ open class HybridNitroPlayerEventEmitterSpec_cxx {
   }
 
   // Properties
-  
+
 
   // Methods
   @inline(__always)
@@ -140,7 +140,7 @@ open class HybridNitroPlayerEventEmitterSpec_cxx {
       return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func addOnLoadListener(listener: bridge.Func_void_onLoadData) -> bridge.Result_ListenerSubscription_ {
     do {
@@ -157,7 +157,7 @@ open class HybridNitroPlayerEventEmitterSpec_cxx {
       return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func addOnLoadStartListener(listener: bridge.Func_void_onLoadStartData) -> bridge.Result_ListenerSubscription_ {
     do {
@@ -174,7 +174,7 @@ open class HybridNitroPlayerEventEmitterSpec_cxx {
       return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func addOnFirstFrameListener(listener: bridge.Func_void_onFirstFrameData) -> bridge.Result_ListenerSubscription_ {
     do {
@@ -191,7 +191,7 @@ open class HybridNitroPlayerEventEmitterSpec_cxx {
       return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func addOnErrorListener(listener: bridge.Func_void_PlaybackError) -> bridge.Result_ListenerSubscription_ {
     do {
@@ -208,7 +208,7 @@ open class HybridNitroPlayerEventEmitterSpec_cxx {
       return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func addOnPlaybackStateListener(listener: bridge.Func_void_PlaybackState) -> bridge.Result_ListenerSubscription_ {
     do {
@@ -225,7 +225,7 @@ open class HybridNitroPlayerEventEmitterSpec_cxx {
       return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func addOnVolumeChangeListener(listener: bridge.Func_void_onVolumeChangeData) -> bridge.Result_ListenerSubscription_ {
     do {
@@ -242,7 +242,7 @@ open class HybridNitroPlayerEventEmitterSpec_cxx {
       return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
     }
   }
-  
+
   @inline(__always)
   public final func clearAllListeners() -> bridge.Result_void_ {
     do {

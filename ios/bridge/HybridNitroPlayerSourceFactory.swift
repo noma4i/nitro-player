@@ -8,6 +8,11 @@
 import Foundation
 
 class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
+  private struct RoutedConfig {
+    let config: NativeNitroPlayerConfig
+    let isProxyRouteActive: Bool
+  }
+
   private func normalizeUri(_ uri: String) -> String {
     guard uri.hasPrefix("/") else {
       return uri
@@ -16,22 +21,45 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
     return URL(fileURLWithPath: uri).absoluteString
   }
 
-  private func normalizedConfig(from config: NativeNitroPlayerConfig) -> NativeNitroPlayerConfig {
+  private func routeMode(_ mode: NitroSourceTransportMode?) -> HlsTransportRouteMode? {
+    guard let mode else { return nil }
+    switch mode {
+    case .auto:
+      return .auto
+    case .direct:
+      return .direct
+    case .proxy:
+      return .proxy
+    }
+  }
+
+  private func shouldUseHlsProxy(config: NativeNitroPlayerConfig, normalizedUri: String) -> Bool {
+    HlsTransportRoutePolicy.shouldUseProxyForPlayback(
+      mode: routeMode(config.transport?.mode),
+      isHls: HlsManifestUrl.matches(normalizedUri),
+      feedPoolEligible: config.retention?.feedPoolEligible == true
+    )
+  }
+
+  private func routedConfig(from config: NativeNitroPlayerConfig) -> RoutedConfig {
     let normalizedUri = normalizeUri(config.uri)
-    let shouldUseHlsProxy = config.transport?.mode != .direct
+    let shouldUseHlsProxy = shouldUseHlsProxy(config: config, normalizedUri: normalizedUri)
     let route = shouldUseHlsProxy && HlsManifestUrl.matches(normalizedUri)
       ? HlsProxyRuntime.shared.resolvePlaybackRoute(url: normalizedUri, headers: config.headers)
       : HlsProxyRouteResolution(url: normalizedUri, isProxying: false)
 
-    return NativeNitroPlayerConfig(
-      uri: route.url,
-      headers: config.headers,
-      metadata: config.metadata,
-      startup: config.startup,
-      buffer: config.buffer,
-      retention: config.retention,
-      transport: config.transport,
-      preview: config.preview
+    return RoutedConfig(
+      config: NativeNitroPlayerConfig(
+        uri: route.url,
+        headers: config.headers,
+        metadata: config.metadata,
+        startup: config.startup,
+        buffer: config.buffer,
+        retention: config.retention,
+        transport: config.transport,
+        preview: config.preview
+      ),
+      isProxyRouteActive: route.isProxying
     )
   }
 
@@ -48,10 +76,11 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
       transport: config.transport,
       preview: config.preview
     )
-    let normalized = normalizedConfig(from: normalizedInput)
+    let normalized = routedConfig(from: normalizedInput)
     return try HybridNitroPlayerSource(
-      config: normalized,
-      originalConfig: normalizedInput
+      config: normalized.config,
+      originalConfig: normalizedInput,
+      isProxyRouteActive: normalized.isProxyRouteActive
     )
   }
 
@@ -66,6 +95,10 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
       transport: nil,
       preview: nil
     )
-    return try HybridNitroPlayerSource(config: normalizedConfig(from: config))
+    let normalized = routedConfig(from: config)
+    return try HybridNitroPlayerSource(
+      config: normalized.config,
+      isProxyRouteActive: normalized.isProxyRouteActive
+    )
   }
 }

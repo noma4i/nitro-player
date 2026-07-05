@@ -12,7 +12,6 @@ export declare const SOURCE_POLICIES: ["auto", "feed", "hero", "thumbnail", "man
 export interface NitroSourceMetadata {
     title?: string;
     subtitle?: string;
-    description?: string;
     artist?: string;
     imageUri?: string;
 }
@@ -23,6 +22,13 @@ export interface NitroSourceRetentionConfig {
     feedPoolEligible?: boolean;
 }
 export interface NitroSourceTransportConfig {
+    /**
+     * HLS transport routing.
+     *
+     * `direct` bypasses the local proxy/cache path. `proxy` opts into it. `auto`
+     * is direct by default and uses the proxy only for cache-benefiting sources
+     * such as feed-pool-eligible HLS items.
+     */
     mode?: NitroSourceTransportMode;
 }
 export interface NitroSourcePreviewConfig {
@@ -39,8 +45,9 @@ export interface NitroSourceConfig {
      */
     uri: NitroSourceUri;
     /**
-     * Consumer scenario policy. Policy expands to safe defaults and can be
-     * overridden by explicit startup/retention/transport/preview fields.
+     * Consumer scenario policy. Policy expands to safe defaults. Explicit
+     * per-source fields win over policy defaults; object sections merge per field.
+     * The `manual` policy has no defaults, so omitted sections stay undefined.
      * @default 'auto'
      */
     policy?: NitroSourcePolicy;
@@ -53,33 +60,39 @@ export interface NitroSourceConfig {
      */
     metadata?: NitroSourceMetadata;
     /**
-     * Source startup strategy.
+     * Source startup strategy. Explicit value wins over the selected policy
+     * default.
      * @default 'eager'
      */
     startup?: NitroSourceStartup;
     /**
-     * Explicit buffering configuration.
+     * Explicit buffering configuration. Merges per field over the selected policy
+     * default. In `NitroFeedRingPlayer` with adaptive quality, item explicit
+     * buffer fields win over the adaptive decision, which wins over policy
+     * defaults.
      */
     buffer?: BufferConfig;
     /**
-     * Explicit retention and trim policy.
+     * Explicit retention and trim policy. Merges per field over the selected
+     * policy default.
      */
     retention?: NitroSourceRetentionConfig;
     /**
-     * How the source should be transported.
+     * How the source should be transported. In `auto`, ordinary HLS sources play
+     * direct by default; feed-pool-eligible HLS sources keep the proxy/cache path.
+     * Merges per field over the selected policy default.
      * @default 'auto'
      */
     transport?: NitroSourceTransportConfig;
     /**
-     * First-frame and preview generation policy.
+     * First-frame and preview generation policy. Merges per field over the
+     * selected policy default.
      */
     preview?: NitroSourcePreviewConfig;
 }
 export type NitroSourceInput = NitroSourceUri | NitroSourceConfig | NitroSourceDescriptor;
 export interface NitroSourceIdentity {
     playbackKey: string;
-    requestKey: string;
-    previewKey: string;
 }
 export interface NitroSourceDescriptor {
     readonly uri: string;

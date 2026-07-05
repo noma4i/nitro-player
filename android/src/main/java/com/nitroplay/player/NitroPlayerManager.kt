@@ -3,6 +3,8 @@ package com.nitroplay.video.player
 import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.res.Configuration
+import android.os.Handler
+import android.os.Looper
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import com.facebook.react.bridge.LifecycleEventListener
@@ -15,16 +17,18 @@ import java.lang.ref.WeakReference
 
 @OptIn(UnstableApi::class)
 object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
-  private const val MAX_HOT_FEED_PLAYERS = 2
+  private const val MAX_HOT_FEED_PLAYERS = 3
   private const val TRIM_MEMORY_RUNNING_LOW_LEVEL = 10
   private const val TRIM_MEMORY_COMPLETE_LEVEL = 80
 
+  private val mainHandler = Handler(Looper.getMainLooper())
   // nitroId -> weak NitroPlayerView
   private val views = mutableMapOf<Int, WeakReference<NitroPlayerView>>()
   // player -> list of nitroIds of views that are using this player
   private val players = mutableMapOf<HybridNitroPlayer, MutableList<Int>>()
   private val feedHotActivity = mutableMapOf<HybridNitroPlayer, Long>()
   private var feedHotSequence = 0L
+  private var feedHotRebalanceScheduled = false
 
   var audioFocusManager = AudioFocusManager()
 
@@ -75,7 +79,7 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
       }
 
       views.remove(view.nitroId)
-      rebalanceFeedHotPlayersLocked()
+      scheduleFeedHotRebalanceLocked()
     }
   }
 
@@ -99,7 +103,7 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
         maybePassPlayerToView(player)
       }
 
-      rebalanceFeedHotPlayersLocked()
+      scheduleFeedHotRebalanceLocked()
     }
   }
 
@@ -127,7 +131,7 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
 
       players.remove(player)
       feedHotActivity.remove(player)
-      rebalanceFeedHotPlayersLocked()
+      scheduleFeedHotRebalanceLocked()
     }
   }
 
@@ -145,7 +149,7 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
         feedHotActivity.remove(player)
       }
 
-      rebalanceFeedHotPlayersLocked()
+      scheduleFeedHotRebalanceLocked()
     }
   }
 
@@ -223,6 +227,7 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
     runOnMainThread {
       players.keys.toList().forEach { it.trimForResourcePressure() }
       feedHotActivity.keys.retainAll(players.keys)
+      feedHotRebalanceScheduled = false
       rebalanceFeedHotPlayersLocked()
     }
   }
@@ -277,5 +282,21 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
     feedPlayers
       .filterNot { playersToKeepHot.contains(it) }
       .forEach { it.trimForFeedHotPool() }
+  }
+
+  private fun scheduleFeedHotRebalanceLocked() {
+    if (feedHotRebalanceScheduled) {
+      return
+    }
+
+    feedHotRebalanceScheduled = true
+    mainHandler.post {
+      if (!feedHotRebalanceScheduled) {
+        return@post
+      }
+
+      feedHotRebalanceScheduled = false
+      rebalanceFeedHotPlayersLocked()
+    }
   }
 }

@@ -1,9 +1,8 @@
 import type { ListenerSubscription, NitroPlayerEventEmitter } from '../bridge/nitro/NitroPlayerEventEmitter.nitro';
-import { ALL_PLAYER_EVENTS, type AllNitroPlayerEvents as PlayerEvents } from './events';
+import type { AllNitroPlayerEvents as PlayerEvents } from './events';
 
 export class NitroPlayerEvents {
   protected eventEmitter: NitroPlayerEventEmitter;
-  protected readonly supportedEvents: (keyof PlayerEvents)[] = ALL_PLAYER_EVENTS;
 
   constructor(eventEmitter: NitroPlayerEventEmitter) {
     this.eventEmitter = eventEmitter;

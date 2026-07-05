@@ -26,9 +26,6 @@ data class NitroSourceMetadata(
   val subtitle: String?,
   @DoNotStrip
   @Keep
-  val description: String?,
-  @DoNotStrip
-  @Keep
   val artist: String?,
   @DoNotStrip
   @Keep
@@ -41,7 +38,6 @@ data class NitroSourceMetadata(
     if (other !is NitroSourceMetadata) return false
     return Objects.deepEquals(this.title, other.title)
       && Objects.deepEquals(this.subtitle, other.subtitle)
-      && Objects.deepEquals(this.description, other.description)
       && Objects.deepEquals(this.artist, other.artist)
       && Objects.deepEquals(this.imageUri, other.imageUri)
   }
@@ -50,7 +46,6 @@ data class NitroSourceMetadata(
     return arrayOf<Any?>(
       title,
       subtitle,
-      description,
       artist,
       imageUri
     ).contentDeepHashCode()
@@ -64,8 +59,8 @@ data class NitroSourceMetadata(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(title: String?, subtitle: String?, description: String?, artist: String?, imageUri: String?): NitroSourceMetadata {
-      return NitroSourceMetadata(title, subtitle, description, artist, imageUri)
+    private fun fromCpp(title: String?, subtitle: String?, artist: String?, imageUri: String?): NitroSourceMetadata {
+      return NitroSourceMetadata(title, subtitle, artist, imageUri)
     }
   }
 }

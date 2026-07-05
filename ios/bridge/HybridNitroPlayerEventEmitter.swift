@@ -5,6 +5,7 @@ class HybridNitroPlayerEventEmitter: HybridNitroPlayerEventEmitterSpec {
   private let registry = ListenerRegistry()
   private var latestFirstFrame: onFirstFrameData?
   var onFirstFrameListenerAdded: (() -> Void)?
+  var onPlaybackStateListenerAdded: (() -> Void)?
 
   func addOnBandwidthUpdateListener(listener: @escaping (BandwidthData) -> Void) throws -> ListenerSubscription {
     registry.add(event: "onBandwidthUpdate", listener: listener)
@@ -33,7 +34,9 @@ class HybridNitroPlayerEventEmitter: HybridNitroPlayerEventEmitterSpec {
   }
 
   func addOnPlaybackStateListener(listener: @escaping (PlaybackState) -> Void) throws -> ListenerSubscription {
-    registry.add(event: "onPlaybackState", listener: listener)
+    let subscription = registry.add(event: "onPlaybackState", listener: listener)
+    onPlaybackStateListenerAdded?()
+    return subscription
   }
 
   func addOnVolumeChangeListener(listener: @escaping (onVolumeChangeData) -> Void) throws -> ListenerSubscription {
@@ -79,5 +82,9 @@ class HybridNitroPlayerEventEmitter: HybridNitroPlayerEventEmitterSpec {
 
   func hasOnFirstFrameListeners() -> Bool {
     registry.hasListeners(event: "onFirstFrame")
+  }
+
+  func hasOnPlaybackStateListeners() -> Bool {
+    registry.hasListeners(event: "onPlaybackState")
   }
 }

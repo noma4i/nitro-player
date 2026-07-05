@@ -2,6 +2,23 @@ import AVFoundation
 import Foundation
 
 final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
+  private enum SlotTransition: String {
+    case clear
+    case empty
+    case emptySource = "empty-source"
+    case error
+    case missingCenter = "missing-center"
+    case outsideWindow = "outside-window"
+    case ready
+    case released
+    case replace
+    case reuse
+
+    static func clearReason(_ reason: String) -> SlotTransition {
+      SlotTransition(rawValue: reason) ?? .clear
+    }
+  }
+
   private final class CatalogItem {
     let index: Int
     let momentId: String?
@@ -24,7 +41,7 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
     var sourceKey: String?
     var generation: Int64 = 0
     var desiredPlay = false
-    var lastTransition = "empty"
+    var lastTransition = SlotTransition.empty
     var lastError: String?
 
     init(slotId: Int) {
@@ -139,7 +156,7 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
         slot.momentId = nil
         slot.sourceKey = nil
         slot.generation += 1
-        slot.lastTransition = "released"
+        slot.lastTransition = .released
         emitSlotState(slot)
       }
     }
@@ -182,7 +199,7 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
     case .clear:
       try clearSlot(
         slot,
-        reason: command.reason ?? "clear",
+        transition: SlotTransition.clearReason(command.reason ?? "clear"),
         assignedIndex: command.assignedIndex,
         momentId: command.momentId,
         hadSource: command.hadSource
@@ -200,7 +217,7 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
     else {
       try clearSlot(
         slot,
-        reason: "empty-source",
+        transition: .emptySource,
         assignedIndex: command.assignedIndex,
         momentId: command.momentId,
         hadSource: command.hadSource
@@ -219,7 +236,7 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
     if command.action == .replace {
       slot.sourceKey = sourceKey
       slot.generation += 1
-      slot.lastTransition = "replace"
+      slot.lastTransition = .replace
       player.wantsToPlay = shouldPlay
       applyStaticPlayerState(player, shouldPlay: shouldPlay)
       emitSlotState(slot)
@@ -232,7 +249,7 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
           }
 
           slot.lastError = nil
-          slot.lastTransition = "ready"
+          slot.lastTransition = .ready
           self.applyStaticPlayerState(slot.player, shouldPlay: slot.desiredPlay)
           if slot.desiredPlay {
             try? slot.player.play()
@@ -249,7 +266,7 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
 
           slot.sourceKey = nil
           slot.lastError = error.localizedDescription
-          slot.lastTransition = "error"
+          slot.lastTransition = .error
           slot.desiredPlay = false
           self.emitSlotState(slot)
         }
@@ -257,14 +274,14 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
       return
     }
 
-    slot.lastTransition = "reuse"
+    slot.lastTransition = .reuse
     applyStaticPlayerState(player, shouldPlay: shouldPlay)
     emitSlotState(slot)
   }
 
   private func clearSlot(
     _ slot: SlotState,
-    reason: String,
+    transition: SlotTransition,
     assignedIndex: Int? = nil,
     momentId: String? = nil,
     hadSource: Bool? = nil
@@ -276,7 +293,7 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
     slot.sourceKey = nil
     slot.momentId = momentId
     slot.generation += 1
-    slot.lastTransition = reason
+    slot.lastTransition = transition
     slot.lastError = nil
     if shouldClearNativeSource {
       try? player.pause()
@@ -289,7 +306,7 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
           }
 
           slot.lastError = error.localizedDescription
-          slot.lastTransition = "error"
+          slot.lastTransition = .error
           self.emitSlotState(slot)
         }
       }
@@ -313,7 +330,7 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
       let shouldPlay = slot.assignedIndex.flatMap { plannedSlotsByIndex[$0]?.shouldPlay } == true && slot.sourceKey != nil
       slot.desiredPlay = shouldPlay
       applyStaticPlayerState(player, shouldPlay: shouldPlay)
-      if slot.lastTransition == "replace" {
+      if slot.lastTransition == .replace {
         continue
       }
       if shouldPlay {
@@ -361,7 +378,7 @@ final class HybridNitroFeedRingPlayer: HybridNitroFeedRingPlayerSpec {
       watchdogPending: player.hasPendingPlaybackWatchdog,
       nativePlaybackState: timeControlStatusName(player.cachedTimeControlStatus),
       status: state.status.stringValue,
-      lastTransition: slot.lastTransition,
+      lastTransition: slot.lastTransition.rawValue,
       lastError: slot.lastError
     )
   }

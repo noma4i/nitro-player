@@ -231,6 +231,32 @@ class HlsThumbnailCacheTest {
     assertEquals(1, stats["fileCount"])
   }
 
+  @Test
+  fun segmentPutRunsSingleEvictionPass() {
+    val before = store.evictionRunCountForTests()
+
+    store.put("https://cdn.example.com/segment.ts", ByteArray(32) { 8 }, "stream")
+
+    assertEquals(before + 1, store.evictionRunCountForTests())
+  }
+
+  @Test
+  fun runningTotalBytesTracksEvictedSegments() {
+    val segmentSize = 36 * 1024 * 1024
+    val firstUrl = "https://cdn.example.com/first.ts"
+    val secondUrl = "https://cdn.example.com/second.ts"
+    store.setMaxBytes(HlsCacheBudget.MINIMUM_MAX_BYTES)
+
+    store.put(firstUrl, ByteArray(segmentSize) { 1 }, "s1")
+    store.put(secondUrl, ByteArray(segmentSize) { 2 }, "s2")
+
+    val stats = store.getCacheStats()
+    assertNull(store.getFilePath(firstUrl))
+    assertNotNull(store.getFilePath(secondUrl))
+    assertEquals(segmentSize.toLong(), stats["totalSize"])
+    assertEquals(1, stats["fileCount"])
+  }
+
   private fun writeLegacySegmentIndex(url: String, fileName: String, indexedSize: Long, bytes: ByteArray) {
     val cacheDir = hlsCacheDir().apply { mkdirs() }
     File(cacheDir, fileName).apply {

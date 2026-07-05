@@ -32,7 +32,7 @@ public extension FeedRingCatalog {
   var revision: Double {
     return self.__revision
   }
-  
+
   @inline(__always)
   var items: [FeedRingCatalogItem] {
     return self.__items.map({ __item in __item })

@@ -40,8 +40,15 @@ objects are internal bridge details.
 | `preview.maxHeight`     | `480`             |
 | `preview.quality`       | `70`              |
 
-Policy defaults are expanded in JS before native source creation. Explicit
-fields override the selected policy.
+Policy defaults are expanded in JS before native source creation. Precedence is
+explicit per-source fields over the selected policy default. Object sections
+(`buffer`, `retention`, `transport`, `preview`) merge per field, so an explicit
+partial object keeps unspecified policy fields. `startup` is scalar and an
+explicit value replaces the policy default. The `manual` policy has no defaults;
+omitted sections stay `undefined`.
+
+`NitroFeedRingPlayer` adds one feed-only derived layer when adaptive quality is
+enabled: item explicit buffer fields > adaptive decision > policy default.
 
 ## `NitroSourceMetadata`
 
@@ -51,7 +58,6 @@ All fields are optional. Omit any field you do not need.
 | ------------- | ------------------- |
 | `title`       | `string` (optional) |
 | `subtitle`    | `string` (optional) |
-| `description` | `string` (optional) |
 | `artist`      | `string` (optional) |
 | `imageUri`    | `string` (optional) |
 
@@ -70,7 +76,7 @@ All fields are optional. Omit any field you do not need.
 | ------ | ------------------------------- | --------------------------------------- |
 | `mode` | `'auto' \| 'direct' \| 'proxy'` | Route selection for streaming transport |
 
-`auto` prefers the shared HLS proxy/runtime and may fall back to direct playback if the proxy cannot be made ready for the active source generation. `direct` skips proxy routing. `proxy` requires proxy routing.
+`auto` plays HLS direct by default. Sources with `retention.feedPoolEligible: true`, including the built-in `feed` policy, use the shared HLS proxy/cache path automatically. `direct` skips proxy routing. `proxy` opts into proxy routing and still falls back to direct playback if the proxy cannot be made ready for the active source generation.
 
 ## `NitroSourcePreviewConfig`
 

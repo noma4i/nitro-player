@@ -38,17 +38,17 @@ public extension FeedRingSnapshot {
   var catalogRevision: Double {
     return self.__catalogRevision
   }
-  
+
   @inline(__always)
   var viewportRevision: Double {
     return self.__viewportRevision
   }
-  
+
   @inline(__always)
   var catalogSize: Double {
     return self.__catalogSize
   }
-  
+
   @inline(__always)
   var centerIndex: Double? {
     return { () -> Double? in
@@ -60,22 +60,22 @@ public extension FeedRingSnapshot {
       }
     }()
   }
-  
+
   @inline(__always)
   var playbackAllowed: Bool {
     return self.__playbackAllowed
   }
-  
+
   @inline(__always)
   var muted: Bool {
     return self.__muted
   }
-  
+
   @inline(__always)
   var released: Bool {
     return self.__released
   }
-  
+
   @inline(__always)
   var slots: [FeedRingSlotSnapshot] {
     return self.__slots.map({ __item in __item })

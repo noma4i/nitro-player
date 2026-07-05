@@ -14,6 +14,7 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
   private var _retentionState: RetentionLevel = .cold
   private var _config: NativeNitroPlayerConfig
   private var _url: URL
+  private var _isProxyRouteActive: Bool
   private let stateLock = NSLock()
   let originalConfig: NativeNitroPlayerConfig
 
@@ -57,10 +58,12 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
 
   init(
     config: NativeNitroPlayerConfig,
-    originalConfig: NativeNitroPlayerConfig? = nil
+    originalConfig: NativeNitroPlayerConfig? = nil,
+    isProxyRouteActive: Bool = false
   ) throws {
     self.originalConfig = originalConfig ?? config
     self._config = config
+    self._isProxyRouteActive = isProxyRouteActive
 
     guard let url = URL(string: config.uri) else {
       throw SourceError.invalidUri(uri: config.uri).error()
@@ -200,10 +203,16 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
   }
 
   func supportsStartupRecovery() -> Bool {
-    guard originalConfig.transport?.mode != .direct else {
-      return false
-    }
-    return HlsManifestUrl.matches(originalConfig.uri)
+    HlsTransportRoutePolicy.supportsStartupRecovery(
+      isHls: HlsManifestUrl.matches(originalConfig.uri),
+      isProxyRouteActive: isProxyRouteActive()
+    )
+  }
+
+  func isProxyRouteActive() -> Bool {
+    stateLock.lock()
+    defer { stateLock.unlock() }
+    return _isProxyRouteActive
   }
 
   func previewSourceUri() -> String {
@@ -239,6 +248,7 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
       preview: originalConfig.preview
     )
     _url = nextUrl
+    _isProxyRouteActive = resolution.isProxying
     stateLock.unlock()
 
     return resolution.isProxying

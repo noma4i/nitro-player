@@ -2,11 +2,7 @@ import type { LibraryError, NitroPlayerErrorCode, NitroPlayerViewError, PlayerEr
 export * from './codes';
 export declare class NitroPlayerError<TCode extends NitroPlayerErrorCode> extends Error {
     private readonly _code;
-    private readonly _message;
-    private readonly _stack?;
     get code(): TCode;
-    get message(): string;
-    get stack(): string | undefined;
     /**
      * @internal
      */

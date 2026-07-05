@@ -23,5 +23,6 @@ This code is private NitroPlay implementation detail for the iOS HLS/cache proxy
 | PR #148 | Download core lock is initialized eagerly in `init` |
 | PR #93 | `NSError **` output is written only when non-null |
 | Issue #94 | Proxied response headers strip `Content-Encoding` after `NSURLSession` decoding |
+| NitroPlay local | Request ledger maintains open network request counters by normalized client + stream key so preview drain waits do not copy and scan the snapshot hot path |
 
 PR #21 is not copied directly because the proposed CoreFoundation ownership change is unsafe under ARC without a dedicated leak reproduction.

@@ -81,7 +81,7 @@ public extension NitroPlayerDefaults {
       }
     }()
   }
-  
+
   @inline(__always)
   var muted: Bool? {
     return { () -> Bool? in
@@ -93,7 +93,7 @@ public extension NitroPlayerDefaults {
       }
     }()
   }
-  
+
   @inline(__always)
   var volume: Double? {
     return { () -> Double? in
@@ -105,7 +105,7 @@ public extension NitroPlayerDefaults {
       }
     }()
   }
-  
+
   @inline(__always)
   var rate: Double? {
     return { () -> Double? in
@@ -117,17 +117,17 @@ public extension NitroPlayerDefaults {
       }
     }()
   }
-  
+
   @inline(__always)
   var mixAudioMode: MixAudioMode? {
     return self.__mixAudioMode.value
   }
-  
+
   @inline(__always)
   var ignoreSilentSwitchMode: IgnoreSilentSwitchMode? {
     return self.__ignoreSilentSwitchMode.value
   }
-  
+
   @inline(__always)
   var playInBackground: Bool? {
     return { () -> Bool? in
@@ -139,7 +139,7 @@ public extension NitroPlayerDefaults {
       }
     }()
   }
-  
+
   @inline(__always)
   var playWhenInactive: Bool? {
     return { () -> Bool? in

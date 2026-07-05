@@ -9,6 +9,7 @@ import com.nitroplay.video.streaming.HlsProxyRuntime
 import com.nitroplay.video.support.errors.LibraryError
 import com.nitroplay.video.source.buildMediaSource
 import com.nitroplay.video.source.createMediaItemFromVideoConfig
+import com.nitroplay.video.source.HlsTransportRoutePolicy
 import com.nitroplay.video.source.SourceLoader
 import com.nitroplay.video.source.NitroPlayerInformationUtils
 
@@ -17,6 +18,7 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
   lateinit var config: NativeNitroPlayerConfig
     private set
   private lateinit var originalConfig: NativeNitroPlayerConfig
+  private var proxyRouteActive = false
 
   private var mediaItem: MediaItem? = null
   private var mediaSource: MediaSource? = null
@@ -31,11 +33,13 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
 
   constructor(
     config: NativeNitroPlayerConfig,
-    originalConfig: NativeNitroPlayerConfig = config
+    originalConfig: NativeNitroPlayerConfig = config,
+    isProxyRouteActive: Boolean = false
   ) : this() {
     this.uri = config.uri
     this.config = config
     this.originalConfig = originalConfig
+    this.proxyRouteActive = isProxyRouteActive
   }
 
   private fun createOrGetMediaItem(): MediaItem {
@@ -102,10 +106,14 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
   }
 
   fun supportsStartupRecovery(): Boolean {
-    if (originalConfig.transport?.mode == NitroSourceTransportMode.DIRECT) {
-      return false
-    }
-    return HlsManifestUrl.matches(originalConfig.uri)
+    return HlsTransportRoutePolicy.supportsStartupRecovery(
+      isHls = HlsManifestUrl.matches(originalConfig.uri),
+      isProxyRouteActive = synchronized(stateLock) { proxyRouteActive }
+    )
+  }
+
+  fun isProxyRouteActive(): Boolean {
+    return synchronized(stateLock) { proxyRouteActive }
   }
 
   fun previewSourceUri(): String {
@@ -136,12 +144,15 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
       originalConfig.uri,
       originalConfig.headers
     )
-    config = originalConfig.copy(uri = resolution.url)
-    uri = resolution.url
+    synchronized(stateLock) {
+      config = originalConfig.copy(uri = resolution.url)
+      uri = resolution.url
+      proxyRouteActive = resolution.isProxying
+    }
     return resolution.isProxying
   }
 
-  private fun estimateConfigMemoryBytes(): Long {
+  private fun estimatedConfigMemoryBytes(): Long {
     var bytes = uri.toByteArray().size.toLong()
 
     config.headers?.forEach { (key, value) ->
@@ -152,7 +163,6 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
     config.metadata?.let { metadata ->
       bytes += metadata.title?.toByteArray()?.size?.toLong() ?: 0L
       bytes += metadata.subtitle?.toByteArray()?.size?.toLong() ?: 0L
-      bytes += metadata.description?.toByteArray()?.size?.toLong() ?: 0L
       bytes += metadata.artist?.toByteArray()?.size?.toLong() ?: 0L
       bytes += metadata.imageUri?.toByteArray()?.size?.toLong() ?: 0L
     }
@@ -171,7 +181,7 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
 
   override val memorySize: Long
     get() {
-      var size = estimateConfigMemoryBytes()
+      var size = estimatedConfigMemoryBytes()
 
       // mediaItem/mediaSource are mutated only under stateLock; read them under
       // the same lock to avoid a torn/stale view from another thread.

@@ -19,11 +19,11 @@ public final class NitroPlayAutolinking {
       return __cxxWrapped.getCxxPart()
     }()
   }
-  
+
   public static func isNitroPlayerFactoryRecyclable() -> Bool {
     return HybridNitroPlayerFactory.self is any RecyclableView.Type
   }
-  
+
   public static func createNitroPlayerSourceFactory() -> bridge.std__shared_ptr_HybridNitroPlayerSourceFactorySpec_ {
     let hybridObject = HybridNitroPlayerSourceFactory()
     return { () -> bridge.std__shared_ptr_HybridNitroPlayerSourceFactorySpec_ in
@@ -31,11 +31,11 @@ public final class NitroPlayAutolinking {
       return __cxxWrapped.getCxxPart()
     }()
   }
-  
+
   public static func isNitroPlayerSourceFactoryRecyclable() -> Bool {
     return HybridNitroPlayerSourceFactory.self is any RecyclableView.Type
   }
-  
+
   public static func createNitroPlayerViewManagerFactory() -> bridge.std__shared_ptr_HybridNitroPlayerViewManagerFactorySpec_ {
     let hybridObject = HybridNitroPlayerViewManagerFactory()
     return { () -> bridge.std__shared_ptr_HybridNitroPlayerViewManagerFactorySpec_ in
@@ -43,11 +43,11 @@ public final class NitroPlayAutolinking {
       return __cxxWrapped.getCxxPart()
     }()
   }
-  
+
   public static func isNitroPlayerViewManagerFactoryRecyclable() -> Bool {
     return HybridNitroPlayerViewManagerFactory.self is any RecyclableView.Type
   }
-  
+
   public static func createNitroFeedRingPlayerFactory() -> bridge.std__shared_ptr_HybridNitroFeedRingPlayerFactorySpec_ {
     let hybridObject = HybridNitroFeedRingPlayerFactory()
     return { () -> bridge.std__shared_ptr_HybridNitroFeedRingPlayerFactorySpec_ in
@@ -55,8 +55,32 @@ public final class NitroPlayAutolinking {
       return __cxxWrapped.getCxxPart()
     }()
   }
-  
+
   public static func isNitroFeedRingPlayerFactoryRecyclable() -> Bool {
     return HybridNitroFeedRingPlayerFactory.self is any RecyclableView.Type
+  }
+
+  public static func createNitroStreamCache() -> bridge.std__shared_ptr_HybridNitroStreamCacheSpec_ {
+    let hybridObject = HybridNitroStreamCache()
+    return { () -> bridge.std__shared_ptr_HybridNitroStreamCacheSpec_ in
+      let __cxxWrapped = hybridObject.getCxxWrapper()
+      return __cxxWrapped.getCxxPart()
+    }()
+  }
+
+  public static func isNitroStreamCacheRecyclable() -> Bool {
+    return HybridNitroStreamCache.self is any RecyclableView.Type
+  }
+
+  public static func createNitroVideoPreview() -> bridge.std__shared_ptr_HybridNitroVideoPreviewSpec_ {
+    let hybridObject = HybridNitroVideoPreview()
+    return { () -> bridge.std__shared_ptr_HybridNitroVideoPreviewSpec_ in
+      let __cxxWrapped = hybridObject.getCxxWrapper()
+      return __cxxWrapped.getCxxPart()
+    }()
+  }
+
+  public static func isNitroVideoPreviewRecyclable() -> Bool {
+    return HybridNitroVideoPreview.self is any RecyclableView.Type
   }
 }

@@ -14,6 +14,8 @@
 #include "HybridNitroPlayerSourceFactorySpecSwift.hpp"
 #include "HybridNitroPlayerViewManagerFactorySpecSwift.hpp"
 #include "HybridNitroFeedRingPlayerFactorySpecSwift.hpp"
+#include "HybridNitroStreamCacheSpecSwift.hpp"
+#include "HybridNitroVideoPreviewSpecSwift.hpp"
 
 @interface NitroPlayAutolinking : NSObject
 @end
@@ -49,6 +51,20 @@
     "NitroFeedRingPlayerFactory",
     []() -> std::shared_ptr<HybridObject> {
       std::shared_ptr<HybridNitroFeedRingPlayerFactorySpec> hybridObject = NitroPlay::NitroPlayAutolinking::createNitroFeedRingPlayerFactory();
+      return hybridObject;
+    }
+  );
+  HybridObjectRegistry::registerHybridObjectConstructor(
+    "NitroStreamCache",
+    []() -> std::shared_ptr<HybridObject> {
+      std::shared_ptr<HybridNitroStreamCacheSpec> hybridObject = NitroPlay::NitroPlayAutolinking::createNitroStreamCache();
+      return hybridObject;
+    }
+  );
+  HybridObjectRegistry::registerHybridObjectConstructor(
+    "NitroVideoPreview",
+    []() -> std::shared_ptr<HybridObject> {
+      std::shared_ptr<HybridNitroVideoPreviewSpec> hybridObject = NitroPlay::NitroPlayAutolinking::createNitroVideoPreview();
       return hybridObject;
     }
   );

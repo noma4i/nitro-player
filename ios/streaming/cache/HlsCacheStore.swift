@@ -24,150 +24,6 @@ final class HlsCacheStore {
     ensureDir()
   }
 
-  func setMaxBytes(_ bytes: Int) {
-    queue.sync {
-      maxBytes = HlsCacheBudget.normalize(bytes)
-      evictIfNeeded()
-      saveIndex()
-    }
-  }
-
-  func get(url: String) -> Data? {
-    guard let entry = queue.sync(execute: { index[url] }) else { return nil }
-    if isExpired(entry) || !isSafeFileName(entry.fileName) {
-      queue.async { [weak self] in
-        self?.remove(url: url)
-      }
-      return nil
-    }
-
-    let fileUrl = cacheDir.appendingPathComponent(entry.fileName)
-    guard let data = try? Data(contentsOf: fileUrl),
-          data.count > 0,
-          data.count == entry.size
-    else {
-      queue.async { [weak self] in
-        self?.remove(url: url)
-      }
-      return nil
-    }
-
-    queue.async { [weak self] in
-      guard var current = self?.index[url] else { return }
-      current.lastAccess = Date().timeIntervalSince1970
-      self?.index[url] = current
-      self?.scheduleSave()
-    }
-
-    return data
-  }
-
-  func put(url: String, data: Data, streamKey: String?) {
-    queue.async {
-      self.ensureDir()
-      self.evictIfNeeded()
-      let name = self.sha256(url) + ".seg"
-      let fileUrl = self.cacheDir.appendingPathComponent(name)
-      do {
-        try data.write(to: fileUrl, options: .atomic)
-        let entry = HlsCacheEntry(
-          url: url,
-          fileName: name,
-          size: data.count,
-          streamKey: streamKey,
-          createdAt: Date().timeIntervalSince1970,
-          lastAccess: Date().timeIntervalSince1970
-        )
-        self.index[url] = entry
-        self.evictIfNeeded()
-        self.scheduleSave()
-      } catch {
-        cacheLogger.error("Failed to write cache entry for \(url): \(error.localizedDescription)")
-        return
-      }
-    }
-  }
-
-  func has(url: String) -> Bool {
-    queue.sync {
-      guard let entry = index[url] else { return false }
-      if isExpired(entry) || !isSafeFileName(entry.fileName) {
-        remove(url: url)
-        return false
-      }
-      let fileUrl = cacheDir.appendingPathComponent(entry.fileName)
-      guard let size = fileSize(fileUrl), size > 0, size == entry.size else {
-        remove(url: url)
-        return false
-      }
-      return true
-    }
-  }
-
-  func getFilePath(url: String) -> URL? {
-    queue.sync {
-      guard let entry = index[url] else { return nil }
-      if isExpired(entry) || !isSafeFileName(entry.fileName) {
-        remove(url: url)
-        return nil
-      }
-      let fileUrl = cacheDir.appendingPathComponent(entry.fileName)
-      guard let size = fileSize(fileUrl), size > 0, size == entry.size else {
-        remove(url: url)
-        return nil
-      }
-      var current = entry
-      current.lastAccess = Date().timeIntervalSince1970
-      index[url] = current
-      scheduleSave()
-      return fileUrl
-    }
-  }
-
-  func getCacheStats() -> [String: Any] {
-    queue.sync {
-      evictExpired()
-      let totalSize = index.values.reduce(0) { $0 + $1.size }
-      return [
-        "totalSize": totalSize,
-        "fileCount": index.count,
-        "maxSize": maxBytes
-      ]
-    }
-  }
-
-  func getCacheStats(streamKey: String) -> [String: Any] {
-    queue.sync {
-      evictExpired()
-      let totalSize = index.values.reduce(0) { $0 + $1.size }
-      let streamEntries = index.values.filter { $0.streamKey == streamKey }
-      return [
-        "totalSize": totalSize,
-        "fileCount": index.count,
-        "maxSize": maxBytes,
-        "streamSize": streamEntries.reduce(0) { $0 + $1.size },
-        "streamFileCount": streamEntries.count
-      ]
-    }
-  }
-
-  func clearAll() {
-    queue.sync {
-      for entry in self.index.values {
-        let fileUrl = self.cacheDir.appendingPathComponent(entry.fileName)
-        try? FileManager.default.removeItem(at: fileUrl)
-      }
-      self.index.removeAll()
-      // Sweep any orphan files (written but never indexed, or left by a crash) so
-      // the directory matches the now-empty index.
-      let urls = (try? FileManager.default.contentsOfDirectory(at: self.cacheDir, includingPropertiesForKeys: nil)) ?? []
-      for url in urls where url.lastPathComponent != self.indexUrl.lastPathComponent {
-        try? FileManager.default.removeItem(at: url)
-      }
-      self.saveIndex()
-    }
-  }
-
   func clearThumbnails() {
     queue.async {
       // Drop indexed thumbnails (deletes file + index entry) ...
@@ -305,10 +161,9 @@ final class HlsCacheStore {
     return size.intValue
   }
 
-  // Thumbnails share the segment index so they participate in the same TTL and
-  // size eviction. They are keyed under a "thumb:" namespace to avoid colliding
-  // with a segment cached under the same URL; the on-disk file keeps the plain
-  // sha256(url).thumb name so previously written thumbnails still resolve.
+  // Thumbnails use the persistent index so they participate in TTL and size
+  // eviction. They are keyed under a "thumb:" namespace; the on-disk file keeps
+  // the plain sha256(url).thumb name so previously written thumbnails still resolve.
   private func thumbnailKey(_ url: String) -> String { "thumb:\(url)" }
 
   func putThumbnail(url: String, data: Data) -> URL? {

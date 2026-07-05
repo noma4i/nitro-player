@@ -108,7 +108,7 @@ namespace margelo::nitro::video {
   }
 
   // Properties
-  
+
 
   // Methods
   ListenerSubscription JHybridNitroPlayerEventEmitterSpec::addOnBandwidthUpdateListener(const std::function<void(const BandwidthData& /* data */)>& listener) {

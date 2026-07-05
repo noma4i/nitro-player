@@ -25,7 +25,7 @@ export interface NitroPlayerViewEvents {
   willExitFullscreen: () => void;
 }
 
-export const ALL_VIEW_EVENTS: (keyof NitroPlayerViewEvents)[] =
+const ALL_VIEW_EVENTS: (keyof NitroPlayerViewEvents)[] =
   allKeysOf<NitroPlayerViewEvents>()(
     'onAttached',
     'onDetached',

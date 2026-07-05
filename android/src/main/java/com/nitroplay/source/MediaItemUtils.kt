@@ -71,7 +71,6 @@ fun getCustomMetadata(metadata: NitroSourceMetadata): MediaMetadata {
     .setDisplayTitle(metadata.title)
     .setTitle(metadata.title)
     .setSubtitle(metadata.subtitle)
-    .setDescription(metadata.description)
     .setArtist(metadata.artist)
     .setArtworkUri(metadata.imageUri?.toUri())
     .build()

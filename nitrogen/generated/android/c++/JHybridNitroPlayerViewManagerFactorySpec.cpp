@@ -44,7 +44,7 @@ namespace margelo::nitro::video {
   }
 
   // Properties
-  
+
 
   // Methods
   std::shared_ptr<HybridNitroPlayerViewManagerSpec> JHybridNitroPlayerViewManagerFactorySpec::createViewManager(double nitroId) {

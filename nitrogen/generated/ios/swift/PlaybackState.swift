@@ -39,47 +39,47 @@ public extension PlaybackState {
   var status: NitroPlayerStatus {
     return self.__status
   }
-  
+
   @inline(__always)
   var currentTime: Double {
     return self.__currentTime
   }
-  
+
   @inline(__always)
   var duration: Double {
     return self.__duration
   }
-  
+
   @inline(__always)
   var bufferDuration: Double {
     return self.__bufferDuration
   }
-  
+
   @inline(__always)
   var bufferedPosition: Double {
     return self.__bufferedPosition
   }
-  
+
   @inline(__always)
   var rate: Double {
     return self.__rate
   }
-  
+
   @inline(__always)
   var isPlaying: Bool {
     return self.__isPlaying
   }
-  
+
   @inline(__always)
   var isBuffering: Bool {
     return self.__isBuffering
   }
-  
+
   @inline(__always)
   var isVisualReady: Bool {
     return self.__isVisualReady
   }
-  
+
   @inline(__always)
   var error: Variant_NullType_PlaybackError? {
     return { () -> Variant_NullType_PlaybackError? in
@@ -103,7 +103,7 @@ public extension PlaybackState {
       }
     }()
   }
-  
+
   @inline(__always)
   var nativeTimestampMs: Double {
     return self.__nativeTimestampMs

@@ -74,5 +74,4 @@ export interface onFirstFrameData {
     sourceUri: string;
     fromCache: boolean;
 }
-export declare const ALL_PLAYER_EVENTS: (keyof AllNitroPlayerEvents)[];
 //# sourceMappingURL=events.d.ts.map

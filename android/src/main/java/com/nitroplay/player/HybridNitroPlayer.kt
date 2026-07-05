@@ -71,15 +71,33 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   var loadedWithSource = false
   internal var currentNitroPlayerView: WeakReference<NitroPlayerView>? = null
   internal var currentPlayerView: WeakReference<PlayerView>? = null
-  internal var readyToDisplay = false
+  private val playbackCachedState = PlaybackCachedState()
+  internal var readyToDisplay: Boolean
+    get() = playbackCachedState.isVisualReady
+    set(value) {
+      playbackCachedState.isVisualReady = value
+    }
   internal var desiredCurrentTimeMs = 0L
-  private var cachedLoop = false
-  private var cachedMuted = false
-  private var cachedRate = 1.0
+  private var cachedLoop: Boolean
+    get() = playbackCachedState.loop
+    set(value) {
+      playbackCachedState.loop = value
+    }
+  private var cachedMuted: Boolean
+    get() = playbackCachedState.muted
+    set(value) {
+      playbackCachedState.muted = value
+    }
+  private var cachedRate: Double
+    get() = playbackCachedState.rate
+    set(value) {
+      playbackCachedState.rate = value
+    }
   internal var pendingTrimRunnable: Runnable? = null
   internal var pendingStartupRecoveryRunnable: Runnable? = null
   internal var hasActiveSource = false
-  internal var reusePlayerInstanceForSourceChanges = false
+  internal var reusePlayerInstanceForSourceChanges =
+    PlayerInstanceReusePolicy.DEFAULT_REUSE_PLAYER_INSTANCE_FOR_SOURCE_CHANGES
   internal var lastError: PlaybackError? = null
   internal val sourceGeneration get() = lifecycleGate.generation
   internal var startupRecoveryAttempts = 0
@@ -121,7 +139,11 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   internal var playbackListenersAttached = false
 
   override var status: NitroPlayerStatus = NitroPlayerStatus.IDLE
-  internal var isCurrentlyBuffering: Boolean = false
+  internal var isCurrentlyBuffering: Boolean
+    get() = playbackCachedState.isBuffering
+    set(value) {
+      playbackCachedState.isBuffering = value
+    }
   private val playbackStateEmissionGate = PlaybackStateEmissionGate()
 
   override val playbackState: PlaybackState
@@ -174,64 +196,55 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     }
   )
 
-  override var loop: Boolean by mainThreadProperty(
-    get = {
-      if (isReleased || !loadedWithSource || !hasPlayerInstance()) {
-        return@mainThreadProperty cachedLoop
+  override var loop: Boolean
+    get() = cachedLoop
+    set(value) {
+      runOnMainThread {
+        cachedLoop = value
+        if (!isReleased) currentPlayerOrNull()?.repeatMode = if (value) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
       }
-
-      player.repeatMode == Player.REPEAT_MODE_ONE
-    },
-    set = { value ->
-      cachedLoop = value
-      if (!isReleased) currentPlayerOrNull()?.repeatMode = if (value) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
     }
-  )
 
-  override var muted: Boolean by mainThreadProperty(
-    get = { cachedMuted },
-    set = { value ->
-      val currentPlayer = currentPlayerOrNull()
-      if (!isReleased && currentPlayer != null) {
-        if (value) {
-          if (!cachedMuted) {
-            // Prefer the pre-duck volume: while audio focus is ducking, the live
-            // player.volume is 0.5x, and caching that would make unmute restore
-            // the ducked level instead of the user's real volume.
-            userVolume = NitroPlayerManager.audioFocusManager.preDuckVolume(this)?.toDouble() ?: volume
+  override var muted: Boolean
+    get() = cachedMuted
+    set(value) {
+      runOnMainThread {
+        val currentPlayer = currentPlayerOrNull()
+        if (!isReleased && currentPlayer != null) {
+          if (value) {
+            if (!cachedMuted) {
+              // Prefer the pre-duck volume: while audio focus is ducking, the live
+              // player.volume is 0.5x, and caching that would make unmute restore
+              // the ducked level instead of the user's real volume.
+              userVolume = NitroPlayerManager.audioFocusManager.preDuckVolume(this)?.toDouble() ?: currentPlayer.volume.toDouble()
+            }
+            currentPlayer.volume = 0f
+          } else {
+            currentPlayer.volume = userVolume.toFloat()
           }
-          currentPlayer.volume = 0f
+          cachedMuted = value
+          eventEmitter.onVolumeChange(onVolumeChangeData(
+            volume = currentPlayer.volume.toDouble(),
+            muted = cachedMuted
+          ))
         } else {
-          currentPlayer.volume = userVolume.toFloat()
-        }
-        cachedMuted = value
-        eventEmitter.onVolumeChange(onVolumeChangeData(
-          volume = currentPlayer.volume.toDouble(),
-          muted = cachedMuted
-        ))
-      } else {
-        cachedMuted = value
-      }
-    }
-  )
-
-  override var rate: Double by mainThreadProperty(
-    get = {
-      if (isReleased || !loadedWithSource || !hasPlayerInstance()) {
-        return@mainThreadProperty cachedRate
-      }
-
-      player.playbackParameters.speed.toDouble()
-    },
-    set = { value ->
-      cachedRate = value
-      if (!isReleased) {
-        currentPlayerOrNull()?.let { currentPlayer ->
-          currentPlayer.playbackParameters = currentPlayer.playbackParameters.withSpeed(value.toFloat())
+          cachedMuted = value
         }
       }
     }
-  )
+
+  override var rate: Double
+    get() = cachedRate
+    set(value) {
+      runOnMainThread {
+        cachedRate = value
+        if (!isReleased) {
+          currentPlayerOrNull()?.let { currentPlayer ->
+            currentPlayer.playbackParameters = currentPlayer.playbackParameters.withSpeed(value.toFloat())
+          }
+        }
+      }
+    }
 
   override var mixAudioMode: MixAudioMode = MixAudioMode.AUTO
     set(value) {
@@ -261,13 +274,11 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     get = { calculateBufferedPositionSeconds() }
   )
 
-  override val isBuffering: Boolean by mainThreadProperty(
-    get = { isCurrentlyBuffering }
-  )
+  override val isBuffering: Boolean
+    get() = isCurrentlyBuffering
 
-  override val isVisualReady: Boolean by mainThreadProperty(
-    get = { readyToDisplay }
-  )
+  override val isVisualReady: Boolean
+    get() = readyToDisplay
 
   internal fun createExoPlayer(playbackConfig: NitroPlayerPlaybackConfig): ExoPlayer {
     val renderersFactory = DefaultRenderersFactory(context)
@@ -311,7 +322,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   private fun requireAllocator(): DefaultAllocator {
-    return allocator ?: DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE).also { allocator = it }
+    return PlayerAllocatorPool.currentOrCreate(allocator).also { allocator = it }
   }
 
   internal fun rebindCurrentPlayerView() {
@@ -376,6 +387,11 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     eventEmitter.onFirstFrameListenerAdded = {
       runOnMainThread {
         requestFirstFrameIfNeeded()
+      }
+    }
+    eventEmitter.onPlaybackStateListenerAdded = {
+      runOnMainThread {
+        playbackStateEmissionGate.reset()
       }
     }
   }
@@ -446,13 +462,24 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   override fun seekBy(time: Double) {
-    val safeDuration = if (duration.isNaN()) Double.MAX_VALUE else duration
-    currentTime = (currentTime + time).coerceIn(0.0, safeDuration)
+    runOnMainThreadSync {
+      PlaybackSeekPlanner.applySeekBy(
+        offset = time,
+        readCurrentTime = { currentTimeSecondsForSeek() },
+        readDuration = { durationSecondsForSeek() },
+        seekToPositionMs = { applySeekPositionMs(it) }
+      )
+    }
   }
 
   override fun seekTo(time: Double) {
-    val safeDuration = if (duration.isNaN()) Double.MAX_VALUE else duration
-    currentTime = time.coerceIn(0.0, safeDuration)
+    runOnMainThreadSync {
+      PlaybackSeekPlanner.applySeekTo(
+        targetTime = time,
+        readDuration = { durationSecondsForSeek() },
+        seekToPositionMs = { applySeekPositionMs(it) }
+      )
+    }
   }
 
   override fun replaceSourceAsync(source: HybridNitroPlayerSourceSpec): Promise<Unit> {
@@ -636,6 +663,30 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     return max(0.0, calculateBufferedPositionSeconds() - calculateCurrentTimeSeconds())
   }
 
+  private fun currentTimeSecondsForSeek(): Double {
+    if (isReleased || !loadedWithSource || !hasPlayerInstance()) {
+      return desiredCurrentTimeMs.toDouble() / 1000.0
+    }
+
+    return player.currentPosition.toDouble() / 1000.0
+  }
+
+  private fun durationSecondsForSeek(): Double {
+    if (isReleased || !loadedWithSource || !hasPlayerInstance()) {
+      return Double.NaN
+    }
+    val duration = player.duration
+    return if (duration == C.TIME_UNSET) Double.NaN else duration.toDouble() / 1000.0
+  }
+
+  private fun applySeekPositionMs(nextPositionMs: Long) {
+    desiredCurrentTimeMs = nextPositionMs
+    emitPlaybackState()
+    if (!isReleased && loadedWithSource) {
+      currentPlayerOrNull()?.seekTo(nextPositionMs)
+    }
+  }
+
   // Lightweight raw-value holder + fingerprint built once per tick, mirroring the
   // iOS PlaybackSnapshot. Lets emitPlaybackState() dedupe before allocating the
   // Nitro PlaybackState.
@@ -650,7 +701,6 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     val isBuffering: Boolean,
     val isVisualReady: Boolean,
     val error: PlaybackError?,
-    val nativeTimestampMs: Double,
     val fingerprint: PlaybackStateFingerprint
   )
 
@@ -662,35 +712,50 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
         bufferedPosition = 0.0, rate = 0.0,
         isPlaying = false, isBuffering = false, isVisualReady = false,
         error = null,
-        nativeTimestampMs = System.currentTimeMillis().toDouble(),
         fingerprint = PlaybackStateFingerprint.fromValues(
           NitroPlayerStatus.IDLE, 0.0, 0.0, 0.0, 0.0, 0.0, false, false, false, null
         )
       )
     }
 
-    val currentTime = calculateCurrentTimeSeconds()
-    val duration = calculateDurationSeconds()
-    val terminalCurrentTime = if (status == NitroPlayerStatus.ENDED && duration.isFinite() && duration > 0.0) {
+    val currentPlayer = currentPlayerOrNull()
+    val loadedPlayer = if (loadedWithSource) currentPlayer else null
+    val durationMs = loadedPlayer?.duration ?: C.TIME_UNSET
+    val duration = if (durationMs == C.TIME_UNSET) {
+      Double.NaN
+    } else {
+      sanitizedDuration(durationMs.toDouble() / 1000.0)
+    }
+    val rawCurrentTime = if (loadedPlayer != null) {
+      loadedPlayer.currentPosition / 1000.0
+    } else {
+      desiredCurrentTimeMs / 1000.0
+    }
+    val currentTime = clampedPlaybackTime(rawCurrentTime, duration)
+    val currentStatus = status
+    val terminalCurrentTime = if (currentStatus == NitroPlayerStatus.ENDED && duration.isFinite() && duration > 0.0) {
       duration
     } else {
       currentTime
     }
-    val bufferedPosition = calculateBufferedPositionSeconds()
+    val bufferedPosition = if (loadedPlayer != null) {
+      loadedPlayer.bufferedPosition / 1000.0
+    } else {
+      desiredCurrentTimeMs / 1000.0
+    }
     val cappedBufferedPosition = if (duration.isFinite() && duration > 0.0) {
       min(duration, terminalCurrentTime + max(0.0, bufferedPosition - currentTime))
     } else {
       bufferedPosition
     }
     val bufferDuration = max(0.0, cappedBufferedPosition - terminalCurrentTime)
-    val currentPlayer = currentPlayerOrNull()
     val rate = currentPlayer?.playbackParameters?.speed?.toDouble() ?: cachedRate
     val playing = currentPlayer?.isPlaying == true
     val buffering = isCurrentlyBuffering
     val visualReady = readyToDisplay
     val error = lastError
     return PlaybackSnapshot(
-      status = status,
+      status = currentStatus,
       currentTime = terminalCurrentTime,
       duration = duration,
       bufferDuration = bufferDuration,
@@ -700,9 +765,8 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       isBuffering = buffering,
       isVisualReady = visualReady,
       error = error,
-      nativeTimestampMs = System.currentTimeMillis().toDouble(),
       fingerprint = PlaybackStateFingerprint.fromValues(
-        status, terminalCurrentTime, duration, bufferDuration, cappedBufferedPosition, rate,
+        currentStatus, terminalCurrentTime, duration, bufferDuration, cappedBufferedPosition, rate,
         playing, buffering, visualReady, error
       )
     )
@@ -713,8 +777,11 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   private fun clampedPlaybackTime(value: Double): Double {
+    return clampedPlaybackTime(value, calculateDurationSeconds())
+  }
+
+  private fun clampedPlaybackTime(value: Double, duration: Double): Double {
     val positiveValue = if (value.isFinite()) max(0.0, value) else 0.0
-    val duration = calculateDurationSeconds()
     return if (duration.isFinite() && duration > 0.0) min(positiveValue, duration) else positiveValue
   }
 
@@ -723,7 +790,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     return duration.isFinite() && duration > 0.0 && calculateCurrentTimeSeconds() >= duration - 0.05
   }
 
-  private fun playbackStateFrom(snapshot: PlaybackSnapshot): PlaybackState = PlaybackState(
+  private fun playbackStateFrom(snapshot: PlaybackSnapshot, nativeTimestampMs: Double): PlaybackState = PlaybackState(
     status = snapshot.status,
     currentTime = snapshot.currentTime,
     duration = snapshot.duration,
@@ -734,10 +801,31 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     isBuffering = snapshot.isBuffering,
     isVisualReady = snapshot.isVisualReady,
     error = snapshot.error?.let { Variant_NullType_PlaybackError.Second(it) },
-    nativeTimestampMs = snapshot.nativeTimestampMs
+    nativeTimestampMs = nativeTimestampMs
   )
 
-  internal fun buildPlaybackState(): PlaybackState = playbackStateFrom(currentPlaybackSnapshot())
+  internal fun buildPlaybackState(): PlaybackState = playbackStateFrom(
+    currentPlaybackSnapshot(),
+    nativeTimestampMs = System.currentTimeMillis().toDouble()
+  )
+
+  internal data class PlayerSnapshotState(
+    val playbackState: PlaybackState,
+    val memorySnapshot: MemorySnapshot,
+    val nativePlaybackState: Int
+  )
+
+  internal fun buildPlayerSnapshotState(): PlayerSnapshotState {
+    return PlayerSnapshotState(
+      playbackState = buildPlaybackState(),
+      memorySnapshot = buildMemorySnapshot(),
+      nativePlaybackState = currentPlayerOrNull()?.playbackState ?: Player.STATE_IDLE
+    )
+  }
+
+  internal fun updateCachedRate(rate: Double) {
+    cachedRate = rate
+  }
 
   private fun buildMemorySnapshot(): MemorySnapshot {
     if (isReleased) return MemorySnapshot(
@@ -746,14 +834,14 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       isAttachedToView = false, isPlaying = false, wantsToPlay = false,
       isFeedPoolEligible = false, isPinnedForFeedPool = false, isPinnedForResourcePressure = false
     )
-    val playerBytes = memorySize.toDouble()
-    val sourceBytes = if (hasActiveSource) source.memorySize.toDouble() else 0.0
+    val estimatedPlayerBytes = memorySize.toDouble()
+    val estimatedSourceBytes = if (hasActiveSource) source.memorySize.toDouble() else 0.0
     val retention = lifecycle.retentionSnapshot()
 
     return MemorySnapshot(
-      playerBytes = playerBytes,
-      sourceBytes = sourceBytes,
-      totalBytes = playerBytes + sourceBytes,
+      playerBytes = estimatedPlayerBytes,
+      sourceBytes = estimatedSourceBytes,
+      totalBytes = estimatedPlayerBytes + estimatedSourceBytes,
       preloadLevel = lifecycle.resolvedPreloadLevel(),
       retentionState = lifecycle.currentRetentionState(),
       isAttachedToView = isAttachedToView(),
@@ -766,7 +854,13 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
   }
 
   internal fun emitPlaybackState() {
-    if (!lifecycleGate.shouldEmit()) return
+    if (!PlaybackStateEmissionCoordinator.shouldBuildSnapshot(
+        canEmitForLifecycle = lifecycleGate.shouldEmit(),
+        hasPlaybackStateListeners = eventEmitter.hasOnPlaybackStateListeners()
+      )
+    ) {
+      return
+    }
     val snapshot = currentPlaybackSnapshot()
     // The 0.25s progress tick rebuilds the snapshot every time, but when nothing
     // meaningful changed (only the timestamp advanced) there is no reason to cross
@@ -775,14 +869,19 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     if (!playbackStateEmissionGate.shouldEmit(snapshot.fingerprint)) {
       return
     }
-    eventEmitter.onPlaybackState(playbackStateFrom(snapshot))
+    eventEmitter.onPlaybackState(
+      playbackStateFrom(
+        snapshot,
+        nativeTimestampMs = System.currentTimeMillis().toDouble()
+      )
+    )
   }
 
   internal fun beginSourceGeneration() {
     lifecycleGate.beginGeneration()
     startupRecoveryAttempts = 0
     hasLoadedCurrentSource = false
-    playbackStateEmissionGate.reset()
+    resetPlaybackStateEmissionGate()
     firstFrame = null
     cancelFirstFrameRequest()
     firstFrameContext = null
@@ -790,6 +889,12 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
     cancelPlaybackWatchdog()
     playbackWatchdogAttempts = 0
     eventEmitter.resetStickyState()
+  }
+
+  private fun resetPlaybackStateEmissionGate() {
+    runOnMainThreadSync {
+      playbackStateEmissionGate.reset()
+    }
   }
 
   private fun beginSourceCommand(allowAutoPlay: Boolean): SourceCommand? {
@@ -881,7 +986,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
       // initializePlayer re-sets the same media source and recreates the player; prepare/play
       // restart decoding. Genuine route/proxy failures surface via onPlayerError instead.
       if (hasLoadedCurrentSource) {
-        lifecycle.initializePlayer()
+        lifecycle.initializePlayer(forceRebuild = true)
         player.prepare()
         player.play()
       }
@@ -941,7 +1046,7 @@ class HybridNitroPlayer() : HybridNitroPlayerSpec(), AutoCloseable {
 
       HlsProxyRuntime.restartForPlaybackRecovery()
       currentHybridSource()?.refreshPlaybackRouteForStartupRecovery()
-      lifecycle.initializePlayer()
+      lifecycle.initializePlayer(forceRebuild = true)
       player.prepare()
       player.play()
     }

@@ -27,18 +27,9 @@ const VIEW_ERROR_CODES: ReadonlySet<string> = new Set<NitroPlayerViewError>(['vi
 
 export class NitroPlayerError<TCode extends NitroPlayerErrorCode> extends Error {
   private readonly _code: TCode;
-  private readonly _message: string;
-  private readonly _stack?: string;
 
   public get code(): TCode {
     return this._code;
-  }
-  public get message(): string {
-    return this._message;
-  }
-
-  public get stack(): string | undefined {
-    return this._stack;
   }
 
   /**
@@ -49,13 +40,13 @@ export class NitroPlayerError<TCode extends NitroPlayerErrorCode> extends Error 
     super.name = `[NitroPlay] ${code}`;
     super.message = message;
     this._code = code;
-    this._message = message;
-    this._stack = stack ?? super.stack;
+    if (stack !== undefined) {
+      this.stack = stack;
+    }
   }
 
   public toString(): string {
-    let string = `[${this.code}]: ${this.message}`;
-    return string;
+    return `[${this.code}]: ${this.message}`;
   }
 }
 

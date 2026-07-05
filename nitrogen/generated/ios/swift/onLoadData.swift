@@ -26,22 +26,22 @@ public extension onLoadData {
   var currentTime: Double {
     return self.__currentTime
   }
-  
+
   @inline(__always)
   var duration: Double {
     return self.__duration
   }
-  
+
   @inline(__always)
   var height: Double {
     return self.__height
   }
-  
+
   @inline(__always)
   var width: Double {
     return self.__width
   }
-  
+
   @inline(__always)
   var orientation: NitroPlayerOrientation {
     return self.__orientation

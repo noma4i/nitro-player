@@ -29,7 +29,6 @@ enum PlayerRetentionCoordinator {
       return false
     }
     return snapshot.isPlaying
-      || snapshot.isAttachedToView
       || snapshot.wantsToPlay
       || snapshot.isExternalPlaybackActive
   }

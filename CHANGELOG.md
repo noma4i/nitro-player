@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Breaking Changes
+
+- HLS `transport.mode: 'auto'` now plays direct by default. Feed-pool-eligible HLS sources still route through the local proxy/cache path automatically, and `transport.mode: 'proxy'` remains the explicit proxy opt-in.
+- Removed `configureSourcePolicy`; source policy customization now uses explicit per-source config fields.
+- Source `buffer` config now merges per field over policy defaults, matching `retention`, `transport`, and `preview`. For example, `buffer: {}` no longer clears policy buffer defaults.
+- Removed the `NitroVideo` root alias, root `feedRingWindow` helper re-export, root event registry exports, adaptive quality internals from the root API, and the stream diagnostics APIs `streamCache.getStreamVariants()` / `streamCache.getPlayersDiagnostics()`. Use `NitroPlayerView`, the `./feedRingWindow` subpath, and explicit source config instead.
+- Removed `metadata.description` from `NitroSourceMetadata`; platform media metadata now supports `title`, `subtitle`, `artist`, and `imageUri`.
+
+### Changed
+
+- Migrated `streamCache` and `videoPreview` from the legacy RN bridge to split Nitro hybrid objects: `NitroStreamCache` and `NitroVideoPreview`.
+
 ## 2.0.0-beta.3
 
 ### Added

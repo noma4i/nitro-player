@@ -36,8 +36,6 @@ namespace margelo::nitro::video {
       jni::local_ref<jni::JString> title = this->getFieldValue(fieldTitle);
       static const auto fieldSubtitle = clazz->getField<jni::JString>("subtitle");
       jni::local_ref<jni::JString> subtitle = this->getFieldValue(fieldSubtitle);
-      static const auto fieldDescription = clazz->getField<jni::JString>("description");
-      jni::local_ref<jni::JString> description = this->getFieldValue(fieldDescription);
       static const auto fieldArtist = clazz->getField<jni::JString>("artist");
       jni::local_ref<jni::JString> artist = this->getFieldValue(fieldArtist);
       static const auto fieldImageUri = clazz->getField<jni::JString>("imageUri");
@@ -45,7 +43,6 @@ namespace margelo::nitro::video {
       return NitroSourceMetadata(
         title != nullptr ? std::make_optional(title->toStdString()) : std::nullopt,
         subtitle != nullptr ? std::make_optional(subtitle->toStdString()) : std::nullopt,
-        description != nullptr ? std::make_optional(description->toStdString()) : std::nullopt,
         artist != nullptr ? std::make_optional(artist->toStdString()) : std::nullopt,
         imageUri != nullptr ? std::make_optional(imageUri->toStdString()) : std::nullopt
       );
@@ -57,14 +54,13 @@ namespace margelo::nitro::video {
      */
     [[maybe_unused]]
     static jni::local_ref<JNitroSourceMetadata::javaobject> fromCpp(const NitroSourceMetadata& value) {
-      using JSignature = JNitroSourceMetadata(jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>);
+      using JSignature = JNitroSourceMetadata(jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>, jni::alias_ref<jni::JString>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
         clazz,
         value.title.has_value() ? jni::make_jstring(value.title.value()) : nullptr,
         value.subtitle.has_value() ? jni::make_jstring(value.subtitle.value()) : nullptr,
-        value.description.has_value() ? jni::make_jstring(value.description.value()) : nullptr,
         value.artist.has_value() ? jni::make_jstring(value.artist.value()) : nullptr,
         value.imageUri.has_value() ? jni::make_jstring(value.imageUri.value()) : nullptr
       );

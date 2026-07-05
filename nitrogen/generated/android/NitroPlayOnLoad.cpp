@@ -34,6 +34,8 @@
 #include "JHybridNitroPlayerViewManagerSpec.hpp"
 #include "JFunc_void_bool.hpp"
 #include "JHybridNitroPlayerViewManagerFactorySpec.hpp"
+#include "JHybridNitroStreamCacheSpec.hpp"
+#include "JHybridNitroVideoPreviewSpec.hpp"
 #include <NitroModules/DefaultConstructableObject.hpp>
 
 namespace margelo::nitro::video {
@@ -76,6 +78,22 @@ struct JHybridNitroFeedRingPlayerFactorySpecImpl: public jni::JavaClass<JHybridN
     return javaPart->getJHybridNitroFeedRingPlayerFactorySpec();
   }
 };
+struct JHybridNitroStreamCacheSpecImpl: public jni::JavaClass<JHybridNitroStreamCacheSpecImpl, JHybridNitroStreamCacheSpec::JavaPart> {
+  static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/video/HybridNitroStreamCache;";
+  static std::shared_ptr<JHybridNitroStreamCacheSpec> create() {
+    static const auto constructorFn = javaClassStatic()->getConstructor<JHybridNitroStreamCacheSpecImpl::javaobject()>();
+    jni::local_ref<JHybridNitroStreamCacheSpec::JavaPart> javaPart = javaClassStatic()->newObject(constructorFn);
+    return javaPart->getJHybridNitroStreamCacheSpec();
+  }
+};
+struct JHybridNitroVideoPreviewSpecImpl: public jni::JavaClass<JHybridNitroVideoPreviewSpecImpl, JHybridNitroVideoPreviewSpec::JavaPart> {
+  static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/video/HybridNitroVideoPreview;";
+  static std::shared_ptr<JHybridNitroVideoPreviewSpec> create() {
+    static const auto constructorFn = javaClassStatic()->getConstructor<JHybridNitroVideoPreviewSpecImpl::javaobject()>();
+    jni::local_ref<JHybridNitroVideoPreviewSpec::JavaPart> javaPart = javaClassStatic()->newObject(constructorFn);
+    return javaPart->getJHybridNitroVideoPreviewSpec();
+  }
+};
 
 void registerAllNatives() {
   using namespace margelo::nitro;
@@ -101,6 +119,8 @@ void registerAllNatives() {
   margelo::nitro::video::JHybridNitroPlayerViewManagerSpec::CxxPart::registerNatives();
   margelo::nitro::video::JFunc_void_bool_cxx::registerNatives();
   margelo::nitro::video::JHybridNitroPlayerViewManagerFactorySpec::CxxPart::registerNatives();
+  margelo::nitro::video::JHybridNitroStreamCacheSpec::CxxPart::registerNatives();
+  margelo::nitro::video::JHybridNitroVideoPreviewSpec::CxxPart::registerNatives();
 
   // Register Nitro Hybrid Objects
   HybridObjectRegistry::registerHybridObjectConstructor(
@@ -125,6 +145,18 @@ void registerAllNatives() {
     "NitroFeedRingPlayerFactory",
     []() -> std::shared_ptr<HybridObject> {
       return JHybridNitroFeedRingPlayerFactorySpecImpl::create();
+    }
+  );
+  HybridObjectRegistry::registerHybridObjectConstructor(
+    "NitroStreamCache",
+    []() -> std::shared_ptr<HybridObject> {
+      return JHybridNitroStreamCacheSpecImpl::create();
+    }
+  );
+  HybridObjectRegistry::registerHybridObjectConstructor(
+    "NitroVideoPreview",
+    []() -> std::shared_ptr<HybridObject> {
+      return JHybridNitroVideoPreviewSpecImpl::create();
     }
   );
 }

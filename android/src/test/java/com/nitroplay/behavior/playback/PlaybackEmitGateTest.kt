@@ -4,14 +4,16 @@ import com.margelo.nitro.video.NitroPlayerStatus
 import com.margelo.nitro.video.PlaybackState
 import com.margelo.nitro.video.PlaybackStateEmissionGate
 import com.margelo.nitro.video.PlaybackStateFingerprint
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.LooperMode
 
+@RunWith(RobolectricTestRunner::class)
+@LooperMode(LooperMode.Mode.PAUSED)
 class PlaybackEmitGateTest {
   @Test
   fun suppressesRepeatedMeaningfulStateFingerprint() {
@@ -52,24 +54,6 @@ class PlaybackEmitGateTest {
 
     assertTrue(gate.shouldEmit(fingerprint))
     assertFalse(gate.shouldEmit(makeFingerprint(status = NitroPlayerStatus.LOADING, currentTime = Double.NaN, duration = Double.NaN)))
-  }
-
-  @Test
-  fun concurrentCallersDoNotRaceSharedState() {
-    val gate = PlaybackStateEmissionGate()
-    val iterations = 1000
-    val executor = Executors.newFixedThreadPool(8)
-    val latch = CountDownLatch(iterations)
-
-    repeat(iterations) { index ->
-      executor.execute {
-        gate.shouldEmit(makeFingerprint(status = NitroPlayerStatus.entries[index % NitroPlayerStatus.entries.size], currentTime = (index % 5).toDouble()))
-        latch.countDown()
-      }
-    }
-
-    assertTrue(latch.await(5, TimeUnit.SECONDS))
-    executor.shutdownNow()
   }
 
   @Test

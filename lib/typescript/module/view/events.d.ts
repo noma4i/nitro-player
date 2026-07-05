@@ -22,5 +22,4 @@ export interface NitroPlayerViewEvents {
      */
     willExitFullscreen: () => void;
 }
-export declare const ALL_VIEW_EVENTS: (keyof NitroPlayerViewEvents)[];
 //# sourceMappingURL=events.d.ts.map

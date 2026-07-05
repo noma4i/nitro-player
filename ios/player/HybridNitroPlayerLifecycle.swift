@@ -148,11 +148,12 @@ extension HybridNitroPlayer {
       await self.sourceLoader.cancel()
       command.oldSource?.trimToCold()
 
-      let accepted = self.mainThreadExecutor.run { () -> Bool in
+      let accepted = await MainActor.run { () -> Bool in
         guard self.lifecycleGate.shouldDeliverCallback(capturedGeneration: command.generation) else {
           return false
         }
 
+        self.performSourceGenerationReset(generation: command.generation)
         self.sourceStorage = source
         self.hasActiveSource = true
         self.resumePositionSeconds = 0
@@ -200,11 +201,18 @@ extension HybridNitroPlayer {
       return promise
     }
 
-    mainThreadExecutor.run {
-      guard lifecycleGate.shouldDeliverCallback(capturedGeneration: command.generation) else { return }
-      clearCurrentSource(beginGeneration: false)
+    DispatchQueue.main.async { [weak self] in
+      guard let self else {
+        promise.reject(withError: LibraryError.deallocated(objectName: "HybridNitroPlayer").error())
+        return
+      }
+      guard self.lifecycleGate.shouldDeliverCallback(capturedGeneration: command.generation) else {
+        promise.resolve(withResult: ())
+        return
+      }
+      self.clearCurrentSource(beginGeneration: false)
+      promise.resolve(withResult: ())
     }
-    promise.resolve(withResult: ())
     return promise
   }
 
@@ -229,6 +237,7 @@ extension HybridNitroPlayer {
 
     if let metadata = currentSourceConfig()?.metadata {
       let title = metadata.title
+      let subtitle = metadata.subtitle
       let artist = metadata.artist
       let imageUri = metadata.imageUri
 
@@ -238,6 +247,9 @@ extension HybridNitroPlayer {
 
         if let title {
           items.append(.make(identifier: .commonIdentifierTitle, value: title as NSString))
+        }
+        if let subtitle {
+          items.append(.make(identifier: .iTunesMetadataTrackSubTitle, value: subtitle as NSString))
         }
         if let artist {
           items.append(.make(identifier: .commonIdentifierArtist, value: artist as NSString))
@@ -359,33 +371,28 @@ extension HybridNitroPlayer {
       try await self.initializePlayerItem()
     }
     let resumeSeconds = resumePositionSeconds
-    await playerMutationExecutor.runAndWait { [weak self] in
+    await MainActor.run { [weak self] in
       guard let self else {
         return
       }
-      self.mainThreadExecutor.run { [weak self] in
-        guard let self else {
-          return
-        }
-        guard !self.isReleased else {
-          return
-        }
-        guard self.hasActiveSource else {
-          return
-        }
-        guard let currentSource = self.currentHybridSource(),
-              (activeSource as AnyObject) === (currentSource as AnyObject) else {
-          return
-        }
-        if recreatePlayer {
-          self.recreatePlayerForRecovery()
-        }
-        self.playerItem = playerItem
-        self.player.replaceCurrentItem(with: playerItem)
-        if resumeSeconds > 0 {
-          let time = CMTime(seconds: resumeSeconds, preferredTimescale: 1000)
-          self.player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
-        }
+      guard !self.isReleased else {
+        return
+      }
+      guard self.hasActiveSource else {
+        return
+      }
+      guard let currentSource = self.currentHybridSource(),
+            (activeSource as AnyObject) === (currentSource as AnyObject) else {
+        return
+      }
+      if recreatePlayer {
+        self.recreatePlayerForRecovery()
+      }
+      self.playerItem = playerItem
+      self.player.replaceCurrentItem(with: playerItem)
+      if resumeSeconds > 0 {
+        let time = CMTime(seconds: resumeSeconds, preferredTimescale: 1000)
+        self.player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
       }
     }
   }

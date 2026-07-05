@@ -8,14 +8,13 @@ import type { MixAudioMode } from './types/MixAudioMode';
 import type { PlaybackState } from './types/PlaybackState';
 import type { NitroSourceDescriptor, NitroSourceInput } from '../source/types/NitroPlayerConfig';
 import { tryParseNativeNitroPlayerError, NitroPlayerRuntimeError } from '../support/errors/NitroPlayerError';
-import type { NitroPlayerBase } from './types/NitroPlayerBase';
 import type { NitroPlayerStatus } from './types/NitroPlayerStatus';
 import { createPlayer } from './playerFactory';
 import { createNativeNitroSource } from '../source/sourceFactory';
 import { prepareSource } from '../source/prepareSource';
 import { NitroPlayerEvents } from './NitroPlayerEvents';
 
-class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
+class NitroPlayer extends NitroPlayerEvents {
   private _player: NitroPlayerImpl | undefined;
   private _source: NitroSourceDescriptor | null;
   private _nativeSource: NitroPlayerSource | null;

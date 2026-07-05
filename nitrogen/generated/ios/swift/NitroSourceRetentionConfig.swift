@@ -50,12 +50,12 @@ public extension NitroSourceRetentionConfig {
   var preload: PreloadLevel? {
     return self.__preload.value
   }
-  
+
   @inline(__always)
   var offscreen: RetentionLevel? {
     return self.__offscreen.value
   }
-  
+
   @inline(__always)
   var trimDelayMs: Double? {
     return { () -> Double? in
@@ -67,7 +67,7 @@ public extension NitroSourceRetentionConfig {
       }
     }()
   }
-  
+
   @inline(__always)
   var feedPoolEligible: Bool? {
     return { () -> Bool? in

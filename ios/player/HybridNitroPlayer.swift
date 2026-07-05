@@ -50,7 +50,6 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
     let isBuffering: Bool
     let isVisualReady: Bool
     let error: Variant_NullType_PlaybackError?
-    let nativeTimestampMs: Double
     let fingerprint: PlaybackStateFingerprint
   }
 
@@ -84,8 +83,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   }
   var playerObserver: NitroPlayerObserver?
   let sourceLoader = SourceLoader()
-  let playerMutationExecutor = PlayerMutationExecutor()
-  let mainThreadExecutor = MainThreadResourceExecutor()
+  lazy var sourceCommandCoordinator = SourceCommandCoordinator(lifecycleGate: lifecycleGate)
   var artworkTask: Task<Void, Never>?
   var initTask: Task<Void, Never>?
   let lifecycleGate = LifecycleGate()
@@ -145,6 +143,11 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
     self._eventEmitter?.onFirstFrameListenerAdded = { [weak self] in
       DispatchQueue.main.async {
         self?.requestFirstFrameIfNeeded()
+      }
+    }
+    self._eventEmitter?.onPlaybackStateListenerAdded = { [weak self] in
+      DispatchQueue.main.async {
+        self?.playbackStateEmissionGate.reset()
       }
     }
     NitroPlayerManager.shared.register(player: self)
@@ -327,7 +330,10 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   }
 
   var playbackState: PlaybackState {
-    playbackState(from: currentPlaybackSnapshot())
+    playbackState(
+      from: currentPlaybackSnapshot(),
+      nativeTimestampMs: Date().timeIntervalSince1970 * 1000
+    )
   }
 
   private func currentPlaybackSnapshot() -> PlaybackSnapshot {
@@ -343,7 +349,6 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
         isBuffering: false,
         isVisualReady: false,
         error: nil,
-        nativeTimestampMs: Date().timeIntervalSince1970 * 1000,
         fingerprint: PlaybackStateFingerprint(
           status: playbackStatusIndex(.idle),
           currentTime: 0,
@@ -392,7 +397,6 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
       isBuffering: isBuffering,
       isVisualReady: isVisualReady,
       error: error,
-      nativeTimestampMs: Date().timeIntervalSince1970 * 1000,
       fingerprint: PlaybackStateFingerprint(
         status: playbackStatusIndex(currentStatus),
         currentTime: currentTime,
@@ -409,7 +413,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
     )
   }
 
-  private func playbackState(from snapshot: PlaybackSnapshot) -> PlaybackState {
+  private func playbackState(from snapshot: PlaybackSnapshot, nativeTimestampMs: Double) -> PlaybackState {
     PlaybackState(
       status: snapshot.status,
       currentTime: snapshot.currentTime,
@@ -421,7 +425,7 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
       isBuffering: snapshot.isBuffering,
       isVisualReady: snapshot.isVisualReady,
       error: snapshot.error,
-      nativeTimestampMs: snapshot.nativeTimestampMs
+      nativeTimestampMs: nativeTimestampMs
     )
   }
 
@@ -442,14 +446,14 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
       )
     }
 
-    let playerBytes = playerItem == nil ? 0 : max(bufferDuration * 256_000, 64_000)
-    let sourceBytes = hasActiveSource ? Double(currentHybridSource()?.memorySize ?? 0) : 0
+    let estimatedPlayerBytes = playerItem == nil ? 0 : max(bufferDuration * 256_000, 64_000)
+    let estimatedSourceBytes = hasActiveSource ? Double(currentHybridSource()?.memorySize ?? 0) : 0
     let retention = retentionSnapshot()
 
     return MemorySnapshot(
-      playerBytes: playerBytes,
-      sourceBytes: sourceBytes,
-      totalBytes: playerBytes + sourceBytes,
+      playerBytes: estimatedPlayerBytes,
+      sourceBytes: estimatedSourceBytes,
+      totalBytes: estimatedPlayerBytes + estimatedSourceBytes,
       preloadLevel: resolvedPreloadLevel(),
       retentionState: currentRetentionState(),
       isAttachedToView: isAttachedToVideoView,
@@ -462,7 +466,12 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   }
 
   func emitPlaybackState() {
-    guard lifecycleGate.shouldEmit() else { return }
+    guard PlaybackStateEmissionCoordinator.shouldBuildSnapshot(
+      canEmitForLifecycle: lifecycleGate.shouldEmit(),
+      hasPlaybackStateListeners: _eventEmitter?.hasOnPlaybackStateListeners() == true
+    ) else {
+      return
+    }
     let snapshot = currentPlaybackSnapshot()
     // The 0.25s observer tick rebuilds the state every time, but when nothing
     // meaningful changed (only the timestamp advanced) there is no reason to
@@ -470,7 +479,12 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
     if !playbackStateEmissionGate.shouldEmit(fingerprint: snapshot.fingerprint) {
       return
     }
-    _eventEmitter?.onPlaybackState(playbackState(from: snapshot))
+    _eventEmitter?.onPlaybackState(
+      playbackState(
+        from: snapshot,
+        nativeTimestampMs: Date().timeIntervalSince1970 * 1000
+      )
+    )
   }
 
   private func sanitizedDuration(_ value: Double) -> Double {
@@ -634,11 +648,33 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
     lastError = PlaybackError(code: code, message: message)
   }
 
-  func beginSourceGeneration() {
-    lifecycleGate.beginGeneration()
+  func beginSourceGeneration(advanceGeneration: Bool = true) {
+    let generation = advanceGeneration ? lifecycleGate.beginGeneration() : sourceGeneration
+    resetSourceGenerationState(generation: generation)
+  }
+
+  private func resetSourceGenerationState(generation: Int) {
+    let reset: () -> Void = { [weak self] in
+      self?.performSourceGenerationReset(generation: generation)
+    }
+
+    if Thread.isMainThread {
+      reset()
+    } else {
+      DispatchQueue.main.async(execute: reset)
+    }
+  }
+
+  func performSourceGenerationReset(generation: Int) {
+    guard !isReleased, sourceGeneration == generation else { return }
+    cancelPendingTrim()
+    initTask?.cancel()
+    initTask = nil
+    artworkTask?.cancel()
+    artworkTask = nil
     startupRecoveryAttempts = 0
     hasLoadedCurrentSource = false
-    playbackStateEmissionGate.reset()
+    resetPlaybackStateEmissionGate()
     firstFrame = nil
     firstFrameContext = nil
     resetPlaybackMetrics(currentTime: 0)
@@ -649,27 +685,36 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
     _eventEmitter?.resetStickyState()
   }
 
-  func beginSourceCommand(allowAutoPlay: Bool) -> SourceCommand? {
-    mainThreadExecutor.run {
-      guard !isReleased else { return nil }
-
-      let shouldAutoPlay = allowAutoPlay && wantsToPlay
-      let oldSource = currentHybridSource()
-
-      wantsToPlay = false
-      cancelPendingTrim()
-      initTask?.cancel()
-      initTask = nil
-      artworkTask?.cancel()
-      artworkTask = nil
-      beginSourceGeneration()
-
-      return SourceCommand(
-        generation: sourceGeneration,
-        oldSource: oldSource,
-        shouldAutoPlay: shouldAutoPlay
-      )
+  private func resetPlaybackStateEmissionGate() {
+    if Thread.isMainThread {
+      playbackStateEmissionGate.reset()
+      return
     }
+
+    DispatchQueue.main.async { [weak self] in
+      guard let self, !self.isReleased else { return }
+      self.playbackStateEmissionGate.reset()
+    }
+  }
+
+  func beginSourceCommand(allowAutoPlay: Bool) -> SourceCommand? {
+    guard !isReleased else { return nil }
+
+    // Capture the player-local source before advancing generation; later commits
+    // are still gated by the returned generation.
+    let oldSource = currentHybridSource()
+    guard let command = sourceCommandCoordinator.begin(
+      allowAutoPlay: allowAutoPlay,
+      wantsToPlay: &wantsToPlay
+    ) else {
+      return nil
+    }
+
+    return SourceCommand(
+      generation: command.generation,
+      oldSource: oldSource,
+      shouldAutoPlay: command.shouldAutoPlay
+    )
   }
 
   func markCurrentSourceLoaded() {

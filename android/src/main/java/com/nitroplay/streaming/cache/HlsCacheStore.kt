@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.Uri
 import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
@@ -11,145 +13,217 @@ import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
 class HlsCacheStore(context: Context, maxBytes: Long = HlsCacheBudget.DEFAULT_MAX_BYTES) {
+    private class SharedIndex {
+        val index = ConcurrentHashMap<String, HlsCacheEntry>()
+        var pendingSave: ScheduledFuture<*>? = null
+        var totalBytes: Long = 0L
+        var loaded = false
+        var evictionRuns = 0
+    }
+
+    companion object {
+        private val saveExecutor = Executors.newSingleThreadScheduledExecutor()
+        private val sharedIndexes = ConcurrentHashMap<String, SharedIndex>()
+    }
+
     @Volatile
     private var maxBytes: Long = HlsCacheBudget.normalize(maxBytes)
     private val ttlMs: Long = 7L * 24L * 60L * 60L * 1000L
     private val cacheDir = File(context.cacheDir, "hls-cache")
     private val indexFile = File(cacheDir, "index.json")
-    private val index = ConcurrentHashMap<String, HlsCacheEntry>()
-    private val saveExecutor = Executors.newSingleThreadScheduledExecutor()
-    private var pendingSave: ScheduledFuture<*>? = null
+    private val sharedIndex = sharedIndexes.computeIfAbsent(cacheDir.absolutePath) { SharedIndex() }
+    private val index = sharedIndex.index
 
     init {
         if (!cacheDir.exists()) cacheDir.mkdirs()
-        loadIndex()
+        synchronized(sharedIndex) {
+            if (!sharedIndex.loaded || (index.isEmpty() && indexFile.exists())) {
+                index.clear()
+                sharedIndex.totalBytes = 0L
+                loadIndexLocked()
+                sharedIndex.loaded = true
+            }
+        }
     }
 
     fun setMaxBytes(bytes: Long) {
-        maxBytes = HlsCacheBudget.normalize(bytes)
-        evictIfNeeded()
-        saveIndex()
+        synchronized(sharedIndex) {
+            maxBytes = HlsCacheBudget.normalize(bytes)
+            evictIfNeededLocked()
+            saveIndex()
+        }
     }
 
     fun has(url: String): Boolean {
-        val entry = index[url] ?: return false
-        if (isExpired(entry) || !isSafeFileName(entry.fileName)) {
-            remove(url)
-            return false
+        synchronized(sharedIndex) {
+            val entry = index[url] ?: return false
+            if (isExpired(entry) || !isSafeFileName(entry.fileName)) {
+                removeLocked(url)
+                return false
+            }
+            val file = File(cacheDir, entry.fileName)
+            if (!file.exists() || file.length() <= 0L || file.length() != entry.size) {
+                removeLocked(url)
+                return false
+            }
+            return true
         }
-        val file = File(cacheDir, entry.fileName)
-        if (!file.exists() || file.length() <= 0L || file.length() != entry.size) {
-            remove(url)
-            return false
-        }
-        return true
     }
 
     fun getFilePath(url: String): File? {
-        val entry = index[url] ?: return null
-        if (isExpired(entry) || !isSafeFileName(entry.fileName)) {
-            remove(url)
-            return null
+        synchronized(sharedIndex) {
+            val entry = index[url] ?: return null
+            if (isExpired(entry) || !isSafeFileName(entry.fileName)) {
+                removeLocked(url)
+                return null
+            }
+            val file = File(cacheDir, entry.fileName)
+            if (!file.exists() || file.length() <= 0L || file.length() != entry.size) {
+                removeLocked(url)
+                return null
+            }
+            entry.lastAccess = System.currentTimeMillis()
+            scheduleSave()
+            return file
         }
-        val file = File(cacheDir, entry.fileName)
-        if (!file.exists() || file.length() <= 0L || file.length() != entry.size) {
-            remove(url)
-            return null
-        }
-        entry.lastAccess = System.currentTimeMillis()
-        scheduleSave()
-        return file
     }
 
     fun get(url: String): ByteArray? {
-        val entry = index[url] ?: return null
-        if (isExpired(entry) || !isSafeFileName(entry.fileName)) {
-            remove(url)
-            return null
+        synchronized(sharedIndex) {
+            val entry = index[url] ?: return null
+            if (isExpired(entry) || !isSafeFileName(entry.fileName)) {
+                removeLocked(url)
+                return null
+            }
+            val file = File(cacheDir, entry.fileName)
+            if (!file.exists() || file.length() <= 0L || file.length() != entry.size) {
+                removeLocked(url)
+                return null
+            }
+            entry.lastAccess = System.currentTimeMillis()
+            scheduleSave()
+            return file.readBytes()
         }
-        val file = File(cacheDir, entry.fileName)
-        if (!file.exists() || file.length() <= 0L || file.length() != entry.size) {
-            remove(url)
-            return null
-        }
-        entry.lastAccess = System.currentTimeMillis()
-        scheduleSave()
-        return file.readBytes()
     }
 
     fun put(url: String, data: ByteArray, streamKey: String?) {
+        val write = beginWrite(url)
+        openWriteStream(write).use { it.write(data) }
+        commitWrite(write, streamKey, data.size.toLong())
+    }
+
+    fun beginWrite(url: String): HlsCacheWriteHandle {
         if (!cacheDir.exists()) cacheDir.mkdirs()
-        evictIfNeeded()
-        val name = sha256(url) + ".seg"
-        val file = File(cacheDir, name)
-        file.writeBytes(data)
-        index[url] = HlsCacheEntry(url, name, data.size.toLong(), streamKey, System.currentTimeMillis(), System.currentTimeMillis())
-        evictIfNeeded()
-        scheduleSave()
+        val tempName = "${sha256(url)}.${System.nanoTime()}.tmp"
+        return HlsCacheWriteHandle(url, File(cacheDir, tempName))
+    }
+
+    fun openWriteStream(handle: HlsCacheWriteHandle): OutputStream {
+        if (!cacheDir.exists()) cacheDir.mkdirs()
+        return FileOutputStream(handle.tempFile)
+    }
+
+    fun commitWrite(handle: HlsCacheWriteHandle, streamKey: String?, expectedSize: Long? = null): Boolean {
+        synchronized(sharedIndex) {
+            val tempFile = handle.tempFile
+            val size = tempFile.length()
+            if (size <= 0L || (expectedSize != null && expectedSize >= 0L && size != expectedSize)) {
+                tempFile.delete()
+                return false
+            }
+
+            val name = sha256(handle.url) + ".seg"
+            val file = File(cacheDir, name)
+            if (file.exists()) file.delete()
+            if (!tempFile.renameTo(file)) {
+                tempFile.copyTo(file, overwrite = true)
+                tempFile.delete()
+            }
+            val now = System.currentTimeMillis()
+            upsertEntryLocked(HlsCacheEntry(handle.url, name, size, streamKey, now, now))
+            evictIfNeededLocked()
+            scheduleSave()
+            return true
+        }
+    }
+
+    fun discardWrite(handle: HlsCacheWriteHandle) {
+        handle.tempFile.delete()
     }
 
     fun getCacheStats(): Map<String, Any> {
-        evictExpired()
-        return mapOf(
-            "totalSize" to index.values.sumOf { it.size },
-            "fileCount" to index.size,
-            "maxSize" to maxBytes
-        )
+        synchronized(sharedIndex) {
+            evictExpiredLocked()
+            return mapOf(
+                "totalSize" to sharedIndex.totalBytes,
+                "fileCount" to index.size,
+                "maxSize" to maxBytes
+            )
+        }
     }
 
     fun getStreamCacheStats(streamKey: String): Map<String, Any> {
-        evictExpired()
-        val streamEntries = index.values.filter { it.streamKey == streamKey }
-        return mapOf(
-            "totalSize" to index.values.sumOf { it.size },
-            "fileCount" to index.size,
-            "maxSize" to maxBytes,
-            "streamSize" to streamEntries.sumOf { it.size },
-            "streamFileCount" to streamEntries.size
-        )
+        synchronized(sharedIndex) {
+            evictExpiredLocked()
+            val streamEntries = index.values.filter { it.streamKey == streamKey }
+            return mapOf(
+                "totalSize" to sharedIndex.totalBytes,
+                "fileCount" to index.size,
+                "maxSize" to maxBytes,
+                "streamSize" to streamEntries.sumOf { it.size },
+                "streamFileCount" to streamEntries.size
+            )
+        }
     }
 
     fun clearAll() {
-        index.values.forEach { entry ->
-            val file = File(cacheDir, entry.fileName)
-            if (file.exists()) file.delete()
+        synchronized(sharedIndex) {
+            index.values.forEach { entry ->
+                val file = File(cacheDir, entry.fileName)
+                if (file.exists()) file.delete()
+            }
+            index.clear()
+            sharedIndex.totalBytes = 0L
+            // Sweep any orphan files (written but never indexed, or left by a crash) so
+            // the directory matches the now-empty index.
+            cacheDir
+                .listFiles()
+                ?.filter { it.name != indexFile.name }
+                ?.forEach { it.delete() }
+            saveIndex()
         }
-        index.clear()
-        // Sweep any orphan files (written but never indexed, or left by a crash) so
-        // the directory matches the now-empty index.
-        cacheDir
-            .listFiles()
-            ?.filter { it.name != indexFile.name }
-            ?.forEach { it.delete() }
-        saveIndex()
     }
 
     fun clearThumbnails() {
-        // Drop indexed thumbnails (deletes file + index entry) ...
-        index.values.filter { it.fileName.endsWith(".thumb") }.forEach { remove(it.url) }
-        // ... and sweep any legacy/un-indexed thumbnail files left on disk.
-        cacheDir
-            .listFiles()
-            ?.filter { it.name.endsWith(".thumb") }
-            ?.forEach { it.delete() }
-        // Reconcile: drop any index entry whose backing file no longer exists.
-        index.values
-            .filter { !File(cacheDir, it.fileName).exists() }
-            .forEach { index.remove(it.url) }
-        // Persist immediately so the on-disk index never lags the cleared state.
-        saveIndex()
+        synchronized(sharedIndex) {
+            // Drop indexed thumbnails (deletes file + index entry) ...
+            index.values.filter { it.fileName.endsWith(".thumb") }.forEach { removeLocked(it.url) }
+            // ... and sweep any legacy/un-indexed thumbnail files left on disk.
+            cacheDir
+                .listFiles()
+                ?.filter { it.name.endsWith(".thumb") }
+                ?.forEach { it.delete() }
+            // Reconcile: drop any index entry whose backing file no longer exists.
+            index.values
+                .filter { !File(cacheDir, it.fileName).exists() }
+                .forEach { removeLocked(it.url) }
+            // Persist immediately so the on-disk index never lags the cleared state.
+            saveIndex()
+        }
     }
 
     fun close() {
-        pendingSave?.cancel(false)
-        pendingSave = null
-        saveIndex()
-        saveExecutor.shutdownNow()
+        synchronized(sharedIndex) {
+            sharedIndex.pendingSave?.cancel(false)
+            sharedIndex.pendingSave = null
+            saveIndex()
+        }
     }
 
-    private fun evictIfNeeded() {
-        evictExpired()
-        var total = index.values.sumOf { it.size }
+    private fun evictIfNeededLocked() {
+        sharedIndex.evictionRuns += 1
+        evictExpiredLocked()
+        var total = sharedIndex.totalBytes
         if (total <= maxBytes) return
         val target = HlsCacheBudget.evictionTarget(maxBytes)
 
@@ -161,30 +235,32 @@ class HlsCacheStore(context: Context, maxBytes: Long = HlsCacheBudget.DEFAULT_MA
         for ((_, entries) in sorted) {
             if (total <= target) break
             for (entry in entries) {
-                total -= entry.size
-                remove(entry.url)
+                removeLocked(entry.url)?.let { removed ->
+                    total -= removed.size
+                }
             }
         }
     }
 
-    private fun evictExpired() {
+    private fun evictExpiredLocked() {
         val now = System.currentTimeMillis()
-        index.values.filter { now - it.createdAt > ttlMs }.forEach { remove(it.url) }
+        index.values.filter { now - it.createdAt > ttlMs }.forEach { removeLocked(it.url) }
     }
 
-    private fun remove(url: String) {
-        val entry = index[url] ?: return
+    private fun removeLocked(url: String): HlsCacheEntry? {
+        val entry = index.remove(url) ?: return null
         val file = File(cacheDir, entry.fileName)
         if (file.exists()) file.delete()
-        index.remove(url)
+        sharedIndex.totalBytes = (sharedIndex.totalBytes - entry.size).coerceAtLeast(0L)
         scheduleSave()
+        return entry
     }
 
     private fun isExpired(entry: HlsCacheEntry): Boolean {
         return System.currentTimeMillis() - entry.createdAt > ttlMs
     }
 
-    private fun loadIndex() {
+    private fun loadIndexLocked() {
         if (!indexFile.exists()) return
         try {
             val text = indexFile.readText()
@@ -203,60 +279,37 @@ class HlsCacheStore(context: Context, maxBytes: Long = HlsCacheBudget.DEFAULT_MA
                 val file = File(cacheDir, entry.fileName)
                 if (isSafeFileName(entry.fileName) && file.exists() && file.length() > 0L && file.length() == entry.size) {
                     index[key] = entry
+                    sharedIndex.totalBytes += entry.size
                 }
             }
         } catch (_: Exception) {
             index.clear()
+            sharedIndex.totalBytes = 0L
             indexFile.delete()
         }
     }
 
     private fun scheduleSave() {
-        pendingSave?.cancel(false)
-        pendingSave = saveExecutor.schedule({
+        sharedIndex.pendingSave?.cancel(false)
+        sharedIndex.pendingSave = saveExecutor.schedule({
             saveIndex()
         }, 5, TimeUnit.SECONDS)
     }
 
     @Synchronized
     private fun saveIndex() {
-        mergeDiskIndex()
-        val json = JSONObject()
-        index.forEach { (url, entry) ->
-            val obj = JSONObject()
-            obj.put("fileName", entry.fileName)
-            obj.put("size", entry.size)
-            obj.put("streamKey", entry.streamKey)
-            obj.put("createdAt", entry.createdAt)
-            obj.put("lastAccess", entry.lastAccess)
-            json.put(url, obj)
-        }
-        indexFile.writeText(json.toString())
-    }
-
-    private fun mergeDiskIndex() {
-        if (!indexFile.exists()) return
-        try {
-            val text = indexFile.readText()
-            if (text.isBlank()) return
-            val json = JSONObject(text)
-            json.keys().forEach { key ->
-                if (index.containsKey(key)) return@forEach
-                val obj = json.getJSONObject(key)
-                val entry = HlsCacheEntry(
-                    url = key,
-                    fileName = obj.getString("fileName"),
-                    size = obj.getLong("size"),
-                    streamKey = if (obj.has("streamKey") && !obj.isNull("streamKey")) obj.getString("streamKey") else null,
-                    createdAt = obj.getLong("createdAt"),
-                    lastAccess = obj.getLong("lastAccess")
-                )
-                val file = File(cacheDir, entry.fileName)
-                if (isSafeFileName(entry.fileName) && file.exists() && file.length() > 0L && file.length() == entry.size) {
-                    index[key] = entry
-                }
+        synchronized(sharedIndex) {
+            val json = JSONObject()
+            index.forEach { (url, entry) ->
+                val obj = JSONObject()
+                obj.put("fileName", entry.fileName)
+                obj.put("size", entry.size)
+                obj.put("streamKey", entry.streamKey)
+                obj.put("createdAt", entry.createdAt)
+                obj.put("lastAccess", entry.lastAccess)
+                json.put(url, obj)
             }
-        } catch (_: Exception) {
+            indexFile.writeText(json.toString())
         }
     }
 
@@ -280,57 +333,82 @@ class HlsCacheStore(context: Context, maxBytes: Long = HlsCacheBudget.DEFAULT_MA
     private fun thumbnailKey(url: String): String = "thumb:$url"
 
     fun putThumbnail(url: String, data: ByteArray): String? {
-        if (!cacheDir.exists()) cacheDir.mkdirs()
-        evictIfNeeded()
-        val name = "${sha256(url)}.thumb"
-        val file = File(cacheDir, name)
-        return try {
-            file.writeBytes(data)
-            val now = System.currentTimeMillis()
-            val key = thumbnailKey(url)
-            index[key] = HlsCacheEntry(key, name, data.size.toLong(), null, now, now)
-            evictIfNeeded()
-            scheduleSave()
-            Uri.fromFile(file).toString()
-        } catch (_: Exception) {
-            null
+        synchronized(sharedIndex) {
+            if (!cacheDir.exists()) cacheDir.mkdirs()
+            val name = "${sha256(url)}.thumb"
+            val file = File(cacheDir, name)
+            return try {
+                file.writeBytes(data)
+                val now = System.currentTimeMillis()
+                val key = thumbnailKey(url)
+                upsertEntryLocked(HlsCacheEntry(key, name, data.size.toLong(), null, now, now))
+                evictIfNeededLocked()
+                scheduleSave()
+                Uri.fromFile(file).toString()
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 
     fun getThumbnailPath(url: String): String? {
-        val name = "${sha256(url)}.thumb"
-        val file = File(cacheDir, name)
-        val key = thumbnailKey(url)
-        val entry = index[key]
-        if (entry != null) {
-            if (isExpired(entry) || !file.exists()) {
-                remove(key)
-                return null
+        synchronized(sharedIndex) {
+            val name = "${sha256(url)}.thumb"
+            val file = File(cacheDir, name)
+            val key = thumbnailKey(url)
+            val entry = index[key]
+            if (entry != null) {
+                if (isExpired(entry) || !file.exists()) {
+                    removeLocked(key)
+                    return null
+                }
+                entry.lastAccess = System.currentTimeMillis()
+                scheduleSave()
+                return Uri.fromFile(file).toString()
             }
-            entry.lastAccess = System.currentTimeMillis()
+            // Legacy thumbnail written before indexing: register it lazily so it now
+            // participates in TTL/size eviction.
+            if (!file.exists()) return null
+            val now = System.currentTimeMillis()
+            upsertEntryLocked(HlsCacheEntry(key, name, file.length(), null, now, now))
             scheduleSave()
             return Uri.fromFile(file).toString()
         }
-        // Legacy thumbnail written before indexing: register it lazily so it now
-        // participates in TTL/size eviction.
-        if (!file.exists()) return null
-        val now = System.currentTimeMillis()
-        index[key] = HlsCacheEntry(key, name, file.length(), null, now, now)
-        scheduleSave()
-        return Uri.fromFile(file).toString()
     }
 
     fun hasThumbnail(url: String): Boolean {
-        val key = thumbnailKey(url)
-        val entry = index[key]
-        if (entry != null && isExpired(entry)) {
-            remove(key)
-            return false
+        synchronized(sharedIndex) {
+            val key = thumbnailKey(url)
+            val entry = index[key]
+            if (entry != null && isExpired(entry)) {
+                removeLocked(key)
+                return false
+            }
+            val name = "${sha256(url)}.thumb"
+            return File(cacheDir, name).exists()
         }
-        val name = "${sha256(url)}.thumb"
-        return File(cacheDir, name).exists()
+    }
+
+    internal fun evictionRunCountForTests(): Int {
+        return synchronized(sharedIndex) { sharedIndex.evictionRuns }
+    }
+
+    private fun upsertEntryLocked(entry: HlsCacheEntry) {
+        val previous = index.put(entry.url, entry)
+        if (previous != null) {
+            sharedIndex.totalBytes = (sharedIndex.totalBytes - previous.size).coerceAtLeast(0L)
+            if (previous.fileName != entry.fileName) {
+                File(cacheDir, previous.fileName).delete()
+            }
+        }
+        sharedIndex.totalBytes += entry.size
     }
 }
+
+class HlsCacheWriteHandle internal constructor(
+    val url: String,
+    internal val tempFile: File
+)
 
 data class HlsCacheEntry(
     val url: String,

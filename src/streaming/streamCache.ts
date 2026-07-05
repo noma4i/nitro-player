@@ -1,15 +1,13 @@
 import { resolveSource } from '../source/resolveSource';
 import type { ResolvableSource } from '../source/resolveSource';
-import { createUnavailableWarner, getNativeStreamRuntime } from '../support/nativeStreamRuntime';
+import type { NitroStreamCache } from '../bridge/nitro/NitroStreamCache.nitro';
+import { createNativeNitroObject, createUnavailableWarner } from '../support/nativeNitroObject';
 import type {
   StreamCacheConfig,
-  StreamCacheNativeModule,
   StreamCacheStats,
   StreamHeaders,
   StreamNetworkThroughputEstimate,
-  StreamPlayersDiagnostics,
-  StreamSourceCacheStats,
-  StreamVariant
+  StreamSourceCacheStats
 } from './types';
 
 export const DEFAULT_STREAM_CACHE_MAX_BYTES = 4 * 1024 * 1024 * 1024;
@@ -26,7 +24,7 @@ const DEFAULT_STREAM_CACHE_STATS: StreamSourceCacheStats = {
   streamFileCount: 0
 };
 
-const NativeStreamCache = getNativeStreamRuntime<StreamCacheNativeModule>();
+const NativeStreamCache = createNativeNitroObject<NitroStreamCache>('NitroStreamCache');
 const MIN_PREFETCH_SEGMENTS = 1;
 const MAX_PREFETCH_SEGMENTS = 6;
 
@@ -39,7 +37,7 @@ class StreamCache {
   private readonly warnUnavailable = createUnavailableWarner('StreamCache');
 
   async prefetch(source: ResolvableSource, headers?: StreamHeaders): Promise<void> {
-    if (!NativeStreamCache?.prefetchLeadingSegments) {
+    if (!NativeStreamCache) {
       this.warnUnavailable();
       return;
     }
@@ -58,7 +56,7 @@ class StreamCache {
 
   async getStats(source?: ResolvableSource, headers?: StreamHeaders): Promise<StreamCacheStats | StreamSourceCacheStats> {
     if (typeof source === 'undefined') {
-      if (!NativeStreamCache?.getCacheStats) {
+      if (!NativeStreamCache) {
         this.warnUnavailable();
         return DEFAULT_CACHE_STATS;
       }
@@ -69,7 +67,7 @@ class StreamCache {
       }
     }
 
-    if (!NativeStreamCache?.getStreamCacheStats) {
+    if (!NativeStreamCache) {
       this.warnUnavailable();
       return DEFAULT_STREAM_CACHE_STATS;
     }
@@ -83,7 +81,7 @@ class StreamCache {
   }
 
   async clear(): Promise<boolean> {
-    if (!NativeStreamCache?.clearCache) {
+    if (!NativeStreamCache) {
       return true;
     }
     try {
@@ -94,24 +92,13 @@ class StreamCache {
     }
   }
 
-  async getPlayersDiagnostics(): Promise<StreamPlayersDiagnostics | null> {
-    if (!NativeStreamCache?.getPlayersDiagnostics) {
-      return null;
-    }
-    try {
-      return await NativeStreamCache.getPlayersDiagnostics();
-    } catch {
-      return null;
-    }
-  }
-
   /**
    * Estimates upstream network throughput from proxy ledger entries that were
    * backed by real CDN requests. Partial cache fills can slightly overstate the
    * value, so callers should use hysteresis instead of a one-sample switch.
    */
   async getNetworkThroughputEstimate(): Promise<StreamNetworkThroughputEstimate | null> {
-    if (!NativeStreamCache?.getNetworkThroughputEstimate) {
+    if (!NativeStreamCache) {
       return null;
     }
     try {
@@ -121,27 +108,8 @@ class StreamCache {
     }
   }
 
-  /**
-   * Discovers HLS master-playlist variants. Pair this with
-   * `configureSourcePolicy` to choose the playback cap used by future sources.
-   */
-  async getStreamVariants(source: ResolvableSource, headers?: StreamHeaders): Promise<StreamVariant[] | null> {
-    const resolved = resolveSource(source, headers);
-    if (!isHlsManifestUrl(resolved.uri)) {
-      return [];
-    }
-    if (!NativeStreamCache?.getStreamVariants) {
-      return null;
-    }
-    try {
-      return await NativeStreamCache.getStreamVariants(resolved.uri, resolved.headers);
-    } catch {
-      return null;
-    }
-  }
-
   async configure(config: StreamCacheConfig): Promise<boolean> {
-    if (!NativeStreamCache?.configureCache) {
+    if (!NativeStreamCache) {
       this.warnUnavailable();
       return false;
     }

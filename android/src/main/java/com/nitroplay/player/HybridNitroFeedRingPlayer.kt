@@ -19,6 +19,25 @@ import com.nitroplay.video.support.Threading.runOnMainThreadSync
 @OptIn(UnstableApi::class)
 @DoNotStrip
 class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
+  private enum class SlotTransition(val value: String) {
+    CLEAR("clear"),
+    EMPTY("empty"),
+    EMPTY_SOURCE("empty-source"),
+    ERROR("error"),
+    MISSING_CENTER("missing-center"),
+    OUTSIDE_WINDOW("outside-window"),
+    READY("ready"),
+    RELEASED("released"),
+    REPLACE("replace"),
+    REUSE("reuse");
+
+    companion object {
+      fun clearReason(reason: String): SlotTransition {
+        return values().firstOrNull { transition -> transition.value == reason } ?: CLEAR
+      }
+    }
+  }
+
   private data class CatalogItem(
     val index: Int,
     val momentId: String?,
@@ -27,13 +46,13 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
   )
 
   private class SlotState(val slotId: Int) {
-    val player = HybridNitroPlayer().also { it.reusePlayerInstanceForSourceChanges = true }
+    val player = HybridNitroPlayer()
     var assignedIndex: Int? = null
     var momentId: String? = null
     var sourceKey: String? = null
     var generation: Long = 0
     var desiredPlay: Boolean = false
-    var lastTransition: String = "empty"
+    var lastTransition: SlotTransition = SlotTransition.EMPTY
     var lastError: String? = null
   }
 
@@ -144,7 +163,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
         slot.momentId = null
         slot.sourceKey = null
         slot.generation += 1
-        slot.lastTransition = "released"
+        slot.lastTransition = SlotTransition.RELEASED
         emitSlotState(slot)
       }
       cachedMemorySize = 0L
@@ -194,7 +213,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
     when (command.action) {
       FeedRingCommandAction.CLEAR -> clearSlot(
         slot = slot,
-        reason = command.reason ?: "clear",
+        transition = SlotTransition.clearReason(command.reason ?: "clear"),
         assignedIndex = command.assignedIndex,
         momentId = command.momentId,
         hadSource = command.hadSource
@@ -211,7 +230,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
     if (assignedIndex == null || sourceKey == null || source == null) {
       clearSlot(
         slot = slot,
-        reason = "empty-source",
+        transition = SlotTransition.EMPTY_SOURCE,
         assignedIndex = command.assignedIndex,
         momentId = command.momentId,
         hadSource = command.hadSource
@@ -230,7 +249,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
     if (command.action == FeedRingCommandAction.REPLACE) {
       slot.sourceKey = sourceKey
       slot.generation += 1
-      slot.lastTransition = "replace"
+      slot.lastTransition = SlotTransition.REPLACE
       player.wantsToPlay = shouldPlay
       applyStaticPlayerState(player, shouldPlay)
       emitSlotState(slot)
@@ -243,7 +262,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
             }
 
             slot.lastError = null
-            slot.lastTransition = "ready"
+            slot.lastTransition = SlotTransition.READY
             applyStaticPlayerState(player, slot.desiredPlay)
             if (slot.desiredPlay) {
               player.play()
@@ -262,7 +281,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
 
             slot.sourceKey = null
             slot.lastError = error.message ?: error.toString()
-            slot.lastTransition = "error"
+            slot.lastTransition = SlotTransition.ERROR
             slot.desiredPlay = false
             emitSlotState(slot)
             refreshMemorySize()
@@ -271,14 +290,14 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
       return
     }
 
-    slot.lastTransition = "reuse"
+    slot.lastTransition = SlotTransition.REUSE
     applyStaticPlayerState(player, shouldPlay)
     emitSlotState(slot)
   }
 
   private fun clearSlot(
     slot: SlotState,
-    reason: String,
+    transition: SlotTransition,
     assignedIndex: Int? = null,
     momentId: String? = null,
     hadSource: Boolean? = null
@@ -290,7 +309,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
     slot.sourceKey = null
     slot.momentId = momentId
     slot.generation += 1
-    slot.lastTransition = reason
+    slot.lastTransition = transition
     slot.lastError = null
     if (shouldClearNativeSource) {
       player.pause()
@@ -302,7 +321,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
           }
 
           slot.lastError = error.message ?: error.toString()
-          slot.lastTransition = "error"
+          slot.lastTransition = SlotTransition.ERROR
           emitSlotState(slot)
         }
       }
@@ -326,7 +345,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
       val shouldPlay = slot.assignedIndex?.let { assignedIndex -> plannedSlotsByIndex[assignedIndex]?.shouldPlay } == true && slot.sourceKey != null
       slot.desiredPlay = shouldPlay
       applyStaticPlayerState(player, shouldPlay)
-      if (slot.lastTransition == "replace") {
+      if (slot.lastTransition == SlotTransition.REPLACE) {
         return@forEach
       }
       if (shouldPlay) {
@@ -347,8 +366,9 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
 
   private fun snapshotSlot(slot: SlotState): FeedRingSlotSnapshot {
     val player = slot.player
-    val playbackState = player.playbackState
-    val memorySnapshot = player.memorySnapshot
+    val snapshotState = player.buildPlayerSnapshotState()
+    val playbackState = snapshotState.playbackState
+    val memorySnapshot = snapshotState.memorySnapshot
     val prepared = slot.sourceKey != null && (memorySnapshot.retentionState == RetentionLevel.HOT || playbackState.status != NitroPlayerStatus.IDLE)
     return FeedRingSlotSnapshot(
       slotId = slot.slotId.toDouble(),
@@ -372,20 +392,20 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
       hasLoadedSource = player.hasLoadedCurrentSource,
       watchdogAttempts = player.playbackWatchdogAttemptCount.toDouble(),
       watchdogPending = player.hasPendingPlaybackWatchdog,
-      nativePlaybackState = playbackStateName(player.currentPlayerOrNull()?.playbackState ?: Player.STATE_IDLE),
+      nativePlaybackState = playbackStateName(snapshotState.nativePlaybackState),
       status = playbackState.status.name.lowercase(),
-      lastTransition = slot.lastTransition,
+      lastTransition = slot.lastTransition.value,
       lastError = slot.lastError
     )
   }
 
-  private fun emitSlotState(slot: SlotState) {
-    val state = slotState(slot)
+  private fun emitSlotState(slot: SlotState, playbackState: PlaybackState? = null) {
+    val state = slotState(slot, playbackState)
     listenerRegistry.emit<(FeedRingSlotState) -> Unit>("slotState") { listener -> listener(state) }
   }
 
-  private fun slotState(slot: SlotState): FeedRingSlotState {
-    val playbackState = slot.player.playbackState
+  private fun slotState(slot: SlotState, playbackStateOverride: PlaybackState? = null): FeedRingSlotState {
+    val playbackState = playbackStateOverride ?: slot.player.playbackState
     return FeedRingSlotState(
       slotId = slot.slotId.toDouble(),
       generation = slot.generation.toDouble(),
@@ -405,8 +425,8 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
 
     slotListenersConfigured = true
     slots.forEach { slot ->
-      slot.player.eventEmitter.addOnPlaybackStateListener {
-        emitSlotState(slot)
+      slot.player.eventEmitter.addOnPlaybackStateListener { playbackState ->
+        emitSlotState(slot, playbackState)
       }
       slot.player.eventEmitter.addOnFirstFrameListener {
         emitSlotState(slot)

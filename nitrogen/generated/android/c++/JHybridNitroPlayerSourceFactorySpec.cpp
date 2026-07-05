@@ -99,7 +99,7 @@ namespace margelo::nitro::video {
   }
 
   // Properties
-  
+
 
   // Methods
   std::shared_ptr<HybridNitroPlayerSourceSpec> JHybridNitroPlayerSourceFactorySpec::fromUri(const std::string& uri) {

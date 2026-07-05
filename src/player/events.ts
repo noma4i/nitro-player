@@ -84,7 +84,7 @@ export interface onFirstFrameData {
   fromCache: boolean;
 }
 
-export const ALL_PLAYER_EVENTS: (keyof AllNitroPlayerEvents)[] = allKeysOf<AllNitroPlayerEvents>()(
+const ALL_PLAYER_EVENTS: (keyof AllNitroPlayerEvents)[] = allKeysOf<AllNitroPlayerEvents>()(
   'onBandwidthUpdate',
   'onError',
   'onFirstFrame',

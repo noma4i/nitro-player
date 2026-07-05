@@ -26,7 +26,7 @@ public extension onVolumeChangeData {
   var volume: Double {
     return self.__volume
   }
-  
+
   @inline(__always)
   var muted: Bool {
     return self.__muted

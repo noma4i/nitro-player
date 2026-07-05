@@ -56,7 +56,7 @@ public extension NitroSourcePreviewConfig {
   var mode: NitroSourcePreviewMode? {
     return self.__mode.value
   }
-  
+
   @inline(__always)
   var autoThumbnail: Bool? {
     return { () -> Bool? in
@@ -68,7 +68,7 @@ public extension NitroSourcePreviewConfig {
       }
     }()
   }
-  
+
   @inline(__always)
   var maxWidth: Double? {
     return { () -> Double? in
@@ -80,7 +80,7 @@ public extension NitroSourcePreviewConfig {
       }
     }()
   }
-  
+
   @inline(__always)
   var maxHeight: Double? {
     return { () -> Double? in
@@ -92,7 +92,7 @@ public extension NitroSourcePreviewConfig {
       }
     }()
   }
-  
+
   @inline(__always)
   var quality: Double? {
     return { () -> Double? in

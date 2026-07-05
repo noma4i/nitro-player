@@ -5,10 +5,9 @@ import type { MemorySnapshot } from './types/MemorySnapshot';
 import type { MixAudioMode } from './types/MixAudioMode';
 import type { PlaybackState } from './types/PlaybackState';
 import type { NitroSourceDescriptor, NitroSourceInput } from '../source/types/NitroPlayerConfig';
-import type { NitroPlayerBase } from './types/NitroPlayerBase';
 import type { NitroPlayerStatus } from './types/NitroPlayerStatus';
 import { NitroPlayerEvents } from './NitroPlayerEvents';
-declare class NitroPlayer extends NitroPlayerEvents implements NitroPlayerBase {
+declare class NitroPlayer extends NitroPlayerEvents {
     private _player;
     private _source;
     private _nativeSource;

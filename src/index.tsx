@@ -1,5 +1,5 @@
 export { useEvent } from './player/hooks/useEvent';
-export { usePlaybackState } from './player/hooks/usePlaybackState';
+export { usePlaybackState, type PlaybackStateSelector } from './player/hooks/usePlaybackState';
 export type {
   AllNitroPlayerEvents,
   NitroPlayerEvents as NitroPlayerEventsType,
@@ -10,9 +10,7 @@ export type {
   SourceType,
   onVolumeChangeData
 } from './player/events';
-export { ALL_PLAYER_EVENTS } from './player/events';
 export type { NitroPlayerViewEvents } from './view/events';
-export { ALL_VIEW_EVENTS } from './view/events';
 export type { RetentionLevel, PreloadLevel } from './player/types/MemoryConfig';
 export type { MemorySnapshot } from './player/types/MemorySnapshot';
 export type { PlaybackError } from './support/errors/PlaybackError';
@@ -50,7 +48,7 @@ export {
   type NitroPlayerViewError
 } from './support/errors/NitroPlayerError';
 export type { NitroPlayerStatus } from './player/types/NitroPlayerStatus';
-export { default as NitroPlayerView, NitroVideo, type NitroPlayerViewProps, type NitroPlayerViewRef } from './view/NitroPlayerView';
+export { default as NitroPlayerView, type NitroPlayerViewProps, type NitroPlayerViewRef } from './view/NitroPlayerView';
 export { NitroPlayer } from './player/NitroPlayer';
 export { useNitroPlayer } from './player/hooks/useNitroPlayer';
 export {
@@ -64,30 +62,15 @@ export {
   type NitroFeedRingSlotSnapshot,
   type NitroFeedRingViewportState
 } from './feed/NitroFeedRingPlayer';
-export { feedRingWindowIndices, resolveFeedRingSlotAssignments, resolveFeedRingSlotId, type FeedRingSlotAssignment } from './feed/feedRingWindow';
 export { default as NitroFeedRingSlotView, type NitroFeedRingSlotViewProps } from './feed/NitroFeedRingSlotView';
 export { prepareSource, type PreparedNitroSource } from './source/prepareSource';
-export { configureSourcePolicy } from './source/sourcePolicy';
-export {
-  DEFAULT_ADAPTIVE_QUALITY_CONFIG,
-  resolveAdaptiveDecision,
-  resolveAdaptiveQualityConfig,
-  type AdaptiveQualityConfig,
-  type AdaptiveQualityDecision,
-  type AdaptiveQualityDecisionInput,
-  type ResolvedAdaptiveQualityConfig
-} from './source/adaptiveQuality';
+export type { AdaptiveQualityConfig } from './source/adaptiveQuality';
 export { streamCache } from './streaming/streamCache';
 export { videoPreview } from './preview/videoPreview';
 export type {
   StreamCacheConfig,
   StreamCacheStats,
   StreamNetworkThroughputEstimate,
-  StreamPlayerAccessLogDiagnostics,
-  StreamPlayerDiagnostics,
-  StreamPlayersDiagnostics,
-  StreamProxyLedgerEntry,
-  StreamVariant,
   StreamSourceCacheStats,
   StreamHeaders
 } from './streaming/types';

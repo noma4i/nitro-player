@@ -6,6 +6,7 @@ class HybridNitroPlayerEventEmitter : HybridNitroPlayerEventEmitterSpec() {
   private val registry = ListenerRegistry()
   private var latestFirstFrame: onFirstFrameData? = null
   var onFirstFrameListenerAdded: (() -> Unit)? = null
+  var onPlaybackStateListenerAdded: (() -> Unit)? = null
 
   override fun addOnBandwidthUpdateListener(listener: (BandwidthData) -> Unit) =
     registry.add("onBandwidthUpdate", listener)
@@ -28,7 +29,9 @@ class HybridNitroPlayerEventEmitter : HybridNitroPlayerEventEmitterSpec() {
     registry.add("onLoadStart", listener)
 
   override fun addOnPlaybackStateListener(listener: (PlaybackState) -> Unit) =
-    registry.add("onPlaybackState", listener)
+    registry.add("onPlaybackState", listener).also {
+      onPlaybackStateListenerAdded?.invoke()
+    }
 
   override fun addOnVolumeChangeListener(listener: (onVolumeChangeData) -> Unit) =
     registry.add("onVolumeChange", listener)
@@ -66,5 +69,9 @@ class HybridNitroPlayerEventEmitter : HybridNitroPlayerEventEmitterSpec() {
 
   fun hasOnFirstFrameListeners(): Boolean {
     return registry.hasListeners("onFirstFrame")
+  }
+
+  fun hasOnPlaybackStateListeners(): Boolean {
+    return registry.hasListeners("onPlaybackState")
   }
 }

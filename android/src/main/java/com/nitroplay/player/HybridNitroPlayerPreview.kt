@@ -1,7 +1,5 @@
 package com.margelo.nitro.video
 
-import android.os.Handler
-import android.os.Looper
 import com.nitroplay.video.preview.VideoPreviewRuntime
 
 // First-frame / preview generation, split out of HybridNitroPlayer (mirror of the
@@ -74,45 +72,33 @@ internal fun HybridNitroPlayer.requestFirstFrameIfNeeded() {
   }
   firstFrameRequest = request
 
-  firstFrameTask = VideoPreviewRuntime.dispatchFirstFrameAwait {
-    val preview = try {
-      if (isReleased) {
-        null
-      } else {
-        request.await()
-      }
-    } finally {
-      request.cancel()
+  firstFrameTask = VideoPreviewRuntime.dispatchFirstFrameAwait(request) { preview ->
+    if (pendingFirstFrameGeneration == generation) {
+      pendingFirstFrameGeneration = -1
+      firstFrameTask = null
+    }
+    if (firstFrameRequest === request) {
+      firstFrameRequest = null
     }
 
-    Handler(Looper.getMainLooper()).post {
-      if (pendingFirstFrameGeneration == generation) {
-        pendingFirstFrameGeneration = -1
-        firstFrameTask = null
-      }
-      if (firstFrameRequest === request) {
-        firstFrameRequest = null
-      }
+    if (
+      isReleased ||
+      sourceGeneration != generation ||
+      !hasActiveSource ||
+      !readyToDisplay ||
+      firstFrame != null
+    ) {
+      return@dispatchFirstFrameAwait
+    }
 
-      if (
-        isReleased ||
-        sourceGeneration != generation ||
-        !hasActiveSource ||
-        !readyToDisplay ||
-        firstFrame != null
-      ) {
-        return@post
-      }
-
-      preview?.let {
-        emitFirstFrame(
-          uri = it.uri,
-          width = context.width,
-          height = context.height,
-          sourceUri = context.sourceUri,
-          fromCache = it.fromCache
-        )
-      }
+    preview?.let {
+      emitFirstFrame(
+        uri = it.uri,
+        width = context.width,
+        height = context.height,
+        sourceUri = context.sourceUri,
+        fromCache = it.fromCache
+      )
     }
   }
 }

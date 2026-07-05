@@ -16,12 +16,10 @@ export interface NitroSourcePolicyDefaults {
   preview?: NitroSourcePreviewConfig;
 }
 
-export interface NitroSourcePolicyOverrides {
-  buffer?: BufferConfig;
-}
-
 export const DEFAULT_SOURCE_POLICY: NitroSourcePolicy = 'auto';
 
+// Native route resolution treats `transport.mode: 'auto'` as direct by default.
+// Feed HLS sources keep proxy/cache routing through `retention.feedPoolEligible`.
 export const SOURCE_POLICY_DEFAULTS: Record<NitroSourcePolicy, NitroSourcePolicyDefaults> = {
   auto: {
     startup: 'eager',
@@ -98,50 +96,7 @@ export const SOURCE_POLICY_DEFAULTS: Record<NitroSourcePolicy, NitroSourcePolicy
   manual: {}
 };
 
-const sourcePolicyOverrides: Partial<Record<NitroSourcePolicy, NitroSourcePolicyOverrides>> = {};
-
-/**
- * Configures defaults used by future source preparations for a policy.
- *
- * Precedence is explicit per-source `config.buffer`, then this configured policy
- * override, then the built-in policy default. Already prepared or attached
- * sources are not re-applied; call this before replacing a feed catalog.
- */
-export const configureSourcePolicy = (policy: NitroSourcePolicy, overrides: NitroSourcePolicyOverrides): void => {
-  if (!isNitroSourcePolicy(policy)) {
-    throw new Error(`Invalid source policy: ${String(policy)}`);
-  }
-
-  const previous = sourcePolicyOverrides[policy];
-  sourcePolicyOverrides[policy] = {
-    ...previous,
-    ...(overrides.buffer
-      ? {
-          buffer: {
-            ...previous?.buffer,
-            ...overrides.buffer
-          }
-        }
-      : undefined)
-  };
-};
-
-export const resolveSourcePolicyDefaults = (policy: NitroSourcePolicy): NitroSourcePolicyDefaults => {
-  const defaults = SOURCE_POLICY_DEFAULTS[policy];
-  const override = sourcePolicyOverrides[policy];
-
-  if (!override?.buffer) {
-    return defaults;
-  }
-
-  return {
-    ...defaults,
-    buffer: {
-      ...defaults.buffer,
-      ...override.buffer
-    }
-  };
-};
+export const resolveSourcePolicyDefaults = (policy: NitroSourcePolicy): NitroSourcePolicyDefaults => SOURCE_POLICY_DEFAULTS[policy];
 
 export const isNitroSourcePolicy = (value: unknown): value is NitroSourcePolicy =>
   typeof value === 'string' && (SOURCE_POLICIES as readonly string[]).includes(value);
