@@ -57,7 +57,7 @@ public extension NitroSourceMetadata {
       }
     }()
   }
-
+  
   @inline(__always)
   var subtitle: String? {
     return { () -> String? in
@@ -69,7 +69,7 @@ public extension NitroSourceMetadata {
       }
     }()
   }
-
+  
   @inline(__always)
   var artist: String? {
     return { () -> String? in
@@ -81,7 +81,7 @@ public extension NitroSourceMetadata {
       }
     }()
   }
-
+  
   @inline(__always)
   var imageUri: String? {
     return { () -> String? in

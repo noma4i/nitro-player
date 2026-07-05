@@ -84,7 +84,7 @@ open class HybridNitroVideoPreviewSpec_cxx {
     }
   }
 
-
+  
 
   /**
    * Get the memory size of the Swift class (plus size of any other allocations)
@@ -121,7 +121,7 @@ open class HybridNitroVideoPreviewSpec_cxx {
   }
 
   // Properties
-
+  
 
   // Methods
   @inline(__always)
@@ -164,7 +164,7 @@ open class HybridNitroVideoPreviewSpec_cxx {
       return bridge.create_Result_std__shared_ptr_Promise_std__variant_nitro__NullType__std__string____(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func peekThumbnailUrl(url: std.string, headers: bridge.std__optional_std__unordered_map_std__string__std__string__) -> bridge.Result_std__shared_ptr_Promise_std__variant_nitro__NullType__std__string____ {
     do {
@@ -205,7 +205,7 @@ open class HybridNitroVideoPreviewSpec_cxx {
       return bridge.create_Result_std__shared_ptr_Promise_std__variant_nitro__NullType__std__string____(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func clearPreview() -> bridge.Result_std__shared_ptr_Promise_bool___ {
     do {

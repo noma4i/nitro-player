@@ -74,7 +74,7 @@ public extension NativeNitroPlayerConfig {
   var uri: String {
     return String(self.__uri)
   }
-
+  
   @inline(__always)
   var headers: Dictionary<String, String>? {
     return { () -> Dictionary<String, String>? in
@@ -94,32 +94,32 @@ public extension NativeNitroPlayerConfig {
       }
     }()
   }
-
+  
   @inline(__always)
   var metadata: NitroSourceMetadata? {
     return self.__metadata.value
   }
-
+  
   @inline(__always)
   var startup: NitroSourceStartup? {
     return self.__startup.value
   }
-
+  
   @inline(__always)
   var buffer: BufferConfig? {
     return self.__buffer.value
   }
-
+  
   @inline(__always)
   var retention: NitroSourceRetentionConfig? {
     return self.__retention.value
   }
-
+  
   @inline(__always)
   var transport: NitroSourceTransportConfig? {
     return self.__transport.value
   }
-
+  
   @inline(__always)
   var preview: NitroSourcePreviewConfig? {
     return self.__preview.value

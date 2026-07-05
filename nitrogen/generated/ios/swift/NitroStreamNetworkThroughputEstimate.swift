@@ -39,12 +39,12 @@ public extension NitroStreamNetworkThroughputEstimate {
   var bps: Double {
     return self.__bps
   }
-
+  
   @inline(__always)
   var samples: Double {
     return self.__samples
   }
-
+  
   @inline(__always)
   var newestAgeMs: Variant_NullType_Double? {
     return { () -> Variant_NullType_Double? in

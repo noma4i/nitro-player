@@ -29,7 +29,7 @@ public extension onLoadStartData {
   var sourceType: SourceType {
     return self.__sourceType
   }
-
+  
   @inline(__always)
   var source: (any HybridNitroPlayerSourceSpec) {
     return { () -> any HybridNitroPlayerSourceSpec in

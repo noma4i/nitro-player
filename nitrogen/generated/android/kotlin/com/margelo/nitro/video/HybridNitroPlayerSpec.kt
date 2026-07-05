@@ -29,97 +29,97 @@ abstract class HybridNitroPlayerSpec: HybridObject() {
   @get:DoNotStrip
   @get:Keep
   abstract val source: HybridNitroPlayerSourceSpec
-
+  
   @get:DoNotStrip
   @get:Keep
   abstract val eventEmitter: HybridNitroPlayerEventEmitterSpec
-
+  
   @get:DoNotStrip
   @get:Keep
   abstract val playbackState: PlaybackState
-
+  
   @get:DoNotStrip
   @get:Keep
   abstract val memorySnapshot: MemorySnapshot
-
+  
   @get:DoNotStrip
   @get:Keep
   abstract val status: NitroPlayerStatus
-
+  
   @get:DoNotStrip
   @get:Keep
   abstract val duration: Double
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var volume: Double
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var currentTime: Double
-
+  
   @get:DoNotStrip
   @get:Keep
   abstract val bufferDuration: Double
-
+  
   @get:DoNotStrip
   @get:Keep
   abstract val bufferedPosition: Double
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var muted: Boolean
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var loop: Boolean
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var rate: Double
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var mixAudioMode: MixAudioMode
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var ignoreSilentSwitchMode: IgnoreSilentSwitchMode
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var playInBackground: Boolean
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var playWhenInactive: Boolean
-
+  
   @get:DoNotStrip
   @get:Keep
   abstract val isPlaying: Boolean
-
+  
   @get:DoNotStrip
   @get:Keep
   abstract val isBuffering: Boolean
-
+  
   @get:DoNotStrip
   @get:Keep
   abstract val isVisualReady: Boolean
@@ -128,35 +128,35 @@ abstract class HybridNitroPlayerSpec: HybridObject() {
   @DoNotStrip
   @Keep
   abstract fun initialize(): Promise<Unit>
-
+  
   @DoNotStrip
   @Keep
   abstract fun preload(): Promise<Unit>
-
+  
   @DoNotStrip
   @Keep
   abstract fun play(): Unit
-
+  
   @DoNotStrip
   @Keep
   abstract fun pause(): Unit
-
+  
   @DoNotStrip
   @Keep
   abstract fun seekBy(time: Double): Unit
-
+  
   @DoNotStrip
   @Keep
   abstract fun seekTo(time: Double): Unit
-
+  
   @DoNotStrip
   @Keep
   abstract fun replaceSourceAsync(source: HybridNitroPlayerSourceSpec): Promise<Unit>
-
+  
   @DoNotStrip
   @Keep
   abstract fun clearSourceAsync(): Promise<Unit>
-
+  
   @DoNotStrip
   @Keep
   abstract fun release(): Unit

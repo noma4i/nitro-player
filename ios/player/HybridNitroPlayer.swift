@@ -466,6 +466,18 @@ class HybridNitroPlayer: HybridNitroPlayerSpec, NativeNitroPlayerSpec, @unchecke
   }
 
   func emitPlaybackState() {
+    if !Thread.isMainThread {
+      DispatchQueue.main.async { [weak self] in
+        guard let self else { return }
+        self.emitPlaybackState()
+      }
+      return
+    }
+
+    emitPlaybackStateOnMainThread()
+  }
+
+  private func emitPlaybackStateOnMainThread() {
     guard PlaybackStateEmissionCoordinator.shouldBuildSnapshot(
       canEmitForLifecycle: lifecycleGate.shouldEmit(),
       hasPlaybackStateListeners: _eventEmitter?.hasOnPlaybackStateListeners() == true

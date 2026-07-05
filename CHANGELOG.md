@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-beta.5
+
+### Fixed
+
+- iOS: eager buffered player initialization emitted playback state off the main thread, tripping the `PlaybackStateEmissionGate` main-thread assertion and crashing the host app at boot in DEBUG; the init emission path now marshals onto the main thread.
+
 ## 2.0.0-beta.4
 
 ### Performance

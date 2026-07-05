@@ -54,17 +54,17 @@ namespace margelo::nitro::video {
     class First final: public jni::JavaClass<First, JVariant_NullType_PlaybackError> {
     public:
       static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/video/Variant_NullType_PlaybackError$First;";
-
+    
       [[nodiscard]] jni::local_ref<JNull> getValue() const {
         static const auto field = javaClassStatic()->getField<JNull>("value");
         return getFieldValue(field);
       }
     };
-
+    
     class Second final: public jni::JavaClass<Second, JVariant_NullType_PlaybackError> {
     public:
       static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/video/Variant_NullType_PlaybackError$Second;";
-
+    
       [[nodiscard]] jni::local_ref<JPlaybackError> getValue() const {
         static const auto field = javaClassStatic()->getField<JPlaybackError>("value");
         return getFieldValue(field);

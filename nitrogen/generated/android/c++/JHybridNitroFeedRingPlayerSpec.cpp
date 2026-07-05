@@ -132,7 +132,7 @@ namespace margelo::nitro::video {
   }
 
   // Properties
-
+  
 
   // Methods
   std::shared_ptr<HybridNitroPlayerSpec> JHybridNitroFeedRingPlayerSpec::getPlayer(double slotId) {

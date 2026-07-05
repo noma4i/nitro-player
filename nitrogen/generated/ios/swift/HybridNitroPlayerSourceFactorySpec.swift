@@ -10,7 +10,7 @@ import NitroModules
 /// See ``HybridNitroPlayerSourceFactorySpec``
 public protocol HybridNitroPlayerSourceFactorySpec_protocol: HybridObject {
   // Properties
-
+  
 
   // Methods
   func fromUri(uri: String) throws -> (any HybridNitroPlayerSourceSpec)

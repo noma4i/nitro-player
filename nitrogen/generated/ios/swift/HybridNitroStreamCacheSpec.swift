@@ -10,7 +10,7 @@ import NitroModules
 /// See ``HybridNitroStreamCacheSpec``
 public protocol HybridNitroStreamCacheSpec_protocol: HybridObject {
   // Properties
-
+  
 
   // Methods
   func prefetchLeadingSegments(url: String, headers: Dictionary<String, String>?) throws -> Promise<Void>

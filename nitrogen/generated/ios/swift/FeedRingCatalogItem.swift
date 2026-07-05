@@ -44,7 +44,7 @@ public extension FeedRingCatalogItem {
   var index: Double {
     return self.__index
   }
-
+  
   @inline(__always)
   var momentId: String? {
     return { () -> String? in
@@ -56,7 +56,7 @@ public extension FeedRingCatalogItem {
       }
     }()
   }
-
+  
   @inline(__always)
   var sourceKey: String? {
     return { () -> String? in
@@ -68,7 +68,7 @@ public extension FeedRingCatalogItem {
       }
     }()
   }
-
+  
   @inline(__always)
   var source: NativeNitroPlayerConfig? {
     return self.__source.value

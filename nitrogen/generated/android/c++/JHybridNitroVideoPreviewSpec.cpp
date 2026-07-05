@@ -49,7 +49,7 @@ namespace margelo::nitro::video {
   }
 
   // Properties
-
+  
 
   // Methods
   std::shared_ptr<Promise<std::variant<nitro::NullType, std::string>>> JHybridNitroVideoPreviewSpec::getThumbnailUrl(const std::string& url, const std::optional<std::unordered_map<std::string, std::string>>& headers) {

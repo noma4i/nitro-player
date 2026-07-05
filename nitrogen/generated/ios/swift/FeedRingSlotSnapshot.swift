@@ -110,7 +110,7 @@ public extension FeedRingSlotSnapshot {
   var slotId: Double {
     return self.__slotId
   }
-
+  
   @inline(__always)
   var assignedIndex: Double? {
     return { () -> Double? in
@@ -122,7 +122,7 @@ public extension FeedRingSlotSnapshot {
       }
     }()
   }
-
+  
   @inline(__always)
   var momentId: String? {
     return { () -> String? in
@@ -134,7 +134,7 @@ public extension FeedRingSlotSnapshot {
       }
     }()
   }
-
+  
   @inline(__always)
   var sourceKey: String? {
     return { () -> String? in
@@ -146,52 +146,52 @@ public extension FeedRingSlotSnapshot {
       }
     }()
   }
-
+  
   @inline(__always)
   var generation: Double {
     return self.__generation
   }
-
+  
   @inline(__always)
   var desiredPlay: Bool {
     return self.__desiredPlay
   }
-
+  
   @inline(__always)
   var attached: Bool {
     return self.__attached
   }
-
+  
   @inline(__always)
   var prepared: Bool {
     return self.__prepared
   }
-
+  
   @inline(__always)
   var ready: Bool {
     return self.__ready
   }
-
+  
   @inline(__always)
   var playing: Bool {
     return self.__playing
   }
-
+  
   @inline(__always)
   var buffering: Bool {
     return self.__buffering
   }
-
+  
   @inline(__always)
   var currentTime: Double {
     return self.__currentTime
   }
-
+  
   @inline(__always)
   var duration: Double {
     return self.__duration
   }
-
+  
   @inline(__always)
   var bufferDuration: Double? {
     return { () -> Double? in
@@ -203,7 +203,7 @@ public extension FeedRingSlotSnapshot {
       }
     }()
   }
-
+  
   @inline(__always)
   var bufferedPosition: Double? {
     return { () -> Double? in
@@ -215,7 +215,7 @@ public extension FeedRingSlotSnapshot {
       }
     }()
   }
-
+  
   @inline(__always)
   var rate: Double? {
     return { () -> Double? in
@@ -227,7 +227,7 @@ public extension FeedRingSlotSnapshot {
       }
     }()
   }
-
+  
   @inline(__always)
   var wantsToPlay: Bool? {
     return { () -> Bool? in
@@ -239,7 +239,7 @@ public extension FeedRingSlotSnapshot {
       }
     }()
   }
-
+  
   @inline(__always)
   var retentionState: String? {
     return { () -> String? in
@@ -251,7 +251,7 @@ public extension FeedRingSlotSnapshot {
       }
     }()
   }
-
+  
   @inline(__always)
   var hasLoadedSource: Bool? {
     return { () -> Bool? in
@@ -263,7 +263,7 @@ public extension FeedRingSlotSnapshot {
       }
     }()
   }
-
+  
   @inline(__always)
   var watchdogAttempts: Double? {
     return { () -> Double? in
@@ -275,7 +275,7 @@ public extension FeedRingSlotSnapshot {
       }
     }()
   }
-
+  
   @inline(__always)
   var watchdogPending: Bool? {
     return { () -> Bool? in
@@ -287,7 +287,7 @@ public extension FeedRingSlotSnapshot {
       }
     }()
   }
-
+  
   @inline(__always)
   var nativePlaybackState: String? {
     return { () -> String? in
@@ -299,7 +299,7 @@ public extension FeedRingSlotSnapshot {
       }
     }()
   }
-
+  
   @inline(__always)
   var status: String? {
     return { () -> String? in
@@ -311,12 +311,12 @@ public extension FeedRingSlotSnapshot {
       }
     }()
   }
-
+  
   @inline(__always)
   var lastTransition: String {
     return String(self.__lastTransition)
   }
-
+  
   @inline(__always)
   var lastError: String? {
     return { () -> String? in

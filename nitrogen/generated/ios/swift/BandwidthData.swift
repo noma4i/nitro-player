@@ -38,7 +38,7 @@ public extension BandwidthData {
   var bitrate: Double {
     return self.__bitrate
   }
-
+  
   @inline(__always)
   var width: Double? {
     return { () -> Double? in
@@ -50,7 +50,7 @@ public extension BandwidthData {
       }
     }()
   }
-
+  
   @inline(__always)
   var height: Double? {
     return { () -> Double? in

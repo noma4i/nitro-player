@@ -26,17 +26,17 @@ public extension FeedRingViewport {
   var revision: Double {
     return self.__revision
   }
-
+  
   @inline(__always)
   var centerIndex: Double {
     return self.__centerIndex
   }
-
+  
   @inline(__always)
   var playbackAllowed: Bool {
     return self.__playbackAllowed
   }
-
+  
   @inline(__always)
   var muted: Bool {
     return self.__muted

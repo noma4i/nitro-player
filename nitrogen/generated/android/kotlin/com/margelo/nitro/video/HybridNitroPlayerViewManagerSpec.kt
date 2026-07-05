@@ -30,31 +30,31 @@ abstract class HybridNitroPlayerViewManagerSpec: HybridObject() {
   @set:DoNotStrip
   @set:Keep
   abstract var player: HybridNitroPlayerSpec?
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var isAttached: Boolean
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var controls: Boolean
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var resizeMode: ResizeMode
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
   @set:Keep
   abstract var keepScreenAwake: Boolean
-
+  
   @get:DoNotStrip
   @get:Keep
   @set:DoNotStrip
@@ -65,64 +65,64 @@ abstract class HybridNitroPlayerViewManagerSpec: HybridObject() {
   @DoNotStrip
   @Keep
   abstract fun enterFullscreen(): Unit
-
+  
   @DoNotStrip
   @Keep
   abstract fun exitFullscreen(): Unit
-
+  
   @DoNotStrip
   @Keep
   abstract fun setPlayerDefaults(defaults: NitroPlayerDefaults): Unit
-
+  
   @DoNotStrip
   @Keep
   abstract fun clearPlayerDefaults(): Unit
-
+  
   abstract fun addOnAttachedListener(listener: () -> Unit): ListenerSubscription
-
+  
   @DoNotStrip
   @Keep
   private fun addOnAttachedListener_cxx(listener: Func_void): ListenerSubscription {
     val __result = addOnAttachedListener(listener)
     return __result
   }
-
+  
   abstract fun addOnDetachedListener(listener: () -> Unit): ListenerSubscription
-
+  
   @DoNotStrip
   @Keep
   private fun addOnDetachedListener_cxx(listener: Func_void): ListenerSubscription {
     val __result = addOnDetachedListener(listener)
     return __result
   }
-
+  
   abstract fun addOnFullscreenChangeListener(listener: (fullscreen: Boolean) -> Unit): ListenerSubscription
-
+  
   @DoNotStrip
   @Keep
   private fun addOnFullscreenChangeListener_cxx(listener: Func_void_bool): ListenerSubscription {
     val __result = addOnFullscreenChangeListener(listener)
     return __result
   }
-
+  
   abstract fun addWillEnterFullscreenListener(listener: () -> Unit): ListenerSubscription
-
+  
   @DoNotStrip
   @Keep
   private fun addWillEnterFullscreenListener_cxx(listener: Func_void): ListenerSubscription {
     val __result = addWillEnterFullscreenListener(listener)
     return __result
   }
-
+  
   abstract fun addWillExitFullscreenListener(listener: () -> Unit): ListenerSubscription
-
+  
   @DoNotStrip
   @Keep
   private fun addWillExitFullscreenListener_cxx(listener: Func_void): ListenerSubscription {
     val __result = addWillExitFullscreenListener(listener)
     return __result
   }
-
+  
   @DoNotStrip
   @Keep
   abstract fun clearAllListeners(): Unit

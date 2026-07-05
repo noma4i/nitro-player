@@ -10,7 +10,7 @@ import NitroModules
 /// See ``HybridNitroVideoPreviewSpec``
 public protocol HybridNitroVideoPreviewSpec_protocol: HybridObject {
   // Properties
-
+  
 
   // Methods
   func getThumbnailUrl(url: String, headers: Dictionary<String, String>?) throws -> Promise<Variant_NullType_String>

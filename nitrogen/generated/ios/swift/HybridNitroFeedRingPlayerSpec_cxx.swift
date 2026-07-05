@@ -84,7 +84,7 @@ open class HybridNitroFeedRingPlayerSpec_cxx {
     }
   }
 
-
+  
 
   /**
    * Get the memory size of the Swift class (plus size of any other allocations)
@@ -121,7 +121,7 @@ open class HybridNitroFeedRingPlayerSpec_cxx {
   }
 
   // Properties
-
+  
 
   // Methods
   @inline(__always)
@@ -138,7 +138,7 @@ open class HybridNitroFeedRingPlayerSpec_cxx {
       return bridge.create_Result_std__shared_ptr_HybridNitroPlayerSpec__(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func replaceCatalog(catalog: FeedRingCatalog) -> bridge.Result_void_ {
     do {
@@ -149,7 +149,7 @@ open class HybridNitroFeedRingPlayerSpec_cxx {
       return bridge.create_Result_void_(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func commitViewport(viewport: FeedRingViewport) -> bridge.Result_void_ {
     do {
@@ -160,7 +160,7 @@ open class HybridNitroFeedRingPlayerSpec_cxx {
       return bridge.create_Result_void_(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func snapshot() -> bridge.Result_FeedRingSnapshot_ {
     do {
@@ -172,7 +172,7 @@ open class HybridNitroFeedRingPlayerSpec_cxx {
       return bridge.create_Result_FeedRingSnapshot_(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func addSlotStateListener(listener: bridge.Func_void_FeedRingSlotState) -> bridge.Result_ListenerSubscription_ {
     do {
@@ -189,7 +189,7 @@ open class HybridNitroFeedRingPlayerSpec_cxx {
       return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func release() -> bridge.Result_void_ {
     do {

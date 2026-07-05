@@ -84,7 +84,7 @@ open class HybridNitroStreamCacheSpec_cxx {
     }
   }
 
-
+  
 
   /**
    * Get the memory size of the Swift class (plus size of any other allocations)
@@ -121,7 +121,7 @@ open class HybridNitroStreamCacheSpec_cxx {
   }
 
   // Properties
-
+  
 
   // Methods
   @inline(__always)
@@ -157,7 +157,7 @@ open class HybridNitroStreamCacheSpec_cxx {
       return bridge.create_Result_std__shared_ptr_Promise_void___(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func getCacheStats() -> bridge.Result_std__shared_ptr_Promise_NitroStreamCacheStats___ {
     do {
@@ -176,7 +176,7 @@ open class HybridNitroStreamCacheSpec_cxx {
       return bridge.create_Result_std__shared_ptr_Promise_NitroStreamCacheStats___(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func getStreamCacheStats(url: std.string, headers: bridge.std__optional_std__unordered_map_std__string__std__string__) -> bridge.Result_std__shared_ptr_Promise_NitroStreamSourceCacheStats___ {
     do {
@@ -210,7 +210,7 @@ open class HybridNitroStreamCacheSpec_cxx {
       return bridge.create_Result_std__shared_ptr_Promise_NitroStreamSourceCacheStats___(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func getNetworkThroughputEstimate() -> bridge.Result_std__shared_ptr_Promise_std__variant_nitro__NullType__NitroStreamNetworkThroughputEstimate____ {
     do {
@@ -236,7 +236,7 @@ open class HybridNitroStreamCacheSpec_cxx {
       return bridge.create_Result_std__shared_ptr_Promise_std__variant_nitro__NullType__NitroStreamNetworkThroughputEstimate____(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func configureCache(options: bridge.std__optional_NitroStreamCacheConfig_) -> bridge.Result_std__shared_ptr_Promise_bool___ {
     do {
@@ -255,7 +255,7 @@ open class HybridNitroStreamCacheSpec_cxx {
       return bridge.create_Result_std__shared_ptr_Promise_bool___(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func clearCache() -> bridge.Result_std__shared_ptr_Promise_bool___ {
     do {

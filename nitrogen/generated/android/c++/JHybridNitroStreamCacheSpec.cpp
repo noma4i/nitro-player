@@ -66,7 +66,7 @@ namespace margelo::nitro::video {
   }
 
   // Properties
-
+  
 
   // Methods
   std::shared_ptr<Promise<void>> JHybridNitroStreamCacheSpec::prefetchLeadingSegments(const std::string& url, const std::optional<std::unordered_map<std::string, std::string>>& headers) {

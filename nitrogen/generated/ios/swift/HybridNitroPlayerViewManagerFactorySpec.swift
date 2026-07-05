@@ -10,7 +10,7 @@ import NitroModules
 /// See ``HybridNitroPlayerViewManagerFactorySpec``
 public protocol HybridNitroPlayerViewManagerFactorySpec_protocol: HybridObject {
   // Properties
-
+  
 
   // Methods
   func createViewManager(nitroId: Double) throws -> (any HybridNitroPlayerViewManagerSpec)

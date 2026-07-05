@@ -10,7 +10,7 @@ import NitroModules
 /// See ``HybridNitroPlayerEventEmitterSpec``
 public protocol HybridNitroPlayerEventEmitterSpec_protocol: HybridObject {
   // Properties
-
+  
 
   // Methods
   func addOnBandwidthUpdateListener(listener: @escaping (_ data: BandwidthData) -> Void) throws -> ListenerSubscription

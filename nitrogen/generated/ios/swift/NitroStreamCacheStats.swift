@@ -26,12 +26,12 @@ public extension NitroStreamCacheStats {
   var totalSize: Double {
     return self.__totalSize
   }
-
+  
   @inline(__always)
   var fileCount: Double {
     return self.__fileCount
   }
-
+  
   @inline(__always)
   var maxSize: Double {
     return self.__maxSize

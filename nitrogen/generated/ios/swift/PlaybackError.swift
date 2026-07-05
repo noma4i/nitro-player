@@ -26,7 +26,7 @@ public extension PlaybackError {
   var code: NitroPlayerErrorCode {
     return self.__code
   }
-
+  
   @inline(__always)
   var message: String {
     return String(self.__message)

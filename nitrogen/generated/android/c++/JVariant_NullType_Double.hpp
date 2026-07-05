@@ -49,17 +49,17 @@ namespace margelo::nitro::video {
     class First final: public jni::JavaClass<First, JVariant_NullType_Double> {
     public:
       static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/video/Variant_NullType_Double$First;";
-
+    
       [[nodiscard]] jni::local_ref<JNull> getValue() const {
         static const auto field = javaClassStatic()->getField<JNull>("value");
         return getFieldValue(field);
       }
     };
-
+    
     class Second final: public jni::JavaClass<Second, JVariant_NullType_Double> {
     public:
       static constexpr auto kJavaDescriptor = "Lcom/margelo/nitro/video/Variant_NullType_Double$Second;";
-
+    
       [[nodiscard]] double getValue() const {
         static const auto field = javaClassStatic()->getField<double>("value");
         return getFieldValue(field);

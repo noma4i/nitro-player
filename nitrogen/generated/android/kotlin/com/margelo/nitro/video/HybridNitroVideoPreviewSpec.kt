@@ -27,17 +27,17 @@ import com.margelo.nitro.core.HybridObject
 )
 abstract class HybridNitroVideoPreviewSpec: HybridObject() {
   // Properties
-
+  
 
   // Methods
   @DoNotStrip
   @Keep
   abstract fun getThumbnailUrl(url: String, headers: Map<String, String>?): Promise<Variant_NullType_String>
-
+  
   @DoNotStrip
   @Keep
   abstract fun peekThumbnailUrl(url: String, headers: Map<String, String>?): Promise<Variant_NullType_String>
-
+  
   @DoNotStrip
   @Keep
   abstract fun clearPreview(): Promise<Boolean>

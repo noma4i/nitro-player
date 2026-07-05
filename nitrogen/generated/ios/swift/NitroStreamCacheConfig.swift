@@ -45,7 +45,7 @@ public extension NitroStreamCacheConfig {
       }
     }()
   }
-
+  
   @inline(__always)
   var prefetchSegments: Double? {
     return { () -> Double? in

@@ -84,7 +84,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
     }
   }
 
-
+  
 
   /**
    * Get the memory size of the Swift class (plus size of any other allocations)
@@ -151,7 +151,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       }()
     }
   }
-
+  
   public final var isAttached: Bool {
     @inline(__always)
     get {
@@ -162,7 +162,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       self.__implementation.isAttached = newValue
     }
   }
-
+  
   public final var controls: Bool {
     @inline(__always)
     get {
@@ -173,7 +173,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       self.__implementation.controls = newValue
     }
   }
-
+  
   public final var resizeMode: Int32 {
     @inline(__always)
     get {
@@ -184,7 +184,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       self.__implementation.resizeMode = margelo.nitro.video.ResizeMode(rawValue: newValue)!
     }
   }
-
+  
   public final var keepScreenAwake: Bool {
     @inline(__always)
     get {
@@ -195,7 +195,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       self.__implementation.keepScreenAwake = newValue
     }
   }
-
+  
   public final var surfaceType: Int32 {
     @inline(__always)
     get {
@@ -218,7 +218,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       return bridge.create_Result_void_(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func exitFullscreen() -> bridge.Result_void_ {
     do {
@@ -229,7 +229,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       return bridge.create_Result_void_(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func setPlayerDefaults(defaults: NitroPlayerDefaults) -> bridge.Result_void_ {
     do {
@@ -240,7 +240,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       return bridge.create_Result_void_(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func clearPlayerDefaults() -> bridge.Result_void_ {
     do {
@@ -251,7 +251,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       return bridge.create_Result_void_(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func addOnAttachedListener(listener: bridge.Func_void) -> bridge.Result_ListenerSubscription_ {
     do {
@@ -268,7 +268,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func addOnDetachedListener(listener: bridge.Func_void) -> bridge.Result_ListenerSubscription_ {
     do {
@@ -285,7 +285,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func addOnFullscreenChangeListener(listener: bridge.Func_void_bool) -> bridge.Result_ListenerSubscription_ {
     do {
@@ -302,7 +302,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func addWillEnterFullscreenListener(listener: bridge.Func_void) -> bridge.Result_ListenerSubscription_ {
     do {
@@ -319,7 +319,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func addWillExitFullscreenListener(listener: bridge.Func_void) -> bridge.Result_ListenerSubscription_ {
     do {
@@ -336,7 +336,7 @@ open class HybridNitroPlayerViewManagerSpec_cxx {
       return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
     }
   }
-
+  
   @inline(__always)
   public final func clearAllListeners() -> bridge.Result_void_ {
     do {

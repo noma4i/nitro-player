@@ -25,72 +25,72 @@ import com.margelo.nitro.core.HybridObject
 )
 abstract class HybridNitroPlayerEventEmitterSpec: HybridObject() {
   // Properties
-
+  
 
   // Methods
   abstract fun addOnBandwidthUpdateListener(listener: (data: BandwidthData) -> Unit): ListenerSubscription
-
+  
   @DoNotStrip
   @Keep
   private fun addOnBandwidthUpdateListener_cxx(listener: Func_void_BandwidthData): ListenerSubscription {
     val __result = addOnBandwidthUpdateListener(listener)
     return __result
   }
-
+  
   abstract fun addOnLoadListener(listener: (data: onLoadData) -> Unit): ListenerSubscription
-
+  
   @DoNotStrip
   @Keep
   private fun addOnLoadListener_cxx(listener: Func_void_onLoadData): ListenerSubscription {
     val __result = addOnLoadListener(listener)
     return __result
   }
-
+  
   abstract fun addOnLoadStartListener(listener: (data: onLoadStartData) -> Unit): ListenerSubscription
-
+  
   @DoNotStrip
   @Keep
   private fun addOnLoadStartListener_cxx(listener: Func_void_onLoadStartData): ListenerSubscription {
     val __result = addOnLoadStartListener(listener)
     return __result
   }
-
+  
   abstract fun addOnFirstFrameListener(listener: (data: onFirstFrameData) -> Unit): ListenerSubscription
-
+  
   @DoNotStrip
   @Keep
   private fun addOnFirstFrameListener_cxx(listener: Func_void_onFirstFrameData): ListenerSubscription {
     val __result = addOnFirstFrameListener(listener)
     return __result
   }
-
+  
   abstract fun addOnErrorListener(listener: (error: PlaybackError) -> Unit): ListenerSubscription
-
+  
   @DoNotStrip
   @Keep
   private fun addOnErrorListener_cxx(listener: Func_void_PlaybackError): ListenerSubscription {
     val __result = addOnErrorListener(listener)
     return __result
   }
-
+  
   abstract fun addOnPlaybackStateListener(listener: (state: PlaybackState) -> Unit): ListenerSubscription
-
+  
   @DoNotStrip
   @Keep
   private fun addOnPlaybackStateListener_cxx(listener: Func_void_PlaybackState): ListenerSubscription {
     val __result = addOnPlaybackStateListener(listener)
     return __result
   }
-
+  
   abstract fun addOnVolumeChangeListener(listener: (data: onVolumeChangeData) -> Unit): ListenerSubscription
-
+  
   @DoNotStrip
   @Keep
   private fun addOnVolumeChangeListener_cxx(listener: Func_void_onVolumeChangeData): ListenerSubscription {
     val __result = addOnVolumeChangeListener(listener)
     return __result
   }
-
+  
   @DoNotStrip
   @Keep
   abstract fun clearAllListeners(): Unit

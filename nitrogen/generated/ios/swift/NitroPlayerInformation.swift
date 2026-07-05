@@ -26,37 +26,37 @@ public extension NitroPlayerInformation {
   var bitrate: Double {
     return self.__bitrate
   }
-
+  
   @inline(__always)
   var width: Double {
     return self.__width
   }
-
+  
   @inline(__always)
   var height: Double {
     return self.__height
   }
-
+  
   @inline(__always)
   var duration: Int64 {
     return self.__duration
   }
-
+  
   @inline(__always)
   var fileSize: Int64 {
     return self.__fileSize
   }
-
+  
   @inline(__always)
   var isHDR: Bool {
     return self.__isHDR
   }
-
+  
   @inline(__always)
   var isLive: Bool {
     return self.__isLive
   }
-
+  
   @inline(__always)
   var orientation: NitroPlayerOrientation {
     return self.__orientation

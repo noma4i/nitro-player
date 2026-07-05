@@ -84,7 +84,7 @@ open class HybridNitroPlayerSourceSpec_cxx {
     }
   }
 
-
+  
 
   /**
    * Get the memory size of the Swift class (plus size of any other allocations)

@@ -63,7 +63,7 @@ public extension LivePlaybackParams {
       }
     }()
   }
-
+  
   @inline(__always)
   var maxPlaybackSpeed: Double? {
     return { () -> Double? in
@@ -75,7 +75,7 @@ public extension LivePlaybackParams {
       }
     }()
   }
-
+  
   @inline(__always)
   var maxOffsetMs: Double? {
     return { () -> Double? in
@@ -87,7 +87,7 @@ public extension LivePlaybackParams {
       }
     }()
   }
-
+  
   @inline(__always)
   var minOffsetMs: Double? {
     return { () -> Double? in
@@ -99,7 +99,7 @@ public extension LivePlaybackParams {
       }
     }()
   }
-
+  
   @inline(__always)
   var targetOffsetMs: Double? {
     return { () -> Double? in

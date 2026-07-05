@@ -10,7 +10,7 @@ import NitroModules
 /// See ``HybridNitroFeedRingPlayerSpec``
 public protocol HybridNitroFeedRingPlayerSpec_protocol: HybridObject {
   // Properties
-
+  
 
   // Methods
   func getPlayer(slotId: Double) throws -> (any HybridNitroPlayerSpec)

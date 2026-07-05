@@ -26,22 +26,22 @@ public extension onFirstFrameData {
   var uri: String {
     return String(self.__uri)
   }
-
+  
   @inline(__always)
   var width: Double {
     return self.__width
   }
-
+  
   @inline(__always)
   var height: Double {
     return self.__height
   }
-
+  
   @inline(__always)
   var sourceUri: String {
     return String(self.__sourceUri)
   }
-
+  
   @inline(__always)
   var fromCache: Bool {
     return self.__fromCache

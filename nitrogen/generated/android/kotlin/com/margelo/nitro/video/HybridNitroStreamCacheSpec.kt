@@ -27,29 +27,29 @@ import com.margelo.nitro.core.HybridObject
 )
 abstract class HybridNitroStreamCacheSpec: HybridObject() {
   // Properties
-
+  
 
   // Methods
   @DoNotStrip
   @Keep
   abstract fun prefetchLeadingSegments(url: String, headers: Map<String, String>?): Promise<Unit>
-
+  
   @DoNotStrip
   @Keep
   abstract fun getCacheStats(): Promise<NitroStreamCacheStats>
-
+  
   @DoNotStrip
   @Keep
   abstract fun getStreamCacheStats(url: String, headers: Map<String, String>?): Promise<NitroStreamSourceCacheStats>
-
+  
   @DoNotStrip
   @Keep
   abstract fun getNetworkThroughputEstimate(): Promise<Variant_NullType_NitroStreamNetworkThroughputEstimate>
-
+  
   @DoNotStrip
   @Keep
   abstract fun configureCache(options: NitroStreamCacheConfig?): Promise<Boolean>
-
+  
   @DoNotStrip
   @Keep
   abstract fun clearCache(): Promise<Boolean>
