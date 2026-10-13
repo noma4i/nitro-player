@@ -1,13 +1,10 @@
 package com.nitroplay.video.source
 
 import androidx.annotation.OptIn
-import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import com.margelo.nitro.video.HybridNitroPlayerSource
 import com.margelo.nitro.video.LivePlaybackParams
-import com.margelo.nitro.video.NitroSourceMetadata
 
 @OptIn(UnstableApi::class)
 fun createMediaItemFromVideoConfig(
@@ -19,10 +16,6 @@ fun createMediaItemFromVideoConfig(
 
   source.config.buffer?.livePlayback?.let { livePlaybackParams ->
     mediaItemBuilder.setLiveConfiguration(getLiveConfiguration(livePlaybackParams))
-  }
-
-  source.config.metadata?.let { metadata ->
-    mediaItemBuilder.setMediaMetadata(getCustomMetadata(metadata))
   }
 
   return mediaItemBuilder.build()
@@ -64,14 +57,4 @@ fun getLiveConfiguration(
   }
 
   return liveConfiguration.build()
-}
-
-fun getCustomMetadata(metadata: NitroSourceMetadata): MediaMetadata {
-  return MediaMetadata.Builder()
-    .setDisplayTitle(metadata.title)
-    .setTitle(metadata.title)
-    .setSubtitle(metadata.subtitle)
-    .setArtist(metadata.artist)
-    .setArtworkUri(metadata.imageUri?.toUri())
-    .build()
 }

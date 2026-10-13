@@ -13,10 +13,25 @@ import UIKit
 @objc public class NitroPlayerComponentView: UIView {
   public weak var player: HybridNitroPlayerSpec? = nil {
     didSet {
+      let previousPlayer = oldValue as? HybridNitroPlayer
       guard let player = player as? HybridNitroPlayer else {
+        if previousPlayer != nil {
+          // PATCH(yupi): surface-preserving reattach
+          pendingTeardownGeneration &+= 1
+          hardTeardownPlayerViewController()
+        }
+        invalidatePendingConfiguration()
         refreshAttachmentStateIfNeeded()
         return
       }
+
+      if previousPlayer !== player {
+        // PATCH(yupi): surface-preserving reattach
+        pendingTeardownGeneration &+= 1
+        invalidatePendingConfiguration()
+        hardTeardownPlayerViewController()
+      }
+
       configureAVPlayerViewController(with: player.player)
       refreshAttachmentStateIfNeeded()
     }
@@ -25,8 +40,13 @@ import UIKit
   var delegate: NitroPlayerViewDelegate?
   private var playerView: UIView? = nil
   private var pendingPlayer: AVPlayer? = nil
+  private var pendingPlayerId: ObjectIdentifier? = nil
   private var configurationGeneration: UInt = 0
-  private var hasReportedAttached = false
+  private var pendingTeardownGeneration: UInt = 0
+  private var pendingAttachmentRefreshGeneration: UInt = 0
+  private weak var reportedAttachedPlayer: HybridNitroPlayer? = nil
+  private weak var presentationSuspendedPlayer: AVPlayer?
+  private var isDelegateAttached = false
 
   private var observer: NitroPlayerComponentViewObserver? {
     didSet {
@@ -77,6 +97,7 @@ import UIKit
   @objc public var nitroId: NSNumber = -1 {
     didSet {
       NitroPlayerComponentView.globalViewsMap.setObject(self, forKey: nitroId)
+      HybridNitroPlayerViewManager.notifyViewRegistered(nitroId: nitroId)
     }
   }
 
@@ -91,6 +112,9 @@ import UIKit
   }
 
   deinit {
+    pendingTeardownGeneration &+= 1
+    hardTeardownPlayerViewController()
+    refreshAttachmentStateIfNeeded(overrideViewAttached: false)
     NitroPlayerManager.shared.unregister(view: self)
   }
 
@@ -120,6 +144,8 @@ import UIKit
 
   private func invalidatePendingConfiguration() {
     configurationGeneration &+= 1
+    pendingPlayer = nil
+    pendingPlayerId = nil
   }
 
   private func isReadyForControllerAttachment() -> Bool {
@@ -134,28 +160,85 @@ import UIKit
     return player != nil && superview != nil && window != nil
   }
 
-  private func refreshAttachmentStateIfNeeded() {
-    let nextAttached = isEffectivelyAttached
-    guard nextAttached != hasReportedAttached else {
-      return
+  private func shouldCommitConfiguration(
+    scheduledGeneration: UInt,
+    scheduledPlayerId: ObjectIdentifier
+  ) -> Bool {
+    PlayerViewBindingPolicy.shouldCommitConfiguration(
+      scheduledGeneration: scheduledGeneration,
+      currentGeneration: configurationGeneration,
+      scheduledPlayerId: scheduledPlayerId,
+      pendingPlayerId: pendingPlayerId,
+      isReadyForAttachment: isReadyForControllerAttachment()
+    )
+  }
+
+  private func refreshAttachmentStateIfNeeded(overrideViewAttached: Bool? = nil) {
+    let currentPlayer = player as? HybridNitroPlayer
+    let currentPlayerId = currentPlayer.flatMap { ObjectIdentifier($0) }
+    let nextAttached = currentPlayer != nil && (overrideViewAttached ?? isEffectivelyAttached)
+    let transition = PlayerViewBindingPolicy.attachmentTransition(
+      state: PlayerViewAttachmentState(
+        reportedPlayerId: reportedAttachedPlayer.flatMap { ObjectIdentifier($0) },
+        delegateAttached: isDelegateAttached
+      ),
+      currentPlayerId: currentPlayerId,
+      viewAttached: nextAttached
+    )
+
+    let decision = transition.decision
+
+    if decision.detachReportedPlayer {
+      reportedAttachedPlayer?.notifyViewDetached(view: self)
     }
 
-    hasReportedAttached = nextAttached
+    if decision.attachCurrentPlayer {
+      currentPlayer?.notifyViewAttached(view: self)
+    }
 
-    if nextAttached {
-      (player as? HybridNitroPlayer)?.notifyViewAttached()
+    if decision.notifyDelegateAttached {
       delegate?.onAttached()
-    } else {
-      (player as? HybridNitroPlayer)?.notifyViewDetached()
+      isDelegateAttached = true
+    }
+
+    if decision.notifyDelegateDetached {
       delegate?.onDetached()
+      isDelegateAttached = false
+    }
+
+    isDelegateAttached = transition.nextState.delegateAttached
+
+    if transition.nextState.reportedPlayerId != nil {
+      reportedAttachedPlayer = currentPlayer
+    } else {
+      reportedAttachedPlayer = nil
     }
   }
 
-  private func detachPlayerViewController() {
+  // PATCH(yupi): coalesce lifecycle attachment refresh to settled state
+  private func scheduleAttachmentRefresh() {
+    pendingAttachmentRefreshGeneration &+= 1
+    let generation = pendingAttachmentRefreshGeneration
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      guard PlayerViewBindingPolicy.shouldRunCoalescedAttachmentRefresh(
+        tokenIsCurrent: generation == self.pendingAttachmentRefreshGeneration
+      ) else { return }
+      self.refreshAttachmentStateIfNeeded()
+    }
+  }
+
+  private func clearPendingConfigurationState() {
+    pendingPlayer = nil
+    pendingPlayerId = nil
+  }
+
+  private func hardTeardownPlayerViewController() {
     guard let playerViewController else {
       return
     }
 
+    playerViewController.player = nil
     playerViewController.willMove(toParent: nil)
     playerViewController.view.removeFromSuperview()
     playerViewController.removeFromParent()
@@ -171,28 +254,80 @@ import UIKit
   }
 
   public func configureAVPlayerViewController(with player: AVPlayer) {
+    configurationGeneration &+= 1
+    let scheduledGeneration = configurationGeneration
+    let scheduledPlayerId = ObjectIdentifier(player)
+
     pendingPlayer = player
-    let generation = configurationGeneration
+    pendingPlayerId = scheduledPlayerId
 
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
-      guard generation == self.configurationGeneration else { return }
-      guard self.pendingPlayer === player else { return }
-      guard let playerView = self.playerView, self.isReadyForControllerAttachment(), let parentVC = self.findViewController() else { return }
 
-      // Skip reconfiguration if player hasn't changed and controller already exists
-      if let existingController = self.playerViewController,
-        existingController.player === player
-      {
-        self.pendingPlayer = nil
+      guard self.shouldCommitConfiguration(
+        scheduledGeneration: scheduledGeneration,
+        scheduledPlayerId: scheduledPlayerId
+      ) else {
         return
       }
 
-      // Remove previous controller if any
-      self.detachPlayerViewController()
-      guard generation == self.configurationGeneration else { return }
-      guard self.pendingPlayer === player else { return }
-      guard self.isReadyForControllerAttachment() else { return }
+      guard let pendingPlayer = self.pendingPlayer,
+        pendingPlayer === player,
+        let parentVC = self.findViewController() else {
+        return
+      }
+
+      guard self.isReadyForControllerAttachment() else {
+        return
+      }
+
+      if let existingController = self.playerViewController,
+        existingController.player === player
+      {
+        guard let playerView = self.playerView else {
+          return
+        }
+
+        if existingController.parent !== parentVC {
+          // PATCH(yupi): surface-preserving reattach
+          existingController.willMove(toParent: nil)
+          existingController.view.removeFromSuperview()
+          existingController.removeFromParent()
+          parentVC.addChild(existingController)
+          playerView.insertSubview(existingController.view, at: 0)
+          existingController.didMove(toParent: parentVC)
+        } else {
+          playerView.insertSubview(existingController.view, at: 0)
+        }
+        self.clearPendingConfigurationState()
+        return
+      }
+
+      guard self.shouldCommitConfiguration(
+        scheduledGeneration: scheduledGeneration,
+        scheduledPlayerId: scheduledPlayerId
+      ) else {
+        return
+      }
+
+      self.hardTeardownPlayerViewController()
+
+      guard self.shouldCommitConfiguration(
+        scheduledGeneration: scheduledGeneration,
+        scheduledPlayerId: scheduledPlayerId
+      ) else {
+        return
+      }
+
+      guard let playerView = self.playerView,
+        let pendingPlayer = self.pendingPlayer,
+        pendingPlayer === player else {
+        return
+      }
+
+      guard self.isReadyForControllerAttachment() else {
+        return
+      }
 
       let controller = AVPlayerViewController()
       controller.player = player
@@ -218,16 +353,48 @@ import UIKit
         controller.allowsVideoFrameAnalysis = false
       }
 
-      guard generation == self.configurationGeneration else { return }
-      guard self.pendingPlayer === player else { return }
-      guard self.isReadyForControllerAttachment() else { return }
+      guard self.shouldCommitConfiguration(
+        scheduledGeneration: scheduledGeneration,
+        scheduledPlayerId: scheduledPlayerId
+      ) else {
+        return
+      }
+
+      guard let pendingPlayer = self.pendingPlayer,
+        pendingPlayer === player else {
+        return
+      }
 
       parentVC.addChild(controller)
-      playerView.addSubview(controller.view)
+      playerView.insertSubview(controller.view, at: 0)
       controller.didMove(toParent: parentVC)
       self.playerViewController = controller
-      self.pendingPlayer = nil
+      self.clearPendingConfigurationState()
     }
+  }
+
+  /// The system tears down the AVPlayerViewController display layer while the app is suspended,
+  /// which leaves players advancing with no frames presented. Detaching on background and
+  /// re-attaching the very same player on foreground re-creates that layer.
+  public func suspendPlayerPresentationForBackground() {
+    guard let playerViewController, let attachedPlayer = playerViewController.player else {
+      return
+    }
+    presentationSuspendedPlayer = attachedPlayer
+    playerViewController.player = nil
+  }
+
+  /// Restores exactly the player that was detached. If a rebind attached a different player while
+  /// the app was in the background, that newer binding wins and nothing is restored.
+  public func resumePlayerPresentationForForeground() {
+    guard let playerViewController, let suspendedPlayer = presentationSuspendedPlayer else {
+      return
+    }
+    presentationSuspendedPlayer = nil
+    guard playerViewController.player == nil else {
+      return
+    }
+    playerViewController.player = suspendedPlayer
   }
 
   // Helper to find nearest UIViewController
@@ -243,37 +410,70 @@ import UIKit
   }
 
   public override func willMove(toSuperview newSuperview: UIView?) {
-    super.willMove(toSuperview: newSuperview)
-
     if newSuperview == nil {
-      invalidatePendingConfiguration()
-      pendingPlayer = nil
-      detachPlayerViewController()
-      // We want to disable this when view is about to unmount
-      if keepScreenAwake {
-        keepScreenAwake = false
+      // PATCH(yupi): surface-preserving reattach
+      pendingTeardownGeneration &+= 1
+      let capturedTeardownGeneration = pendingTeardownGeneration
+      let capturedPlayerIdentity = (player as? HybridNitroPlayer).map { ObjectIdentifier($0) }
+      let capturedControllerIdentity = playerViewController.map { ObjectIdentifier($0) }
+      DispatchQueue.main.async { [weak self] in
+        guard let self else { return }
+
+        let samePlayerIdentity = capturedPlayerIdentity == (self.player as? HybridNitroPlayer).map { ObjectIdentifier($0) }
+        let sameControllerIdentity = capturedControllerIdentity == self.playerViewController.map { ObjectIdentifier($0) }
+        guard PlayerViewBindingPolicy.shouldExecuteDeferredTeardown(
+          tokenIsCurrent: capturedTeardownGeneration == self.pendingTeardownGeneration,
+          hasSuperview: self.superview != nil,
+          samePlayerIdentity: samePlayerIdentity,
+          sameControllerIdentity: sameControllerIdentity
+        ) else {
+          return
+        }
+
+        self.hardTeardownPlayerViewController()
+        if self.keepScreenAwake {
+          self.keepScreenAwake = false
+        }
+        self.refreshAttachmentStateIfNeeded(overrideViewAttached: false)
       }
     } else {
+      // PATCH(yupi): surface-preserving reattach
+      pendingTeardownGeneration &+= 1
       // We want to restore keepScreenAwake after component remount
       if _keepScreenAwake {
         keepScreenAwake = true
       }
+      if let player = player as? HybridNitroPlayer {
+        configureAVPlayerViewController(with: player.player)
+      }
+      // PATCH(yupi): coalesce lifecycle attachment refresh
+      scheduleAttachmentRefresh()
     }
 
-    refreshAttachmentStateIfNeeded()
+    super.willMove(toSuperview: newSuperview)
   }
 
   public override func didMoveToSuperview() {
     super.didMoveToSuperview()
 
-    refreshAttachmentStateIfNeeded()
+    // PATCH(yupi): cancel deferred teardown only on genuine reattach
+    if PlayerViewBindingPolicy.shouldCancelPendingTeardownOnReattach(isAttachedAfterTransition: superview != nil) {
+      pendingTeardownGeneration &+= 1
+    }
+    // PATCH(yupi): coalesce lifecycle attachment refresh
+    scheduleAttachmentRefresh()
     flushPendingPlayerConfigurationIfNeeded()
   }
 
   public override func didMoveToWindow() {
     super.didMoveToWindow()
 
-    refreshAttachmentStateIfNeeded()
+    // PATCH(yupi): cancel deferred teardown only on genuine reattach
+    if PlayerViewBindingPolicy.shouldCancelPendingTeardownOnReattach(isAttachedAfterTransition: window != nil) {
+      pendingTeardownGeneration &+= 1
+    }
+    // PATCH(yupi): coalesce lifecycle attachment refresh
+    scheduleAttachmentRefresh()
     flushPendingPlayerConfigurationIfNeeded()
   }
 

@@ -9,6 +9,9 @@
 #import <Foundation/Foundation.h>
 #import "KTVHCRange.h"
 
+FOUNDATION_EXPORT NSString * const KTVHCCacheNamespaceHeader;
+FOUNDATION_EXPORT NSString * const KTVHCForwardedHeaderNamesHeader;
+
 @interface KTVHCDataRequest : NSObject
 
 + (instancetype)new NS_UNAVAILABLE;
@@ -18,6 +21,9 @@
 
 @property (nonatomic, copy, readonly) NSURL *URL;
 @property (nonatomic, copy, readonly) NSDictionary *headers;
+@property (nonatomic, copy, readonly) NSURL *cacheURL;
+@property (nonatomic, copy, readonly) NSString *cacheNamespace;
+@property (nonatomic, copy, readonly) NSSet<NSString *> *forwardedHeaderNames;
 @property (nonatomic, readonly) KTVHCRange range;
 
 @end

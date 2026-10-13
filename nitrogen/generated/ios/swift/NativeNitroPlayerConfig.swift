@@ -18,7 +18,7 @@ public extension NativeNitroPlayerConfig {
   /**
    * Create a new instance of `NativeNitroPlayerConfig`.
    */
-  init(uri: String, headers: Dictionary<String, String>?, metadata: NitroSourceMetadata?, startup: NitroSourceStartup?, buffer: BufferConfig?, retention: NitroSourceRetentionConfig?, transport: NitroSourceTransportConfig?, preview: NitroSourcePreviewConfig?) {
+  init(uri: String, headers: Dictionary<String, String>?, startup: NitroSourceStartup?, buffer: BufferConfig?, retention: NitroSourceRetentionConfig?, transport: NitroSourceTransportConfig?) {
     self.init(std.string(uri), { () -> bridge.std__optional_std__unordered_map_std__string__std__string__ in
       if let __unwrappedValue = headers {
         return bridge.create_std__optional_std__unordered_map_std__string__std__string__({ () -> bridge.std__unordered_map_std__string__std__string_ in
@@ -28,12 +28,6 @@ public extension NativeNitroPlayerConfig {
           }
           return __map
         }())
-      } else {
-        return .init()
-      }
-    }(), { () -> bridge.std__optional_NitroSourceMetadata_ in
-      if let __unwrappedValue = metadata {
-        return bridge.create_std__optional_NitroSourceMetadata_(__unwrappedValue)
       } else {
         return .init()
       }
@@ -58,12 +52,6 @@ public extension NativeNitroPlayerConfig {
     }(), { () -> bridge.std__optional_NitroSourceTransportConfig_ in
       if let __unwrappedValue = transport {
         return bridge.create_std__optional_NitroSourceTransportConfig_(__unwrappedValue)
-      } else {
-        return .init()
-      }
-    }(), { () -> bridge.std__optional_NitroSourcePreviewConfig_ in
-      if let __unwrappedValue = preview {
-        return bridge.create_std__optional_NitroSourcePreviewConfig_(__unwrappedValue)
       } else {
         return .init()
       }
@@ -96,11 +84,6 @@ public extension NativeNitroPlayerConfig {
   }
   
   @inline(__always)
-  var metadata: NitroSourceMetadata? {
-    return self.__metadata.value
-  }
-  
-  @inline(__always)
   var startup: NitroSourceStartup? {
     return self.__startup.value
   }
@@ -118,10 +101,5 @@ public extension NativeNitroPlayerConfig {
   @inline(__always)
   var transport: NitroSourceTransportConfig? {
     return self.__transport.value
-  }
-  
-  @inline(__always)
-  var preview: NitroSourcePreviewConfig? {
-    return self.__preview.value
   }
 }

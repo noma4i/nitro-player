@@ -1,39 +1,85 @@
+@file:kotlin.OptIn(com.nitroplay.video.support.MainThreadBlockingCall::class)
+
 package com.nitroplay.video.player
 
+import android.app.Activity
+import android.app.Application
+import android.content.BroadcastReceiver
 import android.content.ComponentCallbacks2
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.res.Configuration
-import android.os.Handler
-import android.os.Looper
+import android.media.AudioManager
+import android.os.Build
+import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
-import com.facebook.react.bridge.LifecycleEventListener
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.video.HybridNitroPlayer
+import com.margelo.nitro.video.ListenerSubscription
+import com.nitroplay.video.runtime.NativeSystemAudioEventEngine
 import com.nitroplay.video.support.Threading.runOnMainThread
 import com.nitroplay.video.support.Threading.runOnMainThreadSync
+import com.nitroplay.video.support.ListenerRegistry
+import com.nitroplay.video.runtime.PlaybackSessionRuntime
+import com.nitroplay.video.runtime.PlaybackSessionCoordinatorSnapshot
+import com.nitroplay.video.streaming.HlsProxyRuntime
 import com.nitroplay.video.view.NitroPlayerView
 import java.lang.ref.WeakReference
+import java.util.Collections
+import java.util.WeakHashMap
+import java.util.concurrent.ConcurrentHashMap
 
 @OptIn(UnstableApi::class)
-object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
-  private const val MAX_HOT_FEED_PLAYERS = 3
+object NitroPlayerManager : Application.ActivityLifecycleCallbacks, ComponentCallbacks2 {
   private const val TRIM_MEMORY_RUNNING_LOW_LEVEL = 10
   private const val TRIM_MEMORY_COMPLETE_LEVEL = 80
 
-  private val mainHandler = Handler(Looper.getMainLooper())
   // nitroId -> weak NitroPlayerView
-  private val views = mutableMapOf<Int, WeakReference<NitroPlayerView>>()
+  private val views = ConcurrentHashMap<Int, WeakReference<NitroPlayerView>>()
   // player -> list of nitroIds of views that are using this player
   private val players = mutableMapOf<HybridNitroPlayer, MutableList<Int>>()
-  private val feedHotActivity = mutableMapOf<HybridNitroPlayer, Long>()
-  private var feedHotSequence = 0L
-  private var feedHotRebalanceScheduled = false
 
   var audioFocusManager = AudioFocusManager()
 
   private var lastPlayedNitroId: Int? = null
   private var registeredContext: Context? = null
+  // Foreground truth is process-level: started activities tracked via
+  // Application.ActivityLifecycleCallbacks, never via per-ReactContext host events.
+  // A ReactContext lifetime is shorter than the process (dev reload, recovery
+  // recreation); a listener bound to it goes deaf after recreation and latches
+  // the coordinator in background, freezing every playback election.
+  private val startedActivities: MutableSet<Activity> = Collections.newSetFromMap(WeakHashMap())
+  private var noisyReceiverContext: Context? = null
+  private val outputDeviceLostListeners = ListenerRegistry()
+  private val foregroundListeners = ListenerRegistry()
+  private val systemAudioEventEngine = NativeSystemAudioEventEngine(
+    muteOutput = {
+      players.keys.filterNot { it.isReleased }.forEach { it.muted = true }
+    },
+    stopManual = PlaybackSessionRuntime::stopManual,
+    stopUnbound = {
+      players.keys
+        .filter { !it.hasPlaybackBinding && !it.isReleased && it.wantsToPlay }
+        .toList()
+        .forEach { it.pause() }
+    },
+    notifyOutputDeviceLost = {
+      outputDeviceLostListeners.emit<() -> Unit>("onOutputDeviceLost") { it() }
+    },
+  )
+  private val noisyReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+      if (intent?.action != AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+        return
+      }
+
+      runOnMainThread {
+        systemAudioEventEngine.oldOutputDeviceBecameUnavailable()
+      }
+    }
+  }
 
   init {
     ensureRegistered()
@@ -49,15 +95,30 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
       return
     }
 
+    noisyReceiverContext?.unregisterReceiver(noisyReceiver)
+    noisyReceiverContext = null
     registeredContext?.unregisterComponentCallbacks(this@NitroPlayerManager)
-    NitroModules.applicationContext?.removeLifecycleEventListener(this@NitroPlayerManager)
+    (registeredContext as? Application)?.unregisterActivityLifecycleCallbacks(this@NitroPlayerManager)
 
-    NitroModules.applicationContext?.addLifecycleEventListener(this@NitroPlayerManager)
+    (appContext as? Application)?.registerActivityLifecycleCallbacks(this@NitroPlayerManager)
     appContext.registerComponentCallbacks(this@NitroPlayerManager)
+    registerNoisyReceiver(appContext)
     registeredContext = appContext
+    // Registration happens after the hosting activity already delivered onStart;
+    // seed it so the first onActivityStopped still flips the process to background.
+    NitroModules.applicationContext?.currentActivity?.let { startedActivities.add(it) }
+  }
+
+  fun addOnOutputDeviceLostListener(listener: () -> Unit): ListenerSubscription {
+    return outputDeviceLostListeners.add("onOutputDeviceLost", listener)
+  }
+
+  fun addOnForegroundListener(listener: () -> Unit): ListenerSubscription {
+    return foregroundListeners.add("onForeground", listener)
   }
 
   fun maybePassPlayerToView(player: HybridNitroPlayer) {
+    pruneStaleViewsLocked()
     val views = players[player]?.mapNotNull { getNitroPlayerViewWeakReferenceByNitroId(it)?.get() } ?: return
     val latestView = views.lastOrNull() ?: return
 
@@ -67,8 +128,8 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
   fun registerView(view: NitroPlayerView) {
     ensureRegistered(view.context)
     runOnMainThread {
+      pruneStaleViewsLocked()
       views[view.nitroId] = WeakReference<NitroPlayerView>(view)
-      view.hybridPlayer?.let { touchFeedHotCandidate(it) }
     }
   }
 
@@ -79,7 +140,6 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
       }
 
       views.remove(view.nitroId)
-      scheduleFeedHotRebalanceLocked()
     }
   }
 
@@ -88,22 +148,20 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
       if(!players.containsKey(player)) players[player] = mutableListOf()
       if(players[player]?.contains(view.nitroId) == true) return@runOnMainThread
       players[player]?.add(view.nitroId)
-      touchFeedHotCandidate(player)
     }
   }
 
   fun removeViewFromPlayer(view: NitroPlayerView, player: HybridNitroPlayer) {
+    // lifecycle-audit:ignore(view-link-teardown-touches-view-refs-only)
     runOnMainThread {
+      player.detachPlayerFromNitroPlayerView(view)
       players[player]?.remove(view.nitroId)
 
       if (players[player]?.isEmpty() == true) {
         players.remove(player)
-        feedHotActivity.remove(player)
       } else {
         maybePassPlayerToView(player)
       }
-
-      scheduleFeedHotRebalanceLocked()
     }
   }
 
@@ -115,7 +173,6 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
       }
 
       audioFocusManager.registerPlayer(player)
-      touchFeedHotCandidate(player)
     }
   }
 
@@ -130,66 +187,47 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
       }
 
       players.remove(player)
-      feedHotActivity.remove(player)
-      scheduleFeedHotRebalanceLocked()
     }
   }
 
-  fun touchFeedHotCandidate(player: HybridNitroPlayer) {
-    // lifecycle-audit:ignore(guarded-by-players-membership-check)
-    runOnMainThread {
-      if (!players.containsKey(player)) {
-        return@runOnMainThread
-      }
-
-      if (player.isFeedProfile()) {
-        feedHotSequence += 1
-        feedHotActivity[player] = feedHotSequence
-      } else {
-        feedHotActivity.remove(player)
-      }
-
-      scheduleFeedHotRebalanceLocked()
-    }
-  }
-
-  fun getPlayerByNitroId(nitroId: Int): HybridNitroPlayer? {
+  fun debugPlayerSnapshots(
+    coordinatorSnapshot: PlaybackSessionCoordinatorSnapshot
+  ): List<Map<String, Any?>> {
     return runOnMainThreadSync {
-      players.keys.find { player ->
-        players[player]?.contains(nitroId) == true
-      }
+      players.keys
+        .filterNot { player -> player.isReleased }
+        .map { player -> player.diagnosticsSnapshot(coordinatorSnapshot) }
     }
-  }
-
-  fun registeredPlayers(): List<HybridNitroPlayer> {
-    return runOnMainThreadSync { players.keys.toList() }
   }
 
   fun updateNitroPlayerViewNitroId(oldNitroId: Int, newNitroId: Int, view: NitroPlayerView) {
-    runOnMainThread {
-      if (oldNitroId != -1) {
-        views.remove(oldNitroId)
+    if (oldNitroId != -1) {
+      views.remove(oldNitroId)
+    }
+    views[newNitroId] = WeakReference(view)
 
-        players.keys.forEach { player ->
-          players[player]?.let { nitroIds ->
-            if (nitroIds.remove(oldNitroId)) {
-              nitroIds.add(newNitroId)
-            }
+    if (oldNitroId == -1) return
+    runOnMainThread {
+      players.keys.forEach { player ->
+        players[player]?.let { nitroIds ->
+          if (nitroIds.remove(oldNitroId)) {
+            nitroIds.add(newNitroId)
           }
         }
       }
-
-      views[newNitroId] = WeakReference(view)
     }
   }
 
   fun getNitroPlayerViewWeakReferenceByNitroId(nitroId: Int): WeakReference<NitroPlayerView>? {
-    return runOnMainThreadSync { views[nitroId] }
+    return views[nitroId]
   }
 
   // ------------ Lifecycle Handler ------------
   private fun onAppEnterForeground() {
     players.keys.forEach { player ->
+      if (player.hasPlaybackBinding) {
+        return@forEach
+      }
       if (PlayerAppStatePolicy.shouldResumeWhenEnteringForeground(player.appStateSnapshot())) {
         // play() clears wasAutoPaused only after a successful start, so a
         // throwing initializePlayer() leaves the flag set for the next resume.
@@ -202,22 +240,77 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
 
   private fun onAppEnterBackground() {
     players.keys.forEach { player ->
+      if (player.hasPlaybackBinding) {
+        return@forEach
+      }
       if (PlayerAppStatePolicy.shouldAutoPauseWhenEnteringBackground(player.appStateSnapshot())) {
         player.wasAutoPaused = true
-        player.pause()
+        player.lifecyclePause()
       }
     }
   }
 
-  override fun onHostResume() {
+  override fun onActivityStarted(activity: Activity) {
+    val wasBackground = startedActivities.isEmpty()
+    startedActivities.add(activity)
+    if (!wasBackground) {
+      return
+    }
+
+    players.keys.forEach { player ->
+      player.resetRecoveryBudgetsForNewLifecycleEpoch()
+    }
+    audioFocusManager.resolveStaleInterruption()
+    foregroundListeners.emit<() -> Unit>("onForeground") { it() }
+    recoverPlaybackTransport()
+    PlaybackSessionRuntime.setForeground(true)
     onAppEnterForeground()
   }
 
-  override fun onHostPause() {
+  override fun onActivityStopped(activity: Activity) {
+    if (!startedActivities.remove(activity) || startedActivities.isNotEmpty()) {
+      return
+    }
+
+    HlsProxyRuntime.markNeedsHealthCheck()
+    PlaybackSessionRuntime.setForeground(false)
     onAppEnterBackground()
   }
 
-  override fun onHostDestroy() {}
+  /**
+   * Foreground recovery, ordered by dependency: the transport must be trusted again before any
+   * route is re-resolved, because a route resolved against an unhealthy transport silently
+   * bypasses the proxy.
+   */
+  private fun recoverPlaybackTransport() {
+    HlsProxyRuntime.recoverTransport {
+      runOnMainThread {
+        players.keys.forEach { player ->
+          player.refreshPlaybackRouteIfStale()
+          player.reassertPlaybackIntentAfterForeground()
+        }
+      }
+    }
+  }
+
+  override fun onActivityDestroyed(activity: Activity) {
+    startedActivities.remove(activity)
+    if (!activity.isFinishing || startedActivities.isNotEmpty()) {
+      return
+    }
+
+    runOnMainThread {
+      PlaybackSessionRuntime.resetClientSuspensions()
+    }
+  }
+
+  override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) = Unit
+
+  override fun onActivityResumed(activity: Activity) = Unit
+
+  override fun onActivityPaused(activity: Activity) = Unit
+
+  override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) = Unit
 
   override fun onTrimMemory(level: Int) {
     if (level < TRIM_MEMORY_RUNNING_LOW_LEVEL) {
@@ -226,9 +319,6 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
 
     runOnMainThread {
       players.keys.toList().forEach { it.trimForResourcePressure() }
-      feedHotActivity.keys.retainAll(players.keys)
-      feedHotRebalanceScheduled = false
-      rebalanceFeedHotPlayersLocked()
     }
   }
 
@@ -239,14 +329,6 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
 
   override fun onConfigurationChanged(newConfig: Configuration) {}
 
-  fun getAnyPlayingNitroPlayerView(): NitroPlayerView? {
-    return runOnMainThreadSync {
-      views.values.firstOrNull { ref ->
-        ref.get()?.hybridPlayer?.isPlaying == true
-      }?.get()
-    }
-  }
-
   fun setLastPlayedPlayer(player: HybridNitroPlayer) {
     val nitroIds = players[player] ?: return
     if (nitroIds.isNotEmpty()) {
@@ -254,49 +336,30 @@ object NitroPlayerManager : LifecycleEventListener, ComponentCallbacks2 {
     }
   }
 
-  fun getLastPlayedNitroPlayerView(): NitroPlayerView? {
-    return runOnMainThreadSync { lastPlayedNitroId?.let { views[it]?.get() } }
-  }
-
-  private fun rebalanceFeedHotPlayersLocked() {
-    val feedPlayers = players.keys.filter { it.isFeedProfile() }
-    if (feedPlayers.isEmpty()) {
-      feedHotActivity.clear()
+  private fun pruneStaleViewsLocked() {
+    val staleNitroIds = views.filterValues { it.get() == null }.keys
+    if (staleNitroIds.isEmpty()) {
       return
     }
-
-    val feedPlayerSet = feedPlayers.toSet()
-    feedHotActivity.keys.retainAll(feedPlayerSet)
-
-    val playersToKeepHot = PlayerRetentionCoordinator.feedHotIds(
-      players = feedPlayers.map {
-        FeedHotPlayerSnapshot(
-          id = it,
-          activity = feedHotActivity[it] ?: 0L,
-          retention = it.retentionSnapshot()
-        )
-      },
-      maxHotPlayers = MAX_HOT_FEED_PLAYERS
-    )
-
-    feedPlayers
-      .filterNot { playersToKeepHot.contains(it) }
-      .forEach { it.trimForFeedHotPool() }
-  }
-
-  private fun scheduleFeedHotRebalanceLocked() {
-    if (feedHotRebalanceScheduled) {
-      return
-    }
-
-    feedHotRebalanceScheduled = true
-    mainHandler.post {
-      if (!feedHotRebalanceScheduled) {
-        return@post
-      }
-
-      feedHotRebalanceScheduled = false
-      rebalanceFeedHotPlayersLocked()
+    staleNitroIds.forEach(views::remove)
+    if (lastPlayedNitroId in staleNitroIds) {
+      lastPlayedNitroId = null
     }
   }
+
+  private fun registerNoisyReceiver(appContext: Context) {
+    val filter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      appContext.registerReceiver(noisyReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+    } else {
+      registerNoisyReceiverLegacy(appContext, filter)
+    }
+    noisyReceiverContext = appContext
+  }
+
+  @Suppress("DEPRECATION")
+  private fun registerNoisyReceiverLegacy(appContext: Context, filter: IntentFilter) {
+    appContext.registerReceiver(noisyReceiver, filter)
+  }
+
 }

@@ -23,7 +23,7 @@ data class FeedRingCatalogItem(
   val index: Double,
   @DoNotStrip
   @Keep
-  val momentId: String?,
+  val itemId: String?,
   @DoNotStrip
   @Keep
   val sourceKey: String?,
@@ -37,7 +37,7 @@ data class FeedRingCatalogItem(
     if (this === other) return true
     if (other !is FeedRingCatalogItem) return false
     return Objects.deepEquals(this.index, other.index)
-      && Objects.deepEquals(this.momentId, other.momentId)
+      && Objects.deepEquals(this.itemId, other.itemId)
       && Objects.deepEquals(this.sourceKey, other.sourceKey)
       && Objects.deepEquals(this.source, other.source)
   }
@@ -45,7 +45,7 @@ data class FeedRingCatalogItem(
   override fun hashCode(): Int {
     return arrayOf<Any?>(
       index,
-      momentId,
+      itemId,
       sourceKey,
       source
     ).contentDeepHashCode()
@@ -59,8 +59,8 @@ data class FeedRingCatalogItem(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(index: Double, momentId: String?, sourceKey: String?, source: NativeNitroPlayerConfig?): FeedRingCatalogItem {
-      return FeedRingCatalogItem(index, momentId, sourceKey, source)
+    private fun fromCpp(index: Double, itemId: String?, sourceKey: String?, source: NativeNitroPlayerConfig?): FeedRingCatalogItem {
+      return FeedRingCatalogItem(index, itemId, sourceKey, source)
     }
   }
 }

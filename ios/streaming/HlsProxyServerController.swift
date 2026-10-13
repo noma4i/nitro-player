@@ -1,156 +1,222 @@
 import Foundation
-import UIKit
 
 final class HlsProxyServerController: NSObject {
-  private let defaultPort: Int = 0
-  private let prefetchClient = HlsNetworkClient()
-  private let manifestParser = HlsManifestParser()
   private let stateQueue = DispatchQueue(label: "com.nitroplay.hls.ktv-proxy-state")
-  private var requestedPort: Int = 0
-  private var needsRestartOnActive = false
-  private var observersRegistered = false
-  private var notificationObservers: [NSObjectProtocol] = []
-  private var maxCacheBytes = HlsCacheBudget.defaultMaxBytes
-  private let proxyClientHeaderName = "X-Nitro-Play-Client"
-  private let proxyClientPrefetch = "prefetch"
+  private var cacheMaxBytes = HlsCacheBudget.defaultMaxBytes
+  private var shouldBeRunning = false
+  private var boundPort = 0
+  private var routeGeneration = 0
+  private var needsHealthCheck = true
+  private var isRecovering = false
+  private var pendingRecoveryCompletions: [() -> Void] = []
+  private let recoveryQueue = DispatchQueue(label: "com.nitroplay.hls.transport-recovery")
 
-  override init() {
-    super.init()
-    applyMaxCacheBytes(HlsCacheBudget.defaultMaxBytes)
+  var currentRouteGeneration: Int {
+    stateQueue.sync { routeGeneration }
   }
 
-  func start(port: Int?) -> Bool {
-    let resolvedPort = (port ?? defaultPort) > 0 ? (port ?? defaultPort) : defaultPort
-    stateQueue.sync {
-      requestedPort = resolvedPort
-      needsRestartOnActive = false
+  /// Non-blocking readiness snapshot. Never performs the blocking probe.
+  func readiness() -> HlsTransportReadiness {
+    let state = stateQueue.sync { (shouldBeRunning, needsHealthCheck, boundPort) }
+    guard state.0 else {
+      return .stopped
     }
-    registerObserversIfNeeded()
-    return ensureListening(port: resolvedPort, forceRestart: true)
+    guard !state.1, state.2 > 0, KTVHTTPCache.proxyIsRunning() else {
+      return .unhealthy
+    }
+    return .ready
+  }
+
+  func start(port: Int?) -> Int? {
+    let resolvedPort = max(0, port ?? 0)
+    stateQueue.sync {
+      shouldBeRunning = true
+    }
+    guard restartListener(preferredPort: resolvedPort) else {
+      return nil
+    }
+    let port = currentBoundPort()
+    stateQueue.sync {
+      boundPort = port
+      needsHealthCheck = port <= 0
+    }
+    return port > 0 ? port : nil
   }
 
   func stop() {
     stateQueue.sync {
-      needsRestartOnActive = false
+      shouldBeRunning = false
+      needsHealthCheck = true
+      boundPort = 0
     }
-    unregisterObservers()
     KTVHTTPCache.proxyStop()
   }
 
-  func proxiedManifestUrl(for url: String, headers: [String: String]?) -> String? {
-    guard ensureListening(forceRestart: false),
-          let originalURL = URL(string: url)
-    else {
+  func configureCache(maxBytes: Int64) {
+    stateQueue.sync {
+      cacheMaxBytes = maxBytes
+    }
+  }
+
+  func proxiedManifestUrl(for url: String) -> String? {
+    stateQueue.sync {
+      shouldBeRunning = true
+    }
+
+    guard case .ready = readiness() else {
+      recoverIfNeeded()
       return nil
     }
 
-    KTVHTTPCache.downloadSetAdditionalHeaders(normalizedHeaders(headers), for: originalURL)
-    guard let proxyURL = KTVHTTPCache.proxyURL(withOriginalURL: originalURL, bindToLocalhost: true) else {
-      return nil
-    }
-    guard proxyURL != originalURL else {
+    guard let originalURL = URL(string: url),
+          let proxyURL = KTVHTTPCache.proxyURL(withOriginalURL: originalURL, bindToLocalhost: true),
+          proxyURL != originalURL else {
       return nil
     }
     return proxyURL.absoluteString
   }
 
-  func getCacheStats() -> [String: Any] {
-    return [
-      "totalSize": Int(KTVHTTPCache.cacheTotalCacheLength()),
-      "fileCount": HlsKtvCacheStats.fileCount(from: KTVHTTPCache.cacheAllCacheItems()),
-      "maxSize": maxCacheBytes
-    ]
-  }
-
-  func getStreamCacheStats() -> [String: Any] {
-    return [
-      "totalSize": Int(KTVHTTPCache.cacheTotalCacheLength()),
-      "fileCount": HlsKtvCacheStats.fileCount(from: KTVHTTPCache.cacheAllCacheItems()),
-      "maxSize": maxCacheBytes,
-      "streamSize": 0,
-      "streamFileCount": 0
-    ]
-  }
-
-  private func requestLedgerSnapshot() -> [[String: Any]] {
-    KTVHCRequestLedger.shared().snapshot().compactMap { $0 as? [String: Any] }
-  }
-
-  func hasOpenNetworkRequests(url: String, headers: [String: String]?, client: String) -> Bool {
-    let streamKey = Self.streamStem(from: url)
-    guard !streamKey.isEmpty else {
-      return false
+  func purgeCache(url: String, headers: [String: String]?) {
+    guard let originalURL = URL(string: url) else {
+      return
     }
-
-    return KTVHCRequestLedger.shared().openNetworkRequestCount(forClient: client, streamKey: streamKey) > 0
+    let namespace = HlsRequestIdentity.cacheNamespace(url: url, headers: headers)
+    let cacheURL = KTVHTTPCache.cacheURL(withOriginalURL: originalURL, namespace: namespace)
+    KTVHTTPCache.cacheDelete(with: cacheURL)
+    KTVHTTPCache.logCleanError(for: cacheURL)
+    let stem = Self.streamStem(from: url)
+    guard !stem.isEmpty else {
+      return
+    }
+    for item in KTVHTTPCache.cacheAllCacheItems() {
+      guard let itemURL = item.url else {
+        continue
+      }
+      if Self.streamStem(from: itemURL.absoluteString) == stem,
+         KTVHTTPCache.cacheURL(itemURL, belongsToNamespace: namespace) {
+        KTVHTTPCache.cacheDelete(with: itemURL)
+        KTVHTTPCache.logCleanError(for: itemURL)
+      }
+    }
   }
 
-  func getNetworkThroughputEstimate() -> [String: Any] {
-    let nowMs = Date().timeIntervalSince1970 * 1000
-    let samples = requestLedgerSnapshot()
-      .compactMap { Self.networkThroughputSample(from: $0) }
-      .sorted { $0.doneMs < $1.doneMs }
-      .suffix(10)
-
-    guard !samples.isEmpty else {
-      return [
-        "bps": 0,
-        "samples": 0,
-        "newestAgeMs": NSNull()
-      ]
-    }
-
-    let reciprocalSum = samples.reduce(0.0) { partial, sample in
-      partial + (1.0 / sample.bps)
-    }
-    let harmonicMean = Double(samples.count) / reciprocalSum
-    let newestDoneMs = samples.map { $0.doneMs }.max() ?? nowMs
-
-    return [
-      "bps": harmonicMean,
-      "samples": samples.count,
-      "newestAgeMs": max(0, nowMs - newestDoneMs)
-    ]
-  }
-
-  func configureCache(maxBytes: Int) {
-    stateQueue.sync {
-      applyMaxCacheBytes(maxBytes)
-    }
+  func cacheStats() -> (totalBytes: Int64, fileCount: Int, maxBytes: Int64) {
+    (
+      totalBytes: KTVHTTPCache.cacheTotalCacheLength(),
+      fileCount: KTVHTTPCache.cacheAllCacheItems().count,
+      maxBytes: KTVHTTPCache.cacheMaxCacheLength()
+    )
   }
 
   func clearCache() {
     KTVHTTPCache.cacheDeleteAllCaches()
   }
 
+  /// Probes the transport off the main thread and restarts it when the probe fails.
+  /// `completion` is always invoked on the main thread. When a pass is already running, the
+  /// completion joins that pass instead of reporting a stale snapshot.
+  func recoverIfNeeded(completion: (() -> Void)? = nil) {
+    let decision = stateQueue.sync { () -> (shouldRun: Bool, joined: Bool) in
+      guard shouldBeRunning else {
+        return (false, false)
+      }
+      if let completion {
+        pendingRecoveryCompletions.append(completion)
+      }
+      if isRecovering {
+        return (false, true)
+      }
+      isRecovering = true
+      return (true, false)
+    }
+
+    if decision.joined {
+      return
+    }
+
+    guard decision.shouldRun else {
+      flushRecoveryCompletions()
+      completion.map { pending in
+        DispatchQueue.main.async {
+          pending()
+        }
+      }
+      return
+    }
+
+    recoveryQueue.async { [weak self] in
+      guard let self else {
+        return
+      }
+      self.performRecovery()
+      self.stateQueue.sync {
+        self.isRecovering = false
+      }
+      self.flushRecoveryCompletions()
+    }
+  }
+
+  private func flushRecoveryCompletions() {
+    let completions = stateQueue.sync { () -> [() -> Void] in
+      let pending = pendingRecoveryCompletions
+      pendingRecoveryCompletions.removeAll()
+      return pending
+    }
+    guard !completions.isEmpty else {
+      return
+    }
+    DispatchQueue.main.async {
+      completions.forEach { $0() }
+    }
+  }
+
+  private func performRecovery() {
+    let healthy = KTVHTTPCache.proxyIsRunning() && KTVHTTPCache.proxyPing()
+    if healthy {
+      let port = currentBoundPort()
+      stateQueue.sync {
+        if port > 0 {
+          boundPort = port
+        }
+        needsHealthCheck = false
+      }
+      return
+    }
+
+    let previousPort = stateQueue.sync { boundPort }
+    restartListener(preferredPort: previousPort)
+    let port = currentBoundPort()
+    stateQueue.sync {
+      let changed = port > 0 && port != previousPort
+      if changed {
+        routeGeneration += 1
+      }
+      if port > 0 {
+        boundPort = port
+      }
+      needsHealthCheck = port <= 0
+    }
+  }
+
   deinit {
-    unregisterObservers()
     KTVHTTPCache.proxyStop()
   }
 
-  var isRunning: Bool {
-    KTVHTTPCache.proxyIsRunning()
+  /// Marks the transport as requiring an application-level probe before it is trusted again.
+  /// Called by the single lifecycle owner when the process may have been suspended.
+  func markNeedsHealthCheck() {
+    stateQueue.sync {
+      needsHealthCheck = true
+    }
   }
 
-  private func ensureListening(forceRestart: Bool) -> Bool {
-    if KTVHTTPCache.proxyIsRunning() && !forceRestart {
-      return true
-    }
-
-    let port = stateQueue.sync { requestedPort }
-    return ensureListening(port: port, forceRestart: forceRestart)
-  }
-
-  private func ensureListening(port: Int, forceRestart: Bool) -> Bool {
-    if KTVHTTPCache.proxyIsRunning() && !forceRestart {
-      return true
-    }
-
+  @discardableResult
+  private func restartListener(preferredPort: Int) -> Bool {
     if KTVHTTPCache.proxyIsRunning() {
       KTVHTTPCache.proxyStop()
     }
 
-    KTVHTTPCache.proxySetPort(UInt16(max(0, port)))
+    KTVHTTPCache.proxySetPort(UInt16(max(0, preferredPort)))
     KTVHTTPCache.downloadSetWhitelistHeaderKeys([
       "Authorization",
       "Cookie",
@@ -163,16 +229,16 @@ final class HlsProxyServerController: NSObject {
     ])
     KTVHTTPCache.downloadSetTimeoutInterval(30)
     KTVHTTPCache.logSetConsoleLogEnable(false)
-    KTVHTTPCache.cacheSetMaxCacheLength(Int64(maxCacheBytes))
+    KTVHTTPCache.cacheSetMaxCacheLength(stateQueue.sync { cacheMaxBytes })
 
     if startProxy() {
       return true
     }
-    if port != 0 {
-      KTVHTTPCache.proxySetPort(0)
-      return startProxy()
+    guard preferredPort != 0 else {
+      return false
     }
-    return false
+    KTVHTTPCache.proxySetPort(0)
+    return startProxy()
   }
 
   private func startProxy() -> Bool {
@@ -184,28 +250,9 @@ final class HlsProxyServerController: NSObject {
     }
   }
 
-  private func applyMaxCacheBytes(_ bytes: Int) {
-    maxCacheBytes = HlsCacheBudget.normalize(bytes)
-    KTVHTTPCache.cacheSetMaxCacheLength(Int64(maxCacheBytes))
-  }
-
-  private static func networkThroughputSample(from entry: [String: Any]) -> (bps: Double, doneMs: Double)? {
-    guard
-      (entry["usedNetwork"] as? NSNumber)?.boolValue == true,
-      let bytes = entry["bytes"] as? NSNumber,
-      bytes.int64Value >= 100_000,
-      let startMs = entry["tStartMs"] as? NSNumber,
-      let doneMs = entry["tDoneMs"] as? NSNumber
-    else {
-      return nil
-    }
-
-    let durationSeconds = (doneMs.doubleValue - startMs.doubleValue) / 1000
-    guard durationSeconds > 0 else {
-      return nil
-    }
-
-    return (bps: Double(bytes.int64Value) * 8 / durationSeconds, doneMs: doneMs.doubleValue)
+  private func currentBoundPort() -> Int {
+    let probeURL = URL(string: "https://localhost/nitro-play-port-probe.m3u8")
+    return KTVHTTPCache.proxyURL(withOriginalURL: probeURL, bindToLocalhost: true)?.port ?? -1
   }
 
   private static func streamStem(from url: String) -> String {
@@ -216,204 +263,4 @@ final class HlsProxyServerController: NSObject {
     return String(fileName[..<hlsRange.lowerBound])
   }
 
-  func prefetchLeadingSegments(url: String, headers: [String: String]?, count: Int) async throws {
-    let manifest = try await prefetchClient.fetchText(url: url, headers: headers)
-    if manifestParser.isMasterPlaylist(manifest) {
-      if let firstVariant = manifestParser.extractVariantUrls(manifest).first {
-        let resolved = manifestParser.resolveUrl(base: url, relative: firstVariant)
-        try await prefetchLeadingSegments(url: resolved, headers: headers, count: count)
-      }
-      return
-    }
-
-    let (initSegment, segments) = manifestParser.extractLeadingSegments(manifest, count: count)
-    var seenResources = Set<String>()
-    if let initSegment {
-      let resolved = manifestParser.resolveUrl(base: url, relative: initSegment)
-      try await prefetchResource(url: resolved, headers: headers, seenResources: &seenResources)
-    }
-
-    for segment in segments {
-      let resolved = manifestParser.resolveUrl(base: url, relative: segment)
-      try await prefetchResource(url: resolved, headers: headers, seenResources: &seenResources)
-    }
-  }
-
-  private func prefetchResource(url: String, headers: [String: String]?, seenResources: inout Set<String>) async throws {
-    guard seenResources.insert(url).inserted else {
-      return
-    }
-
-    _ = try await prefetchThroughProxy(url: url, headers: headers)
-  }
-
-  private func prefetchThroughProxy(url: String, headers: [String: String]?) async throws -> Data {
-    guard ensureListening(forceRestart: false),
-          let originalURL = URL(string: url)
-    else {
-      return try await prefetchClient.fetchData(url: url, headers: headers, cachePolicy: .reloadIgnoringLocalCacheData)
-    }
-
-    KTVHTTPCache.downloadSetAdditionalHeaders(normalizedHeaders(headers), for: originalURL)
-    guard let proxyURL = KTVHTTPCache.proxyURL(withOriginalURL: originalURL, bindToLocalhost: true),
-          proxyURL != originalURL
-    else {
-      return try await prefetchClient.fetchData(url: url, headers: headers, cachePolicy: .reloadIgnoringLocalCacheData)
-    }
-
-    return try await prefetchClient.fetchData(
-      url: proxyURL.absoluteString,
-      headers: prefetchRequestHeaders(),
-      cachePolicy: .reloadIgnoringLocalCacheData
-    )
-  }
-
-  private func prefetchRequestHeaders() -> [String: String] {
-    [proxyClientHeaderName: proxyClientPrefetch]
-  }
-
-  private func normalizedHeaders(_ headers: [String: String]?) -> [String: String] {
-    guard let headers else {
-      return [:]
-    }
-    return headers.filter { !$0.key.isEmpty && !$0.value.isEmpty }
-  }
-
-  private func handleWillResignActive() {
-    stateQueue.sync {
-      needsRestartOnActive = true
-    }
-  }
-
-  private func handleDidEnterBackground() {
-    stateQueue.sync {
-      needsRestartOnActive = true
-    }
-  }
-
-  private func handleDidBecomeActive() {
-    let pendingRestart = stateQueue.sync { () -> Bool in
-      let pending = needsRestartOnActive
-      needsRestartOnActive = false
-      return pending
-    }
-    guard pendingRestart else {
-      return
-    }
-    _ = ensureListening(forceRestart: true)
-  }
-
-  private func registerObserversIfNeeded() {
-    let shouldRegister = stateQueue.sync { () -> Bool in
-      if observersRegistered {
-        return false
-      }
-      observersRegistered = true
-      return true
-    }
-    guard shouldRegister else {
-      return
-    }
-
-    let center = NotificationCenter.default
-    notificationObservers = [
-      center.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
-        self?.handleWillResignActive()
-      },
-      center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
-        self?.handleDidEnterBackground()
-      },
-      center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-        self?.handleDidBecomeActive()
-      }
-    ]
-  }
-
-  private func unregisterObservers() {
-    let shouldUnregister = stateQueue.sync { () -> Bool in
-      if !observersRegistered {
-        return false
-      }
-      observersRegistered = false
-      return true
-    }
-    guard shouldUnregister else {
-      return
-    }
-
-    notificationObservers.forEach(NotificationCenter.default.removeObserver)
-    notificationObservers.removeAll()
-  }
-}
-
-final class HlsNetworkClient {
-  private let retryDelaysNs: [UInt64] = [100_000_000, 300_000_000]
-
-  func fetchText(url: String, headers: [String: String]?, cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy) async throws -> String {
-    let data = try await fetchData(url: url, headers: headers, cachePolicy: cachePolicy)
-    guard let text = String(data: data, encoding: .utf8) else {
-      throw NSError(domain: "hls", code: 1)
-    }
-    return text
-  }
-
-  func fetchData(url: String, headers: [String: String]?, cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy) async throws -> Data {
-    var lastError: Error?
-
-    for attempt in 0...retryDelaysNs.count {
-      do {
-        let data = try await performFetchData(url: url, headers: headers, cachePolicy: cachePolicy)
-        guard !data.isEmpty else {
-          throw NSError(domain: "hls", code: 4, userInfo: [NSLocalizedDescriptionKey: "Empty response body"])
-        }
-        return data
-      } catch {
-        lastError = error
-        guard attempt < retryDelaysNs.count, shouldRetry(error) else {
-          throw error
-        }
-        try? await Task.sleep(nanoseconds: retryDelaysNs[attempt])
-      }
-    }
-
-    throw lastError ?? NSError(domain: "hls", code: 5)
-  }
-
-  private func performFetchData(url: String, headers: [String: String]?, cachePolicy: URLRequest.CachePolicy) async throws -> Data {
-    guard let parsed = URL(string: url) else {
-      throw NSError(domain: "hls", code: 2)
-    }
-    var request = URLRequest(url: parsed)
-    request.cachePolicy = cachePolicy
-    // HLS fetch timeout. parity-divergent: Android HlsProxyServer uses 12s (intentional until measured).
-    let requestTimeoutSeconds: TimeInterval = 10
-    request.timeoutInterval = requestTimeoutSeconds
-    headers?.forEach { key, value in
-      request.setValue(value, forHTTPHeaderField: key)
-    }
-    let (data, response) = try await URLSession.shared.data(for: request)
-    if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-      throw NSError(
-        domain: "hls",
-        code: http.statusCode,
-        userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode)"]
-      )
-    }
-    return data
-  }
-
-  private func shouldRetry(_ error: Error) -> Bool {
-    let nsError = error as NSError
-    if nsError.domain == NSURLErrorDomain {
-      return [
-        NSURLErrorTimedOut,
-        NSURLErrorNetworkConnectionLost,
-        NSURLErrorCannotFindHost,
-        NSURLErrorCannotConnectToHost,
-        NSURLErrorDNSLookupFailed,
-        NSURLErrorNotConnectedToInternet
-      ].contains(nsError.code)
-    }
-    return false
-  }
 }

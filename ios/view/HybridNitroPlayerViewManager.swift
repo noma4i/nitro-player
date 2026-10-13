@@ -13,20 +13,41 @@ import OSLog
 private let vmLogger = Logger(subsystem: "com.nitroplay.video", category: "ViewManager")
 
 class HybridNitroPlayerViewManager: HybridNitroPlayerViewManagerSpec {
+  private let mainThreadExecutor = MainThreadResourceExecutor()
   weak var view: NitroPlayerComponentView?
   private let registry = ListenerRegistry()
   private var playerDefaults: NitroPlayerDefaults?
+  private let nitroId: NSNumber
+  private weak var assignedPlayer: (any HybridNitroPlayerSpec)?
+  private lazy var viewDelegate = NitroPlayerViewDelegate(viewManager: self)
 
   let DEALOCATED_WARNING = "NitroPlay: NitroPlayerComponentView is no longer available. It is likely that the view was deallocated."
 
+  static let managersByNitroId: NSMapTable<NSNumber, HybridNitroPlayerViewManager> = .strongToWeakObjects()
+
   init(nitroId: Double) throws {
-    guard let view = NitroPlayerComponentView.globalViewsMap.object(forKey: NSNumber(value: nitroId)) else {
+    let nitroIdNumber = NSNumber(value: nitroId)
+    self.nitroId = nitroIdNumber
+    super.init()
+
+    let view = mainThreadExecutor.run {
+      let registeredView = NitroPlayerComponentView.globalViewsMap.object(forKey: nitroIdNumber)
+      self.view = registeredView
+      registeredView?.delegate = self.viewDelegate
+      HybridNitroPlayerViewManager.managersByNitroId.setObject(self, forKey: nitroIdNumber)
+      return registeredView
+    }
+    guard view != nil else {
       throw NitroPlayerViewError.viewNotFound(nitroId: nitroId).error()
     }
+  }
 
-    self.view = view
-    super.init()
-    view.delegate = NitroPlayerViewDelegate(viewManager: self)
+  static func notifyViewRegistered(nitroId: NSNumber) {
+    managersByNitroId.object(forKey: nitroId)?.healBindingToLatestView()
+  }
+
+  func healBindingToLatestView() {
+    _ = currentView()
   }
 
   // MARK: - Private helpers
@@ -62,34 +83,55 @@ class HybridNitroPlayerViewManager: HybridNitroPlayerViewManagerSpec {
     }
   }
 
+  private func currentView() -> NitroPlayerComponentView? {
+    mainThreadExecutor.run {
+      currentViewOnMain()
+    }
+  }
+
+  private func currentViewOnMain() -> NitroPlayerComponentView? {
+    if let latestView = NitroPlayerComponentView.globalViewsMap.object(forKey: nitroId), latestView !== view {
+      view?.delegate = nil
+      view = latestView
+      latestView.delegate = viewDelegate
+    }
+
+    guard let view else {
+      vmLogger.warning("\(self.DEALOCATED_WARNING)")
+      return nil
+    }
+
+    view.delegate = viewDelegate
+    if let assignedPlayer, (view.player as AnyObject?) !== (assignedPlayer as AnyObject?) {
+      view.player = assignedPlayer
+      applyDefaults(to: assignedPlayer as? HybridNitroPlayer)
+    }
+    return view
+  }
+
   // MARK: - Properties
 
   weak var player: (any HybridNitroPlayerSpec)? {
     get {
-      guard let view = view else {
-        vmLogger.warning("\(self.DEALOCATED_WARNING)")
-        return nil
+      return mainThreadExecutor.run {
+        currentViewOnMain()?.player
       }
-      return view.player
     }
     set {
-      guard let view = view else {
-        vmLogger.warning("\(self.DEALOCATED_WARNING)")
-        return
+      assignedPlayer = newValue
+      mainThreadExecutor.run {
+        guard let view = currentViewOnMain() else { return }
+        view.player = newValue
+        applyDefaults(to: newValue as? HybridNitroPlayer)
       }
-      view.player = newValue
-      applyDefaults(to: newValue as? HybridNitroPlayer)
     }
   }
 
   var isAttached: Bool {
     get {
-      guard let view else {
-        vmLogger.warning("\(self.DEALOCATED_WARNING)")
-        return false
+      return mainThreadExecutor.run {
+        currentViewOnMain()?.isEffectivelyAttached == true
       }
-
-      return view.isEffectivelyAttached
     }
     set {
       // Read-only semantic in consumer code; setter exists only to satisfy the generated HybridObject protocol.
@@ -98,58 +140,40 @@ class HybridNitroPlayerViewManager: HybridNitroPlayerViewManagerSpec {
 
   var controls: Bool {
     get {
-      guard let view else {
-        vmLogger.warning("\(self.DEALOCATED_WARNING)")
-        return false
+      return mainThreadExecutor.run {
+        currentViewOnMain()?.controls == true
       }
-
-      return view.controls
     }
     set {
-      guard let view else {
-        vmLogger.warning("\(self.DEALOCATED_WARNING)")
-        return
+      mainThreadExecutor.run {
+        currentViewOnMain()?.controls = newValue
       }
-
-      view.controls = newValue
     }
   }
 
   var resizeMode: ResizeMode {
     get {
-      guard let view else {
-        vmLogger.warning("\(self.DEALOCATED_WARNING)")
-        return .none
+      return mainThreadExecutor.run {
+        currentViewOnMain()?.resizeMode ?? .none
       }
-
-      return view.resizeMode
     }
     set {
-      guard let view else {
-        vmLogger.warning("\(self.DEALOCATED_WARNING)")
-        return
+      mainThreadExecutor.run {
+        currentViewOnMain()?.resizeMode = newValue
       }
-
-      view.resizeMode = newValue
     }
   }
 
   var keepScreenAwake: Bool {
     get {
-      guard let view else {
-        vmLogger.warning("\(self.DEALOCATED_WARNING)")
-        return false
+      return mainThreadExecutor.run {
+        currentViewOnMain()?.keepScreenAwake == true
       }
-
-      return view.keepScreenAwake
     }
     set {
-      guard let view else {
-        vmLogger.warning("\(self.DEALOCATED_WARNING)")
-        return
+      mainThreadExecutor.run {
+        currentViewOnMain()?.keepScreenAwake = newValue
       }
-
-      view.keepScreenAwake = newValue
     }
   }
 
@@ -158,7 +182,9 @@ class HybridNitroPlayerViewManager: HybridNitroPlayerViewManagerSpec {
 
   func setPlayerDefaults(defaults: NitroPlayerDefaults) throws {
     playerDefaults = defaults
-    applyDefaults(to: player as? HybridNitroPlayer)
+    mainThreadExecutor.run {
+      applyDefaults(to: currentViewOnMain()?.player as? HybridNitroPlayer)
+    }
   }
 
   func clearPlayerDefaults() throws {
@@ -166,19 +192,35 @@ class HybridNitroPlayerViewManager: HybridNitroPlayerViewManagerSpec {
   }
 
   func enterFullscreen() throws {
-    guard let view else {
-      throw NitroPlayerViewError.viewIsDeallocated.error()
-    }
+    let result: Result<Void, Error> = mainThreadExecutor.run {
+      guard let view = currentViewOnMain() else {
+        return .failure(NitroPlayerViewError.viewIsDeallocated.error())
+      }
 
-    try view.enterFullscreen()
+      do {
+        try view.enterFullscreen()
+        return .success(())
+      } catch {
+        return .failure(error)
+      }
+    }
+    try result.get()
   }
 
   func exitFullscreen() throws {
-    guard let view else {
-      throw NitroPlayerViewError.viewIsDeallocated.error()
-    }
+    let result: Result<Void, Error> = mainThreadExecutor.run {
+      guard let view = currentViewOnMain() else {
+        return .failure(NitroPlayerViewError.viewIsDeallocated.error())
+      }
 
-    try view.exitFullscreen()
+      do {
+        try view.exitFullscreen()
+        return .success(())
+      } catch {
+        return .failure(error)
+      }
+    }
+    try result.get()
   }
 
   // MARK: - Listener registration methods

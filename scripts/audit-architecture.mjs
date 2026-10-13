@@ -4,7 +4,11 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 const root = path.resolve(new URL('..', import.meta.url).pathname);
-const requiredDomains = ['player', 'source', 'view', 'streaming', 'preview', 'bridge', 'support'];
+const requiredDomains = {
+  src: ['bridge', 'feed', 'player', 'policy', 'prefetch', 'runtime', 'source', 'support', 'surface', 'view'],
+  ios: ['bridge', 'feed', 'player', 'runtime', 'source', 'streaming', 'support', 'view'],
+  android: ['bridge', 'feed', 'player', 'source', 'streaming', 'support', 'view', 'video/runtime']
+};
 const failures = [];
 
 const fail = message => failures.push(message);
@@ -30,13 +34,13 @@ const walk = (relative, visitor) => {
 };
 
 for (const platform of ['src', 'ios']) {
-  for (const domain of requiredDomains) {
+  for (const domain of requiredDomains[platform]) {
     assertDir(`${platform}/${domain}`);
   }
 }
 
 const androidBase = 'android/src/main/java/com/nitroplay';
-for (const domain of requiredDomains) {
+for (const domain of requiredDomains.android) {
   assertDir(`${androidBase}/${domain}`);
 }
 

@@ -12,13 +12,15 @@ class PlayerAppStatePolicyTest {
     playWhenInactive: Boolean = false,
     isPlaying: Boolean = true,
     wasAutoPaused: Boolean = false,
-    isExternalPlaybackActive: Boolean = false
+    isExternalPlaybackActive: Boolean = false,
+    wantsToPlay: Boolean = true
   ) = PlayerAppStateSnapshot(
     playInBackground = playInBackground,
     playWhenInactive = playWhenInactive,
     isPlaying = isPlaying,
     wasAutoPaused = wasAutoPaused,
-    isExternalPlaybackActive = isExternalPlaybackActive
+    isExternalPlaybackActive = isExternalPlaybackActive,
+    wantsToPlay = wantsToPlay
   )
 
   @Test
@@ -39,8 +41,9 @@ class PlayerAppStatePolicyTest {
   }
 
   @Test
-  fun foregroundResumeOnlyForAutoPausedPlayers() {
+  fun foregroundResumeOnlyForAutoPausedPlayersThatStillWantToPlay() {
     assertFalse(PlayerAppStatePolicy.shouldResumeWhenEnteringForeground(snapshot(wasAutoPaused = false)))
+    assertFalse(PlayerAppStatePolicy.shouldResumeWhenEnteringForeground(snapshot(wasAutoPaused = true, wantsToPlay = false)))
     assertTrue(PlayerAppStatePolicy.shouldResumeWhenEnteringForeground(snapshot(wasAutoPaused = true)))
   }
 

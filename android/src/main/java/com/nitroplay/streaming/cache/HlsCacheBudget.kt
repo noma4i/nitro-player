@@ -6,5 +6,7 @@ object HlsCacheBudget {
 
     fun normalize(bytes: Long): Long = bytes.coerceAtLeast(MINIMUM_MAX_BYTES)
 
+    fun isValid(bytes: Long): Boolean = bytes >= MINIMUM_MAX_BYTES
+
     fun evictionTarget(maxBytes: Long): Long = (maxBytes * 90 / 100).coerceAtLeast(MINIMUM_MAX_BYTES)
 }

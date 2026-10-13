@@ -2,8 +2,8 @@ import type { HybridObject } from 'react-native-nitro-modules';
 import type { IgnoreSilentSwitchMode } from '../../player/types/IgnoreSilentSwitchMode';
 import type { MemorySnapshot } from '../../player/types/MemorySnapshot';
 import type { MixAudioMode } from '../../player/types/MixAudioMode';
-import type { PlaybackState } from '../../player/types/PlaybackState';
 import type { NitroPlayerStatus } from '../../player/types/NitroPlayerStatus';
+import type { PlaybackState } from '../../player/types/PlaybackState';
 import type { NitroPlayerEventEmitter } from './NitroPlayerEventEmitter.nitro';
 import type { NitroPlayerSource } from './NitroPlayerSource.nitro';
 
@@ -33,6 +33,11 @@ export interface NitroPlayer extends HybridObject<{ ios: 'swift'; android: 'kotl
   preload(): Promise<void>;
   play(): void;
   pause(): void;
+  configurePlayback(key: string, group: string, priority: number, resumeAutomatically: boolean, requiresView: boolean): void;
+  updatePlayback(active: boolean, visible: boolean, muted: boolean, loop: boolean): void;
+  requestPlayback(): void;
+  requestIdle(): void;
+  clearPlayback(): void;
   seekBy(time: number): void;
   seekTo(time: number): void;
   replaceSourceAsync(source: NitroPlayerSource): Promise<void>;

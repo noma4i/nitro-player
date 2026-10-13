@@ -18,9 +18,9 @@ public extension FeedRingCatalogItem {
   /**
    * Create a new instance of `FeedRingCatalogItem`.
    */
-  init(index: Double, momentId: String?, sourceKey: String?, source: NativeNitroPlayerConfig?) {
+  init(index: Double, itemId: String?, sourceKey: String?, source: NativeNitroPlayerConfig?) {
     self.init(index, { () -> bridge.std__optional_std__string_ in
-      if let __unwrappedValue = momentId {
+      if let __unwrappedValue = itemId {
         return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
       } else {
         return .init()
@@ -46,10 +46,10 @@ public extension FeedRingCatalogItem {
   }
   
   @inline(__always)
-  var momentId: String? {
+  var itemId: String? {
     return { () -> String? in
-      if bridge.has_value_std__optional_std__string_(self.__momentId) {
-        let __unwrapped = bridge.get_std__optional_std__string_(self.__momentId)
+      if bridge.has_value_std__optional_std__string_(self.__itemId) {
+        let __unwrapped = bridge.get_std__optional_std__string_(self.__itemId)
         return String(__unwrapped)
       } else {
         return nil

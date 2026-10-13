@@ -1,4 +1,4 @@
-import type { NitroFeedRingSlotId } from './NitroFeedRingPlayer';
+import type { NitroFeedRingSlotId } from './NitroFeedRingPlayer.js';
 export interface FeedRingSlotAssignment<TEntry> {
     slotId: NitroFeedRingSlotId;
     assignedIndex: number;

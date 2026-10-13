@@ -15,7 +15,8 @@ protocol NitroPlayerComponentViewDelegate: AnyObject {
   func onFullscreenChange(_ isActive: Bool)
   func willEnterFullscreen()
   func willExitFullscreen()
-  func onReadyToDisplay()
+  func onReadyToDisplay(player: AVPlayer, playerItem: AVPlayerItem)
+  func onNotReadyToDisplay(player: AVPlayer, playerItem: AVPlayerItem)
 }
 
 // Map delegate methods to view manager methods
@@ -47,9 +48,21 @@ final class NitroPlayerViewDelegate: NSObject, NitroPlayerComponentViewDelegate 
   }
 
   // lifecycle-audit:ignore(guarded-by-markReadyToDisplay)
-  func onReadyToDisplay() {
-    if let player = viewManager?.player as? HybridNitroPlayer {
-      player.markReadyToDisplay()
+  func onReadyToDisplay(player: AVPlayer, playerItem: AVPlayerItem) {
+    if let hybridPlayer = viewManager?.player as? HybridNitroPlayer {
+      hybridPlayer.markReadyToDisplay(
+        expectedPlayer: player,
+        expectedPlayerItem: playerItem
+      )
+    }
+  }
+
+  func onNotReadyToDisplay(player: AVPlayer, playerItem: AVPlayerItem) {
+    if let hybridPlayer = viewManager?.player as? HybridNitroPlayer {
+      hybridPlayer.markNotReadyToDisplay(
+        expectedPlayer: player,
+        expectedPlayerItem: playerItem
+      )
     }
   }
 }
@@ -79,11 +92,29 @@ class NitroPlayerComponentViewObserver: NSObject, AVPlayerViewControllerDelegate
     guard let playerViewController = playerViewController else {
       return
     }
+    let observedPlayer = playerViewController.player
 
-    onReadyToDisplayObserver = playerViewController.observe(\.isReadyForDisplay, options: [.new]) { [weak self] _, change in
-      guard let self = self else { return }
+    onReadyToDisplayObserver = playerViewController.observe(\.isReadyForDisplay, options: [.new]) { [weak self, weak playerViewController, weak observedPlayer] _, change in
+      guard
+        let self,
+        let view = self.view,
+        let playerViewController,
+        let observedPlayer,
+        let observedPlayerItem = observedPlayer.currentItem,
+        view.playerViewController === playerViewController,
+        playerViewController.player === observedPlayer,
+        let currentPlayer = view.player as? HybridNitroPlayer,
+        currentPlayer.player === observedPlayer,
+        currentPlayer.playerItem === observedPlayerItem,
+        observedPlayer.currentItem === observedPlayerItem
+      else {
+        return
+      }
+
       if change.newValue == true {
-        self.delegate?.onReadyToDisplay()
+        self.delegate?.onReadyToDisplay(player: observedPlayer, playerItem: observedPlayerItem)
+      } else if change.newValue == false {
+        self.delegate?.onNotReadyToDisplay(player: observedPlayer, playerItem: observedPlayerItem)
       }
     }
   }

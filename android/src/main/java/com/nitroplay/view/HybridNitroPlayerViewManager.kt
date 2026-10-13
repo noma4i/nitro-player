@@ -11,14 +11,37 @@ import com.nitroplay.video.view.NitroPlayerView
 
 @DoNotStrip
 @OptIn(UnstableApi::class)
-class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSpec(), NitroPlayerViewEventsEmitter {
+class HybridNitroPlayerViewManager(private val nitroId: Int): HybridNitroPlayerViewManagerSpec(), NitroPlayerViewEventsEmitter {
   private var videoView =
     NitroPlayerManager.getNitroPlayerViewWeakReferenceByNitroId(nitroId) ?: throw NitroPlayerViewError.ViewNotFound(nitroId)
   private val registry = ListenerRegistry()
   private var playerDefaults: NitroPlayerDefaults? = null
+  private var assignedPlayer: HybridNitroPlayer? = null
 
   init {
-    videoView.get()?.eventsEmitter = this
+    currentVideoView()?.eventsEmitter = this
+  }
+
+  private fun currentVideoView(): NitroPlayerView? {
+    NitroPlayerManager.getNitroPlayerViewWeakReferenceByNitroId(nitroId)?.let { latest ->
+      if (latest.get() !== videoView.get()) {
+        videoView.get()?.eventsEmitter = null
+        videoView = latest
+      }
+    }
+
+    val currentView = videoView.get() ?: return null
+    currentView.eventsEmitter = this
+    val player = assignedPlayer
+    if (player != null && currentView.hybridPlayer !== player) {
+      currentView.hybridPlayer = player
+      applyDefaults(player)
+    }
+    return currentView
+  }
+
+  private fun viewOrNull(): NitroPlayerView? {
+    return NitroPlayerManager.getNitroPlayerViewWeakReferenceByNitroId(nitroId)?.get() ?: videoView.get()
   }
 
   private fun applyDefaults(player: HybridNitroPlayer?) {
@@ -36,56 +59,55 @@ class HybridNitroPlayerViewManager(nitroId: Int): HybridNitroPlayerViewManagerSp
   }
 
   override var player: HybridNitroPlayerSpec?
-    get() {
-      return Threading.runOnMainThreadSync { return@runOnMainThreadSync videoView.get()?.hybridPlayer }
-    }
+    get() = viewOrNull()?.hybridPlayer
     set(value) {
       Threading.runOnMainThread {
         val hybridPlayer = value as? HybridNitroPlayer
-        videoView.get()?.hybridPlayer = hybridPlayer
+        assignedPlayer = hybridPlayer
+        currentVideoView()?.hybridPlayer = hybridPlayer
         applyDefaults(hybridPlayer)
       }
     }
 
   override var isAttached: Boolean
-    get() = Threading.runOnMainThreadSync { videoView.get()?.isAttachedToWindow == true }
+    get() = viewOrNull()?.isWindowAttached == true
     set(_) {}
 
   override fun enterFullscreen() {
-    videoView.get()?.enterFullscreen()
+    currentVideoView()?.enterFullscreen()
   }
 
   override fun exitFullscreen() {
-    videoView.get()?.exitFullscreen()
+    currentVideoView()?.exitFullscreen()
   }
 
   override var controls: Boolean
-    get() = videoView.get()?.useController == true
+    get() = currentVideoView()?.useController == true
     set(value) {
-      videoView.get()?.useController = value
+      currentVideoView()?.useController = value
     }
 
   override var resizeMode: ResizeMode
-    get() = videoView.get()?.resizeMode ?: ResizeMode.NONE
+    get() = currentVideoView()?.resizeMode ?: ResizeMode.NONE
     set(value) {
-      videoView.get()?.resizeMode = value
+      currentVideoView()?.resizeMode = value
     }
 
   override var keepScreenAwake: Boolean
-    get() = videoView.get()?.keepScreenAwake == true
+    get() = currentVideoView()?.keepScreenAwake == true
     set(value) {
-      videoView.get()?.keepScreenAwake = value
+      currentVideoView()?.keepScreenAwake = value
     }
 
   override var surfaceType: SurfaceType
-    get() = videoView.get()?.surfaceType ?: SurfaceType.SURFACE
+    get() = currentVideoView()?.surfaceType ?: SurfaceType.SURFACE
     set(value) {
-      videoView.get()?.surfaceType = value
+      currentVideoView()?.surfaceType = value
     }
 
   override fun setPlayerDefaults(defaults: NitroPlayerDefaults) {
     playerDefaults = defaults
-    applyDefaults(videoView.get()?.hybridPlayer)
+    applyDefaults(currentVideoView()?.hybridPlayer)
   }
 
   override fun clearPlayerDefaults() {

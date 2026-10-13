@@ -41,8 +41,11 @@
 
 @interface KTVHCDataRequest ()
 
++ (NSURL *)cacheURLWithOriginalURL:(NSURL *)URL namespace:(NSString *)cacheNamespace;
++ (BOOL)cacheURL:(NSURL *)URL belongsToNamespace:(NSString *)cacheNamespace;
 - (KTVHCDataRequest *)newRequestWithRange:(KTVHCRange)range;
 - (KTVHCDataRequest *)newRequestWithTotalLength:(long long)totalLength;
+- (KTVHCDataRequest *)newRequestWithURL:(NSURL *)URL;
 
 @end
 

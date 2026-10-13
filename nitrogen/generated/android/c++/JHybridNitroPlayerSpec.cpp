@@ -269,6 +269,26 @@ namespace margelo::nitro::video {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void()>("pause");
     method(_javaPart);
   }
+  void JHybridNitroPlayerSpec::configurePlayback(const std::string& key, const std::string& group, double priority, bool resumeAutomatically, bool requiresView) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* key */, jni::alias_ref<jni::JString> /* group */, double /* priority */, jboolean /* resumeAutomatically */, jboolean /* requiresView */)>("configurePlayback");
+    method(_javaPart, jni::make_jstring(key), jni::make_jstring(group), priority, resumeAutomatically, requiresView);
+  }
+  void JHybridNitroPlayerSpec::updatePlayback(bool active, bool visible, bool muted, bool loop) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jboolean /* active */, jboolean /* visible */, jboolean /* muted */, jboolean /* loop */)>("updatePlayback");
+    method(_javaPart, active, visible, muted, loop);
+  }
+  void JHybridNitroPlayerSpec::requestPlayback() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void()>("requestPlayback");
+    method(_javaPart);
+  }
+  void JHybridNitroPlayerSpec::requestIdle() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void()>("requestIdle");
+    method(_javaPart);
+  }
+  void JHybridNitroPlayerSpec::clearPlayback() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void()>("clearPlayback");
+    method(_javaPart);
+  }
   void JHybridNitroPlayerSpec::seekBy(double time) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<void(double /* time */)>("seekBy");
     method(_javaPart, time);

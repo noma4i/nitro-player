@@ -21,8 +21,6 @@ namespace margelo::nitro::video { struct onLoadStartData; }
 namespace margelo::nitro::video { enum class SourceType; }
 // Forward declaration of `HybridNitroPlayerSourceSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridNitroPlayerSourceSpec; }
-// Forward declaration of `onFirstFrameData` to properly resolve imports.
-namespace margelo::nitro::video { struct onFirstFrameData; }
 // Forward declaration of `PlaybackError` to properly resolve imports.
 namespace margelo::nitro::video { struct PlaybackError; }
 // Forward declaration of `NitroPlayerErrorCode` to properly resolve imports.
@@ -56,15 +54,12 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include <memory>
 #include "HybridNitroPlayerSourceSpec.hpp"
 #include "JHybridNitroPlayerSourceSpec.hpp"
-#include "onFirstFrameData.hpp"
-#include "JFunc_void_onFirstFrameData.hpp"
-#include "JonFirstFrameData.hpp"
-#include <string>
 #include "PlaybackError.hpp"
 #include "JFunc_void_PlaybackError.hpp"
 #include "JPlaybackError.hpp"
 #include "NitroPlayerErrorCode.hpp"
 #include "JNitroPlayerErrorCode.hpp"
+#include <string>
 #include "PlaybackState.hpp"
 #include "JFunc_void_PlaybackState.hpp"
 #include "JPlaybackState.hpp"
@@ -126,11 +121,6 @@ namespace margelo::nitro::video {
     auto __result = method(_javaPart, JFunc_void_onLoadStartData_cxx::fromCpp(listener));
     return __result->toCpp();
   }
-  ListenerSubscription JHybridNitroPlayerEventEmitterSpec::addOnFirstFrameListener(const std::function<void(const onFirstFrameData& /* data */)>& listener) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_onFirstFrameData::javaobject> /* listener */)>("addOnFirstFrameListener_cxx");
-    auto __result = method(_javaPart, JFunc_void_onFirstFrameData_cxx::fromCpp(listener));
-    return __result->toCpp();
-  }
   ListenerSubscription JHybridNitroPlayerEventEmitterSpec::addOnErrorListener(const std::function<void(const PlaybackError& /* error */)>& listener) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_PlaybackError::javaobject> /* listener */)>("addOnErrorListener_cxx");
     auto __result = method(_javaPart, JFunc_void_PlaybackError_cxx::fromCpp(listener));
@@ -139,6 +129,11 @@ namespace margelo::nitro::video {
   ListenerSubscription JHybridNitroPlayerEventEmitterSpec::addOnPlaybackStateListener(const std::function<void(const PlaybackState& /* state */)>& listener) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_PlaybackState::javaobject> /* listener */)>("addOnPlaybackStateListener_cxx");
     auto __result = method(_javaPart, JFunc_void_PlaybackState_cxx::fromCpp(listener));
+    return __result->toCpp();
+  }
+  ListenerSubscription JHybridNitroPlayerEventEmitterSpec::addOnPlaybackIntentIdledListener(const std::function<void()>& listener) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void::javaobject> /* listener */)>("addOnPlaybackIntentIdledListener_cxx");
+    auto __result = method(_javaPart, JFunc_void_cxx::fromCpp(listener));
     return __result->toCpp();
   }
   ListenerSubscription JHybridNitroPlayerEventEmitterSpec::addOnVolumeChangeListener(const std::function<void(const onVolumeChangeData& /* data */)>& listener) {

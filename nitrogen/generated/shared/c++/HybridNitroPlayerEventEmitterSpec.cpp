@@ -17,9 +17,9 @@ namespace margelo::nitro::video {
       prototype.registerHybridMethod("addOnBandwidthUpdateListener", &HybridNitroPlayerEventEmitterSpec::addOnBandwidthUpdateListener);
       prototype.registerHybridMethod("addOnLoadListener", &HybridNitroPlayerEventEmitterSpec::addOnLoadListener);
       prototype.registerHybridMethod("addOnLoadStartListener", &HybridNitroPlayerEventEmitterSpec::addOnLoadStartListener);
-      prototype.registerHybridMethod("addOnFirstFrameListener", &HybridNitroPlayerEventEmitterSpec::addOnFirstFrameListener);
       prototype.registerHybridMethod("addOnErrorListener", &HybridNitroPlayerEventEmitterSpec::addOnErrorListener);
       prototype.registerHybridMethod("addOnPlaybackStateListener", &HybridNitroPlayerEventEmitterSpec::addOnPlaybackStateListener);
+      prototype.registerHybridMethod("addOnPlaybackIntentIdledListener", &HybridNitroPlayerEventEmitterSpec::addOnPlaybackIntentIdledListener);
       prototype.registerHybridMethod("addOnVolumeChangeListener", &HybridNitroPlayerEventEmitterSpec::addOnVolumeChangeListener);
       prototype.registerHybridMethod("clearAllListeners", &HybridNitroPlayerEventEmitterSpec::clearAllListeners);
     });

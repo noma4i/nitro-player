@@ -1,24 +1,28 @@
-import { Platform } from 'react-native';
 import { NitroModules } from 'react-native-nitro-modules';
 import { type NitroPlayer as NitroPlayerImpl } from '../bridge/nitro/NitroPlayer.nitro';
+import type { NitroPlayerEventEmitter } from '../bridge/nitro/NitroPlayerEventEmitter.nitro';
 import type { NitroPlayerSource } from '../bridge/nitro/NitroPlayerSource.nitro';
-import type { IgnoreSilentSwitchMode } from './types/IgnoreSilentSwitchMode';
-import type { MemorySnapshot } from './types/MemorySnapshot';
-import type { MixAudioMode } from './types/MixAudioMode';
-import type { PlaybackState } from './types/PlaybackState';
-import type { NitroSourceDescriptor, NitroSourceInput } from '../source/types/NitroPlayerConfig';
-import { tryParseNativeNitroPlayerError, NitroPlayerRuntimeError } from '../support/errors/NitroPlayerError';
-import type { NitroPlayerStatus } from './types/NitroPlayerStatus';
-import { createPlayer } from './playerFactory';
-import { createNativeNitroSource } from '../source/sourceFactory';
 import { prepareSource } from '../source/prepareSource';
+import { createNativeNitroSource } from '../source/sourceFactory';
+import type { NitroSourceDescriptor, NitroSourceInput } from '../source/types/NitroPlayerConfig';
+import { NitroPlayerRuntimeError, tryParseNativeNitroPlayerError } from '../support/errors/NitroPlayerError';
+import type { NitroPlaybackPolicy } from '../surface/NitroPlaybackPolicy';
 import { NitroPlayerEvents } from './NitroPlayerEvents';
+import { createPlayer } from './playerFactory';
+import type { PlaybackState } from './types/PlaybackState';
 
 class NitroPlayer extends NitroPlayerEvents {
   private _player: NitroPlayerImpl | undefined;
   private _source: NitroSourceDescriptor | null;
   private _nativeSource: NitroPlayerSource | null;
   private readonly _ownsNativePlayer: boolean;
+  private _pendingSourceCommandId: number | null = null;
+  private _sourceCommandId = 0;
+  private _resumePosition: { playbackKey: string; time: number } | null = null;
+
+  protected get eventEmitter(): NitroPlayerEventEmitter {
+    return this.player.eventEmitter;
+  }
 
   protected get player(): NitroPlayerImpl {
     if (this._player === undefined) {
@@ -29,8 +33,8 @@ class NitroPlayer extends NitroPlayerEvents {
   }
 
   constructor(source: NitroSourceInput | NitroPlayerSource | NitroPlayerImpl) {
+    super();
     if (NitroPlayer.isNativePlayer(source)) {
-      super(source.eventEmitter);
       this._player = source;
       this._source = null;
       this._nativeSource = null;
@@ -38,13 +42,8 @@ class NitroPlayer extends NitroPlayerEvents {
       return;
     }
 
-    const { player, source: nativeSource } = createPlayer(source);
-
-    // Initialize events
-    super(player.eventEmitter);
-    this._player = player;
     this._source = prepareSource(source);
-    this._nativeSource = nativeSource;
+    this._nativeSource = null;
     this._ownsNativePlayer = true;
   }
 
@@ -52,17 +51,34 @@ class NitroPlayer extends NitroPlayerEvents {
     return new NitroPlayer(player);
   }
 
+  __createNativePlayer(source: NitroSourceDescriptor): void {
+    const { player, source: nativeSource } = createPlayer(source);
+    this._player = player;
+    this._source = source;
+    this._nativeSource = nativeSource;
+    if (this._resumePosition?.playbackKey === source.identity.playbackKey) {
+      player.seekTo(this._resumePosition.time);
+    }
+    this._resumePosition = null;
+  }
+
   /**
    * Releases the player's native resources and releases native state.
    * @internal
    */
-  __destroy() {
+  __destroy(): void {
     const nativePlayer = this._player;
     if (nativePlayer === undefined) return;
 
+    const resumeSource = this._ownsNativePlayer && this._pendingSourceCommandId === null ? this._source : null;
+    const resumeTime = resumeSource === null ? undefined : this.tryReadPlaybackState()?.currentTime;
+    this._resumePosition = resumeSource !== null && resumeTime !== undefined
+      ? { playbackKey: resumeSource.identity.playbackKey, time: resumeTime }
+      : null;
+    ++this._sourceCommandId;
+    this._pendingSourceCommandId = null;
+    nativePlayer.eventEmitter.clearAllListeners();
     this._player = undefined;
-
-    this.clearAllEvents();
 
     if (this._ownsNativePlayer) {
       this.refreshNativeMemorySize(nativePlayer);
@@ -95,11 +111,11 @@ class NitroPlayer extends NitroPlayerEvents {
    * Should not be used outside of the module.
    * @internal
    */
-  __getNativePlayer() {
+  __getNativePlayer(): NitroPlayerImpl {
     return this.player;
   }
 
-  private parseError(error: unknown) {
+  private parseError(error: unknown): unknown {
     return tryParseNativeNitroPlayerError(error);
   }
 
@@ -111,13 +127,12 @@ class NitroPlayer extends NitroPlayerEvents {
    * Updates the memory size of the player and its source. Should be called after any operation that changes the memory size of the player or its source.
    * @internal
    */
-  private refreshMemorySize() {
+  private refreshMemorySize(): void {
     if (!this._ownsNativePlayer) {
       return;
     }
 
-    // No-op once released: async paths (initialize/preload/replace/clear) call
-    // this after awaiting a native promise, and release() may have run during
+    // No-op once released: replace-source paths call this after awaiting a native promise, and __destroy() may have run during
     // the await; accessing `this.player` would throw `player/released`.
     if (this._player === undefined) {
       return;
@@ -145,166 +160,52 @@ class NitroPlayer extends NitroPlayerEvents {
     }
   }
 
-  // Source
-  get source(): NitroSourceDescriptor | null {
-    this.player;
-    return this._source;
-  }
-
-  // Status
-  get status(): NitroPlayerStatus {
-    return this.playbackState.status;
-  }
-
   get playbackState(): PlaybackState {
     return this.player.playbackState;
   }
 
-  get memorySnapshot(): MemorySnapshot {
-    return this.player.memorySnapshot;
-  }
-
-  // Duration
-  get duration(): number {
-    return this.playbackState.duration;
-  }
-
-  // Volume
-  get volume(): number {
-    return this.player.volume;
-  }
-
-  set volume(value: number) {
-    this.player.volume = value;
-  }
-
-  // Current Time
-  get currentTime(): number {
-    return this.playbackState.currentTime;
-  }
-
-  set currentTime(value: number) {
-    this.player.currentTime = value;
-  }
-
-  get bufferDuration(): number {
-    return this.playbackState.bufferDuration;
-  }
-
-  get bufferedPosition(): number {
-    return this.playbackState.bufferedPosition;
-  }
-
-  // Muted
-  get muted(): boolean {
-    return this.player.muted;
-  }
-
-  set muted(value: boolean) {
-    this.player.muted = value;
-  }
-
-  // Loop
-  get loop(): boolean {
-    return this.player.loop;
-  }
-
-  set loop(value: boolean) {
-    this.player.loop = value;
-  }
-
-  // Rate
-  get rate(): number {
-    return this.playbackState.rate;
+  tryReadPlaybackState(): PlaybackState | null {
+    try {
+      return this.player.playbackState;
+    } catch {
+      return null;
+    }
   }
 
   set rate(value: number) {
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new RangeError('Playback rate must be a finite positive number');
+    }
     this.player.rate = value;
   }
 
-  // Mix Audio Mode
-  get mixAudioMode(): MixAudioMode {
-    return this.player.mixAudioMode;
-  }
-
-  set mixAudioMode(value: MixAudioMode) {
-    this.player.mixAudioMode = value;
-  }
-
-  // Ignore Silent Switch Mode
-  get ignoreSilentSwitchMode(): IgnoreSilentSwitchMode {
-    return this.player.ignoreSilentSwitchMode;
-  }
-
-  set ignoreSilentSwitchMode(value: IgnoreSilentSwitchMode) {
-    if (__DEV__ && !['ios'].includes(Platform.OS)) {
-      console.warn('ignoreSilentSwitchMode is not supported on this platform, it wont have any effect');
+  configurePlayback(key: string, policy: NitroPlaybackPolicy, requiresView: boolean): void {
+    if (key.trim().length === 0 || policy.group.trim().length === 0) {
+      throw new TypeError('Playback key and Playback group must not be blank');
+    }
+    if (!Number.isSafeInteger(policy.priority) || policy.priority < -2147483648 || policy.priority > 2147483647) {
+      throw new RangeError('Playback priority must be a signed 32-bit integer');
     }
 
-    this.player.ignoreSilentSwitchMode = value;
+    this.runSync(() => this.player.configurePlayback(
+      key,
+      policy.group,
+      policy.priority,
+      policy.resume === 'automatic',
+      requiresView,
+    ));
   }
 
-  // Play In Background
-  get playInBackground(): boolean {
-    return this.player.playInBackground;
+  updatePlayback(active: boolean, visible: boolean, muted: boolean, loop: boolean): void {
+    this.runSync(() => this.player.updatePlayback(active, visible, muted, loop));
   }
 
-  set playInBackground(value: boolean) {
-    this.player.playInBackground = value;
+  requestPlayback(): void {
+    this.runSync(() => this.player.requestPlayback());
   }
 
-  // Play When Inactive
-  get playWhenInactive(): boolean {
-    return this.player.playWhenInactive;
-  }
-
-  set playWhenInactive(value: boolean) {
-    this.player.playWhenInactive = value;
-  }
-
-  // Is Playing
-  get isPlaying(): boolean {
-    return this.playbackState.isPlaying;
-  }
-
-  get isBuffering(): boolean {
-    return this.playbackState.isBuffering;
-  }
-
-  get isVisualReady(): boolean {
-    return this.playbackState.isVisualReady;
-  }
-
-  async initialize(): Promise<void> {
-    await this.runAsync(() => this.player.initialize());
-    this.refreshMemorySize();
-  }
-
-  async preload(): Promise<void> {
-    await this.runAsync(() => this.player.preload());
-    this.refreshMemorySize();
-  }
-
-  /**
-   * Releases the player's native resources and releases native state.
-   * After calling this method, the player is no longer usable.
-   * Accessing any properties or methods of the player after calling this method will throw an error.
-   * If you want to clear the current source and keep the player reusable, use `clearSourceAsync()`.
-   */
-  release(): void {
-    this.__destroy();
-  }
-
-  play(): void {
-    this.runSync(() => this.player.play());
-  }
-
-  pause(): void {
-    this.runSync(() => this.player.pause());
-  }
-
-  seekBy(time: number): void {
-    this.runSync(() => this.player.seekBy(time));
+  requestIdle(): void {
+    this.runSync(() => this.player.requestIdle());
   }
 
   seekTo(time: number): void {
@@ -313,25 +214,30 @@ class NitroPlayer extends NitroPlayerEvents {
 
   async replaceSourceAsync(source: NitroSourceInput): Promise<void> {
     const nextSource = prepareSource(source);
-    if (this._source?.identity.playbackKey === nextSource.identity.playbackKey) {
+    if (this._source?.identity.playbackKey === nextSource.identity.playbackKey && this._pendingSourceCommandId === null) {
       return;
     }
 
-    this.refreshMemorySize();
-    const nextNativeSource = createNativeNitroSource(nextSource);
-    await this.runAsync(() => this.player.replaceSourceAsync(nextNativeSource));
-    this._source = nextSource;
-    this._nativeSource = nextNativeSource;
-    this.refreshMemorySize();
+    const commandId = ++this._sourceCommandId;
+    this._pendingSourceCommandId = commandId;
+    try {
+      this.refreshMemorySize();
+      const nextNativeSource = createNativeNitroSource(nextSource);
+      await this.runAsync(() => this.player.replaceSourceAsync(nextNativeSource));
+      if (commandId !== this._sourceCommandId) {
+        return;
+      }
+
+      this._source = nextSource;
+      this._nativeSource = nextNativeSource;
+      this.refreshMemorySize();
+    } finally {
+      if (this._pendingSourceCommandId === commandId) {
+        this._pendingSourceCommandId = null;
+      }
+    }
   }
 
-  async clearSourceAsync(): Promise<void> {
-    this.refreshMemorySize();
-    await this.runAsync(() => this.player.clearSourceAsync());
-    this._source = null;
-    this._nativeSource = null;
-    this.refreshMemorySize();
-  }
 }
 
 export { NitroPlayer };

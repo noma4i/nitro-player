@@ -10,6 +10,7 @@ package com.margelo.nitro.video
 import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
+import dalvik.annotation.optimization.FastNative
 import com.margelo.nitro.core.Promise
 import com.margelo.nitro.core.HybridObject
 
@@ -143,6 +144,26 @@ abstract class HybridNitroPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
+  abstract fun configurePlayback(key: String, group: String, priority: Double, resumeAutomatically: Boolean, requiresView: Boolean): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun updatePlayback(active: Boolean, visible: Boolean, muted: Boolean, loop: Boolean): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun requestPlayback(): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun requestIdle(): Unit
+  
+  @DoNotStrip
+  @Keep
+  abstract fun clearPlayback(): Unit
+  
+  @DoNotStrip
+  @Keep
   abstract fun seekBy(time: Double): Unit
   
   @DoNotStrip
@@ -171,6 +192,7 @@ abstract class HybridNitroPlayerSpec: HybridObject() {
   @Keep
   protected open class CxxPart(javaPart: HybridNitroPlayerSpec): HybridObject.CxxPart(javaPart) {
     // C++ JHybridNitroPlayerSpec::CxxPart::initHybrid(...)
+    @FastNative
     external override fun initHybrid(): HybridData
   }
   override fun createCxxPart(): CxxPart {

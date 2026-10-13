@@ -15,25 +15,26 @@
 
 // Forward declaration of `HybridNitroPlayerSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridNitroPlayerSpec; }
-// Forward declaration of `FeedRingCatalog` to properly resolve imports.
-namespace margelo::nitro::video { struct FeedRingCatalog; }
-// Forward declaration of `FeedRingViewport` to properly resolve imports.
-namespace margelo::nitro::video { struct FeedRingViewport; }
+// Forward declaration of `FeedRingProjection` to properly resolve imports.
+namespace margelo::nitro::video { struct FeedRingProjection; }
 // Forward declaration of `FeedRingSnapshot` to properly resolve imports.
 namespace margelo::nitro::video { struct FeedRingSnapshot; }
 // Forward declaration of `ListenerSubscription` to properly resolve imports.
 namespace margelo::nitro::video { struct ListenerSubscription; }
 // Forward declaration of `FeedRingSlotState` to properly resolve imports.
 namespace margelo::nitro::video { struct FeedRingSlotState; }
+// Forward declaration of `FeedRingCommandEvent` to properly resolve imports.
+namespace margelo::nitro::video { struct FeedRingCommandEvent; }
 
 #include <memory>
 #include "HybridNitroPlayerSpec.hpp"
-#include "FeedRingCatalog.hpp"
-#include "FeedRingViewport.hpp"
+#include <string>
+#include "FeedRingProjection.hpp"
 #include "FeedRingSnapshot.hpp"
 #include "ListenerSubscription.hpp"
 #include "FeedRingSlotState.hpp"
 #include <functional>
+#include "FeedRingCommandEvent.hpp"
 
 namespace margelo::nitro::video {
 
@@ -62,15 +63,16 @@ namespace margelo::nitro::video {
 
     public:
       // Properties
-      
+      virtual double getRingToken() = 0;
 
     public:
       // Methods
       virtual std::shared_ptr<HybridNitroPlayerSpec> getPlayer(double slotId) = 0;
-      virtual void replaceCatalog(const FeedRingCatalog& catalog) = 0;
-      virtual void commitViewport(const FeedRingViewport& viewport) = 0;
+      virtual void configurePlayback(const std::string& key, const std::string& group, double priority, bool resumeAutomatically) = 0;
+      virtual void applyProjection(const FeedRingProjection& projection) = 0;
       virtual FeedRingSnapshot snapshot() = 0;
       virtual ListenerSubscription addSlotStateListener(const std::function<void(const FeedRingSlotState& /* state */)>& listener) = 0;
+      virtual ListenerSubscription addCommandEventListener(const std::function<void(const FeedRingCommandEvent& /* event */)>& listener) = 0;
       virtual void release() = 0;
 
     protected:

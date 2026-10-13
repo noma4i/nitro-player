@@ -28,8 +28,6 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-// Forward declaration of `NitroSourceMetadata` to properly resolve imports.
-namespace margelo::nitro::video { struct NitroSourceMetadata; }
 // Forward declaration of `NitroSourceStartup` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroSourceStartup; }
 // Forward declaration of `BufferConfig` to properly resolve imports.
@@ -38,18 +36,14 @@ namespace margelo::nitro::video { struct BufferConfig; }
 namespace margelo::nitro::video { struct NitroSourceRetentionConfig; }
 // Forward declaration of `NitroSourceTransportConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct NitroSourceTransportConfig; }
-// Forward declaration of `NitroSourcePreviewConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct NitroSourcePreviewConfig; }
 
 #include <string>
 #include <unordered_map>
 #include <optional>
-#include "NitroSourceMetadata.hpp"
 #include "NitroSourceStartup.hpp"
 #include "BufferConfig.hpp"
 #include "NitroSourceRetentionConfig.hpp"
 #include "NitroSourceTransportConfig.hpp"
-#include "NitroSourcePreviewConfig.hpp"
 
 namespace margelo::nitro::video {
 
@@ -60,16 +54,14 @@ namespace margelo::nitro::video {
   public:
     std::string uri     SWIFT_PRIVATE;
     std::optional<std::unordered_map<std::string, std::string>> headers     SWIFT_PRIVATE;
-    std::optional<NitroSourceMetadata> metadata     SWIFT_PRIVATE;
     std::optional<NitroSourceStartup> startup     SWIFT_PRIVATE;
     std::optional<BufferConfig> buffer     SWIFT_PRIVATE;
     std::optional<NitroSourceRetentionConfig> retention     SWIFT_PRIVATE;
     std::optional<NitroSourceTransportConfig> transport     SWIFT_PRIVATE;
-    std::optional<NitroSourcePreviewConfig> preview     SWIFT_PRIVATE;
 
   public:
     NativeNitroPlayerConfig() = default;
-    explicit NativeNitroPlayerConfig(std::string uri, std::optional<std::unordered_map<std::string, std::string>> headers, std::optional<NitroSourceMetadata> metadata, std::optional<NitroSourceStartup> startup, std::optional<BufferConfig> buffer, std::optional<NitroSourceRetentionConfig> retention, std::optional<NitroSourceTransportConfig> transport, std::optional<NitroSourcePreviewConfig> preview): uri(uri), headers(headers), metadata(metadata), startup(startup), buffer(buffer), retention(retention), transport(transport), preview(preview) {}
+    explicit NativeNitroPlayerConfig(std::string uri, std::optional<std::unordered_map<std::string, std::string>> headers, std::optional<NitroSourceStartup> startup, std::optional<BufferConfig> buffer, std::optional<NitroSourceRetentionConfig> retention, std::optional<NitroSourceTransportConfig> transport): uri(uri), headers(headers), startup(startup), buffer(buffer), retention(retention), transport(transport) {}
 
   public:
     friend bool operator==(const NativeNitroPlayerConfig& lhs, const NativeNitroPlayerConfig& rhs) = default;
@@ -87,24 +79,20 @@ namespace margelo::nitro {
       return margelo::nitro::video::NativeNitroPlayerConfig(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "uri"))),
         JSIConverter<std::optional<std::unordered_map<std::string, std::string>>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "headers"))),
-        JSIConverter<std::optional<margelo::nitro::video::NitroSourceMetadata>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "metadata"))),
         JSIConverter<std::optional<margelo::nitro::video::NitroSourceStartup>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "startup"))),
         JSIConverter<std::optional<margelo::nitro::video::BufferConfig>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "buffer"))),
         JSIConverter<std::optional<margelo::nitro::video::NitroSourceRetentionConfig>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "retention"))),
-        JSIConverter<std::optional<margelo::nitro::video::NitroSourceTransportConfig>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "transport"))),
-        JSIConverter<std::optional<margelo::nitro::video::NitroSourcePreviewConfig>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "preview")))
+        JSIConverter<std::optional<margelo::nitro::video::NitroSourceTransportConfig>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "transport")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::video::NativeNitroPlayerConfig& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "uri"), JSIConverter<std::string>::toJSI(runtime, arg.uri));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "headers"), JSIConverter<std::optional<std::unordered_map<std::string, std::string>>>::toJSI(runtime, arg.headers));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "metadata"), JSIConverter<std::optional<margelo::nitro::video::NitroSourceMetadata>>::toJSI(runtime, arg.metadata));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "startup"), JSIConverter<std::optional<margelo::nitro::video::NitroSourceStartup>>::toJSI(runtime, arg.startup));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "buffer"), JSIConverter<std::optional<margelo::nitro::video::BufferConfig>>::toJSI(runtime, arg.buffer));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "retention"), JSIConverter<std::optional<margelo::nitro::video::NitroSourceRetentionConfig>>::toJSI(runtime, arg.retention));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "transport"), JSIConverter<std::optional<margelo::nitro::video::NitroSourceTransportConfig>>::toJSI(runtime, arg.transport));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "preview"), JSIConverter<std::optional<margelo::nitro::video::NitroSourcePreviewConfig>>::toJSI(runtime, arg.preview));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -117,12 +105,10 @@ namespace margelo::nitro {
       }
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "uri")))) return false;
       if (!JSIConverter<std::optional<std::unordered_map<std::string, std::string>>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "headers")))) return false;
-      if (!JSIConverter<std::optional<margelo::nitro::video::NitroSourceMetadata>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "metadata")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::video::NitroSourceStartup>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "startup")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::video::BufferConfig>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "buffer")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::video::NitroSourceRetentionConfig>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "retention")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::video::NitroSourceTransportConfig>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "transport")))) return false;
-      if (!JSIConverter<std::optional<margelo::nitro::video::NitroSourcePreviewConfig>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "preview")))) return false;
       return true;
     }
   };

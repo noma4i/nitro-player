@@ -6,6 +6,7 @@ struct PlayerAppStateSnapshot {
   let isPlaying: Bool
   let wasAutoPaused: Bool
   let isExternalPlaybackActive: Bool
+  let wantsToPlay: Bool
 }
 
 enum PlayerAppStatePolicy {
@@ -20,8 +21,9 @@ enum PlayerAppStatePolicy {
     shouldAutoPauseWhenInactive(snapshot)
   }
 
+  // resume only when the player itself still wants to play; JS-managed players are resumed by the JS arbiter.
   static func shouldResumeWhenEnteringForeground(_ snapshot: PlayerAppStateSnapshot) -> Bool {
-    snapshot.wasAutoPaused
+    snapshot.wasAutoPaused && snapshot.wantsToPlay
   }
 
   static func shouldClearAutoPausedAfterBecomeActive(_ snapshot: PlayerAppStateSnapshot) -> Bool {

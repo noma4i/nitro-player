@@ -1,5 +1,5 @@
 import type { Int64 } from 'react-native-nitro-modules';
-import type { NitroPlayerOrientation } from '../../view/types/NitroPlayerOrientation';
+import type { NitroPlayerOrientation } from '../../view/types/NitroPlayerOrientation.js';
 export interface NitroPlayerInformation {
     /**
      * The bitrate of the video in kbps.

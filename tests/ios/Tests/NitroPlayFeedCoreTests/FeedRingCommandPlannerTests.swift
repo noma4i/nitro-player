@@ -6,9 +6,9 @@ final class FeedRingCommandPlannerTests: XCTestCase {
     let planner = FeedRingCommandPlanner()
     let commands = planner.plan(
       plannedSlots: [
-        planned(slotId: 2, assignedIndex: -1, momentId: "previous", sourceKey: "source-previous", shouldPlay: false),
-        planned(slotId: 0, assignedIndex: 0, momentId: "current", sourceKey: "source-current", shouldPlay: true),
-        planned(slotId: 1, assignedIndex: 1, momentId: "next", sourceKey: nil, shouldPlay: false)
+        planned(slotId: 2, assignedIndex: -1, itemId: "previous", sourceKey: "source-previous", shouldPlay: false),
+        planned(slotId: 0, assignedIndex: 0, itemId: "current", sourceKey: "source-current", shouldPlay: true),
+        planned(slotId: 1, assignedIndex: 1, itemId: "next", sourceKey: nil, shouldPlay: false)
       ],
       slots: [
         slot(0, assignedIndex: 0, sourceKey: "source-current"),
@@ -36,12 +36,13 @@ final class FeedRingCommandPlannerTests: XCTestCase {
         slot(1, assignedIndex: nil, sourceKey: nil)
       ]
     )
-    XCTAssertEqual(missingCenterCommands.map(\.reason), ["missing-center", "missing-center"])
-    XCTAssertEqual(missingCenterCommands.map(\.hadSource), [true, false])
+    XCTAssertEqual(missingCenterCommands.map(\.slotId), [0])
+    XCTAssertEqual(missingCenterCommands.map(\.reason), ["missing-center"])
+    XCTAssertEqual(missingCenterCommands.map(\.hadSource), [true])
 
     let outsideCommands = planner.plan(
       plannedSlots: [
-        planned(slotId: 0, assignedIndex: 10, momentId: "ten", sourceKey: "source-ten", shouldPlay: true)
+        planned(slotId: 0, assignedIndex: 10, itemId: "ten", sourceKey: "source-ten", shouldPlay: true)
       ],
       slots: [
         slot(0, assignedIndex: nil, sourceKey: nil),
@@ -58,7 +59,7 @@ final class FeedRingCommandPlannerTests: XCTestCase {
     let planner = FeedRingCommandPlanner()
     let commands = planner.plan(
       plannedSlots: [
-        planned(slotId: 0, assignedIndex: 0, momentId: "current", sourceKey: "source-current", shouldPlay: true)
+        planned(slotId: 0, assignedIndex: 0, itemId: "current", sourceKey: "source-current", shouldPlay: true)
       ],
       slots: [
         slot(0, assignedIndex: 0, sourceKey: nil)
@@ -73,7 +74,7 @@ final class FeedRingCommandPlannerTests: XCTestCase {
     let planner = FeedRingCommandPlanner()
     let commands = planner.plan(
       plannedSlots: [
-        planned(slotId: 0, assignedIndex: 0, momentId: "current", sourceKey: nil, shouldPlay: false)
+        planned(slotId: 0, assignedIndex: 0, itemId: "current", sourceKey: nil, shouldPlay: false)
       ],
       slots: [
         slot(0, assignedIndex: 0, sourceKey: nil)
@@ -84,10 +85,39 @@ final class FeedRingCommandPlannerTests: XCTestCase {
     XCTAssertFalse(commands.single?.hadSource ?? true)
   }
 
+  func testUnchangedHealthySlotPlansNothing() {
+    let planner = FeedRingCommandPlanner()
+    let commands = planner.plan(
+      plannedSlots: [
+        planned(slotId: 0, assignedIndex: 0, itemId: "current", sourceKey: "source-current", shouldPlay: true)
+      ],
+      slots: [
+        slot(0, assignedIndex: 0, sourceKey: "source-current", itemId: "current")
+      ]
+    )
+
+    XCTAssertTrue(commands.isEmpty)
+  }
+
+  func testSlotWithErrorPlansReplaceInsteadOfReuse() {
+    let planner = FeedRingCommandPlanner()
+    let commands = planner.plan(
+      plannedSlots: [
+        planned(slotId: 0, assignedIndex: 0, itemId: "current", sourceKey: "source-current", shouldPlay: true)
+      ],
+      slots: [
+        slot(0, assignedIndex: 0, sourceKey: "source-current", itemId: "current", hasError: true)
+      ]
+    )
+
+    XCTAssertEqual(commands.single?.action, .replace)
+    XCTAssertTrue(commands.single?.hadSource ?? false)
+  }
+
   private func planned(
     slotId: Int,
     assignedIndex: Int,
-    momentId: String,
+    itemId: String,
     sourceKey: String?,
     shouldPlay: Bool
   ) -> FeedRingPlannedSlot {
@@ -96,7 +126,7 @@ final class FeedRingCommandPlannerTests: XCTestCase {
       assignedIndex: assignedIndex,
       entry: FeedRingCatalogEntry(
         index: assignedIndex,
-        momentId: momentId,
+        itemId: itemId,
         sourceKey: sourceKey,
         hasSource: sourceKey != nil
       ),
@@ -104,8 +134,21 @@ final class FeedRingCommandPlannerTests: XCTestCase {
     )
   }
 
-  private func slot(_ slotId: Int, assignedIndex: Int?, sourceKey: String?) -> FeedRingCommandSlotState {
-    FeedRingCommandSlotState(slotId: slotId, assignedIndex: assignedIndex, momentId: nil, sourceKey: sourceKey)
+  private func slot(
+    _ slotId: Int,
+    assignedIndex: Int?,
+    sourceKey: String?,
+    itemId: String? = nil,
+    hasError: Bool = false
+  ) -> FeedRingCommandSlotState {
+    FeedRingCommandSlotState(
+      slotId: slotId,
+      assignedIndex: assignedIndex,
+      itemId: itemId,
+      sourceKey: sourceKey,
+      hasSource: sourceKey != nil,
+      hasError: hasError
+    )
   }
 }
 

@@ -10,6 +10,7 @@ package com.margelo.nitro.video
 import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
+import dalvik.annotation.optimization.FastNative
 import com.margelo.nitro.core.HybridObject
 
 /**
@@ -55,15 +56,6 @@ abstract class HybridNitroPlayerEventEmitterSpec: HybridObject() {
     return __result
   }
   
-  abstract fun addOnFirstFrameListener(listener: (data: onFirstFrameData) -> Unit): ListenerSubscription
-  
-  @DoNotStrip
-  @Keep
-  private fun addOnFirstFrameListener_cxx(listener: Func_void_onFirstFrameData): ListenerSubscription {
-    val __result = addOnFirstFrameListener(listener)
-    return __result
-  }
-  
   abstract fun addOnErrorListener(listener: (error: PlaybackError) -> Unit): ListenerSubscription
   
   @DoNotStrip
@@ -79,6 +71,15 @@ abstract class HybridNitroPlayerEventEmitterSpec: HybridObject() {
   @Keep
   private fun addOnPlaybackStateListener_cxx(listener: Func_void_PlaybackState): ListenerSubscription {
     val __result = addOnPlaybackStateListener(listener)
+    return __result
+  }
+  
+  abstract fun addOnPlaybackIntentIdledListener(listener: () -> Unit): ListenerSubscription
+  
+  @DoNotStrip
+  @Keep
+  private fun addOnPlaybackIntentIdledListener_cxx(listener: Func_void): ListenerSubscription {
+    val __result = addOnPlaybackIntentIdledListener(listener)
     return __result
   }
   
@@ -105,6 +106,7 @@ abstract class HybridNitroPlayerEventEmitterSpec: HybridObject() {
   @Keep
   protected open class CxxPart(javaPart: HybridNitroPlayerEventEmitterSpec): HybridObject.CxxPart(javaPart) {
     // C++ JHybridNitroPlayerEventEmitterSpec::CxxPart::initHybrid(...)
+    @FastNative
     external override fun initHybrid(): HybridData
   }
   override fun createCxxPart(): CxxPart {

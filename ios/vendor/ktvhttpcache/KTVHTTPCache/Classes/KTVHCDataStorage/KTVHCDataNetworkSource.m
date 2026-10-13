@@ -172,9 +172,9 @@
         return;
     }
     self->_response = response;
-    NSString *path = [KTVHCPathTool filePathWithURL:self.request.URL offset:self.request.range.start];
+    NSString *path = [KTVHCPathTool filePathWithURL:self.request.cacheURL offset:self.request.range.start];
     self.unitItem = [[KTVHCDataUnitItem alloc] initWithPath:path offset:self.request.range.start];
-    KTVHCDataUnit *unit = [[KTVHCDataUnitPool pool] unitWithURL:self.request.URL];
+    KTVHCDataUnit *unit = [[KTVHCDataUnitPool pool] unitWithURL:self.request.cacheURL];
     [unit insertUnitItem:self.unitItem];
     KTVHCLogDataNetworkSource(@"%p, Receive response\nResponse : %@\nUnit : %@\nUnitItem : %@", self, response, unit, self.unitItem);
     [unit workingRelease];

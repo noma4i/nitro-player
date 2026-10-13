@@ -47,11 +47,10 @@ namespace margelo::nitro::video {
     std::optional<PreloadLevel> preload     SWIFT_PRIVATE;
     std::optional<RetentionLevel> offscreen     SWIFT_PRIVATE;
     std::optional<double> trimDelayMs     SWIFT_PRIVATE;
-    std::optional<bool> feedPoolEligible     SWIFT_PRIVATE;
 
   public:
     NitroSourceRetentionConfig() = default;
-    explicit NitroSourceRetentionConfig(std::optional<PreloadLevel> preload, std::optional<RetentionLevel> offscreen, std::optional<double> trimDelayMs, std::optional<bool> feedPoolEligible): preload(preload), offscreen(offscreen), trimDelayMs(trimDelayMs), feedPoolEligible(feedPoolEligible) {}
+    explicit NitroSourceRetentionConfig(std::optional<PreloadLevel> preload, std::optional<RetentionLevel> offscreen, std::optional<double> trimDelayMs): preload(preload), offscreen(offscreen), trimDelayMs(trimDelayMs) {}
 
   public:
     friend bool operator==(const NitroSourceRetentionConfig& lhs, const NitroSourceRetentionConfig& rhs) = default;
@@ -69,8 +68,7 @@ namespace margelo::nitro {
       return margelo::nitro::video::NitroSourceRetentionConfig(
         JSIConverter<std::optional<margelo::nitro::video::PreloadLevel>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "preload"))),
         JSIConverter<std::optional<margelo::nitro::video::RetentionLevel>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "offscreen"))),
-        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "trimDelayMs"))),
-        JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "feedPoolEligible")))
+        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "trimDelayMs")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::video::NitroSourceRetentionConfig& arg) {
@@ -78,7 +76,6 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "preload"), JSIConverter<std::optional<margelo::nitro::video::PreloadLevel>>::toJSI(runtime, arg.preload));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "offscreen"), JSIConverter<std::optional<margelo::nitro::video::RetentionLevel>>::toJSI(runtime, arg.offscreen));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "trimDelayMs"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.trimDelayMs));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "feedPoolEligible"), JSIConverter<std::optional<bool>>::toJSI(runtime, arg.feedPoolEligible));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -92,7 +89,6 @@ namespace margelo::nitro {
       if (!JSIConverter<std::optional<margelo::nitro::video::PreloadLevel>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "preload")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::video::RetentionLevel>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "offscreen")))) return false;
       if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "trimDelayMs")))) return false;
-      if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "feedPoolEligible")))) return false;
       return true;
     }
   };

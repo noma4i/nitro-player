@@ -26,9 +26,6 @@ data class NativeNitroPlayerConfig(
   val headers: Map<String, String>?,
   @DoNotStrip
   @Keep
-  val metadata: NitroSourceMetadata?,
-  @DoNotStrip
-  @Keep
   val startup: NitroSourceStartup?,
   @DoNotStrip
   @Keep
@@ -38,10 +35,7 @@ data class NativeNitroPlayerConfig(
   val retention: NitroSourceRetentionConfig?,
   @DoNotStrip
   @Keep
-  val transport: NitroSourceTransportConfig?,
-  @DoNotStrip
-  @Keep
-  val preview: NitroSourcePreviewConfig?
+  val transport: NitroSourceTransportConfig?
 ) {
   /* primary constructor */
 
@@ -50,24 +44,20 @@ data class NativeNitroPlayerConfig(
     if (other !is NativeNitroPlayerConfig) return false
     return Objects.deepEquals(this.uri, other.uri)
       && Objects.deepEquals(this.headers, other.headers)
-      && Objects.deepEquals(this.metadata, other.metadata)
       && Objects.deepEquals(this.startup, other.startup)
       && Objects.deepEquals(this.buffer, other.buffer)
       && Objects.deepEquals(this.retention, other.retention)
       && Objects.deepEquals(this.transport, other.transport)
-      && Objects.deepEquals(this.preview, other.preview)
   }
 
   override fun hashCode(): Int {
     return arrayOf<Any?>(
       uri,
       headers,
-      metadata,
       startup,
       buffer,
       retention,
-      transport,
-      preview
+      transport
     ).contentDeepHashCode()
   }
 
@@ -79,8 +69,8 @@ data class NativeNitroPlayerConfig(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(uri: String, headers: Map<String, String>?, metadata: NitroSourceMetadata?, startup: NitroSourceStartup?, buffer: BufferConfig?, retention: NitroSourceRetentionConfig?, transport: NitroSourceTransportConfig?, preview: NitroSourcePreviewConfig?): NativeNitroPlayerConfig {
-      return NativeNitroPlayerConfig(uri, headers, metadata, startup, buffer, retention, transport, preview)
+    private fun fromCpp(uri: String, headers: Map<String, String>?, startup: NitroSourceStartup?, buffer: BufferConfig?, retention: NitroSourceRetentionConfig?, transport: NitroSourceTransportConfig?): NativeNitroPlayerConfig {
+      return NativeNitroPlayerConfig(uri, headers, startup, buffer, retention, transport)
     }
   }
 }

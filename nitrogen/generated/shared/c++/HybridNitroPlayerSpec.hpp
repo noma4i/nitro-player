@@ -37,6 +37,7 @@ namespace margelo::nitro::video { enum class IgnoreSilentSwitchMode; }
 #include "MixAudioMode.hpp"
 #include "IgnoreSilentSwitchMode.hpp"
 #include <NitroModules/Promise.hpp>
+#include <string>
 
 namespace margelo::nitro::video {
 
@@ -101,6 +102,11 @@ namespace margelo::nitro::video {
       virtual std::shared_ptr<Promise<void>> preload() = 0;
       virtual void play() = 0;
       virtual void pause() = 0;
+      virtual void configurePlayback(const std::string& key, const std::string& group, double priority, bool resumeAutomatically, bool requiresView) = 0;
+      virtual void updatePlayback(bool active, bool visible, bool muted, bool loop) = 0;
+      virtual void requestPlayback() = 0;
+      virtual void requestIdle() = 0;
+      virtual void clearPlayback() = 0;
       virtual void seekBy(double time) = 0;
       virtual void seekTo(double time) = 0;
       virtual std::shared_ptr<Promise<void>> replaceSourceAsync(const std::shared_ptr<HybridNitroPlayerSourceSpec>& source) = 0;

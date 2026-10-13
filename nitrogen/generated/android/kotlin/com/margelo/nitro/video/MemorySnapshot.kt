@@ -44,10 +44,7 @@ data class MemorySnapshot(
   val wantsToPlay: Boolean,
   @DoNotStrip
   @Keep
-  val isFeedPoolEligible: Boolean,
-  @DoNotStrip
-  @Keep
-  val isPinnedForFeedPool: Boolean,
+  val isRingSlot: Boolean,
   @DoNotStrip
   @Keep
   val isPinnedForResourcePressure: Boolean
@@ -65,8 +62,7 @@ data class MemorySnapshot(
       && Objects.deepEquals(this.isAttachedToView, other.isAttachedToView)
       && Objects.deepEquals(this.isPlaying, other.isPlaying)
       && Objects.deepEquals(this.wantsToPlay, other.wantsToPlay)
-      && Objects.deepEquals(this.isFeedPoolEligible, other.isFeedPoolEligible)
-      && Objects.deepEquals(this.isPinnedForFeedPool, other.isPinnedForFeedPool)
+      && Objects.deepEquals(this.isRingSlot, other.isRingSlot)
       && Objects.deepEquals(this.isPinnedForResourcePressure, other.isPinnedForResourcePressure)
   }
 
@@ -80,8 +76,7 @@ data class MemorySnapshot(
       isAttachedToView,
       isPlaying,
       wantsToPlay,
-      isFeedPoolEligible,
-      isPinnedForFeedPool,
+      isRingSlot,
       isPinnedForResourcePressure
     ).contentDeepHashCode()
   }
@@ -94,8 +89,8 @@ data class MemorySnapshot(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(playerBytes: Double, sourceBytes: Double, totalBytes: Double, preloadLevel: PreloadLevel, retentionState: RetentionLevel, isAttachedToView: Boolean, isPlaying: Boolean, wantsToPlay: Boolean, isFeedPoolEligible: Boolean, isPinnedForFeedPool: Boolean, isPinnedForResourcePressure: Boolean): MemorySnapshot {
-      return MemorySnapshot(playerBytes, sourceBytes, totalBytes, preloadLevel, retentionState, isAttachedToView, isPlaying, wantsToPlay, isFeedPoolEligible, isPinnedForFeedPool, isPinnedForResourcePressure)
+    private fun fromCpp(playerBytes: Double, sourceBytes: Double, totalBytes: Double, preloadLevel: PreloadLevel, retentionState: RetentionLevel, isAttachedToView: Boolean, isPlaying: Boolean, wantsToPlay: Boolean, isRingSlot: Boolean, isPinnedForResourcePressure: Boolean): MemorySnapshot {
+      return MemorySnapshot(playerBytes, sourceBytes, totalBytes, preloadLevel, retentionState, isAttachedToView, isPlaying, wantsToPlay, isRingSlot, isPinnedForResourcePressure)
     }
   }
 }

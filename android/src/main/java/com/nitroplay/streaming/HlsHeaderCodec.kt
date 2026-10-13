@@ -1,19 +1,12 @@
 package com.nitroplay.video.streaming
 
 import android.util.Base64
-import com.facebook.react.bridge.ReadableMap
 import java.nio.charset.StandardCharsets
 
 object HlsHeaderCodec {
     fun encode(headers: Map<String, String>?): String? {
         if (headers == null || headers.isEmpty()) return null
         val json = org.json.JSONObject(headers).toString()
-        return Base64.encodeToString(json.toByteArray(StandardCharsets.UTF_8), Base64.NO_WRAP)
-    }
-
-    fun encode(headers: ReadableMap?): String? {
-        if (headers == null || headers.toHashMap().isEmpty()) return null
-        val json = org.json.JSONObject(headers.toHashMap()).toString()
         return Base64.encodeToString(json.toByteArray(StandardCharsets.UTF_8), Base64.NO_WRAP)
     }
 
@@ -31,11 +24,6 @@ object HlsHeaderCodec {
         } catch (_: Exception) {
             null
         }
-    }
-
-    fun decode(map: ReadableMap?): Map<String, String>? {
-        if (map == null) return null
-        return map.toHashMap().mapValues { it.value.toString() }
     }
 
     // NanoHTTPD already URL-decodes query parameters; this only normalizes

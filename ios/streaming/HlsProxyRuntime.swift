@@ -2,153 +2,112 @@ import Foundation
 
 struct HlsProxyRouteResolution {
   let url: String
+  let headers: [String: String]?
   let isProxying: Bool
+  /// Transport generation this route was resolved against; `nil` when the route bypasses the proxy.
+  let routeGeneration: Int?
 }
 
 final class HlsProxyRuntime {
   static let shared = HlsProxyRuntime()
 
   private let controller = HlsProxyServerController()
-  private let prefetchDeduper = HlsPrefetchDeduper(window: 60, maxEntries: 500)
   private let runtimeQueue = DispatchQueue(label: "com.nitroplay.hls.proxy-runtime")
-  private var lifecycleState = HlsProxyRuntimeLifecycleState()
-  private var prefetchSegmentCount = 2
+  private var cacheConfigurationLocked = false
+  private var didAutoStart = false
 
   private init() {}
 
-  func start(port: Int?) {
-    runtimeQueue.sync {
-      let resolvedPort = lifecycleState.start(port: port)
-      if controller.start(port: resolvedPort) {
-        lifecycleState.markAutoStarted()
+  var routeGeneration: Int {
+    controller.currentRouteGeneration
+  }
+
+  var transportReadiness: HlsTransportReadiness {
+    controller.readiness()
+  }
+
+  func configureCache(maxBytes: Int64) throws {
+    guard HlsCacheBudget.isValid(maxBytes) else {
+      throw NSError(
+        domain: "NitroPlaybackCache",
+        code: 1,
+        userInfo: [NSLocalizedDescriptionKey: "Nitro playback cache maxBytes is below the minimum"]
+      )
+    }
+    try runtimeQueue.sync {
+      guard !cacheConfigurationLocked else {
+        throw NSError(
+          domain: "NitroPlaybackCache",
+          code: 2,
+          userInfo: [NSLocalizedDescriptionKey: "Configure the Nitro playback cache before the first cache operation, prefetch, or playback"]
+        )
       }
+      controller.configureCache(maxBytes: maxBytes)
     }
   }
 
-  func stop() {
-    runtimeQueue.sync {
-      lifecycleState.stop()
-      controller.stop()
-    }
-  }
-
-  func getProxiedUrl(url: String, headers: [String: String]?) -> String {
-    resolvePlaybackRoute(url: url, headers: headers).url
-  }
-
-  func prefetchLeadingSegments(url: String, headers: [String: String]?) async throws {
-    guard !runtimeQueue.sync(execute: { lifecycleState.isExplicitlyStopped }) else {
-      return
-    }
+  func purgeCachedSource(url: String, headers: [String: String]?) {
     guard HlsManifestUrl.matches(url) else {
       return
     }
+    HlsPrefetcher.shared.forget(HlsRequestIdentity.cacheNamespace(url: url, headers: headers))
+    runtimeQueue.sync {
+      controller.purgeCache(url: url, headers: headers)
+    }
+  }
 
+  func cacheStats() -> (totalBytes: Int64, fileCount: Int, maxBytes: Int64) {
     ensureStarted()
-    let segmentCount = runtimeQueue.sync { prefetchSegmentCount }
-
-    let dedupKey = HlsIdentity.requestKey(url: url, headers: headers)
-    let shouldPrefetch = prefetchDeduper.shouldPrefetch(key: dedupKey)
-
-    guard shouldPrefetch else {
-      return
+    return runtimeQueue.sync {
+      controller.cacheStats()
     }
-
-    do {
-      try await controller.prefetchLeadingSegments(url: url, headers: headers, count: segmentCount)
-    } catch {
-      prefetchDeduper.forget(key: dedupKey)
-      throw error
-    }
-  }
-
-  func getCacheStats() -> [String: Any] {
-    controller.getCacheStats()
-  }
-
-  func getStreamCacheStats(url: String, headers: [String: String]?) -> [String: Any] {
-    _ = url
-    _ = headers
-    return controller.getStreamCacheStats()
-  }
-
-  func hasOpenPlayerNetworkRequests(url: String, headers: [String: String]?) -> Bool {
-    controller.hasOpenNetworkRequests(url: url, headers: headers, client: "player")
-  }
-
-  func getNetworkThroughputEstimate() -> [String: Any] {
-    controller.getNetworkThroughputEstimate()
-  }
-
-  func configureCache(maxBytes: Int?, prefetchSegments: Int?) {
-    if let maxBytes {
-      controller.configureCache(maxBytes: maxBytes)
-    }
-    if let prefetchSegments {
-      runtimeQueue.sync {
-        prefetchSegmentCount = Self.normalizePrefetchSegmentCount(prefetchSegments)
-      }
-    }
-  }
-
-  func getThumbnailUrl(url: String, headers: [String: String]?) async -> String? {
-    return await VideoPreviewRuntime.shared.getFirstFrame(url: url, headers: headers, preview: nil)?.uri
-  }
-
-  func peekThumbnailUrl(url: String, headers: [String: String]?) -> String? {
-    return VideoPreviewRuntime.shared.peekFirstFrame(url: url, headers: headers, preview: nil)?.uri
   }
 
   func clearCache() {
+    ensureStarted()
     runtimeQueue.sync {
       controller.clearCache()
     }
   }
 
-  func clearPreview() {
-    VideoPreviewRuntime.shared.clear()
-  }
-
   func resolvePlaybackRoute(url: String, headers: [String: String]?) -> HlsProxyRouteResolution {
-    guard ensureStarted() else {
-      return HlsProxyRouteResolution(url: url, isProxying: false)
-    }
-    let proxiedUrl = controller.proxiedManifestUrl(for: url, headers: headers)
+    ensureStarted()
+    let proxiedUrl = controller.proxiedManifestUrl(for: url)
+    let routedHeaders = proxiedUrl == nil
+      ? headers
+      : HlsRequestIdentity.transportHeaders(url: url, headers: headers)
     return HlsProxyRouteResolution(
       url: proxiedUrl ?? url,
-      isProxying: proxiedUrl != nil
+      headers: routedHeaders,
+      isProxying: proxiedUrl != nil,
+      routeGeneration: proxiedUrl != nil ? controller.currentRouteGeneration : nil
     )
   }
 
-  func restartForPlaybackRecovery() {
+  func ensureStartedForPrefetch() {
+    ensureStarted()
+  }
+
+  /// Recovers the local transport and invokes completion on the main thread.
+  func recoverTransport(completion: @escaping () -> Void) {
+    ensureStarted()
+    controller.recoverIfNeeded(completion: completion)
+  }
+
+  /// Invalidates the cached transport readiness so the next recovery pass re-probes it.
+  func markTransportNeedsHealthCheck() {
+    controller.markNeedsHealthCheck()
+  }
+
+  private func ensureStarted() {
     runtimeQueue.sync {
-      guard let restartPort = lifecycleState.portForPlaybackRecoveryRestart() else {
+      cacheConfigurationLocked = true
+      guard !didAutoStart else {
         return
       }
-
-      controller.stop()
-      lifecycleState.suspendForHostLifecycle()
-      if controller.start(port: restartPort) {
-        lifecycleState.markAutoStarted()
+      if controller.start(port: 0) != nil {
+        didAutoStart = true
       }
     }
-  }
-
-  @discardableResult
-  private func ensureStarted() -> Bool {
-    runtimeQueue.sync {
-      guard let startPort = lifecycleState.portForImplicitStart() else {
-        return lifecycleState.didAutoStart && !lifecycleState.isExplicitlyStopped
-      }
-      if controller.start(port: startPort) {
-        lifecycleState.markAutoStarted()
-        return true
-      }
-      return false
-    }
-  }
-
-  private static func normalizePrefetchSegmentCount(_ count: Int) -> Int {
-    min(6, max(1, count))
   }
 }

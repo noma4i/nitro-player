@@ -1,12 +1,9 @@
 package com.nitroplay.video.behavior.core
 
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import com.nitroplay.video.player.FeedHotPlayerSnapshot
 import com.nitroplay.video.player.PlayerRetentionCoordinator
-import com.nitroplay.video.player.PlayerRetentionLevel
 import com.nitroplay.video.player.PlayerRetentionSnapshot
 
 class PlayerRetentionCoordinatorTest {
@@ -16,18 +13,14 @@ class PlayerRetentionCoordinatorTest {
     isPlaying: Boolean = false,
     isAttachedToView: Boolean = false,
     wantsToPlay: Boolean = false,
-    isExternalPlaybackActive: Boolean = false,
-    isFeedPoolEligible: Boolean = true,
-    retentionLevel: PlayerRetentionLevel = PlayerRetentionLevel.HOT
+    isExternalPlaybackActive: Boolean = false
   ) = PlayerRetentionSnapshot(
     isReleased = isReleased,
     hasActiveSource = hasActiveSource,
     isPlaying = isPlaying,
     isAttachedToView = isAttachedToView,
     wantsToPlay = wantsToPlay,
-    isExternalPlaybackActive = isExternalPlaybackActive,
-    isFeedPoolEligible = isFeedPoolEligible,
-    retentionLevel = retentionLevel
+    isExternalPlaybackActive = isExternalPlaybackActive
   )
 
   @Test
@@ -47,57 +40,5 @@ class PlayerRetentionCoordinatorTest {
   fun resourcePressure_noopsReleasedOrSourcelessPlayers() {
     assertFalse(PlayerRetentionCoordinator.shouldTrimForResourcePressure(snapshot(isReleased = true)))
     assertFalse(PlayerRetentionCoordinator.shouldTrimForResourcePressure(snapshot(hasActiveSource = false)))
-  }
-
-  @Test
-  fun feedHotPool_trimsOnlyEligibleHotUnpinnedPlayers() {
-    assertTrue(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot()))
-    assertTrue(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isAttachedToView = true)))
-    assertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isFeedPoolEligible = false)))
-    assertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(retentionLevel = PlayerRetentionLevel.METADATA)))
-    assertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isPlaying = true)))
-    assertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(wantsToPlay = true)))
-    assertFalse(PlayerRetentionCoordinator.shouldTrimForFeedHotPool(snapshot(isExternalPlaybackActive = true)))
-  }
-
-  @Test
-  fun feedHotIds_keepsPinnedPlusMostRecentRelaxedPlayers() {
-    val players = listOf(
-      FeedHotPlayerSnapshot("old", 1, snapshot()),
-      FeedHotPlayerSnapshot("new", 3, snapshot()),
-      FeedHotPlayerSnapshot("attached", 2, snapshot(isAttachedToView = true)),
-      FeedHotPlayerSnapshot("not-feed", 4, snapshot(isFeedPoolEligible = false))
-    )
-
-    val keep = PlayerRetentionCoordinator.feedHotIds(players, maxHotPlayers = 2)
-
-    assertEquals(setOf("new", "attached"), keep)
-  }
-
-  @Test
-  fun feedHotIds_keepsPlaybackPinsOutsideRelaxedLimit() {
-    val players = listOf(
-      FeedHotPlayerSnapshot("old", 1, snapshot()),
-      FeedHotPlayerSnapshot("new", 3, snapshot()),
-      FeedHotPlayerSnapshot("playing", 2, snapshot(isPlaying = true))
-    )
-
-    val keep = PlayerRetentionCoordinator.feedHotIds(players, maxHotPlayers = 1)
-
-    assertEquals(setOf("playing"), keep)
-  }
-
-  @Test
-  fun feedHotIds_keepsThreeMostRecentRelaxedPlayersForFeedRing() {
-    val players = listOf(
-      FeedHotPlayerSnapshot("oldest", 1, snapshot()),
-      FeedHotPlayerSnapshot("middle", 2, snapshot()),
-      FeedHotPlayerSnapshot("newest", 3, snapshot()),
-      FeedHotPlayerSnapshot("overflow", 0, snapshot())
-    )
-
-    val keep = PlayerRetentionCoordinator.feedHotIds(players, maxHotPlayers = 3)
-
-    assertEquals(setOf("newest", "middle", "oldest"), keep)
   }
 }

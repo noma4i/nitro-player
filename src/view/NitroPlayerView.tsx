@@ -2,17 +2,15 @@ import * as React from 'react';
 import type { ViewProps, ViewStyle } from 'react-native';
 import { NitroModules } from 'react-native-nitro-modules';
 import type { ListenerSubscription } from '../bridge/nitro/NitroPlayerEventEmitter.nitro';
-import type { SurfaceType, NitroPlayerViewManager, NitroPlayerViewManagerFactory } from '../bridge/nitro/NitroPlayerViewManager.nitro';
-import { type NitroPlayerViewEvents } from './events';
-import type { ResizeMode } from './types/ResizeMode';
-import type { NitroSourceInput } from '../source/types/NitroPlayerConfig';
-import type { NitroPlayerDefaults } from '../player/types/NitroPlayerDefaults';
-import { tryParseNativeNitroPlayerError, NitroPlayerError } from '../support/errors/NitroPlayerError';
+import type { NitroPlayerViewManager, NitroPlayerViewManagerFactory, SurfaceType } from '../bridge/nitro/NitroPlayerViewManager.nitro';
 import { NitroPlayer } from '../player/NitroPlayer';
-import { useNitroPlayer } from '../player/hooks/useNitroPlayer';
+import type { NitroPlayerDefaults } from '../player/types/NitroPlayerDefaults';
+import { NitroPlayerError, tryParseNativeNitroPlayerError } from '../support/errors/NitroPlayerError';
+import { type NitroPlayerViewEvents } from './events';
 import { NativeNitroPlayerView } from './NativeNitroPlayerView';
+import type { ResizeMode } from './types/ResizeMode';
 
-interface NitroPlayerViewBaseProps extends Partial<NitroPlayerViewEvents>, ViewProps {
+export interface NitroPlayerViewBaseProps extends Partial<NitroPlayerViewEvents>, ViewProps {
   playerDefaults?: NitroPlayerDefaults;
   style?: ViewStyle;
   controls?: boolean;
@@ -21,7 +19,7 @@ interface NitroPlayerViewBaseProps extends Partial<NitroPlayerViewEvents>, ViewP
   surfaceType?: SurfaceType;
 }
 
-export type NitroPlayerViewProps = NitroPlayerViewBaseProps & ({ source: NitroSourceInput; player?: never } | { player: NitroPlayer; source?: never });
+export type NitroPlayerViewProps = NitroPlayerViewBaseProps & { player: NitroPlayer };
 
 export interface NitroPlayerViewRef {
   player: NitroPlayer;
@@ -32,7 +30,7 @@ export interface NitroPlayerViewRef {
 }
 
 let nitroIdCounter = 1;
-const NitroPlayerViewManagerFactory = NitroModules.createHybridObject<NitroPlayerViewManagerFactory>('NitroPlayerViewManagerFactory');
+const nitroPlayerViewManagerFactory = NitroModules.createHybridObject<NitroPlayerViewManagerFactory>('NitroPlayerViewManagerFactory');
 
 const wrapNativeViewManagerFunction = <T,>(manager: NitroPlayerViewManager | null, func: (manager: NitroPlayerViewManager) => T) => {
   try {
@@ -45,23 +43,28 @@ const wrapNativeViewManagerFunction = <T,>(manager: NitroPlayerViewManager | nul
   }
 };
 
+const updateNativeProps = (
+  manager: NitroPlayerViewManager,
+  player: NitroPlayer,
+  defaults: NitroPlayerDefaults | undefined,
+  props: Omit<NitroPlayerViewBaseProps, 'playerDefaults'>
+) => {
+  manager.surfaceType = props.surfaceType ?? 'surface';
+  manager.controls = props.controls ?? false;
+  manager.resizeMode = props.resizeMode ?? 'none';
+  manager.keepScreenAwake = props.keepScreenAwake ?? true;
+  if (defaults) {
+    manager.setPlayerDefaults(defaults);
+  } else {
+    manager.clearPlayerDefaults();
+  }
+  manager.player = player.__getNativePlayer();
+};
+
 const isViewNotFound = (error: unknown): error is { code: 'view/not-found' } => typeof error === 'object' && error !== null && 'code' in error && error.code === 'view/not-found';
 
 type NitroPlayerSurfaceProps = NitroPlayerViewBaseProps & {
   player: NitroPlayer;
-};
-
-const shallowEqualPlayerDefaults = (previous: NitroPlayerDefaults | undefined, next: NitroPlayerDefaults | undefined): boolean => {
-  if (previous === next) {
-    return true;
-  }
-  if (!previous || !next) {
-    return false;
-  }
-
-  const previousKeys = Object.keys(previous) as (keyof NitroPlayerDefaults)[];
-  const nextKeys = Object.keys(next) as (keyof NitroPlayerDefaults)[];
-  return previousKeys.length === nextKeys.length && previousKeys.every(key => Object.is(previous[key], next[key]));
 };
 
 const NitroPlayerViewSurface = React.forwardRef<NitroPlayerViewRef, NitroPlayerSurfaceProps>(
@@ -84,27 +87,14 @@ const NitroPlayerViewSurface = React.forwardRef<NitroPlayerViewRef, NitroPlayerS
   ) => {
     const nitroId = React.useMemo(() => nitroIdCounter++, []);
     const nitroViewManager = React.useRef<NitroPlayerViewManager | null>(null);
-    const [isManagerReady, setIsManagerReady] = React.useState(false);
+    const [managerGeneration, setManagerGeneration] = React.useState(0);
     const [isAttached, setIsAttached] = React.useState(false);
     const lastDeliveredAttachStateRef = React.useRef(false);
-    const onAttachedRef = React.useRef(onAttached);
-    const onDetachedRef = React.useRef(onDetached);
-    const onFullscreenChangeRef = React.useRef(onFullscreenChange);
-    const willEnterFullscreenRef = React.useRef(willEnterFullscreen);
-    const willExitFullscreenRef = React.useRef(willExitFullscreen);
-    const lastPlayerDefaultsRef = React.useRef<NitroPlayerDefaults | undefined>(undefined);
-    const hasWrittenPlayerDefaultsRef = React.useRef(false);
-
-    onAttachedRef.current = onAttached;
-    onDetachedRef.current = onDetached;
-    onFullscreenChangeRef.current = onFullscreenChange;
-    willEnterFullscreenRef.current = willEnterFullscreen;
-    willExitFullscreenRef.current = willExitFullscreen;
 
     const setupViewManager = React.useCallback((id: number) => {
       try {
         if (nitroViewManager.current === null) {
-          const manager = NitroPlayerViewManagerFactory.createViewManager(id);
+          const manager = nitroPlayerViewManagerFactory.createViewManager(id);
 
           if (!manager) {
             console.warn('[NitroPlay] NitroPlayerView native view disappeared before manager attach completed; waiting for the next native attach event.');
@@ -112,15 +102,14 @@ const NitroPlayerViewSurface = React.forwardRef<NitroPlayerViewRef, NitroPlayerS
           }
 
           nitroViewManager.current = manager;
+          setManagerGeneration(generation => generation + 1);
         }
 
         setIsAttached(nitroViewManager.current.isAttached);
-        setIsManagerReady(true);
       } catch (error) {
         const parsedError = tryParseNativeNitroPlayerError(error);
 
         if (isViewNotFound(parsedError)) {
-          console.warn('[NitroPlay] NitroPlayerView native view disappeared before manager attach completed; waiting for the next native attach event.');
           return;
         }
 
@@ -175,19 +164,32 @@ const NitroPlayerViewSurface = React.forwardRef<NitroPlayerViewRef, NitroPlayerS
     );
 
     React.useEffect(() => {
+      setupViewManager(nitroId);
+
       return () => {
         if (nitroViewManager.current) {
           nitroViewManager.current.clearAllListeners();
         }
         nitroViewManager.current = null;
         lastDeliveredAttachStateRef.current = false;
-        hasWrittenPlayerDefaultsRef.current = false;
-        lastPlayerDefaultsRef.current = undefined;
       };
-    }, []);
+    }, [nitroId, setupViewManager]);
 
     React.useEffect(() => {
-      if (!isManagerReady || !nitroViewManager.current) {
+      if (!nitroViewManager.current) {
+        return;
+      }
+
+      updateNativeProps(nitroViewManager.current, player, playerDefaults, {
+        controls,
+        resizeMode,
+        keepScreenAwake,
+        surfaceType
+      });
+    }, [player, playerDefaults, controls, resizeMode, keepScreenAwake, surfaceType, managerGeneration]);
+
+    React.useEffect(() => {
+      if (!nitroViewManager.current) {
         return;
       }
 
@@ -199,7 +201,7 @@ const NitroPlayerViewSurface = React.forwardRef<NitroPlayerViewRef, NitroPlayerS
           setIsAttached(true);
           if (!lastDeliveredAttachStateRef.current) {
             lastDeliveredAttachStateRef.current = true;
-            onAttachedRef.current?.(player);
+            onAttached?.(player);
           }
         })
       );
@@ -208,81 +210,30 @@ const NitroPlayerViewSurface = React.forwardRef<NitroPlayerViewRef, NitroPlayerS
           setIsAttached(false);
           if (lastDeliveredAttachStateRef.current) {
             lastDeliveredAttachStateRef.current = false;
-            onDetachedRef.current?.();
+            onDetached?.();
           }
         })
       );
-      subscriptions.push(manager.addOnFullscreenChangeListener(fullscreen => onFullscreenChangeRef.current?.(fullscreen)));
-      subscriptions.push(manager.addWillEnterFullscreenListener(() => willEnterFullscreenRef.current?.()));
-      subscriptions.push(manager.addWillExitFullscreenListener(() => willExitFullscreenRef.current?.()));
+      if (onFullscreenChange) {
+        subscriptions.push(manager.addOnFullscreenChangeListener(onFullscreenChange));
+      }
+      if (willEnterFullscreen) {
+        subscriptions.push(manager.addWillEnterFullscreenListener(willEnterFullscreen));
+      }
+      if (willExitFullscreen) {
+        subscriptions.push(manager.addWillExitFullscreenListener(willExitFullscreen));
+      }
 
       if (manager.isAttached && !lastDeliveredAttachStateRef.current) {
         lastDeliveredAttachStateRef.current = true;
         setIsAttached(true);
-        onAttachedRef.current?.(player);
+        onAttached?.(player);
       }
 
       return () => {
         subscriptions.forEach(sub => sub.remove());
       };
-    }, [isManagerReady, player]);
-
-    React.useEffect(() => {
-      if (!isManagerReady || !nitroViewManager.current) {
-        return;
-      }
-
-      nitroViewManager.current.surfaceType = surfaceType;
-    }, [isManagerReady, surfaceType]);
-
-    React.useEffect(() => {
-      if (!isManagerReady || !nitroViewManager.current) {
-        return;
-      }
-
-      nitroViewManager.current.controls = controls;
-    }, [controls, isManagerReady]);
-
-    React.useEffect(() => {
-      if (!isManagerReady || !nitroViewManager.current) {
-        return;
-      }
-
-      nitroViewManager.current.resizeMode = resizeMode;
-    }, [isManagerReady, resizeMode]);
-
-    React.useEffect(() => {
-      if (!isManagerReady || !nitroViewManager.current) {
-        return;
-      }
-
-      nitroViewManager.current.keepScreenAwake = keepScreenAwake;
-    }, [isManagerReady, keepScreenAwake]);
-
-    React.useEffect(() => {
-      if (!isManagerReady || !nitroViewManager.current) {
-        return;
-      }
-
-      nitroViewManager.current.player = player.__getNativePlayer();
-    }, [isManagerReady, player]);
-
-    React.useEffect(() => {
-      if (!isManagerReady || !nitroViewManager.current) {
-        return;
-      }
-      if (hasWrittenPlayerDefaultsRef.current && shallowEqualPlayerDefaults(lastPlayerDefaultsRef.current, playerDefaults)) {
-        return;
-      }
-
-      lastPlayerDefaultsRef.current = playerDefaults;
-      hasWrittenPlayerDefaultsRef.current = true;
-      if (playerDefaults) {
-        nitroViewManager.current.setPlayerDefaults(playerDefaults);
-      } else {
-        nitroViewManager.current.clearPlayerDefaults();
-      }
-    }, [isManagerReady, playerDefaults]);
+    }, [managerGeneration, onAttached, onDetached, onFullscreenChange, player, willEnterFullscreen, willExitFullscreen]);
 
     return (
       <NativeNitroPlayerView
@@ -294,8 +245,7 @@ const NitroPlayerViewSurface = React.forwardRef<NitroPlayerViewRef, NitroPlayerS
   }
 );
 
-const NitroPlayerViewWithSource = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewBaseProps & { source: NitroSourceInput }>(({ source, ...surfaceProps }, ref) => {
-  const player = useNitroPlayer(source);
+const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProps>(({ player, ...surfaceProps }, ref) => {
   return (
     <NitroPlayerViewSurface
       ref={ref}
@@ -305,32 +255,7 @@ const NitroPlayerViewWithSource = React.forwardRef<NitroPlayerViewRef, NitroPlay
   );
 });
 
-const NitroPlayerView = React.forwardRef<NitroPlayerViewRef, NitroPlayerViewProps>((props, ref) => {
-  if ('player' in props && props.player) {
-    const { player, ...surfaceProps } = props;
-    return (
-      <NitroPlayerViewSurface
-        ref={ref}
-        player={player}
-        {...surfaceProps}
-      />
-    );
-  }
-
-  const { source, ...surfaceProps } = props;
-  return (
-    <NitroPlayerViewWithSource
-      ref={ref}
-      source={source}
-      {...surfaceProps}
-    />
-  );
-});
-
 NitroPlayerViewSurface.displayName = 'NitroPlayerViewSurface';
-NitroPlayerViewWithSource.displayName = 'NitroPlayerViewWithSource';
 NitroPlayerView.displayName = 'NitroPlayerView';
 
-const MemoizedNitroPlayerView = React.memo(NitroPlayerView);
-
-export default MemoizedNitroPlayerView;
+export default React.memo(NitroPlayerView);

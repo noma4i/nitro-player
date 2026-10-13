@@ -1,6 +1,6 @@
 struct FeedRingCatalogEntry: Equatable {
   let index: Int
-  let momentId: String?
+  let itemId: String?
   let sourceKey: String?
   let hasSource: Bool
 }
@@ -12,7 +12,8 @@ struct FeedRingCatalogState {
 
 struct FeedRingViewportState {
   let revision: Int64
-  let centerIndex: Int
+  let windowCenterIndex: Int
+  let playbackIndex: Int
   let playbackAllowed: Bool
   let muted: Bool
 }
@@ -28,7 +29,8 @@ struct FeedRingPlannerSnapshot: Equatable {
   let catalogRevision: Int64
   let viewportRevision: Int64
   let catalogSize: Int
-  let centerIndex: Int?
+  let windowCenterIndex: Int?
+  let playbackIndex: Int?
   let playbackAllowed: Bool
   let muted: Bool
 }
@@ -38,7 +40,8 @@ final class FeedRingWindowPlanner {
   private var catalog: [Int: FeedRingCatalogEntry] = [:]
   private var catalogRevision: Int64 = -1
   private var viewportRevision: Int64 = -1
-  private var centerIndex: Int?
+  private var windowCenterIndex: Int?
+  private var playbackIndex: Int?
   private var playbackAllowed = false
   private var muted = false
 
@@ -68,24 +71,30 @@ final class FeedRingWindowPlanner {
     }
 
     viewportRevision = state.revision
-    centerIndex = state.centerIndex
+    windowCenterIndex = state.windowCenterIndex
+    playbackIndex = state.playbackIndex
     playbackAllowed = state.playbackAllowed
     muted = state.muted
     return true
   }
 
+  func resetRevisions() {
+    catalogRevision = -1
+    viewportRevision = -1
+  }
+
   func plannedSlots() -> [FeedRingPlannedSlot] {
-    guard let centerIndex else {
+    guard let windowCenterIndex, let playbackIndex else {
       return []
     }
 
     return (-1...1).map { offset in
-      let assignedIndex = centerIndex + offset
+      let assignedIndex = windowCenterIndex + offset
       return FeedRingPlannedSlot(
         slotId: positiveMod(assignedIndex, slotCount),
         assignedIndex: assignedIndex,
         entry: catalog[assignedIndex],
-        shouldPlay: playbackAllowed && assignedIndex == centerIndex
+        shouldPlay: playbackAllowed && assignedIndex == playbackIndex
       )
     }
   }
@@ -95,7 +104,8 @@ final class FeedRingWindowPlanner {
       catalogRevision: catalogRevision,
       viewportRevision: viewportRevision,
       catalogSize: catalog.count,
-      centerIndex: centerIndex,
+      windowCenterIndex: windowCenterIndex,
+      playbackIndex: playbackIndex,
       playbackAllowed: playbackAllowed,
       muted: muted
     )

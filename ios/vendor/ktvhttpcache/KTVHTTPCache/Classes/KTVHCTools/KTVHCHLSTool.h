@@ -8,6 +8,8 @@
 
 #import <Foundation/Foundation.h>
 
+@class KTVHCDataRequest;
+
 @interface KTVHCHLSTool : NSObject
 
 + (instancetype)new NS_UNAVAILABLE;
@@ -21,6 +23,6 @@
 
 - (NSArray<NSURL *> *)makeURLsForContent:(NSString *)content sourceURL:(NSURL *)sourceURL;
 
-- (NSURLSessionDataTask *)taskWithURL:(NSURL *)URL completionHandler:(void (^)(NSData *, NSError *))completionHandler;
+- (NSURLSessionDataTask *)taskWithRequest:(KTVHCDataRequest *)request completionHandler:(void (^)(NSData *, NSError *))completionHandler;
 
 @end

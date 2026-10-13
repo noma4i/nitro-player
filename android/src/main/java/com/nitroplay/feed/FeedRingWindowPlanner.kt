@@ -2,7 +2,7 @@ package com.nitroplay.feed
 
 data class FeedRingCatalogEntry(
   val index: Int,
-  val momentId: String?,
+  val itemId: String?,
   val sourceKey: String?,
   val hasSource: Boolean
 )
@@ -14,7 +14,8 @@ data class FeedRingCatalogState(
 
 data class FeedRingViewportState(
   val revision: Long,
-  val centerIndex: Int,
+  val windowCenterIndex: Int,
+  val playbackIndex: Int,
   val playbackAllowed: Boolean,
   val muted: Boolean
 )
@@ -30,7 +31,8 @@ data class FeedRingPlannerSnapshot(
   val catalogRevision: Long,
   val viewportRevision: Long,
   val catalogSize: Int,
-  val centerIndex: Int?,
+  val windowCenterIndex: Int?,
+  val playbackIndex: Int?,
   val playbackAllowed: Boolean,
   val muted: Boolean
 )
@@ -41,7 +43,8 @@ class FeedRingWindowPlanner(
   private val catalog = mutableMapOf<Int, FeedRingCatalogEntry>()
   private var catalogRevision: Long = -1
   private var viewportRevision: Long = -1
-  private var centerIndex: Int? = null
+  private var windowCenterIndex: Int? = null
+  private var playbackIndex: Int? = null
   private var playbackAllowed = false
   private var muted = false
 
@@ -68,21 +71,28 @@ class FeedRingWindowPlanner(
     }
 
     viewportRevision = state.revision
-    centerIndex = state.centerIndex
+    windowCenterIndex = state.windowCenterIndex
+    playbackIndex = state.playbackIndex
     playbackAllowed = state.playbackAllowed
     muted = state.muted
     return true
   }
 
+  fun resetRevisions() {
+    catalogRevision = -1
+    viewportRevision = -1
+  }
+
   fun plannedSlots(): List<FeedRingPlannedSlot> {
-    val currentCenterIndex = centerIndex ?: return emptyList()
+    val currentWindowCenterIndex = windowCenterIndex ?: return emptyList()
+    val currentPlaybackIndex = playbackIndex ?: return emptyList()
     return (-1..1).map { offset ->
-      val assignedIndex = currentCenterIndex + offset
+      val assignedIndex = currentWindowCenterIndex + offset
       FeedRingPlannedSlot(
         slotId = positiveMod(assignedIndex, slotCount),
         assignedIndex = assignedIndex,
         entry = catalog[assignedIndex],
-        shouldPlay = playbackAllowed && assignedIndex == currentCenterIndex
+        shouldPlay = playbackAllowed && assignedIndex == currentPlaybackIndex
       )
     }
   }
@@ -92,7 +102,8 @@ class FeedRingWindowPlanner(
       catalogRevision = catalogRevision,
       viewportRevision = viewportRevision,
       catalogSize = catalog.size,
-      centerIndex = centerIndex,
+      windowCenterIndex = windowCenterIndex,
+      playbackIndex = playbackIndex,
       playbackAllowed = playbackAllowed,
       muted = muted
     )

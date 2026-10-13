@@ -41,13 +41,10 @@ namespace margelo::nitro::video {
       jni::local_ref<JRetentionLevel> offscreen = this->getFieldValue(fieldOffscreen);
       static const auto fieldTrimDelayMs = clazz->getField<jni::JDouble>("trimDelayMs");
       jni::local_ref<jni::JDouble> trimDelayMs = this->getFieldValue(fieldTrimDelayMs);
-      static const auto fieldFeedPoolEligible = clazz->getField<jni::JBoolean>("feedPoolEligible");
-      jni::local_ref<jni::JBoolean> feedPoolEligible = this->getFieldValue(fieldFeedPoolEligible);
       return NitroSourceRetentionConfig(
         preload != nullptr ? std::make_optional(preload->toCpp()) : std::nullopt,
         offscreen != nullptr ? std::make_optional(offscreen->toCpp()) : std::nullopt,
-        trimDelayMs != nullptr ? std::make_optional(trimDelayMs->value()) : std::nullopt,
-        feedPoolEligible != nullptr ? std::make_optional(static_cast<bool>(feedPoolEligible->value())) : std::nullopt
+        trimDelayMs != nullptr ? std::make_optional(trimDelayMs->value()) : std::nullopt
       );
     }
 
@@ -57,15 +54,14 @@ namespace margelo::nitro::video {
      */
     [[maybe_unused]]
     static jni::local_ref<JNitroSourceRetentionConfig::javaobject> fromCpp(const NitroSourceRetentionConfig& value) {
-      using JSignature = JNitroSourceRetentionConfig(jni::alias_ref<JPreloadLevel>, jni::alias_ref<JRetentionLevel>, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JBoolean>);
+      using JSignature = JNitroSourceRetentionConfig(jni::alias_ref<JPreloadLevel>, jni::alias_ref<JRetentionLevel>, jni::alias_ref<jni::JDouble>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
         clazz,
         value.preload.has_value() ? JPreloadLevel::fromCpp(value.preload.value()) : nullptr,
         value.offscreen.has_value() ? JRetentionLevel::fromCpp(value.offscreen.value()) : nullptr,
-        value.trimDelayMs.has_value() ? jni::JDouble::valueOf(value.trimDelayMs.value()) : nullptr,
-        value.feedPoolEligible.has_value() ? jni::JBoolean::valueOf(value.feedPoolEligible.value()) : nullptr
+        value.trimDelayMs.has_value() ? jni::JDouble::valueOf(value.trimDelayMs.value()) : nullptr
       );
     }
   };

@@ -1,1 +1,1 @@
-{"version":3,"file":"NativeNitroPlayerView.d.ts","sourceRoot":"","sources":["../../../../src/view/NativeNitroPlayerView.tsx"],"names":[],"mappings":"AAYA,eAAO,MAAM,qBAAqB,qIAK3B,CAAC"}
+{"version":3,"file":"NativeNitroPlayerView.d.ts","sourceRoot":"","sources":["../../../../src/view/NativeNitroPlayerView.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,OAAO,CAAC;AAE3C,OAAO,KAAK,EAAE,mBAAmB,EAAE,MAAM,iDAAiD,CAAC;AAW3F,eAAO,MAAM,qBAAqB,EAAE,aAAa,CAAC,mBAAmB,CAK9D,CAAC"}

@@ -1,7 +1,11 @@
 import Foundation
 
 class HybridNitroFeedRingPlayerFactory: HybridNitroFeedRingPlayerFactorySpec {
+  private let mainThreadExecutor = MainThreadResourceExecutor()
+
   func createRingPlayer() throws -> any HybridNitroFeedRingPlayerSpec {
-    HybridNitroFeedRingPlayer()
+    mainThreadExecutor.run {
+      HybridNitroFeedRingPlayer()
+    }
   }
 }

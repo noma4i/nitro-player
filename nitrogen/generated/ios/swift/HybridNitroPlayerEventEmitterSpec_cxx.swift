@@ -176,23 +176,6 @@ open class HybridNitroPlayerEventEmitterSpec_cxx {
   }
   
   @inline(__always)
-  public final func addOnFirstFrameListener(listener: bridge.Func_void_onFirstFrameData) -> bridge.Result_ListenerSubscription_ {
-    do {
-      let __result = try self.__implementation.addOnFirstFrameListener(listener: { () -> (onFirstFrameData) -> Void in
-        let __wrappedFunction = bridge.wrap_Func_void_onFirstFrameData(listener)
-        return { (__data: onFirstFrameData) -> Void in
-          __wrappedFunction.call(__data)
-        }
-      }())
-      let __resultCpp = __result
-      return bridge.create_Result_ListenerSubscription_(__resultCpp)
-    } catch (let __error) {
-      let __exceptionPtr = __error.toCpp()
-      return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
-    }
-  }
-  
-  @inline(__always)
   public final func addOnErrorListener(listener: bridge.Func_void_PlaybackError) -> bridge.Result_ListenerSubscription_ {
     do {
       let __result = try self.__implementation.addOnErrorListener(listener: { () -> (PlaybackError) -> Void in
@@ -216,6 +199,23 @@ open class HybridNitroPlayerEventEmitterSpec_cxx {
         let __wrappedFunction = bridge.wrap_Func_void_PlaybackState(listener)
         return { (__state: PlaybackState) -> Void in
           __wrappedFunction.call(__state)
+        }
+      }())
+      let __resultCpp = __result
+      return bridge.create_Result_ListenerSubscription_(__resultCpp)
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func addOnPlaybackIntentIdledListener(listener: bridge.Func_void) -> bridge.Result_ListenerSubscription_ {
+    do {
+      let __result = try self.__implementation.addOnPlaybackIntentIdledListener(listener: { () -> () -> Void in
+        let __wrappedFunction = bridge.wrap_Func_void(listener)
+        return { () -> Void in
+          __wrappedFunction.call()
         }
       }())
       let __resultCpp = __result

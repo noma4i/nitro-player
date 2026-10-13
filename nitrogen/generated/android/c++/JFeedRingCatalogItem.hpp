@@ -14,9 +14,6 @@
 #include "JBufferConfig.hpp"
 #include "JLivePlaybackParams.hpp"
 #include "JNativeNitroPlayerConfig.hpp"
-#include "JNitroSourceMetadata.hpp"
-#include "JNitroSourcePreviewConfig.hpp"
-#include "JNitroSourcePreviewMode.hpp"
 #include "JNitroSourceRetentionConfig.hpp"
 #include "JNitroSourceStartup.hpp"
 #include "JNitroSourceTransportConfig.hpp"
@@ -26,9 +23,6 @@
 #include "JRetentionLevel.hpp"
 #include "LivePlaybackParams.hpp"
 #include "NativeNitroPlayerConfig.hpp"
-#include "NitroSourceMetadata.hpp"
-#include "NitroSourcePreviewConfig.hpp"
-#include "NitroSourcePreviewMode.hpp"
 #include "NitroSourceRetentionConfig.hpp"
 #include "NitroSourceStartup.hpp"
 #include "NitroSourceTransportConfig.hpp"
@@ -61,15 +55,15 @@ namespace margelo::nitro::video {
       static const auto clazz = javaClassStatic();
       static const auto fieldIndex = clazz->getField<double>("index");
       double index = this->getFieldValue(fieldIndex);
-      static const auto fieldMomentId = clazz->getField<jni::JString>("momentId");
-      jni::local_ref<jni::JString> momentId = this->getFieldValue(fieldMomentId);
+      static const auto fieldItemId = clazz->getField<jni::JString>("itemId");
+      jni::local_ref<jni::JString> itemId = this->getFieldValue(fieldItemId);
       static const auto fieldSourceKey = clazz->getField<jni::JString>("sourceKey");
       jni::local_ref<jni::JString> sourceKey = this->getFieldValue(fieldSourceKey);
       static const auto fieldSource = clazz->getField<JNativeNitroPlayerConfig>("source");
       jni::local_ref<JNativeNitroPlayerConfig> source = this->getFieldValue(fieldSource);
       return FeedRingCatalogItem(
         index,
-        momentId != nullptr ? std::make_optional(momentId->toStdString()) : std::nullopt,
+        itemId != nullptr ? std::make_optional(itemId->toStdString()) : std::nullopt,
         sourceKey != nullptr ? std::make_optional(sourceKey->toStdString()) : std::nullopt,
         source != nullptr ? std::make_optional(source->toCpp()) : std::nullopt
       );
@@ -87,7 +81,7 @@ namespace margelo::nitro::video {
       return create(
         clazz,
         value.index,
-        value.momentId.has_value() ? jni::make_jstring(value.momentId.value()) : nullptr,
+        value.itemId.has_value() ? jni::make_jstring(value.itemId.value()) : nullptr,
         value.sourceKey.has_value() ? jni::make_jstring(value.sourceKey.value()) : nullptr,
         value.source.has_value() ? JNativeNitroPlayerConfig::fromCpp(value.source.value()) : nullptr
       );

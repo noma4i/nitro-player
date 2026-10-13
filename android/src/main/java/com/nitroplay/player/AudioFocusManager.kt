@@ -12,17 +12,68 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.video.HybridNitroPlayer
 import com.margelo.nitro.video.MixAudioMode
-import kotlin.getValue
 import com.nitroplay.video.support.Threading
 import com.nitroplay.video.support.errors.UnknownError
+import com.nitroplay.video.runtime.AudioFocusEventEngine
+import com.nitroplay.video.runtime.PlaybackSessionRuntime
+import kotlin.getValue
 
 @OptIn(UnstableApi::class)
 class AudioFocusManager() {
+  // Main-thread confined: NitroPlayerManager dispatches registration, focus callbacks
+  // dispatch through Threading, and player property callers execute on the main thread.
   private val players = mutableListOf<HybridNitroPlayer>()
   private var currentMixAudioMode: MixAudioMode? = null
   private var audioFocusRequest: AudioFocusRequest? = null
   private val preDuckVolumes = mutableMapOf<HybridNitroPlayer, Float>()
+  private val transientlyPausedUnboundPlayers = mutableSetOf<HybridNitroPlayer>()
   private var isDucking = false
+
+  private val eventEngine = AudioFocusEventEngine(
+    acquireSuspension = {
+      val suspension = PlaybackSessionRuntime.coordinator.suspend("android-audio-focus-transient")
+      suspension::release
+    },
+    stopCoordinated = PlaybackSessionRuntime.coordinator::stopAll,
+    pauseUnboundTransient = {
+      players.forEach { player ->
+        if (player.hasPlaybackBinding) {
+          return@forEach
+        }
+
+        player.currentMediaPlayer()?.let { mediaPlayer ->
+          if (mediaPlayer.isPlaying && mediaPlayer.volume != 0f) {
+            transientlyPausedUnboundPlayers += player
+            mediaPlayer.pause()
+          }
+        }
+      }
+    },
+    resumeUnboundTransient = {
+      val pausedPlayers = transientlyPausedUnboundPlayers.toList()
+      transientlyPausedUnboundPlayers.clear()
+      pausedPlayers.filter { player ->
+        !player.isReleased &&
+          player.wantsToPlay &&
+          player.hasActiveSource &&
+          !player.muted &&
+          player.userVolume != 0.0
+      }.forEach { player ->
+        player.play()
+      }
+    },
+    stopUnbound = {
+      val unboundPlayers = transientlyPausedUnboundPlayers + players.filter { player ->
+        !player.hasPlaybackBinding
+      }
+      transientlyPausedUnboundPlayers.clear()
+      unboundPlayers.forEach { player ->
+        player.pause()
+      }
+    },
+    duck = ::duckActivePlayers,
+    unduck = ::unDuckActivePlayers
+  )
 
   val appContext by lazy {
     NitroModules.applicationContext ?: throw UnknownError()
@@ -36,30 +87,33 @@ class AudioFocusManager() {
     Threading.runOnMainThread {
       when (focusChange) {
         AudioManager.AUDIOFOCUS_GAIN -> {
-          unDuckActivePlayers()
+          eventEngine.onGain()
         }
         AudioManager.AUDIOFOCUS_LOSS -> {
-          pauseActivePlayers()
+          eventEngine.onPermanentLoss()
           currentMixAudioMode = null
           audioFocusRequest = null
         }
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
           val mixAudioMode = determineRequiredMixMode()
-          if (mixAudioMode != MixAudioMode.MIXWITHOTHERS) {
-            pauseActivePlayers()
-            currentMixAudioMode = null
-            audioFocusRequest = null
+          if (mixAudioMode != null && mixAudioMode != MixAudioMode.MIXWITHOTHERS) {
+            eventEngine.onTransientLoss()
           }
         }
         AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
           val mixAudioMode = determineRequiredMixMode()
           when (mixAudioMode) {
-            MixAudioMode.DONOTMIX -> pauseActivePlayers()
-            else -> duckActivePlayers()
+            MixAudioMode.DONOTMIX -> eventEngine.onDuckLoss(true)
+            null -> Unit
+            else -> eventEngine.onDuckLoss(false)
           }
         }
       }
     }
+  }
+
+  fun resolveStaleInterruption() {
+    eventEngine.resolveInterruptionIfStillActive()
   }
 
   fun registerPlayer(player: HybridNitroPlayer) {
@@ -71,6 +125,7 @@ class AudioFocusManager() {
   fun unregisterPlayer(player: HybridNitroPlayer) {
     players.remove(player)
     preDuckVolumes.remove(player)
+    transientlyPausedUnboundPlayers.remove(player)
     if (players.isEmpty()) {
       abandonAudioFocus()
     } else {
@@ -80,9 +135,18 @@ class AudioFocusManager() {
 
   fun requestAudioFocusUpdate() {
     Threading.runOnMainThread {
+      if (eventEngine.blocksReconciliation) {
+        return@runOnMainThread
+      }
+
       val requiredMixMode = determineRequiredMixMode()
 
       if (requiredMixMode == null) {
+        abandonAudioFocus()
+        return@runOnMainThread
+      }
+
+      if (requiredMixMode == MixAudioMode.MIXWITHOTHERS) {
         abandonAudioFocus()
         return@runOnMainThread
       }
@@ -93,11 +157,12 @@ class AudioFocusManager() {
     }
   }
 
+  // Focus ownership follows the transport intent, never audibility: a muted player still plays and
+  // still owns focus. Keying it off volume made every mute drop focus and every unmute re-request
+  // it.
   private fun determineRequiredMixMode(): MixAudioMode? {
     val activePlayers = players.filter { player ->
-      player.currentMediaPlayer()?.let { mediaPlayer ->
-        mediaPlayer.isPlaying && mediaPlayer.volume != 0f
-      } == true
+      player.currentMediaPlayer()?.isPlaying == true
     }
 
     if (activePlayers.isEmpty()) {
@@ -109,7 +174,6 @@ class AudioFocusManager() {
     }
 
     if (anyPlayerNeedsMixWithOthers) {
-      abandonAudioFocus()
       return MixAudioMode.MIXWITHOTHERS
     }
 
@@ -128,7 +192,7 @@ class AudioFocusManager() {
     }
   }
 
-    private fun requestAudioFocus(mixMode: MixAudioMode) {
+  private fun requestAudioFocus(mixMode: MixAudioMode) {
     val focusType = when (mixMode) {
       MixAudioMode.DONOTMIX -> AudioManager.AUDIOFOCUS_GAIN
       MixAudioMode.DUCKOTHERS -> AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
@@ -146,15 +210,15 @@ class AudioFocusManager() {
       currentMixAudioMode = mixMode
     } else {
       currentMixAudioMode = null
-      // Pause players since audio focus couldn't be obtained
-      pauseActivePlayers()
+      audioFocusRequest = null
+      eventEngine.onPermanentLoss()
     }
   }
 
   @RequiresApi(Build.VERSION_CODES.O)
   private fun requestAudioFocusNew(focusType: Int): Int {
 
-    audioFocusRequest = AudioFocusRequest.Builder(focusType)
+    val request = AudioFocusRequest.Builder(focusType)
       .setAudioAttributes(
         AudioAttributes.Builder().run {
           setUsage(AudioAttributes.USAGE_MEDIA)
@@ -165,7 +229,8 @@ class AudioFocusManager() {
       .setOnAudioFocusChangeListener(audioFocusChangeListener)
       .build()
 
-    return audioManager.requestAudioFocus(audioFocusRequest!!)
+    audioFocusRequest = request
+    return audioManager.requestAudioFocus(request)
   }
 
   @Suppress("DEPRECATION")
@@ -178,6 +243,8 @@ class AudioFocusManager() {
   }
 
   private fun abandonAudioFocus() {
+    eventEngine.onAbandoned()
+
     if (currentMixAudioMode != null) {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         abandonAudioFocusNew()
@@ -199,18 +266,6 @@ class AudioFocusManager() {
   @Suppress("DEPRECATION")
   private fun abandonAudioFocusLegacy() {
     audioManager.abandonAudioFocus(audioFocusChangeListener)
-  }
-
-  private fun pauseActivePlayers() {
-    Threading.runOnMainThread {
-      players.forEach { player ->
-        player.currentMediaPlayer()?.let { mediaPlayer ->
-          if (mediaPlayer.volume != 0f && mediaPlayer.isPlaying) {
-            mediaPlayer.pause()
-          }
-        }
-      }
-    }
   }
 
   private fun duckActivePlayers() {

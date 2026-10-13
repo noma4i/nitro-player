@@ -36,8 +36,8 @@ namespace margelo::nitro::video {
       double slotId = this->getFieldValue(fieldSlotId);
       static const auto fieldAssignedIndex = clazz->getField<jni::JDouble>("assignedIndex");
       jni::local_ref<jni::JDouble> assignedIndex = this->getFieldValue(fieldAssignedIndex);
-      static const auto fieldMomentId = clazz->getField<jni::JString>("momentId");
-      jni::local_ref<jni::JString> momentId = this->getFieldValue(fieldMomentId);
+      static const auto fieldItemId = clazz->getField<jni::JString>("itemId");
+      jni::local_ref<jni::JString> itemId = this->getFieldValue(fieldItemId);
       static const auto fieldSourceKey = clazz->getField<jni::JString>("sourceKey");
       jni::local_ref<jni::JString> sourceKey = this->getFieldValue(fieldSourceKey);
       static const auto fieldGeneration = clazz->getField<double>("generation");
@@ -85,7 +85,7 @@ namespace margelo::nitro::video {
       return FeedRingSlotSnapshot(
         slotId,
         assignedIndex != nullptr ? std::make_optional(assignedIndex->value()) : std::nullopt,
-        momentId != nullptr ? std::make_optional(momentId->toStdString()) : std::nullopt,
+        itemId != nullptr ? std::make_optional(itemId->toStdString()) : std::nullopt,
         sourceKey != nullptr ? std::make_optional(sourceKey->toStdString()) : std::nullopt,
         generation,
         static_cast<bool>(desiredPlay),
@@ -124,7 +124,7 @@ namespace margelo::nitro::video {
         clazz,
         value.slotId,
         value.assignedIndex.has_value() ? jni::JDouble::valueOf(value.assignedIndex.value()) : nullptr,
-        value.momentId.has_value() ? jni::make_jstring(value.momentId.value()) : nullptr,
+        value.itemId.has_value() ? jni::make_jstring(value.itemId.value()) : nullptr,
         value.sourceKey.has_value() ? jni::make_jstring(value.sourceKey.value()) : nullptr,
         value.generation,
         value.desiredPlay,

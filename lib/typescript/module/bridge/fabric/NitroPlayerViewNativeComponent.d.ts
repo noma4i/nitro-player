@@ -1,12 +1,11 @@
-import { type ViewProps } from 'react-native';
-import type { DirectEventHandler, Int32 } from 'react-native/Libraries/Types/CodegenTypes';
+import { type CodegenTypes, type HostComponent, type ViewProps } from 'react-native';
 type OnNitroIdChangeEvent = Readonly<{
-    nitroId: Int32;
+    nitroId: CodegenTypes.Int32;
 }>;
 export interface ViewViewNativeProps extends ViewProps {
-    nitroId: Int32;
-    onNitroIdChange?: DirectEventHandler<OnNitroIdChangeEvent>;
+    nitroId: CodegenTypes.Int32;
+    onNitroIdChange?: CodegenTypes.DirectEventHandler<OnNitroIdChangeEvent>;
 }
-declare const _default: import("react-native").HostComponent<ViewViewNativeProps>;
+declare const _default: HostComponent<ViewViewNativeProps>;
 export default _default;
 //# sourceMappingURL=NitroPlayerViewNativeComponent.d.ts.map

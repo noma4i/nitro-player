@@ -1,8 +1,8 @@
 import type { HybridObject } from 'react-native-nitro-modules';
-import type { ResizeMode } from '../../view/types/ResizeMode';
-import type { NitroPlayer } from './NitroPlayer.nitro';
-import type { ListenerSubscription } from './NitroPlayerEventEmitter.nitro';
-import type { NitroPlayerDefaults } from '../../player/types/NitroPlayerDefaults';
+import type { NitroPlayerDefaults } from '../../player/types/NitroPlayerDefaults.js';
+import type { ResizeMode } from '../../view/types/ResizeMode.js';
+import type { NitroPlayer } from './NitroPlayer.nitro.js';
+import type { ListenerSubscription } from './NitroPlayerEventEmitter.nitro.js';
 export type SurfaceType = 'surface' | 'texture';
 export interface NitroPlayerViewManager extends HybridObject<{
     ios: 'swift';

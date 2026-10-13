@@ -14,14 +14,14 @@ namespace NitroPlay { class HybridNitroFeedRingPlayerSpec_cxx; }
 
 // Forward declaration of `HybridNitroPlayerSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridNitroPlayerSpec; }
+// Forward declaration of `FeedRingProjection` to properly resolve imports.
+namespace margelo::nitro::video { struct FeedRingProjection; }
 // Forward declaration of `FeedRingCatalog` to properly resolve imports.
 namespace margelo::nitro::video { struct FeedRingCatalog; }
 // Forward declaration of `FeedRingCatalogItem` to properly resolve imports.
 namespace margelo::nitro::video { struct FeedRingCatalogItem; }
 // Forward declaration of `NativeNitroPlayerConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct NativeNitroPlayerConfig; }
-// Forward declaration of `NitroSourceMetadata` to properly resolve imports.
-namespace margelo::nitro::video { struct NitroSourceMetadata; }
 // Forward declaration of `NitroSourceStartup` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroSourceStartup; }
 // Forward declaration of `BufferConfig` to properly resolve imports.
@@ -40,12 +40,6 @@ namespace margelo::nitro::video { enum class RetentionLevel; }
 namespace margelo::nitro::video { struct NitroSourceTransportConfig; }
 // Forward declaration of `NitroSourceTransportMode` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroSourceTransportMode; }
-// Forward declaration of `NitroSourcePreviewConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct NitroSourcePreviewConfig; }
-// Forward declaration of `NitroSourcePreviewMode` to properly resolve imports.
-namespace margelo::nitro::video { enum class NitroSourcePreviewMode; }
-// Forward declaration of `FeedRingViewport` to properly resolve imports.
-namespace margelo::nitro::video { struct FeedRingViewport; }
 // Forward declaration of `FeedRingSnapshot` to properly resolve imports.
 namespace margelo::nitro::video { struct FeedRingSnapshot; }
 // Forward declaration of `FeedRingSlotSnapshot` to properly resolve imports.
@@ -54,17 +48,19 @@ namespace margelo::nitro::video { struct FeedRingSlotSnapshot; }
 namespace margelo::nitro::video { struct ListenerSubscription; }
 // Forward declaration of `FeedRingSlotState` to properly resolve imports.
 namespace margelo::nitro::video { struct FeedRingSlotState; }
+// Forward declaration of `FeedRingCommandEvent` to properly resolve imports.
+namespace margelo::nitro::video { struct FeedRingCommandEvent; }
 
 #include <memory>
 #include "HybridNitroPlayerSpec.hpp"
+#include <string>
+#include "FeedRingProjection.hpp"
 #include "FeedRingCatalog.hpp"
+#include <optional>
 #include "FeedRingCatalogItem.hpp"
 #include <vector>
-#include <string>
-#include <optional>
 #include "NativeNitroPlayerConfig.hpp"
 #include <unordered_map>
-#include "NitroSourceMetadata.hpp"
 #include "NitroSourceStartup.hpp"
 #include "BufferConfig.hpp"
 #include "LivePlaybackParams.hpp"
@@ -74,14 +70,12 @@ namespace margelo::nitro::video { struct FeedRingSlotState; }
 #include "RetentionLevel.hpp"
 #include "NitroSourceTransportConfig.hpp"
 #include "NitroSourceTransportMode.hpp"
-#include "NitroSourcePreviewConfig.hpp"
-#include "NitroSourcePreviewMode.hpp"
-#include "FeedRingViewport.hpp"
 #include "FeedRingSnapshot.hpp"
 #include "FeedRingSlotSnapshot.hpp"
 #include "ListenerSubscription.hpp"
 #include <functional>
 #include "FeedRingSlotState.hpp"
+#include "FeedRingCommandEvent.hpp"
 
 #include "NitroPlay-Swift-Cxx-Umbrella.hpp"
 
@@ -129,7 +123,9 @@ namespace margelo::nitro::video {
 
   public:
     // Properties
-    
+    inline double getRingToken() noexcept override {
+      return _swiftPart.getRingToken();
+    }
 
   public:
     // Methods
@@ -141,14 +137,14 @@ namespace margelo::nitro::video {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline void replaceCatalog(const FeedRingCatalog& catalog) override {
-      auto __result = _swiftPart.replaceCatalog(std::forward<decltype(catalog)>(catalog));
+    inline void configurePlayback(const std::string& key, const std::string& group, double priority, bool resumeAutomatically) override {
+      auto __result = _swiftPart.configurePlayback(key, group, std::forward<decltype(priority)>(priority), std::forward<decltype(resumeAutomatically)>(resumeAutomatically));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
     }
-    inline void commitViewport(const FeedRingViewport& viewport) override {
-      auto __result = _swiftPart.commitViewport(std::forward<decltype(viewport)>(viewport));
+    inline void applyProjection(const FeedRingProjection& projection) override {
+      auto __result = _swiftPart.applyProjection(std::forward<decltype(projection)>(projection));
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }
@@ -163,6 +159,14 @@ namespace margelo::nitro::video {
     }
     inline ListenerSubscription addSlotStateListener(const std::function<void(const FeedRingSlotState& /* state */)>& listener) override {
       auto __result = _swiftPart.addSlotStateListener(listener);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline ListenerSubscription addCommandEventListener(const std::function<void(const FeedRingCommandEvent& /* event */)>& listener) override {
+      auto __result = _swiftPart.addCommandEventListener(listener);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

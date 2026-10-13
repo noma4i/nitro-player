@@ -20,8 +20,8 @@ let package = Package(
       sources: [
         "PlayerRetentionCoordinator.swift",
         "PlaybackStateEmissionGate.swift",
-        "PlaybackStateEmissionCoordinator.swift",
-        "PeriodicTimeObserverLifecycle.swift"
+        "PlaybackWatchdogPolicy.swift",
+        "PlayerAppStatePolicy.swift"
       ]
     ),
     .target(
@@ -29,40 +29,35 @@ let package = Package(
       path: "Sources/NitroPlaySupportCore",
       sources: [
         "LifecycleGate.swift",
-        "ListenerRegistryCore.swift",
-        "SourceCommandCoordinator.swift"
-      ]
-    ),
-    .target(
-      name: "NitroPlaySourceCore",
-      path: "Sources/NitroPlaySourceCore",
-      sources: [
-        "HlsTransportRoutePolicy.swift"
+        "SingleOwnerResourceSlot.swift"
       ]
     ),
     .target(
       name: "NitroPlayStreamingCore",
       path: "Sources/NitroPlayStreamingCore",
       sources: [
-        "HlsManifestParser.swift",
-        "HlsPrefetchDeduper.swift",
-        "HlsProxyRuntimeLifecycleState.swift"
+        "HlsTransportReadiness.swift",
+        "HlsLeadingSegments.swift"
       ]
     ),
     .target(
-      name: "NitroPlayPreviewCore",
-      path: "Sources/NitroPlayPreviewCore",
+      name: "NitroPlayRuntimeCore",
+      path: "Sources/NitroPlayRuntimeCore",
       sources: [
-        "VideoPreviewDecodePlan.swift"
+        "NativeAudioSessionPolicy.swift",
+        "NativeAudioSessionCoordinator.swift",
+        "PlaybackAudioSessionBinding.swift",
+        "PlaybackSuspensionRegistry.swift",
+        "PlaybackSessionBinding.swift",
+        "PlaybackSessionCoordinator.swift"
       ]
     ),
     .target(
-      name: "NitroPlayKtvLedgerCore",
-      path: "Sources/NitroPlayKtvLedgerCore",
+      name: "NitroPlayViewCore",
+      path: "Sources/NitroPlayViewCore",
       sources: [
-        "KTVHCRequestLedger.m"
-      ],
-      publicHeadersPath: "."
+        "PlayerViewBindingPolicy.swift"
+      ]
     ),
     .testTarget(
       name: "NitroPlayFeedCoreTests",
@@ -72,12 +67,11 @@ let package = Package(
     .testTarget(
       name: "NitroPlayBehaviorTests",
       dependencies: [
-        "NitroPlayKtvLedgerCore",
         "NitroPlayPlayerCore",
-        "NitroPlayPreviewCore",
-        "NitroPlaySourceCore",
+        "NitroPlayRuntimeCore",
         "NitroPlayStreamingCore",
-        "NitroPlaySupportCore"
+        "NitroPlaySupportCore",
+        "NitroPlayViewCore"
       ],
       path: "Tests/Behavior"
     )

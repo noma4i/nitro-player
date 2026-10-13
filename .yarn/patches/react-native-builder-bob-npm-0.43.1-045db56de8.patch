@@ -1,0 +1,13 @@
+diff --git a/lib/src/utils/isCodegenSpec.js b/lib/src/utils/isCodegenSpec.js
+index 40f61e56a495d43384d69f902bef37698881b979..203555c98faf9674b3ee3ef43ad840c29a0194a1 100644
+--- a/lib/src/utils/isCodegenSpec.js
++++ b/lib/src/utils/isCodegenSpec.js
+@@ -1,7 +1,7 @@
+ import fs from 'fs-extra';
+ export function isCodegenSpec(filepath) {
+     const looksLikeCodgenSpec = /(?:^|[\\/])(?:(\w+)NativeComponent)\.[jt]sx?$/i.test(filepath);
+-    if (looksLikeCodgenSpec) {
++    if (looksLikeCodgenSpec && fs.existsSync(filepath)) {
+         // This is used in the babel plugin so needs to be synchronous
+         const content = fs.readFileSync(filepath, 'utf8');
+         // Regex taken from https://github.com/facebook/react-native/blob/271232d85654cee32322b1c8a3a39ef647ad02e2/packages/react-native-babel-preset/src/configs/main.js#L78C24-L78C47

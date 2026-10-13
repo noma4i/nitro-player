@@ -41,8 +41,10 @@ namespace margelo::nitro::video {
       double viewportRevision = this->getFieldValue(fieldViewportRevision);
       static const auto fieldCatalogSize = clazz->getField<double>("catalogSize");
       double catalogSize = this->getFieldValue(fieldCatalogSize);
-      static const auto fieldCenterIndex = clazz->getField<jni::JDouble>("centerIndex");
-      jni::local_ref<jni::JDouble> centerIndex = this->getFieldValue(fieldCenterIndex);
+      static const auto fieldWindowCenterIndex = clazz->getField<jni::JDouble>("windowCenterIndex");
+      jni::local_ref<jni::JDouble> windowCenterIndex = this->getFieldValue(fieldWindowCenterIndex);
+      static const auto fieldPlaybackIndex = clazz->getField<jni::JDouble>("playbackIndex");
+      jni::local_ref<jni::JDouble> playbackIndex = this->getFieldValue(fieldPlaybackIndex);
       static const auto fieldPlaybackAllowed = clazz->getField<jboolean>("playbackAllowed");
       jboolean playbackAllowed = this->getFieldValue(fieldPlaybackAllowed);
       static const auto fieldMuted = clazz->getField<jboolean>("muted");
@@ -55,7 +57,8 @@ namespace margelo::nitro::video {
         catalogRevision,
         viewportRevision,
         catalogSize,
-        centerIndex != nullptr ? std::make_optional(centerIndex->value()) : std::nullopt,
+        windowCenterIndex != nullptr ? std::make_optional(windowCenterIndex->value()) : std::nullopt,
+        playbackIndex != nullptr ? std::make_optional(playbackIndex->value()) : std::nullopt,
         static_cast<bool>(playbackAllowed),
         static_cast<bool>(muted),
         static_cast<bool>(released),
@@ -78,7 +81,7 @@ namespace margelo::nitro::video {
      */
     [[maybe_unused]]
     static jni::local_ref<JFeedRingSnapshot::javaobject> fromCpp(const FeedRingSnapshot& value) {
-      using JSignature = JFeedRingSnapshot(double, double, double, jni::alias_ref<jni::JDouble>, jboolean, jboolean, jboolean, jni::alias_ref<jni::JArrayClass<JFeedRingSlotSnapshot>>);
+      using JSignature = JFeedRingSnapshot(double, double, double, jni::alias_ref<jni::JDouble>, jni::alias_ref<jni::JDouble>, jboolean, jboolean, jboolean, jni::alias_ref<jni::JArrayClass<JFeedRingSlotSnapshot>>);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -86,7 +89,8 @@ namespace margelo::nitro::video {
         value.catalogRevision,
         value.viewportRevision,
         value.catalogSize,
-        value.centerIndex.has_value() ? jni::JDouble::valueOf(value.centerIndex.value()) : nullptr,
+        value.windowCenterIndex.has_value() ? jni::JDouble::valueOf(value.windowCenterIndex.value()) : nullptr,
+        value.playbackIndex.has_value() ? jni::JDouble::valueOf(value.playbackIndex.value()) : nullptr,
         value.playbackAllowed,
         value.muted,
         value.released,

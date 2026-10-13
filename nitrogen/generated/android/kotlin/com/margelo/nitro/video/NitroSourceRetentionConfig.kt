@@ -26,10 +26,7 @@ data class NitroSourceRetentionConfig(
   val offscreen: RetentionLevel?,
   @DoNotStrip
   @Keep
-  val trimDelayMs: Double?,
-  @DoNotStrip
-  @Keep
-  val feedPoolEligible: Boolean?
+  val trimDelayMs: Double?
 ) {
   /* primary constructor */
 
@@ -39,15 +36,13 @@ data class NitroSourceRetentionConfig(
     return Objects.deepEquals(this.preload, other.preload)
       && Objects.deepEquals(this.offscreen, other.offscreen)
       && Objects.deepEquals(this.trimDelayMs, other.trimDelayMs)
-      && Objects.deepEquals(this.feedPoolEligible, other.feedPoolEligible)
   }
 
   override fun hashCode(): Int {
     return arrayOf<Any?>(
       preload,
       offscreen,
-      trimDelayMs,
-      feedPoolEligible
+      trimDelayMs
     ).contentDeepHashCode()
   }
 
@@ -59,8 +54,8 @@ data class NitroSourceRetentionConfig(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(preload: PreloadLevel?, offscreen: RetentionLevel?, trimDelayMs: Double?, feedPoolEligible: Boolean?): NitroSourceRetentionConfig {
-      return NitroSourceRetentionConfig(preload, offscreen, trimDelayMs, feedPoolEligible)
+    private fun fromCpp(preload: PreloadLevel?, offscreen: RetentionLevel?, trimDelayMs: Double?): NitroSourceRetentionConfig {
+      return NitroSourceRetentionConfig(preload, offscreen, trimDelayMs)
     }
   }
 }

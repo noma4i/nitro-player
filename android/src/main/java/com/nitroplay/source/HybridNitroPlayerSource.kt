@@ -9,38 +9,47 @@ import com.nitroplay.video.streaming.HlsProxyRuntime
 import com.nitroplay.video.support.errors.LibraryError
 import com.nitroplay.video.source.buildMediaSource
 import com.nitroplay.video.source.createMediaItemFromVideoConfig
-import com.nitroplay.video.source.HlsTransportRoutePolicy
-import com.nitroplay.video.source.SourceLoader
 import com.nitroplay.video.source.NitroPlayerInformationUtils
+import com.nitroplay.video.source.SourceLoader
+import com.nitroplay.video.support.errors.SourceError
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 
-class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
-  override lateinit var uri: String
-  lateinit var config: NativeNitroPlayerConfig
-    private set
-  private lateinit var originalConfig: NativeNitroPlayerConfig
-  private var proxyRouteActive = false
+class HybridNitroPlayerSource(
+  config: NativeNitroPlayerConfig,
+  private val originalConfig: NativeNitroPlayerConfig = config,
+  routeGeneration: Int? = null
+): HybridNitroPlayerSourceSpec() {
+  private data class InformationTarget(
+    val generation: Long,
+    val config: NativeNitroPlayerConfig
+  )
 
+  private companion object {
+    // Recovery is intentionally process-serial because every source can purge or restart
+    // the shared HlsProxyRuntime; parallel recovery would race proxy server replacement.
+    val recoveryExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+  }
+
+  private val stateLock = Any()
+  private var resolvedRouteGeneration: Int? = routeGeneration
+  private var currentConfig = config
   private var mediaItem: MediaItem? = null
   private var mediaSource: MediaSource? = null
-  private val stateLock = Any()
-  var retentionState: RetentionLevel = RetentionLevel.COLD
-    // Read under stateLock for visibility: writers mutate it inside
-    // synchronized(stateLock); the monitor is reentrant so writer paths are fine.
-    get() = synchronized(stateLock) { field }
-    private set
+  private var currentRetentionState = RetentionLevel.COLD
+  private var currentGeneration = 0L
 
   internal val sourceLoader = SourceLoader()
 
-  constructor(
-    config: NativeNitroPlayerConfig,
-    originalConfig: NativeNitroPlayerConfig = config,
-    isProxyRouteActive: Boolean = false
-  ) : this() {
-    this.uri = config.uri
-    this.config = config
-    this.originalConfig = originalConfig
-    this.proxyRouteActive = isProxyRouteActive
-  }
+  override val uri: String
+    get() = synchronized(stateLock) { currentConfig.uri }
+
+  internal val config: NativeNitroPlayerConfig
+    get() = synchronized(stateLock) { currentConfig }
+
+  val retentionState: RetentionLevel
+    get() = synchronized(stateLock) { currentRetentionState }
 
   private fun createOrGetMediaItem(): MediaItem {
     synchronized(stateLock) {
@@ -51,8 +60,8 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
 
       return createMediaItemFromVideoConfig(this).also {
         mediaItem = it
-        if (retentionState == RetentionLevel.COLD) {
-          retentionState = RetentionLevel.METADATA
+        if (currentRetentionState == RetentionLevel.COLD) {
+          currentRetentionState = RetentionLevel.METADATA
         }
       }
     }
@@ -78,7 +87,7 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
       }
 
       mediaSource = nextMediaSource
-      retentionState = RetentionLevel.HOT
+      currentRetentionState = RetentionLevel.HOT
       return nextMediaSource
     }
   }
@@ -93,78 +102,128 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
     synchronized(stateLock) {
       createOrGetMediaItem()
       mediaSource = null
-      retentionState = RetentionLevel.METADATA
+      currentRetentionState = RetentionLevel.METADATA
     }
   }
 
   fun trimToCold() {
     synchronized(stateLock) {
+      currentGeneration += 1
       mediaSource = null
       mediaItem = null
-      retentionState = RetentionLevel.COLD
+      currentRetentionState = RetentionLevel.COLD
     }
+    sourceLoader.cancel()
   }
 
   fun supportsStartupRecovery(): Boolean {
-    return HlsTransportRoutePolicy.supportsStartupRecovery(
-      isHls = HlsManifestUrl.matches(originalConfig.uri),
-      isProxyRouteActive = synchronized(stateLock) { proxyRouteActive }
-    )
+    if (originalConfig.transport?.mode == NitroSourceTransportMode.DIRECT) {
+      return false
+    }
+    return HlsManifestUrl.matches(originalConfig.uri)
   }
 
-  fun isProxyRouteActive(): Boolean {
-    return synchronized(stateLock) { proxyRouteActive }
-  }
-
-  fun previewSourceUri(): String {
+  fun originalSourceUri(): String {
     return originalConfig.uri
   }
 
-  fun requestLeadingSegmentPrefetch() {
+  fun requestLeadingSegmentPrefetch(durationSeconds: Double) {
     if (!supportsStartupRecovery()) {
       return
     }
 
     HlsProxyRuntime.requestLeadingSegmentPrefetchAsync(
       originalConfig.uri,
-      originalConfig.headers
+      originalConfig.headers,
+      durationSeconds
     )
   }
 
-  @Synchronized
-  fun refreshPlaybackRouteForStartupRecovery(): Boolean {
+  private fun purgePlaybackCacheSynchronously(): Boolean {
     if (!supportsStartupRecovery()) {
       return false
     }
+    HlsProxyRuntime.purgeCachedSource(originalConfig.uri, originalConfig.headers)
+    return true
+  }
 
-    sourceLoader.cancel()
-    trimToCold()
+  private fun refreshPlaybackRouteForStartupRecoverySynchronously(): Boolean {
+    if (!supportsStartupRecovery()) {
+      return false
+    }
 
     val resolution = HlsProxyRuntime.resolvePlaybackRoute(
       originalConfig.uri,
       originalConfig.headers
     )
+
     synchronized(stateLock) {
-      config = originalConfig.copy(uri = resolution.url)
-      uri = resolution.url
-      proxyRouteActive = resolution.isProxying
+      currentGeneration += 1
+      mediaSource = null
+      mediaItem = null
+      currentRetentionState = RetentionLevel.COLD
+      currentConfig = originalConfig.copy(uri = resolution.url)
+      resolvedRouteGeneration = resolution.routeGeneration
     }
+    sourceLoader.cancel()
+
     return resolution.isProxying
   }
 
-  private fun estimatedConfigMemoryBytes(): Long {
-    var bytes = uri.toByteArray().size.toLong()
+  /**
+   * True when the resolved route no longer matches the transport it was resolved against:
+   * either the bound port changed, or the route bypassed the proxy while the transport was
+   * unhealthy and the proxy is available again.
+   */
+  internal val isRouteStale: Boolean
+    get() {
+      if (!supportsStartupRecovery()) {
+        return false
+      }
+      val resolved = synchronized(stateLock) { resolvedRouteGeneration }
+        ?: return HlsProxyRuntime.isTransportReady
+      return resolved != HlsProxyRuntime.routeGeneration
+    }
+
+  internal fun recoverPlaybackRouteAsync(
+    purgeCache: Boolean,
+    trimWhenNotProxying: Boolean,
+    completion: (Result<Unit>) -> Unit
+  ) {
+    try {
+      recoveryExecutor.execute {
+        completion(runCatching {
+          if (purgeCache) {
+            purgePlaybackCacheSynchronously()
+          }
+          val isProxying = refreshPlaybackRouteForStartupRecoverySynchronously()
+          if (trimWhenNotProxying && !isProxying) {
+            trimToCold()
+          }
+        })
+      }
+    } catch (error: RejectedExecutionException) {
+      completion(Result.failure(error))
+    }
+  }
+
+  internal fun purgePlaybackCacheAsync() {
+    try {
+      recoveryExecutor.execute {
+        runCatching {
+          purgePlaybackCacheSynchronously()
+        }
+      }
+    } catch (_: RejectedExecutionException) {
+    }
+  }
+
+  private fun estimateConfigMemoryBytes(config: NativeNitroPlayerConfig): Long {
+    var bytes = config.uri.toByteArray().size.toLong()
 
     config.headers?.forEach { (key, value) ->
       bytes += key.toByteArray().size.toLong()
       bytes += value.toByteArray().size.toLong()
-    }
-
-    config.metadata?.let { metadata ->
-      bytes += metadata.title?.toByteArray()?.size?.toLong() ?: 0L
-      bytes += metadata.subtitle?.toByteArray()?.size?.toLong() ?: 0L
-      bytes += metadata.artist?.toByteArray()?.size?.toLong() ?: 0L
-      bytes += metadata.imageUri?.toByteArray()?.size?.toLong() ?: 0L
     }
 
     return bytes
@@ -173,28 +232,37 @@ class HybridNitroPlayerSource(): HybridNitroPlayerSourceSpec() {
   override fun getAssetInformationAsync(): Promise<NitroPlayerInformation> {
     return Promise.async {
       return@async sourceLoader.load {
-        createOrGetMediaItem()
-        NitroPlayerInformationUtils.fromUri(uri, config.headers ?: emptyMap())
+        val target = synchronized(stateLock) {
+          createOrGetMediaItem()
+          InformationTarget(currentGeneration, currentConfig)
+        }
+        val information = NitroPlayerInformationUtils.fromUri(
+          target.config.uri,
+          target.config.headers ?: emptyMap()
+        )
+
+        synchronized(stateLock) {
+          if (currentGeneration != target.generation) {
+            throw SourceError.Cancelled
+          }
+        }
+        information
       }
     }
   }
 
   override val memorySize: Long
-    get() {
-      var size = estimatedConfigMemoryBytes()
+    get() = synchronized(stateLock) {
+      var size = estimateConfigMemoryBytes(currentConfig)
 
-      // mediaItem/mediaSource are mutated only under stateLock; read them under
-      // the same lock to avoid a torn/stale view from another thread.
-      synchronized(stateLock) {
-        if (mediaItem != null) {
-          size += 4L * 1024L
-        }
-
-        if (mediaSource != null) {
-          size += 32L * 1024L
-        }
+      if (mediaItem != null) {
+        size += 4L * 1024L
       }
 
-      return size
+      if (mediaSource != null) {
+        size += 32L * 1024L
+      }
+
+      size
     }
 }

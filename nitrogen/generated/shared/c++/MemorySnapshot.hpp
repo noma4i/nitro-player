@@ -51,13 +51,12 @@ namespace margelo::nitro::video {
     bool isAttachedToView     SWIFT_PRIVATE;
     bool isPlaying     SWIFT_PRIVATE;
     bool wantsToPlay     SWIFT_PRIVATE;
-    bool isFeedPoolEligible     SWIFT_PRIVATE;
-    bool isPinnedForFeedPool     SWIFT_PRIVATE;
+    bool isRingSlot     SWIFT_PRIVATE;
     bool isPinnedForResourcePressure     SWIFT_PRIVATE;
 
   public:
     MemorySnapshot() = default;
-    explicit MemorySnapshot(double playerBytes, double sourceBytes, double totalBytes, PreloadLevel preloadLevel, RetentionLevel retentionState, bool isAttachedToView, bool isPlaying, bool wantsToPlay, bool isFeedPoolEligible, bool isPinnedForFeedPool, bool isPinnedForResourcePressure): playerBytes(playerBytes), sourceBytes(sourceBytes), totalBytes(totalBytes), preloadLevel(preloadLevel), retentionState(retentionState), isAttachedToView(isAttachedToView), isPlaying(isPlaying), wantsToPlay(wantsToPlay), isFeedPoolEligible(isFeedPoolEligible), isPinnedForFeedPool(isPinnedForFeedPool), isPinnedForResourcePressure(isPinnedForResourcePressure) {}
+    explicit MemorySnapshot(double playerBytes, double sourceBytes, double totalBytes, PreloadLevel preloadLevel, RetentionLevel retentionState, bool isAttachedToView, bool isPlaying, bool wantsToPlay, bool isRingSlot, bool isPinnedForResourcePressure): playerBytes(playerBytes), sourceBytes(sourceBytes), totalBytes(totalBytes), preloadLevel(preloadLevel), retentionState(retentionState), isAttachedToView(isAttachedToView), isPlaying(isPlaying), wantsToPlay(wantsToPlay), isRingSlot(isRingSlot), isPinnedForResourcePressure(isPinnedForResourcePressure) {}
 
   public:
     friend bool operator==(const MemorySnapshot& lhs, const MemorySnapshot& rhs) = default;
@@ -81,8 +80,7 @@ namespace margelo::nitro {
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isAttachedToView"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPlaying"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "wantsToPlay"))),
-        JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isFeedPoolEligible"))),
-        JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPinnedForFeedPool"))),
+        JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isRingSlot"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPinnedForResourcePressure")))
       );
     }
@@ -96,8 +94,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "isAttachedToView"), JSIConverter<bool>::toJSI(runtime, arg.isAttachedToView));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "isPlaying"), JSIConverter<bool>::toJSI(runtime, arg.isPlaying));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "wantsToPlay"), JSIConverter<bool>::toJSI(runtime, arg.wantsToPlay));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "isFeedPoolEligible"), JSIConverter<bool>::toJSI(runtime, arg.isFeedPoolEligible));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "isPinnedForFeedPool"), JSIConverter<bool>::toJSI(runtime, arg.isPinnedForFeedPool));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "isRingSlot"), JSIConverter<bool>::toJSI(runtime, arg.isRingSlot));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "isPinnedForResourcePressure"), JSIConverter<bool>::toJSI(runtime, arg.isPinnedForResourcePressure));
       return obj;
     }
@@ -117,8 +114,7 @@ namespace margelo::nitro {
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isAttachedToView")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPlaying")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "wantsToPlay")))) return false;
-      if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isFeedPoolEligible")))) return false;
-      if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPinnedForFeedPool")))) return false;
+      if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isRingSlot")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "isPinnedForResourcePressure")))) return false;
       return true;
     }

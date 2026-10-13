@@ -1,41 +1,43 @@
-export { useEvent } from './player/hooks/useEvent';
-export { usePlaybackState, type PlaybackStateSelector } from './player/hooks/usePlaybackState';
-export type {
-  AllNitroPlayerEvents,
-  NitroPlayerEvents as NitroPlayerEventsType,
-  BandwidthData,
-  onFirstFrameData,
-  onLoadData,
-  onLoadStartData,
-  SourceType,
-  onVolumeChangeData
-} from './player/events';
-export type { NitroPlayerViewEvents } from './view/events';
+export { NitroPlaybackBoundary, type NitroPlaybackBoundaryProps } from './runtime/NitroPlaybackBoundary';
+export {
+  acquireExternalAudioSession,
+  addNitroOutputDeviceLostListener,
+  addNitroPrefetchSettledListener,
+  cancelNitroPlaybackPrefetch,
+  clearNitroPlaybackCache,
+  configureNitroPlaybackCache,
+  getNitroPlaybackCacheStats,
+  prefetchNitroPlaybackSource,
+  resetNitroPlayback,
+  suspendNitroPlayback,
+  type NitroCacheStats,
+  type NitroPlaybackCacheConfig,
+  type NitroPlaybackSubscription,
+  type NitroPlaybackSuspension
+} from './runtime/nativePlaybackRuntime';
+export { createNitroPrefetchQueue, type NitroPrefetchQueue, type NitroPrefetchRequest } from './prefetch/NitroPrefetchQueue';
+export {
+  NITRO_PLAYBACK_CONTEXTS,
+  resolvePlaybackContext,
+  type NitroPlaybackContextName
+} from './policy/playbackContexts';
 export type { RetentionLevel, PreloadLevel } from './player/types/MemoryConfig';
-export type { MemorySnapshot } from './player/types/MemorySnapshot';
 export type { PlaybackError } from './support/errors/PlaybackError';
 export type { PlaybackState } from './player/types/PlaybackState';
-export type { IgnoreSilentSwitchMode } from './player/types/IgnoreSilentSwitchMode';
-export type { MixAudioMode } from './player/types/MixAudioMode';
 export type { ResizeMode } from './view/types/ResizeMode';
 export type {
   NitroSourceConfig,
   NitroSourceDescriptor,
   NitroSourceIdentity,
   NitroSourceInput,
-  NitroSourceMetadata,
   NitroSourcePolicy,
-  NitroSourcePreviewConfig,
-  NitroSourcePreviewMode,
   NitroSourceRetentionConfig,
   NitroSourceStartup,
   NitroSourceTransportConfig,
   NitroSourceTransportMode,
   NitroSourceUri
 } from './source/types/NitroPlayerConfig';
-export type { NitroPlayerDefaults } from './player/types/NitroPlayerDefaults';
 export type { BufferConfig, LivePlaybackParams } from './player/types/BufferConfig';
-export type { NitroPlayerInformation } from './player/types/NitroPlayerInformation';
 export {
   type LibraryError,
   type PlayerError,
@@ -48,29 +50,36 @@ export {
   type NitroPlayerViewError
 } from './support/errors/NitroPlayerError';
 export type { NitroPlayerStatus } from './player/types/NitroPlayerStatus';
-export { default as NitroPlayerView, type NitroPlayerViewProps, type NitroPlayerViewRef } from './view/NitroPlayerView';
-export { NitroPlayer } from './player/NitroPlayer';
-export { useNitroPlayer } from './player/hooks/useNitroPlayer';
 export {
+  NitroPlaybackSurface,
+  type NitroPlaybackSurfaceProps,
+  type NitroPlaybackSurfaceRef
+} from './surface/NitroPlaybackSurface';
+export {
+  createNitroPlaybackSurfaceSnapshot,
+  type NitroPlaybackSurfaceSnapshot,
+  type NitroPlaybackSurfaceSnapshotEvent,
+  type NitroPlaybackSurfaceSnapshotReduction
+} from './surface/NitroPlaybackSurfaceSnapshot';
+export type {
   NitroFeedRingPlayer,
-  type NitroFeedRingAdaptiveSnapshot,
-  type NitroFeedRingCatalogItem,
-  type NitroFeedRingCatalogState,
-  type NitroFeedRingPlayerOptions,
-  type NitroFeedRingSnapshot,
-  type NitroFeedRingSlotId,
-  type NitroFeedRingSlotSnapshot,
-  type NitroFeedRingViewportState
+  NitroFeedRingCatalogItem,
+  NitroFeedRingPlayerOptions,
+  NitroFeedRingSnapshot,
+  NitroFeedRingSlotId,
+  NitroFeedRingSlotSnapshot
 } from './feed/NitroFeedRingPlayer';
+export {
+  feedRingHostArbiter,
+  type FeedRingHostBinding,
+  type FeedRingHostCatalogState,
+  type FeedRingHostDeclaredState
+} from './feed/FeedRingHostArbiter';
+export {
+  useNitroFeedRingHost,
+  type UseNitroFeedRingHostOptions,
+  type UseNitroFeedRingHostResult
+} from './feed/useNitroFeedRingHost';
+export { feedRingWindowIndices, resolveFeedRingSlotAssignments, resolveFeedRingSlotId, type FeedRingSlotAssignment } from './feed/feedRingWindow';
 export { default as NitroFeedRingSlotView, type NitroFeedRingSlotViewProps } from './feed/NitroFeedRingSlotView';
 export { prepareSource, type PreparedNitroSource } from './source/prepareSource';
-export type { AdaptiveQualityConfig } from './source/adaptiveQuality';
-export { streamCache } from './streaming/streamCache';
-export { videoPreview } from './preview/videoPreview';
-export type {
-  StreamCacheConfig,
-  StreamCacheStats,
-  StreamNetworkThroughputEstimate,
-  StreamSourceCacheStats,
-  StreamHeaders
-} from './streaming/types';

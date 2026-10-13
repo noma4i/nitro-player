@@ -1,6 +1,6 @@
-import type { NitroPlayer } from '../bridge/nitro/NitroPlayer.nitro';
-import type { NitroPlayerSource } from '../bridge/nitro/NitroPlayerSource.nitro';
-import type { NitroSourceInput } from '../source/types/NitroPlayerConfig';
+import type { NitroPlayer } from '../bridge/nitro/NitroPlayer.nitro.js';
+import type { NitroPlayerSource } from '../bridge/nitro/NitroPlayerSource.nitro.js';
+import type { NitroSourceInput } from '../source/types/NitroPlayerConfig.js';
 export interface CreatedNitroPlayer {
     player: NitroPlayer;
     source: NitroPlayerSource;

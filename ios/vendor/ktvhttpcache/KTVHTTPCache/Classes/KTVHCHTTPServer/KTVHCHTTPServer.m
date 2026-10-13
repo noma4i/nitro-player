@@ -17,10 +17,6 @@
 #import <ifaddrs.h>
 #import <arpa/inet.h>
 
-#if KTVHC_UIKIT
-#import <UIKit/UIKit.h>
-#endif
-
 @interface KTVHCHTTPServer ()
 
 @property (nonatomic) BOOL wantsRunning;
@@ -52,12 +48,6 @@
         [self.server setType:@"_http._tcp."];
         self.pingCondition = [[NSCondition alloc] init];
         self.pingQueue = dispatch_queue_create("KTVHCHTTPServer_pingQueue", DISPATCH_QUEUE_SERIAL);
-#if KTVHC_UIKIT
-        [[NSNotificationCenter defaultCenter] addObserver:self
-                                                 selector:@selector(applicationWillEnterForeground)
-                                                     name:UIApplicationWillEnterForegroundNotification
-                                                   object:nil];
-#endif
     }
     return self;
 }
@@ -65,7 +55,6 @@
 - (void)dealloc
 {
     KTVHCLogDealloc(self);
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
     [self stopInternal];
 }
 
@@ -217,24 +206,6 @@
         freeifaddrs(list);
     }
     return address;
-}
-
-#pragma mark - Background Task
-
-- (void)applicationWillEnterForeground
-{
-    dispatch_async(self.pingQueue, ^{
-        if (self.wantsRunning) {
-            KTVHCLogHTTPServer(@"%p, ping server", self);
-            if (![self ping]) {
-                [self stopInternal];
-                NSError *error = nil;
-                if (![self startInternal:&error]) {
-                    KTVHCLogHTTPServer(@"%p, restart server error %@", self, error);
-                };
-            }
-        }
-    });
 }
 
 @end

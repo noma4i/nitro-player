@@ -8,11 +8,6 @@
 import Foundation
 
 class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
-  private struct RoutedConfig {
-    let config: NativeNitroPlayerConfig
-    let isProxyRouteActive: Bool
-  }
-
   private func normalizeUri(_ uri: String) -> String {
     guard uri.hasPrefix("/") else {
       return uri
@@ -21,46 +16,27 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
     return URL(fileURLWithPath: uri).absoluteString
   }
 
-  private func routeMode(_ mode: NitroSourceTransportMode?) -> HlsTransportRouteMode? {
-    guard let mode else { return nil }
-    switch mode {
-    case .auto:
-      return .auto
-    case .direct:
-      return .direct
-    case .proxy:
-      return .proxy
-    }
-  }
-
-  private func shouldUseHlsProxy(config: NativeNitroPlayerConfig, normalizedUri: String) -> Bool {
-    HlsTransportRoutePolicy.shouldUseProxyForPlayback(
-      mode: routeMode(config.transport?.mode),
-      isHls: HlsManifestUrl.matches(normalizedUri),
-      feedPoolEligible: config.retention?.feedPoolEligible == true
-    )
-  }
-
-  private func routedConfig(from config: NativeNitroPlayerConfig) -> RoutedConfig {
+  private func resolvedRoute(from config: NativeNitroPlayerConfig) -> (config: NativeNitroPlayerConfig, routeGeneration: Int?) {
     let normalizedUri = normalizeUri(config.uri)
-    let shouldUseHlsProxy = shouldUseHlsProxy(config: config, normalizedUri: normalizedUri)
+    let shouldUseHlsProxy = config.transport?.mode != .direct
     let route = shouldUseHlsProxy && HlsManifestUrl.matches(normalizedUri)
       ? HlsProxyRuntime.shared.resolvePlaybackRoute(url: normalizedUri, headers: config.headers)
-      : HlsProxyRouteResolution(url: normalizedUri, isProxying: false)
-
-    return RoutedConfig(
-      config: NativeNitroPlayerConfig(
-        uri: route.url,
+      : HlsProxyRouteResolution(
+        url: normalizedUri,
         headers: config.headers,
-        metadata: config.metadata,
-        startup: config.startup,
-        buffer: config.buffer,
-        retention: config.retention,
-        transport: config.transport,
-        preview: config.preview
-      ),
-      isProxyRouteActive: route.isProxying
+        isProxying: false,
+        routeGeneration: nil
+      )
+
+    let normalized = NativeNitroPlayerConfig(
+      uri: route.url,
+      headers: route.headers,
+      startup: config.startup,
+      buffer: config.buffer,
+      retention: config.retention,
+      transport: config.transport
     )
+    return (normalized, route.routeGeneration)
   }
 
   func fromNitroPlayerConfig(config: NativeNitroPlayerConfig) throws
@@ -69,18 +45,16 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
     let normalizedInput = NativeNitroPlayerConfig(
       uri: normalizeUri(config.uri),
       headers: config.headers,
-      metadata: config.metadata,
       startup: config.startup,
       buffer: config.buffer,
       retention: config.retention,
-      transport: config.transport,
-      preview: config.preview
+      transport: config.transport
     )
-    let normalized = routedConfig(from: normalizedInput)
+    let resolved = resolvedRoute(from: normalizedInput)
     return try HybridNitroPlayerSource(
-      config: normalized.config,
+      config: resolved.config,
       originalConfig: normalizedInput,
-      isProxyRouteActive: normalized.isProxyRouteActive
+      routeGeneration: resolved.routeGeneration
     )
   }
 
@@ -88,17 +62,15 @@ class HybridNitroPlayerSourceFactory: HybridNitroPlayerSourceFactorySpec {
     let config = NativeNitroPlayerConfig(
       uri: normalizeUri(uri),
       headers: nil,
-      metadata: nil,
       startup: .eager,
       buffer: nil,
       retention: nil,
-      transport: nil,
-      preview: nil
+      transport: nil
     )
-    let normalized = routedConfig(from: config)
+    let resolved = resolvedRoute(from: config)
     return try HybridNitroPlayerSource(
-      config: normalized.config,
-      isProxyRouteActive: normalized.isProxyRouteActive
+      config: resolved.config,
+      routeGeneration: resolved.routeGeneration
     )
   }
 }

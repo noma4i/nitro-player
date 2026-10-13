@@ -20,11 +20,15 @@ private class AnyCancellable {
 }
 
 actor SourceLoaderActor {
-  private var currentCancellable: AnyCancellable?
+  private var currentOperation: (operationId: Int64, cancellable: AnyCancellable)?
+  private var cancelledThroughOperationId: Int64 = 0
 
-  func load<T>(priority: TaskPriority, operation: @escaping () async throws -> T) async throws -> T
+  func load<T>(operationId: Int64, priority: TaskPriority, operation: @escaping () async throws -> T) async throws -> T
   {
-    await cancelCurrentTask()
+    currentOperation?.cancellable.cancel()
+    guard operationId > cancelledThroughOperationId else {
+      throw CancellationError()
+    }
 
     let cancellableTask = Task(priority: priority) {
       try await operation()
@@ -33,18 +37,14 @@ actor SourceLoaderActor {
     let cancellable = AnyCancellable {
       cancellableTask.cancel()
     }
-    currentCancellable = cancellable
+    currentOperation = (operationId: operationId, cancellable: cancellable)
 
     do {
       let result = try await cancellableTask.value
-      if currentCancellable === cancellable {
-        currentCancellable = nil
-      }
+      clearCurrentOperation(operationId: operationId, cancellable: cancellable)
       return result
     } catch {
-      if currentCancellable === cancellable {
-        currentCancellable = nil
-      }
+      clearCurrentOperation(operationId: operationId, cancellable: cancellable)
       if error is CancellationError {
         throw error
       }
@@ -52,35 +52,60 @@ actor SourceLoaderActor {
     }
   }
 
-  func cancel() async {
-    await cancelCurrentTask()
+  func cancel(through operationId: Int64) {
+    cancelledThroughOperationId = max(cancelledThroughOperationId, operationId)
+    if let currentOperation, currentOperation.operationId <= operationId {
+      currentOperation.cancellable.cancel()
+    }
   }
 
-  private func cancelCurrentTask() async {
-    currentCancellable?.cancel()
-    currentCancellable = nil
+  private func clearCurrentOperation(operationId: Int64, cancellable: AnyCancellable) {
+    guard let currentOperation,
+      currentOperation.operationId == operationId,
+      currentOperation.cancellable === cancellable else {
+      return
+    }
+    self.currentOperation = nil
   }
 }
 
 class SourceLoader {
   private let actor = SourceLoaderActor()
+  private let operationLock = NSLock()
+  private var lastIssuedOperationId: Int64 = 0
+
+  private func issueOperationId() -> Int64 {
+    operationLock.lock()
+    defer { operationLock.unlock() }
+    lastIssuedOperationId += 1
+    return lastIssuedOperationId
+  }
+
+  private func cancellationCutoff() -> Int64 {
+    operationLock.lock()
+    defer { operationLock.unlock() }
+    return lastIssuedOperationId
+  }
 
   func load<T>(priority: TaskPriority = .userInitiated, operation: @escaping () async throws -> T)
     async throws -> T
   {
-    return try await actor.load(priority: priority, operation: operation)
+    let operationId = issueOperationId()
+    return try await actor.load(operationId: operationId, priority: priority, operation: operation)
   }
 
   func cancel() async {
-    await actor.cancel()
+    let cutoff = cancellationCutoff()
+    await actor.cancel(through: cutoff)
   }
 
   /// Fire-and-forget cancellation for non-async callers (release/deinit paths).
   /// The cancel is dispatched onto a detached task and is not awaited, so it is
   /// best-effort and not guaranteed to complete before the caller returns.
   func cancelDetached() {
+    let cutoff = cancellationCutoff()
     Task {
-      await actor.cancel()
+      await actor.cancel(through: cutoff)
     }
   }
 }

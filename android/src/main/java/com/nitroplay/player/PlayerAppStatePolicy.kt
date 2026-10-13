@@ -5,7 +5,8 @@ internal data class PlayerAppStateSnapshot(
   val playWhenInactive: Boolean,
   val isPlaying: Boolean,
   val wasAutoPaused: Boolean,
-  val isExternalPlaybackActive: Boolean
+  val isExternalPlaybackActive: Boolean,
+  val wantsToPlay: Boolean
 )
 
 internal object PlayerAppStatePolicy {
@@ -20,8 +21,9 @@ internal object PlayerAppStatePolicy {
     return shouldAutoPauseWhenInactive(snapshot)
   }
 
+  // resume only when the player itself still wants to play; JS-managed players are resumed by the JS arbiter.
   fun shouldResumeWhenEnteringForeground(snapshot: PlayerAppStateSnapshot): Boolean {
-    return snapshot.wasAutoPaused
+    return snapshot.wasAutoPaused && snapshot.wantsToPlay
   }
 
   fun shouldClearAutoPausedAfterBecomeActive(snapshot: PlayerAppStateSnapshot): Boolean {

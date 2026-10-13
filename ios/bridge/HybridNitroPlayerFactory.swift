@@ -9,7 +9,12 @@ import Foundation
 import NitroModules
 
 class HybridNitroPlayerFactory: HybridNitroPlayerFactorySpec {
+  private let mainThreadExecutor = MainThreadResourceExecutor()
+
   func createPlayer(source: HybridNitroPlayerSourceSpec) throws -> HybridNitroPlayerSpec {
-    return try HybridNitroPlayer(source: source)
+    let result = mainThreadExecutor.run {
+      Result { try HybridNitroPlayer(source: source) }
+    }
+    return try result.get()
   }
 }

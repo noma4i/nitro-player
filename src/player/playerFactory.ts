@@ -1,11 +1,11 @@
 import { NitroModules } from 'react-native-nitro-modules';
-import type { NitroPlayer, NitroPlayerFactory } from '../bridge/nitro/NitroPlayer.nitro';
+import type { NitroPlayer, NitroPlayerFactory as NitroPlayerFactoryModule } from '../bridge/nitro/NitroPlayer.nitro';
 import type { NitroPlayerSource } from '../bridge/nitro/NitroPlayerSource.nitro';
-import type { NitroSourceInput } from '../source/types/NitroPlayerConfig';
 import { createNativeNitroSource, isNitroPlayerSource } from '../source/sourceFactory';
+import type { NitroSourceInput } from '../source/types/NitroPlayerConfig';
 import { tryParseNativeNitroPlayerError } from '../support/errors/NitroPlayerError';
 
-const NitroPlayerFactory = NitroModules.createHybridObject<NitroPlayerFactory>('NitroPlayerFactory');
+const nitroPlayerFactory = NitroModules.createHybridObject<NitroPlayerFactoryModule>('NitroPlayerFactory');
 
 export interface CreatedNitroPlayer {
   player: NitroPlayer;
@@ -24,7 +24,7 @@ export const createPlayer = (source: NitroSourceInput | NitroPlayerSource): Crea
     const nativeSource = isNitroPlayerSource(source) ? source : createNativeNitroSource(source);
 
     return {
-      player: NitroPlayerFactory.createPlayer(nativeSource),
+      player: nitroPlayerFactory.createPlayer(nativeSource),
       source: nativeSource
     };
   } catch (error) {

@@ -1,5 +1,5 @@
-import type { IgnoreSilentSwitchMode } from './IgnoreSilentSwitchMode';
-import type { MixAudioMode } from './MixAudioMode';
+import type { IgnoreSilentSwitchMode } from './IgnoreSilentSwitchMode.js';
+import type { MixAudioMode } from './MixAudioMode.js';
 export interface NitroPlayerDefaults {
     loop?: boolean;
     muted?: boolean;

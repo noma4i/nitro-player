@@ -13,10 +13,7 @@ describe('prepareSource policy defaults', () => {
 
     const source = prepareSource({ uri: 'https://cdn.example/video.m3u8', policy: 'feed' });
 
-    expect(source.buffer).toEqual({
-      preferredPeakBitRate: 6_000_000,
-      preferredForwardBufferDurationMs: 12_000
-    });
+    expect(source.buffer).toEqual({ preferredPeakBitRate: 6_000_000 });
   });
 
   it('merges explicit per-source buffer fields over policy defaults', () => {
@@ -29,13 +26,10 @@ describe('prepareSource policy defaults', () => {
       }
     });
 
-    expect(source.buffer).toEqual({
-      preferredPeakBitRate: 3_000_000,
-      preferredForwardBufferDurationMs: 12_000
-    });
+    expect(source.buffer).toEqual({ preferredPeakBitRate: 3_000_000 });
   });
 
-  it('keeps policy buffer defaults when explicit buffer is empty', () => {
+  it('clears policy buffer defaults when explicit buffer is empty', () => {
     const { prepareSource } = loadModules();
 
     const source = prepareSource({
@@ -44,10 +38,7 @@ describe('prepareSource policy defaults', () => {
       buffer: {}
     });
 
-    expect(source.buffer).toEqual({
-      preferredPeakBitRate: 6_000_000,
-      preferredForwardBufferDurationMs: 12_000
-    });
+    expect(source.buffer).toEqual({});
   });
 
   it('merges explicit retention fields over policy defaults', () => {
@@ -64,8 +55,7 @@ describe('prepareSource policy defaults', () => {
     expect(source.retention).toEqual({
       preload: 'none',
       offscreen: 'metadata',
-      trimDelayMs: 4000,
-      feedPoolEligible: true
+      trimDelayMs: 4000
     });
   });
 
@@ -93,21 +83,6 @@ describe('prepareSource policy defaults', () => {
     expect(source.buffer).toBeUndefined();
     expect(source.retention).toBeUndefined();
     expect(source.transport).toBeUndefined();
-    expect(source.preview).toBeUndefined();
-  });
-
-  it('memoizes config object inputs by reference', () => {
-    const { prepareSource } = loadModules();
-    const input = { uri: 'https://cdn.example/video.m3u8', policy: 'feed' as const };
-
-    const first = prepareSource(input);
-    const second = prepareSource(input);
-    const equivalent = prepareSource({ ...input });
-
-    expect(second).toBe(first);
-    expect(second.identity.playbackKey).toBe(first.identity.playbackKey);
-    expect(equivalent).not.toBe(first);
-    expect(equivalent.identity.playbackKey).toBe(first.identity.playbackKey);
   });
 
   it('changes playback key when policy changes the resolved config', () => {
@@ -126,16 +101,13 @@ describe('prepareSource policy defaults', () => {
     expect(prepareSource(prepared)).toBe(prepared);
   });
 
-  it('builds JS identity from playback key only', () => {
+  it('builds JS identity from playback key and request key', () => {
     const { prepareSource } = loadModules();
-    const removedIdentityKeys = ['request' + 'Key', 'preview' + 'Key'];
 
     const source = prepareSource({ uri: 'https://cdn.example/video.m3u8', headers: { Authorization: 'Bearer token' } });
 
-    expect(source.identity).toEqual({ playbackKey: expect.any(String) });
-    for (const key of removedIdentityKeys) {
-      expect(source.identity).not.toHaveProperty(key);
-    }
+    expect(source.identity).toEqual({ playbackKey: expect.any(String), requestKey: expect.any(String) });
+    expect(source.identity).not.toHaveProperty('previewKey');
   });
 
   it('keeps raw object validation coverage after merging defaults', () => {

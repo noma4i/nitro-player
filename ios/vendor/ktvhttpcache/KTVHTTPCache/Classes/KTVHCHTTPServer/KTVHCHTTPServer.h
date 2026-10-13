@@ -20,6 +20,11 @@
 - (BOOL)setPort:(UInt16)port;
 
 - (BOOL)start:(NSError **)error;
+
+/// Application-level liveness probe. Returns YES only when the server actually answers an
+/// HTTP request. A listening socket alone is not proof of readiness.
+/// Blocks up to 3 seconds - never call from the main thread.
+- (BOOL)ping;
 - (void)stop;
 
 - (BOOL)isProxyURL:(NSURL *)URL;

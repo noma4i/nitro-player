@@ -43,13 +43,13 @@ namespace margelo::nitro::video {
   struct FeedRingCatalogItem final {
   public:
     double index     SWIFT_PRIVATE;
-    std::optional<std::string> momentId     SWIFT_PRIVATE;
+    std::optional<std::string> itemId     SWIFT_PRIVATE;
     std::optional<std::string> sourceKey     SWIFT_PRIVATE;
     std::optional<NativeNitroPlayerConfig> source     SWIFT_PRIVATE;
 
   public:
     FeedRingCatalogItem() = default;
-    explicit FeedRingCatalogItem(double index, std::optional<std::string> momentId, std::optional<std::string> sourceKey, std::optional<NativeNitroPlayerConfig> source): index(index), momentId(momentId), sourceKey(sourceKey), source(source) {}
+    explicit FeedRingCatalogItem(double index, std::optional<std::string> itemId, std::optional<std::string> sourceKey, std::optional<NativeNitroPlayerConfig> source): index(index), itemId(itemId), sourceKey(sourceKey), source(source) {}
 
   public:
     friend bool operator==(const FeedRingCatalogItem& lhs, const FeedRingCatalogItem& rhs) = default;
@@ -66,7 +66,7 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::video::FeedRingCatalogItem(
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "index"))),
-        JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "momentId"))),
+        JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "itemId"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "sourceKey"))),
         JSIConverter<std::optional<margelo::nitro::video::NativeNitroPlayerConfig>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "source")))
       );
@@ -74,7 +74,7 @@ namespace margelo::nitro {
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::video::FeedRingCatalogItem& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "index"), JSIConverter<double>::toJSI(runtime, arg.index));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "momentId"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.momentId));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "itemId"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.itemId));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "sourceKey"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.sourceKey));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "source"), JSIConverter<std::optional<margelo::nitro::video::NativeNitroPlayerConfig>>::toJSI(runtime, arg.source));
       return obj;
@@ -88,7 +88,7 @@ namespace margelo::nitro {
         return false;
       }
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "index")))) return false;
-      if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "momentId")))) return false;
+      if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "itemId")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "sourceKey")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::video::NativeNitroPlayerConfig>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "source")))) return false;
       return true;

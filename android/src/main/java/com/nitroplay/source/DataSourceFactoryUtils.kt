@@ -35,7 +35,10 @@ fun buildHttpDataSourceFactory(context: Context, source: HybridNitroPlayerSource
 
   val factory = OkHttpDataSource.Factory(client)
 
-  val headers: Map<String, String>? = (source as? HybridNitroPlayerSource)?.config?.headers
+  val headers: Map<String, String>? = when (source) {
+    is HybridNitroPlayerSource -> source.config.headers
+    else -> null
+  }
 
   if (headers != null) {
     factory.setDefaultRequestProperties(headers)

@@ -1,5 +1,4 @@
 import type { NitroPlayer } from '../player/NitroPlayer';
-import { allKeysOf } from '../support/typeHelpers';
 
 export interface NitroPlayerViewEvents {
   /**
@@ -24,12 +23,3 @@ export interface NitroPlayerViewEvents {
    */
   willExitFullscreen: () => void;
 }
-
-const ALL_VIEW_EVENTS: (keyof NitroPlayerViewEvents)[] =
-  allKeysOf<NitroPlayerViewEvents>()(
-    'onAttached',
-    'onDetached',
-    'onFullscreenChange',
-    'willEnterFullscreen',
-    'willExitFullscreen'
-  );

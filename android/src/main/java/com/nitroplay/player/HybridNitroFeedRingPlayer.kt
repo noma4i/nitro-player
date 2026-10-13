@@ -1,8 +1,12 @@
+@file:kotlin.OptIn(com.nitroplay.video.support.MainThreadBlockingCall::class)
+
 package com.margelo.nitro.video
 
 import androidx.annotation.OptIn
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import android.os.Handler
+import android.os.Looper
 import com.facebook.proguard.annotations.DoNotStrip
 import com.nitroplay.feed.FeedRingCatalogEntry
 import com.nitroplay.feed.FeedRingCatalogState
@@ -15,45 +19,60 @@ import com.nitroplay.feed.FeedRingWindowPlanner
 import com.nitroplay.video.support.ListenerRegistry
 import com.nitroplay.video.support.Threading.runOnMainThread
 import com.nitroplay.video.support.Threading.runOnMainThreadSync
+import java.lang.ref.WeakReference
+import java.util.concurrent.atomic.AtomicLong
 
 @OptIn(UnstableApi::class)
 @DoNotStrip
 class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
-  private enum class SlotTransition(val value: String) {
-    CLEAR("clear"),
-    EMPTY("empty"),
-    EMPTY_SOURCE("empty-source"),
-    ERROR("error"),
-    MISSING_CENTER("missing-center"),
-    OUTSIDE_WINDOW("outside-window"),
-    READY("ready"),
-    RELEASED("released"),
-    REPLACE("replace"),
-    REUSE("reuse");
-
-    companion object {
-      fun clearReason(reason: String): SlotTransition {
-        return values().firstOrNull { transition -> transition.value == reason } ?: CLEAR
-      }
-    }
+  private companion object {
+    private val RECOVERY_DELAYS_MS = longArrayOf(250L, 1000L, 3000L, 8000L, 15000L)
+    private const val MAX_RECOVERY_ATTEMPTS = 7
+    private val NEXT_RING_TOKEN = AtomicLong(1L)
   }
 
   private data class CatalogItem(
     val index: Int,
-    val momentId: String?,
+    val itemId: String?,
     val sourceKey: String?,
     val source: HybridNitroPlayerSource?
   )
 
-  private class SlotState(val slotId: Int) {
-    val player = HybridNitroPlayer()
+  private data class PlaybackIntent(
+    val desiredAndCommitted: Boolean,
+    val muted: Boolean
+  )
+
+  private class SlotState(val slotId: Int) : RingSlotDiagnosticsProviding {
+    val player = HybridNitroPlayer().also {
+      it.reusePlayerInstanceForSourceChanges = true
+      it.isRingSlot = true
+      it.ringSlotDiagnosticsProvider = WeakReference(this)
+    }
     var assignedIndex: Int? = null
-    var momentId: String? = null
+    var itemId: String? = null
     var sourceKey: String? = null
     var generation: Long = 0
     var desiredPlay: Boolean = false
-    var lastTransition: SlotTransition = SlotTransition.EMPTY
+    var awaitingSourceCommit: Boolean = false
+    var lastTransition: String = "empty"
     var lastError: String? = null
+    var recoveryAttempt = 0
+    var recoveryAssignedIndex: Int? = null
+    var recoverySourceKey: String? = null
+    var recoveryRunnable: Runnable? = null
+    var recoveryScheduleToken = 0L
+    var lastPlaybackIntent: PlaybackIntent? = null
+
+    override fun ringSlotDiagnostics(): RingSlotDiagnostics {
+      return RingSlotDiagnostics(
+        slotId = slotId,
+        assignedIndex = assignedIndex,
+        awaitingSourceCommit = awaitingSourceCommit,
+        desiredPlay = desiredPlay,
+        lastTransition = lastTransition
+      )
+    }
   }
 
   private val slots = Array(3) { slotId -> SlotState(slotId) }
@@ -62,64 +81,121 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
   private val commandPlanner = FeedRingCommandPlanner()
   private val sourceCatalog = mutableMapOf<Int, CatalogItem>()
   private val listenerRegistry = ListenerRegistry()
+  private val recoveryHandler = Handler(Looper.getMainLooper())
+  override val ringToken = NEXT_RING_TOKEN.getAndIncrement().toDouble()
+  private var lastActivationId = -1L
+  private var lastProjectionRevision = -1L
+  @Volatile
   private var released = false
   private var slotListenersConfigured = false
   @Volatile
   private var cachedMemorySize = 0L
 
   override fun getPlayer(slotId: Double): HybridNitroPlayerSpec {
-    val normalizedSlotId = normalizeSlotId(slotId.toInt())
-    return runOnMainThreadSync {
-      if (released) {
-        throw IllegalStateException("Feed ring player is released")
-      }
-
-      slots[normalizedSlotId].player
+    val normalizedSlotId = normalizeSlotId(decodeBridgeInt(slotId, "slotId"))
+    if (released) {
+      throw IllegalStateException("Feed ring player is released")
     }
+
+    return slots[normalizedSlotId].player
   }
 
-  override fun replaceCatalog(catalog: FeedRingCatalog) {
-    val items = catalog.items.map { item -> parseCatalogItem(item) }
-    runOnMainThreadSync {
-      if (released) {
-        return@runOnMainThreadSync
-      }
-
-      val accepted = planner.replaceCatalog(
-        FeedRingCatalogState(
-          revision = catalog.revision.toLong(),
-          entries = items.map { item -> item.toPlannerEntry() }
-        )
-      )
-      if (!accepted) {
-        return@runOnMainThreadSync
-      }
-
-      sourceCatalog.clear()
-      items.forEach { item -> sourceCatalog[item.index] = item }
-      reconcileWindow()
-    }
-  }
-
-  override fun commitViewport(viewport: FeedRingViewport) {
-    val state = FeedRingViewportState(
-      revision = viewport.revision.toLong(),
-      centerIndex = viewport.centerIndex.toInt(),
-      playbackAllowed = viewport.playbackAllowed,
-      muted = viewport.muted
-    )
-
+  override fun configurePlayback(key: String, group: String, priority: Double, resumeAutomatically: Boolean) {
     runOnMainThread {
       if (released) {
         return@runOnMainThread
       }
 
-      val accepted = planner.commitViewport(state)
-      if (!accepted) {
+      slots.forEach { slot ->
+        slot.player.configurePlayback(
+          key = "$key:slot-${slot.slotId}",
+          group = group,
+          priority = priority,
+          resumeAutomatically = resumeAutomatically,
+          requiresView = true
+        )
+      }
+    }
+  }
+
+  override fun applyProjection(projection: FeedRingProjection) {
+    runOnMainThread {
+      if (released) {
         return@runOnMainThread
       }
 
+      val activationId: Long
+      val revision: Long
+      val windowCenterIndex: Int
+      val playbackIndex: Int
+      try {
+        activationId = decodeBridgeLong(projection.activationId, "activationId")
+        revision = decodeBridgeLong(projection.revision, "revision")
+        windowCenterIndex = decodeBridgeInt(projection.windowCenterIndex, "windowCenterIndex")
+        playbackIndex = decodeBridgeInt(projection.playbackIndex, "playbackIndex")
+        require(kotlin.math.abs(playbackIndex.toLong() - windowCenterIndex.toLong()) <= 1) {
+          "Feed ring playbackIndex must belong to the prepared window"
+        }
+      } catch (error: IllegalArgumentException) {
+        emitCommandEvent(
+          kind = "apply-error",
+          projectionRevision = if (projection.revision.isFinite()) projection.revision else -1.0,
+          error = error.message
+        )
+        return@runOnMainThread
+      }
+
+      if (activationId > lastActivationId) {
+        lastActivationId = activationId
+        lastProjectionRevision = -1
+        planner.resetRevisions()
+      }
+
+      if (revision <= lastProjectionRevision) {
+        emitCommandEvent(kind = "rejected", projectionRevision = projection.revision)
+        return@runOnMainThread
+      }
+
+      lastProjectionRevision = revision
+      val parseErrors = mutableListOf<String>()
+      projection.catalog?.let { catalog ->
+        val items = catalog.items.mapNotNull { item ->
+          try {
+            parseCatalogItem(item)
+          } catch (error: Throwable) {
+            parseErrors.add(error.message ?: error.toString())
+            null
+          }
+        }
+        planner.replaceCatalog(
+          FeedRingCatalogState(
+            revision = revision,
+            entries = items.map { item -> item.toPlannerEntry() }
+          )
+        )
+        sourceCatalog.clear()
+        items.forEach { item -> sourceCatalog[item.index] = item }
+        resetRecoveryForCatalogChanges()
+      }
+
+      planner.commitViewport(
+        FeedRingViewportState(
+          revision = revision,
+          windowCenterIndex = windowCenterIndex,
+          playbackIndex = playbackIndex,
+          playbackAllowed = projection.playbackAllowed,
+          muted = projection.muted
+        )
+      )
       reconcileWindow()
+      emitCommandEvent(kind = "accepted", projectionRevision = projection.revision)
+      if (parseErrors.isNotEmpty()) {
+        emitCommandEvent(
+          kind = "apply-error",
+          projectionRevision = projection.revision,
+          error = parseErrors.joinToString("; ")
+        )
+      }
     }
   }
 
@@ -130,7 +206,8 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
         catalogRevision = plannerSnapshot.catalogRevision.toDouble(),
         viewportRevision = plannerSnapshot.viewportRevision.toDouble(),
         catalogSize = plannerSnapshot.catalogSize.toDouble(),
-        centerIndex = plannerSnapshot.centerIndex?.toDouble(),
+        windowCenterIndex = plannerSnapshot.windowCenterIndex?.toDouble(),
+        playbackIndex = plannerSnapshot.playbackIndex?.toDouble(),
         playbackAllowed = plannerSnapshot.playbackAllowed,
         muted = plannerSnapshot.muted,
         released = released,
@@ -140,30 +217,35 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
   }
 
   override fun addSlotStateListener(listener: (state: FeedRingSlotState) -> Unit): ListenerSubscription {
-    return runOnMainThreadSync {
+    val subscription = listenerRegistry.add("slotState", listener)
+    runOnMainThread {
       configureSlotListenersIfNeeded()
-      val subscription = listenerRegistry.add("slotState", listener)
       slots.forEach { slot -> emitSlotState(slot) }
-      subscription
     }
+    return subscription
+  }
+
+  override fun addCommandEventListener(listener: (event: FeedRingCommandEvent) -> Unit): ListenerSubscription {
+    return listenerRegistry.add("commandEvent", listener)
   }
 
   override fun release() {
-    runOnMainThreadSync {
+    runOnMainThread {
       if (released) {
-        return@runOnMainThreadSync
+        return@runOnMainThread
       }
 
       released = true
       listenerRegistry.clearAll()
       slots.forEach { slot ->
+        resetRecovery(slot)
         slot.desiredPlay = false
         slot.player.release()
         slot.assignedIndex = null
-        slot.momentId = null
+        slot.itemId = null
         slot.sourceKey = null
         slot.generation += 1
-        slot.lastTransition = SlotTransition.RELEASED
+        slot.lastTransition = "released"
         emitSlotState(slot)
       }
       cachedMemorySize = 0L
@@ -176,8 +258,8 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
   private fun parseCatalogItem(item: FeedRingCatalogItem): CatalogItem {
     val source = item.source?.let { config -> sourceFactory.fromNitroPlayerConfig(config) as HybridNitroPlayerSource }
     return CatalogItem(
-      index = item.index.toInt(),
-      momentId = item.momentId,
+      index = decodeBridgeInt(item.index, "catalog.index"),
+      itemId = item.itemId,
       sourceKey = item.sourceKey,
       source = source
     )
@@ -186,7 +268,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
   private fun CatalogItem.toPlannerEntry(): FeedRingCatalogEntry {
     return FeedRingCatalogEntry(
       index = index,
-      momentId = momentId,
+      itemId = itemId,
       sourceKey = sourceKey,
       hasSource = source != null
     )
@@ -213,9 +295,9 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
     when (command.action) {
       FeedRingCommandAction.CLEAR -> clearSlot(
         slot = slot,
-        transition = SlotTransition.clearReason(command.reason ?: "clear"),
+        reason = command.reason ?: "clear",
         assignedIndex = command.assignedIndex,
-        momentId = command.momentId,
+        itemId = command.itemId,
         hadSource = command.hadSource
       )
       FeedRingCommandAction.REPLACE,
@@ -230,47 +312,113 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
     if (assignedIndex == null || sourceKey == null || source == null) {
       clearSlot(
         slot = slot,
-        transition = SlotTransition.EMPTY_SOURCE,
+        reason = "empty-source",
         assignedIndex = command.assignedIndex,
-        momentId = command.momentId,
+        itemId = command.itemId,
         hadSource = command.hadSource
       )
       return
     }
 
     val shouldPlay = command.shouldPlay
+    if (
+      command.action == FeedRingCommandAction.REPLACE &&
+      slot.lastTransition == "retry-wait" &&
+      slot.recoveryRunnable != null &&
+      hasRecoveryTarget(slot, assignedIndex, sourceKey)
+    ) {
+      slot.assignedIndex = assignedIndex
+      slot.itemId = command.itemId
+      syncSlotPlayback(slot)
+      emitSlotState(slot)
+      return
+    }
+    if (slot.recoveryAssignedIndex != null && !hasRecoveryTarget(slot, assignedIndex, sourceKey)) {
+      resetRecovery(slot)
+    }
     slot.assignedIndex = assignedIndex
-    slot.momentId = command.momentId
+    slot.itemId = command.itemId
     slot.desiredPlay = shouldPlay
     slot.lastError = null
 
-    val player = slot.player
-
     if (command.action == FeedRingCommandAction.REPLACE) {
+      if (slot.sourceKey == sourceKey && slot.lastTransition == "replace") {
+        // Same-source replace already in flight: the pending completion (same
+        // generation) owns the load; only refresh the play intent.
+        syncSlotPlayback(slot)
+        emitSlotState(slot)
+        return
+      }
+      prepareRecoveryTarget(slot, assignedIndex, sourceKey)
       slot.sourceKey = sourceKey
       slot.generation += 1
-      slot.lastTransition = SlotTransition.REPLACE
-      player.wantsToPlay = shouldPlay
-      applyStaticPlayerState(player, shouldPlay)
+      slot.awaitingSourceCommit = true
+      slot.lastTransition = "replace"
+      syncSlotPlayback(slot)
       emitSlotState(slot)
       val capturedGeneration = slot.generation
-      player.replaceSourceAsync(source)
+      startReplace(slot, source, capturedGeneration)
+      return
+    }
+
+    slot.lastTransition = "reuse"
+    syncSlotPlayback(slot)
+    emitSlotState(slot)
+  }
+
+  private fun clearSlot(
+    slot: SlotState,
+    reason: String,
+    assignedIndex: Int? = null,
+    itemId: String? = null,
+    hadSource: Boolean? = null
+  ) {
+    val player = slot.player
+    val shouldClearNativeSource = hadSource ?: (slot.sourceKey != null)
+    val isExactEmptyState =
+      !shouldClearNativeSource &&
+      slot.assignedIndex == assignedIndex &&
+      slot.itemId == itemId &&
+      slot.sourceKey == null &&
+      !slot.desiredPlay &&
+      !slot.awaitingSourceCommit &&
+      slot.lastError == null &&
+      slot.recoveryAssignedIndex == null &&
+      slot.recoverySourceKey == null
+    if (isExactEmptyState) {
+      return
+    }
+
+    val resetsLifecycle =
+      shouldClearNativeSource ||
+      slot.sourceKey != null ||
+      slot.awaitingSourceCommit ||
+      slot.lastError != null ||
+      slot.recoveryAssignedIndex != null ||
+      slot.recoverySourceKey != null
+    resetRecovery(slot)
+    slot.desiredPlay = false
+    slot.assignedIndex = assignedIndex
+    slot.sourceKey = null
+    slot.itemId = itemId
+    if (resetsLifecycle) {
+      slot.generation += 1
+    }
+    slot.awaitingSourceCommit = shouldClearNativeSource
+    slot.lastTransition = reason
+    slot.lastError = null
+    syncSlotPlayback(slot)
+    if (shouldClearNativeSource) {
+      val capturedGeneration = slot.generation
+      player.clearSourceAsync()
         .then {
           runOnMainThread {
             if (released || slot.generation != capturedGeneration) {
               return@runOnMainThread
             }
 
-            slot.lastError = null
-            slot.lastTransition = SlotTransition.READY
-            applyStaticPlayerState(player, slot.desiredPlay)
-            if (slot.desiredPlay) {
-              player.play()
-            } else {
-              player.pause()
-            }
+            slot.awaitingSourceCommit = false
             emitSlotState(slot)
-            refreshMemorySize()
           }
         }
         .catch { error ->
@@ -279,52 +427,11 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
               return@runOnMainThread
             }
 
-            slot.sourceKey = null
             slot.lastError = error.message ?: error.toString()
-            slot.lastTransition = SlotTransition.ERROR
-            slot.desiredPlay = false
+            slot.lastTransition = "error"
             emitSlotState(slot)
-            refreshMemorySize()
           }
         }
-      return
-    }
-
-    slot.lastTransition = SlotTransition.REUSE
-    applyStaticPlayerState(player, shouldPlay)
-    emitSlotState(slot)
-  }
-
-  private fun clearSlot(
-    slot: SlotState,
-    transition: SlotTransition,
-    assignedIndex: Int? = null,
-    momentId: String? = null,
-    hadSource: Boolean? = null
-  ) {
-    val player = slot.player
-    val shouldClearNativeSource = hadSource ?: (slot.sourceKey != null)
-    slot.desiredPlay = false
-    slot.assignedIndex = assignedIndex
-    slot.sourceKey = null
-    slot.momentId = momentId
-    slot.generation += 1
-    slot.lastTransition = transition
-    slot.lastError = null
-    if (shouldClearNativeSource) {
-      player.pause()
-      val capturedGeneration = slot.generation
-      player.clearSourceAsync().catch { error ->
-        runOnMainThread {
-          if (released || slot.generation != capturedGeneration) {
-            return@runOnMainThread
-          }
-
-          slot.lastError = error.message ?: error.toString()
-          slot.lastTransition = SlotTransition.ERROR
-          emitSlotState(slot)
-        }
-      }
     }
     emitSlotState(slot)
   }
@@ -333,57 +440,219 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
     return FeedRingCommandSlotState(
       slotId = slotId,
       assignedIndex = assignedIndex,
-      momentId = momentId,
-      sourceKey = sourceKey
+      itemId = itemId,
+      sourceKey = sourceKey,
+      hasSource = player.hasActiveSource,
+      hasError = player.playbackState.status == NitroPlayerStatus.ERROR || player.lastError != null
     )
   }
 
   private fun reconcilePlayback() {
     val plannedSlotsByIndex = planner.plannedSlots().associateBy { plannedSlot -> plannedSlot.assignedIndex }
     slots.forEach { slot ->
-      val player = slot.player
       val shouldPlay = slot.assignedIndex?.let { assignedIndex -> plannedSlotsByIndex[assignedIndex]?.shouldPlay } == true && slot.sourceKey != null
+      val didChangeDesiredPlay = slot.desiredPlay != shouldPlay
       slot.desiredPlay = shouldPlay
-      applyStaticPlayerState(player, shouldPlay)
-      if (slot.lastTransition == SlotTransition.REPLACE) {
-        return@forEach
+      val didApplyPlayback = syncSlotPlayback(slot)
+      if (didChangeDesiredPlay || didApplyPlayback) {
+        emitSlotState(slot)
       }
-      if (shouldPlay) {
-        player.play()
-      } else {
-        player.pause()
-      }
-      emitSlotState(slot)
     }
   }
 
-  private fun applyStaticPlayerState(player: HybridNitroPlayer, shouldPlay: Boolean) {
-    val muted = planner.snapshot().muted
-    player.loop = true
-    player.muted = muted || !shouldPlay
-    player.volume = if (muted || !shouldPlay) 0.0 else 1.0
+  private fun syncSlotPlayback(slot: SlotState, force: Boolean = false): Boolean {
+    val desiredAndCommitted = slot.desiredPlay && !slot.awaitingSourceCommit && slot.sourceKey != null
+    val intent = PlaybackIntent(
+      desiredAndCommitted = desiredAndCommitted,
+      muted = planner.snapshot().muted || !desiredAndCommitted
+    )
+    if (!force && slot.lastPlaybackIntent == intent) {
+      return false
+    }
+
+    slot.player.updatePlayback(
+      active = desiredAndCommitted,
+      visible = desiredAndCommitted,
+      muted = intent.muted,
+      loop = true
+    )
+    if (desiredAndCommitted) {
+      slot.player.requestPlayback()
+    } else {
+      slot.player.requestIdle()
+    }
+    slot.lastPlaybackIntent = intent
+    return true
+  }
+
+  private fun startReplace(slot: SlotState, source: HybridNitroPlayerSource, capturedGeneration: Long) {
+    try {
+      slot.player.replaceSourceAsync(source)
+        .then {
+          runOnMainThread {
+            if (released || slot.generation != capturedGeneration) {
+              return@runOnMainThread
+            }
+
+            slot.lastError = null
+            slot.awaitingSourceCommit = false
+            slot.lastTransition = "ready"
+            resetRecovery(slot)
+            syncSlotPlayback(slot, force = true)
+            emitSlotState(slot)
+            refreshMemorySize()
+          }
+        }
+        .catch { error ->
+          runOnMainThread {
+            handleReplaceFailure(slot, capturedGeneration, error)
+          }
+        }
+    } catch (error: Throwable) {
+      handleReplaceFailure(slot, capturedGeneration, error)
+    }
+  }
+
+  private fun handleReplaceFailure(slot: SlotState, capturedGeneration: Long, error: Throwable) {
+    if (released || slot.generation != capturedGeneration) {
+      return
+    }
+
+    slot.sourceKey = null
+    slot.awaitingSourceCommit = false
+    slot.desiredPlay = false
+    slot.lastError = error.message ?: error.toString()
+    slot.lastTransition = "retry-wait"
+    syncSlotPlayback(slot)
+    emitSlotState(slot)
+    scheduleRecovery(slot, capturedGeneration)
+    refreshMemorySize()
+  }
+
+  private fun prepareRecoveryTarget(slot: SlotState, assignedIndex: Int, sourceKey: String) {
+    cancelScheduledRecovery(slot)
+    if (!hasRecoveryTarget(slot, assignedIndex, sourceKey)) {
+      resetRecovery(slot)
+      slot.recoveryAssignedIndex = assignedIndex
+      slot.recoverySourceKey = sourceKey
+    }
+  }
+
+  private fun scheduleRecovery(slot: SlotState, capturedGeneration: Long) {
+    if (
+      slot.recoveryRunnable != null ||
+      slot.recoveryAssignedIndex == null ||
+      slot.recoverySourceKey == null
+    ) {
+      return
+    }
+
+    if (slot.recoveryAttempt >= MAX_RECOVERY_ATTEMPTS) {
+      emitCommandEvent(
+        kind = "source-error",
+        projectionRevision = lastProjectionRevision.toDouble(),
+        slotId = slot.slotId,
+        assignedIndex = slot.recoveryAssignedIndex,
+        error = slot.lastError ?: "recovery exhausted"
+      )
+      resetRecovery(slot)
+      slot.lastTransition = "source-error"
+      emitSlotState(slot)
+      return
+    }
+
+    slot.recoveryAttempt += 1
+    val delayMs = RECOVERY_DELAYS_MS[(slot.recoveryAttempt - 1).coerceAtMost(RECOVERY_DELAYS_MS.lastIndex)]
+    slot.recoveryScheduleToken += 1
+    val capturedScheduleToken = slot.recoveryScheduleToken
+    val runnable = object : Runnable {
+      override fun run() {
+        if (slot.recoveryScheduleToken != capturedScheduleToken) {
+          return
+        }
+
+        slot.recoveryRunnable = null
+        if (!isRecoveryCurrent(slot, capturedGeneration)) {
+          resetRecovery(slot)
+          return
+        }
+
+        reconcileWindow()
+      }
+    }
+    slot.recoveryRunnable = runnable
+    recoveryHandler.postDelayed(runnable, delayMs)
+  }
+
+  private fun isRecoveryCurrent(slot: SlotState, capturedGeneration: Long): Boolean {
+    val assignedIndex = slot.recoveryAssignedIndex ?: return false
+    val sourceKey = slot.recoverySourceKey ?: return false
+    val catalogItem = sourceCatalog[assignedIndex] ?: return false
+    if (
+      released ||
+      slot.generation != capturedGeneration ||
+      slot.assignedIndex != assignedIndex ||
+      catalogItem.sourceKey != sourceKey ||
+      catalogItem.source == null
+    ) {
+      return false
+    }
+
+    return planner.plannedSlots().any { plannedSlot ->
+      plannedSlot.slotId == slot.slotId &&
+        plannedSlot.assignedIndex == assignedIndex &&
+        plannedSlot.entry?.sourceKey == sourceKey &&
+        plannedSlot.entry?.hasSource == true
+    }
+  }
+
+  private fun resetRecoveryForCatalogChanges() {
+    slots.forEach { slot ->
+      val assignedIndex = slot.recoveryAssignedIndex ?: return@forEach
+      val sourceKey = slot.recoverySourceKey ?: return@forEach
+      val catalogItem = sourceCatalog[assignedIndex]
+      if (catalogItem?.sourceKey != sourceKey || catalogItem.source == null) {
+        resetRecovery(slot)
+      }
+    }
+  }
+
+  private fun hasRecoveryTarget(slot: SlotState, assignedIndex: Int, sourceKey: String): Boolean {
+    return slot.recoveryAssignedIndex == assignedIndex && slot.recoverySourceKey == sourceKey
+  }
+
+  private fun resetRecovery(slot: SlotState) {
+    cancelScheduledRecovery(slot)
+    slot.recoveryAttempt = 0
+    slot.recoveryAssignedIndex = null
+    slot.recoverySourceKey = null
+  }
+
+  private fun cancelScheduledRecovery(slot: SlotState) {
+    slot.recoveryRunnable?.let { recoveryHandler.removeCallbacks(it) }
+    slot.recoveryRunnable = null
+    slot.recoveryScheduleToken += 1
   }
 
   private fun snapshotSlot(slot: SlotState): FeedRingSlotSnapshot {
     val player = slot.player
-    val snapshotState = player.buildPlayerSnapshotState()
-    val playbackState = snapshotState.playbackState
-    val memorySnapshot = snapshotState.memorySnapshot
+    val playbackState = player.playbackState
+    val memorySnapshot = player.memorySnapshot
     val prepared = slot.sourceKey != null && (memorySnapshot.retentionState == RetentionLevel.HOT || playbackState.status != NitroPlayerStatus.IDLE)
     return FeedRingSlotSnapshot(
       slotId = slot.slotId.toDouble(),
       assignedIndex = slot.assignedIndex?.toDouble(),
-      momentId = slot.momentId,
+      itemId = slot.itemId,
       sourceKey = slot.sourceKey,
       generation = slot.generation.toDouble(),
       desiredPlay = slot.desiredPlay,
       attached = memorySnapshot.isAttachedToView,
       prepared = prepared,
-      ready = playbackState.isVisualReady || player.firstFrame != null,
-      playing = playbackState.isPlaying,
+      ready = !slot.awaitingSourceCommit && playbackState.isVisualReady,
+      playing = if (slot.awaitingSourceCommit) false else playbackState.isPlaying,
       buffering = playbackState.isBuffering,
-      currentTime = playbackState.currentTime,
-      duration = sanitizedDuration(playbackState.duration),
+      currentTime = if (slot.awaitingSourceCommit) 0.0 else playbackState.currentTime,
+      duration = if (slot.awaitingSourceCommit) 0.0 else sanitizedDuration(playbackState.duration),
       bufferDuration = playbackState.bufferDuration,
       bufferedPosition = playbackState.bufferedPosition,
       rate = playbackState.rate,
@@ -392,29 +661,47 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
       hasLoadedSource = player.hasLoadedCurrentSource,
       watchdogAttempts = player.playbackWatchdogAttemptCount.toDouble(),
       watchdogPending = player.hasPendingPlaybackWatchdog,
-      nativePlaybackState = playbackStateName(snapshotState.nativePlaybackState),
+      nativePlaybackState = playbackStateName(player.currentPlayerOrNull()?.playbackState ?: Player.STATE_IDLE),
       status = playbackState.status.name.lowercase(),
-      lastTransition = slot.lastTransition.value,
+      lastTransition = slot.lastTransition,
       lastError = slot.lastError
     )
   }
 
-  private fun emitSlotState(slot: SlotState, playbackState: PlaybackState? = null) {
-    val state = slotState(slot, playbackState)
+  private fun emitSlotState(slot: SlotState) {
+    val state = slotState(slot)
     listenerRegistry.emit<(FeedRingSlotState) -> Unit>("slotState") { listener -> listener(state) }
   }
 
-  private fun slotState(slot: SlotState, playbackStateOverride: PlaybackState? = null): FeedRingSlotState {
-    val playbackState = playbackStateOverride ?: slot.player.playbackState
+  private fun emitCommandEvent(
+    kind: String,
+    projectionRevision: Double,
+    slotId: Int? = null,
+    assignedIndex: Int? = null,
+    error: String? = null
+  ) {
+    val event = FeedRingCommandEvent(
+      ringToken = ringToken,
+      projectionRevision = projectionRevision,
+      kind = kind,
+      slotId = slotId?.toDouble(),
+      assignedIndex = assignedIndex?.toDouble(),
+      error = error
+    )
+    listenerRegistry.emit<(FeedRingCommandEvent) -> Unit>("commandEvent") { listener -> listener(event) }
+  }
+
+  private fun slotState(slot: SlotState): FeedRingSlotState {
+    val playbackState = slot.player.playbackState
     return FeedRingSlotState(
       slotId = slot.slotId.toDouble(),
       generation = slot.generation.toDouble(),
       assignedIndex = slot.assignedIndex?.toDouble(),
-      ready = playbackState.isVisualReady || slot.player.firstFrame != null,
-      playing = playbackState.isPlaying,
+      ready = !slot.awaitingSourceCommit && playbackState.isVisualReady,
+      playing = if (slot.awaitingSourceCommit) false else playbackState.isPlaying,
       buffering = playbackState.isBuffering,
-      currentTime = playbackState.currentTime,
-      duration = sanitizedDuration(playbackState.duration)
+      currentTime = if (slot.awaitingSourceCommit) 0.0 else playbackState.currentTime,
+      duration = if (slot.awaitingSourceCommit) 0.0 else sanitizedDuration(playbackState.duration)
     )
   }
 
@@ -425,10 +712,7 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
 
     slotListenersConfigured = true
     slots.forEach { slot ->
-      slot.player.eventEmitter.addOnPlaybackStateListener { playbackState ->
-        emitSlotState(slot, playbackState)
-      }
-      slot.player.eventEmitter.addOnFirstFrameListener {
+      slot.player.eventEmitter.addOnPlaybackStateListener {
         emitSlotState(slot)
       }
     }
@@ -457,5 +741,21 @@ class HybridNitroFeedRingPlayer : HybridNitroFeedRingPlayerSpec() {
       throw IllegalArgumentException("Feed ring slotId must be in 0..${slots.lastIndex}: $slotId")
     }
     return slotId
+  }
+
+  private fun decodeBridgeInt(value: Double, field: String): Int {
+    val decoded = decodeBridgeLong(value, field)
+    require(decoded in Int.MIN_VALUE..Int.MAX_VALUE) {
+      "Feed ring $field must fit a signed 32-bit integer: $value"
+    }
+    return decoded.toInt()
+  }
+
+  private fun decodeBridgeLong(value: Double, field: String): Long {
+    val maxSafeInteger = 9_007_199_254_740_991.0
+    require(value.isFinite() && value % 1.0 == 0.0 && value >= -maxSafeInteger && value <= maxSafeInteger) {
+      "Feed ring $field must be a safe integer: $value"
+    }
+    return value.toLong()
   }
 }

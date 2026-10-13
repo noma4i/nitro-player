@@ -2,7 +2,11 @@ import type { LibraryError, NitroPlayerErrorCode, NitroPlayerViewError, PlayerEr
 export * from './codes';
 export declare class NitroPlayerError<TCode extends NitroPlayerErrorCode> extends Error {
     private readonly _code;
+    private readonly _message;
+    private readonly _stack?;
     get code(): TCode;
+    get message(): string;
+    get stack(): string | undefined;
     /**
      * @internal
      */
@@ -15,7 +19,7 @@ export declare class NitroPlayerRuntimeError extends NitroPlayerError<LibraryErr
 }
 /**
  * Tries to parse an error coming from native to a typed JS video error.
- * @param {NitroPlayerError} nativeError The native error instance. This is a JSON in the legacy native module architecture.
+ * @param {NitroPlayerError} nativeError The native JSON error payload.
  * @returns A {@linkcode NitroPlayerRuntimeError} or {@linkcode NitroPlayerComponentError}, or the `nativeError` itself if it's not parsable
  * @method
  */

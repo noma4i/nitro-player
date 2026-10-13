@@ -12,11 +12,23 @@ class HlsPrefetchDeduperTest {
     var now = 1_000L
     val deduper = HlsPrefetchDeduper(windowMs = 60_000, maxEntries = 500) { now }
 
-    assertTrue(deduper.shouldPrefetch("stream-a"))
+    assertTrue(deduper.shouldPrefetch("stream-a", 1.0))
     now += 1_000
 
-    assertFalse(deduper.shouldPrefetch("stream-a"))
+    assertFalse(deduper.shouldPrefetch("stream-a", 1.0))
     assertEquals(1, deduper.size)
+  }
+
+  @Test
+  fun longerDurationInsideWindowPrefetchesAgain() {
+    var now = 1_000L
+    val deduper = HlsPrefetchDeduper(windowMs = 60_000, maxEntries = 500) { now }
+
+    assertTrue(deduper.shouldPrefetch("stream-a", 1.0))
+    now += 1_000
+
+    assertTrue(deduper.shouldPrefetch("stream-a", 4.0))
+    assertFalse(deduper.shouldPrefetch("stream-a", 2.0))
   }
 
   @Test
@@ -24,10 +36,10 @@ class HlsPrefetchDeduperTest {
     var now = 1_000L
     val deduper = HlsPrefetchDeduper(windowMs = 60_000, maxEntries = 500) { now }
 
-    assertTrue(deduper.shouldPrefetch("stream-a"))
+    assertTrue(deduper.shouldPrefetch("stream-a", 1.0))
     now += 60_001
 
-    assertTrue(deduper.shouldPrefetch("stream-a"))
+    assertTrue(deduper.shouldPrefetch("stream-a", 1.0))
     assertEquals(1, deduper.size)
   }
 
@@ -36,7 +48,7 @@ class HlsPrefetchDeduperTest {
     val deduper = HlsPrefetchDeduper(windowMs = 60_000, maxEntries = 500) { 1_000L }
 
     repeat(550) { index ->
-      assertTrue(deduper.shouldPrefetch("stream-$index"))
+      assertTrue(deduper.shouldPrefetch("stream-$index", 1.0))
     }
 
     assertEquals(500, deduper.size)
@@ -47,15 +59,15 @@ class HlsPrefetchDeduperTest {
     var now = 1_000L
     val deduper = HlsPrefetchDeduper(windowMs = 60_000, maxEntries = 2) { now }
 
-    assertTrue(deduper.shouldPrefetch("stream-a"))
-    assertTrue(deduper.shouldPrefetch("stream-b"))
+    assertTrue(deduper.shouldPrefetch("stream-a", 1.0))
+    assertTrue(deduper.shouldPrefetch("stream-b", 1.0))
     now += 60_001
 
-    assertTrue(deduper.shouldPrefetch("stream-a"))
-    assertTrue(deduper.shouldPrefetch("stream-c"))
+    assertTrue(deduper.shouldPrefetch("stream-a", 1.0))
+    assertTrue(deduper.shouldPrefetch("stream-c", 1.0))
 
-    assertFalse(deduper.shouldPrefetch("stream-a"))
-    assertTrue(deduper.shouldPrefetch("stream-b"))
+    assertFalse(deduper.shouldPrefetch("stream-a", 1.0))
+    assertTrue(deduper.shouldPrefetch("stream-b", 1.0))
   }
 
   @Test
@@ -63,10 +75,10 @@ class HlsPrefetchDeduperTest {
     var now = 1_000L
     val deduper = HlsPrefetchDeduper(windowMs = 60_000, maxEntries = 500) { now }
 
-    assertTrue(deduper.shouldPrefetch("stream-a"))
+    assertTrue(deduper.shouldPrefetch("stream-a", 1.0))
     now += 1_000
     deduper.forget("stream-a")
 
-    assertTrue(deduper.shouldPrefetch("stream-a"))
+    assertTrue(deduper.shouldPrefetch("stream-a", 1.0))
   }
 }

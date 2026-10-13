@@ -1,51 +1,41 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { NitroPlayerSource } from '../../bridge/nitro/NitroPlayerSource.nitro';
+import { prepareSource } from '../../source/prepareSource';
 import type { NitroSourceInput } from '../../source/types/NitroPlayerConfig';
 import { NitroPlayer } from '../NitroPlayer';
-import { useManagedInstance } from '../../support/useManagedInstance';
-import { prepareSource } from '../../source/prepareSource';
 
 /**
  * Creates a `NitroPlayer` instance and manages its lifecycle.
  * @param source - The source of the video to play
  * @returns The `NitroPlayer` instance
  */
-export const useNitroPlayer = (source: NitroSourceInput | NitroPlayerSource) => {
+export const useNitroPlayer = (source: NitroSourceInput | NitroPlayerSource): NitroPlayer => {
   const preparedSource = prepareSource(source);
-  const player = useManagedInstance(
-    {
-      factory: () => {
-        return new NitroPlayer(preparedSource);
-      },
-      cleanup: player => {
-        player.__destroy();
-      }
-    },
-    []
-  );
+  const [player] = useState(() => new NitroPlayer(preparedSource));
 
-  const previousSourceRef = useRef(preparedSource);
-  const replaceQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const preparedSourceRef = useRef(preparedSource);
+  preparedSourceRef.current = preparedSource;
+
+  const previousPlaybackKeyRef = useRef(preparedSource.identity.playbackKey);
   const sourceUpdateIdRef = useRef(0);
 
-  useEffect(() => {
-    if (previousSourceRef.current.identity.playbackKey === preparedSource.identity.playbackKey) {
+  useLayoutEffect(() => {
+    player.__createNativePlayer(preparedSourceRef.current);
+    previousPlaybackKeyRef.current = preparedSourceRef.current.identity.playbackKey;
+    return () => player.__destroy();
+  }, [player]);
+
+  useLayoutEffect(() => {
+    if (previousPlaybackKeyRef.current === preparedSource.identity.playbackKey) {
       return;
     }
 
-    previousSourceRef.current = preparedSource;
+    previousPlaybackKeyRef.current = preparedSource.identity.playbackKey;
 
     const updateId = ++sourceUpdateIdRef.current;
+    const source = preparedSourceRef.current;
     let isActive = true;
-    replaceQueueRef.current = replaceQueueRef.current
-      .catch(() => undefined)
-      .then(() => {
-        if (!isActive) {
-          return;
-        }
-
-        return player.replaceSourceAsync(preparedSource);
-      })
+    void player.replaceSourceAsync(source)
       .catch(error => {
         if (isActive && sourceUpdateIdRef.current === updateId) {
           console.error('[NitroPlay] Failed to replace source from React update', error);
@@ -55,7 +45,7 @@ export const useNitroPlayer = (source: NitroSourceInput | NitroPlayerSource) => 
     return () => {
       isActive = false;
     };
-  }, [player, preparedSource]);
+  }, [player, preparedSource.identity.playbackKey]);
 
   return player;
 };

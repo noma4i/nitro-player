@@ -18,8 +18,8 @@ public extension MemorySnapshot {
   /**
    * Create a new instance of `MemorySnapshot`.
    */
-  init(playerBytes: Double, sourceBytes: Double, totalBytes: Double, preloadLevel: PreloadLevel, retentionState: RetentionLevel, isAttachedToView: Bool, isPlaying: Bool, wantsToPlay: Bool, isFeedPoolEligible: Bool, isPinnedForFeedPool: Bool, isPinnedForResourcePressure: Bool) {
-    self.init(playerBytes, sourceBytes, totalBytes, preloadLevel, retentionState, isAttachedToView, isPlaying, wantsToPlay, isFeedPoolEligible, isPinnedForFeedPool, isPinnedForResourcePressure)
+  init(playerBytes: Double, sourceBytes: Double, totalBytes: Double, preloadLevel: PreloadLevel, retentionState: RetentionLevel, isAttachedToView: Bool, isPlaying: Bool, wantsToPlay: Bool, isRingSlot: Bool, isPinnedForResourcePressure: Bool) {
+    self.init(playerBytes, sourceBytes, totalBytes, preloadLevel, retentionState, isAttachedToView, isPlaying, wantsToPlay, isRingSlot, isPinnedForResourcePressure)
   }
 
   @inline(__always)
@@ -63,13 +63,8 @@ public extension MemorySnapshot {
   }
   
   @inline(__always)
-  var isFeedPoolEligible: Bool {
-    return self.__isFeedPoolEligible
-  }
-  
-  @inline(__always)
-  var isPinnedForFeedPool: Bool {
-    return self.__isPinnedForFeedPool
+  var isRingSlot: Bool {
+    return self.__isRingSlot
   }
   
   @inline(__always)

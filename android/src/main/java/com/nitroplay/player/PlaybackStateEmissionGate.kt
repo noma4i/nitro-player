@@ -1,8 +1,5 @@
 package com.margelo.nitro.video
 
-import android.os.Looper
-import com.nitroplay.video.BuildConfig
-
 internal data class PlaybackStateFingerprint(
   val status: NitroPlayerStatus,
   val currentTimeBits: Long,
@@ -60,29 +57,22 @@ internal data class PlaybackStateFingerprint(
 }
 
 internal class PlaybackStateEmissionGate {
+  private val lock = Any()
   private var lastFingerprint: PlaybackStateFingerprint? = null
 
   fun shouldEmit(fingerprint: PlaybackStateFingerprint): Boolean {
-    assertMainThread()
-    if (fingerprint == lastFingerprint) {
-      return false
+    synchronized(lock) {
+      if (fingerprint == lastFingerprint) {
+        return false
+      }
+      lastFingerprint = fingerprint
+      return true
     }
-    lastFingerprint = fingerprint
-    return true
   }
 
   fun reset() {
-    assertMainThread()
-    lastFingerprint = null
-  }
-
-  private fun assertMainThread() {
-    // Playback-state emission is main-thread only: ExoPlayer listeners and the
-    // progress Handler loop run on Looper.getMainLooper().
-    if (BuildConfig.DEBUG) {
-      check(Looper.myLooper() == Looper.getMainLooper()) {
-        "PlaybackStateEmissionGate must be used on the main thread"
-      }
+    synchronized(lock) {
+      lastFingerprint = null
     }
   }
 }

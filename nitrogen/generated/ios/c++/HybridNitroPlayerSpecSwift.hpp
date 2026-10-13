@@ -222,6 +222,36 @@ namespace margelo::nitro::video {
         std::rethrow_exception(__result.error());
       }
     }
+    inline void configurePlayback(const std::string& key, const std::string& group, double priority, bool resumeAutomatically, bool requiresView) override {
+      auto __result = _swiftPart.configurePlayback(key, group, std::forward<decltype(priority)>(priority), std::forward<decltype(resumeAutomatically)>(resumeAutomatically), std::forward<decltype(requiresView)>(requiresView));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void updatePlayback(bool active, bool visible, bool muted, bool loop) override {
+      auto __result = _swiftPart.updatePlayback(std::forward<decltype(active)>(active), std::forward<decltype(visible)>(visible), std::forward<decltype(muted)>(muted), std::forward<decltype(loop)>(loop));
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void requestPlayback() override {
+      auto __result = _swiftPart.requestPlayback();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void requestIdle() override {
+      auto __result = _swiftPart.requestIdle();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
+    inline void clearPlayback() override {
+      auto __result = _swiftPart.clearPlayback();
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+    }
     inline void seekBy(double time) override {
       auto __result = _swiftPart.seekBy(std::forward<decltype(time)>(time));
       if (__result.hasError()) [[unlikely]] {

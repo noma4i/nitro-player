@@ -10,6 +10,7 @@ package com.margelo.nitro.video
 import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
+import dalvik.annotation.optimization.FastNative
 import com.margelo.nitro.core.HybridObject
 
 /**
@@ -25,7 +26,9 @@ import com.margelo.nitro.core.HybridObject
 )
 abstract class HybridNitroFeedRingPlayerSpec: HybridObject() {
   // Properties
-  
+  @get:DoNotStrip
+  @get:Keep
+  abstract val ringToken: Double
 
   // Methods
   @DoNotStrip
@@ -34,11 +37,11 @@ abstract class HybridNitroFeedRingPlayerSpec: HybridObject() {
   
   @DoNotStrip
   @Keep
-  abstract fun replaceCatalog(catalog: FeedRingCatalog): Unit
+  abstract fun configurePlayback(key: String, group: String, priority: Double, resumeAutomatically: Boolean): Unit
   
   @DoNotStrip
   @Keep
-  abstract fun commitViewport(viewport: FeedRingViewport): Unit
+  abstract fun applyProjection(projection: FeedRingProjection): Unit
   
   @DoNotStrip
   @Keep
@@ -50,6 +53,15 @@ abstract class HybridNitroFeedRingPlayerSpec: HybridObject() {
   @Keep
   private fun addSlotStateListener_cxx(listener: Func_void_FeedRingSlotState): ListenerSubscription {
     val __result = addSlotStateListener(listener)
+    return __result
+  }
+  
+  abstract fun addCommandEventListener(listener: (event: FeedRingCommandEvent) -> Unit): ListenerSubscription
+  
+  @DoNotStrip
+  @Keep
+  private fun addCommandEventListener_cxx(listener: Func_void_FeedRingCommandEvent): ListenerSubscription {
+    val __result = addCommandEventListener(listener)
     return __result
   }
   
@@ -67,6 +79,7 @@ abstract class HybridNitroFeedRingPlayerSpec: HybridObject() {
   @Keep
   protected open class CxxPart(javaPart: HybridNitroFeedRingPlayerSpec): HybridObject.CxxPart(javaPart) {
     // C++ JHybridNitroFeedRingPlayerSpec::CxxPart::initHybrid(...)
+    @FastNative
     external override fun initHybrid(): HybridData
   }
   override fun createCxxPart(): CxxPart {

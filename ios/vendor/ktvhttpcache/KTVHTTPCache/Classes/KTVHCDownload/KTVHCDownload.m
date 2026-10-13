@@ -105,12 +105,12 @@ NSString * const KTVHCContentTypeBinaryOctetStream      = @"binary/octet-stream"
     static NSArray<NSString *> *obj = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        obj = @[@"User-Agent",
-                @"Connection",
-                @"Accept",
-                @"Accept-Encoding",
-                @"Accept-Language",
-                @"Range"];
+        obj = @[@"user-agent",
+                @"connection",
+                @"accept",
+                @"accept-encoding",
+                @"accept-language",
+                @"range"];
     });
     return obj;
 }
@@ -121,16 +121,21 @@ NSString * const KTVHCContentTypeBinaryOctetStream      = @"binary/octet-stream"
     mRequest.timeoutInterval = self.timeoutInterval;
     mRequest.cachePolicy = NSURLRequestReloadIgnoringCacheData;
     [request.headers enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *obj, BOOL *stop) {
-        if ([self.availableHeaderKeys containsObject:key] ||
-            [self.whitelistHeaderKeys containsObject:key]) {
+        NSString *normalizedHeaderName = key.lowercaseString;
+        BOOL isWhitelisted = NO;
+        for (NSString *whitelistHeaderKey in self.whitelistHeaderKeys) {
+            if ([whitelistHeaderKey caseInsensitiveCompare:key] == NSOrderedSame) {
+                isWhitelisted = YES;
+                break;
+            }
+        }
+        if ([self.availableHeaderKeys containsObject:normalizedHeaderName] ||
+            isWhitelisted ||
+            [request.forwardedHeaderNames containsObject:normalizedHeaderName]) {
             [mRequest setValue:obj forHTTPHeaderField:key];
         }
     }];
     [self.additionalHeaders enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *obj, BOOL *stop) {
-        [mRequest setValue:obj forHTTPHeaderField:key];
-    }];
-    NSDictionary<NSString *, NSString *> *URLHeaders = [self.additionalHeadersByURL objectForKey:request.URL.absoluteString];
-    [URLHeaders enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *obj, BOOL *stop) {
         [mRequest setValue:obj forHTTPHeaderField:key];
     }];
     return mRequest;;

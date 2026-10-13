@@ -121,7 +121,12 @@ open class HybridNitroFeedRingPlayerSpec_cxx {
   }
 
   // Properties
-  
+  public final var ringToken: Double {
+    @inline(__always)
+    get {
+      return self.__implementation.ringToken
+    }
+  }
 
   // Methods
   @inline(__always)
@@ -140,9 +145,9 @@ open class HybridNitroFeedRingPlayerSpec_cxx {
   }
   
   @inline(__always)
-  public final func replaceCatalog(catalog: FeedRingCatalog) -> bridge.Result_void_ {
+  public final func configurePlayback(key: std.string, group: std.string, priority: Double, resumeAutomatically: Bool) -> bridge.Result_void_ {
     do {
-      try self.__implementation.replaceCatalog(catalog: catalog)
+      try self.__implementation.configurePlayback(key: String(key), group: String(group), priority: priority, resumeAutomatically: resumeAutomatically)
       return bridge.create_Result_void_()
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
@@ -151,9 +156,9 @@ open class HybridNitroFeedRingPlayerSpec_cxx {
   }
   
   @inline(__always)
-  public final func commitViewport(viewport: FeedRingViewport) -> bridge.Result_void_ {
+  public final func applyProjection(projection: FeedRingProjection) -> bridge.Result_void_ {
     do {
-      try self.__implementation.commitViewport(viewport: viewport)
+      try self.__implementation.applyProjection(projection: projection)
       return bridge.create_Result_void_()
     } catch (let __error) {
       let __exceptionPtr = __error.toCpp()
@@ -180,6 +185,23 @@ open class HybridNitroFeedRingPlayerSpec_cxx {
         let __wrappedFunction = bridge.wrap_Func_void_FeedRingSlotState(listener)
         return { (__state: FeedRingSlotState) -> Void in
           __wrappedFunction.call(__state)
+        }
+      }())
+      let __resultCpp = __result
+      return bridge.create_Result_ListenerSubscription_(__resultCpp)
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_ListenerSubscription_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func addCommandEventListener(listener: bridge.Func_void_FeedRingCommandEvent) -> bridge.Result_ListenerSubscription_ {
+    do {
+      let __result = try self.__implementation.addCommandEventListener(listener: { () -> (FeedRingCommandEvent) -> Void in
+        let __wrappedFunction = bridge.wrap_Func_void_FeedRingCommandEvent(listener)
+        return { (__event: FeedRingCommandEvent) -> Void in
+          __wrappedFunction.call(__event)
         }
       }())
       let __resultCpp = __result

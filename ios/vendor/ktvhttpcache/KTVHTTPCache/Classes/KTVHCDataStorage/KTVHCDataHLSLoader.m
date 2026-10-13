@@ -33,7 +33,7 @@
         self.waitingLoaders = [NSMutableArray array];
         self.runningLoaders = [NSMutableArray array];
         self.finishedLoaders = [NSMutableArray array];
-        self.unit = [[KTVHCDataUnitPool pool] unitWithURL:self.request.URL];
+        self.unit = [[KTVHCDataUnitPool pool] unitWithURL:self.request.cacheURL];
         KTVHCLogDataHLSLoader(@"%p, Create loader\norignalRequest : %@", self, self.request);
     }
     return self;
@@ -56,7 +56,7 @@
         [self setupLoaders];
     } else {
         __weak typeof(self) weakSelf = self;
-        self.task = [[KTVHCHLSTool tool] taskWithURL:self.request.URL completionHandler:^(NSData *data, NSError *error) {
+        self.task = [[KTVHCHLSTool tool] taskWithRequest:self.request completionHandler:^(NSData *data, NSError *error) {
             __strong typeof(weakSelf) strongSelf = weakSelf;
             [strongSelf handleResponeWithData:data error:error];
         }];
@@ -109,7 +109,7 @@
         [self.waitingLoaders addObjectsFromArray:loaders];
     } else {
         for (NSURL* URL in URLs) {
-            KTVHCDataRequest *request = [[KTVHCDataRequest alloc] initWithURL:URL headers:nil];
+            KTVHCDataRequest *request = [self.request newRequestWithURL:URL];
             KTVHCDataLoader *segmentLoader = [[KTVHCDataLoader alloc] initWithRequest:request];
             [self.waitingLoaders addObject:segmentLoader];
         }

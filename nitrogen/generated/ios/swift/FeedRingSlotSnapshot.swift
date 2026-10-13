@@ -18,7 +18,7 @@ public extension FeedRingSlotSnapshot {
   /**
    * Create a new instance of `FeedRingSlotSnapshot`.
    */
-  init(slotId: Double, assignedIndex: Double?, momentId: String?, sourceKey: String?, generation: Double, desiredPlay: Bool, attached: Bool, prepared: Bool, ready: Bool, playing: Bool, buffering: Bool, currentTime: Double, duration: Double, bufferDuration: Double?, bufferedPosition: Double?, rate: Double?, wantsToPlay: Bool?, retentionState: String?, hasLoadedSource: Bool?, watchdogAttempts: Double?, watchdogPending: Bool?, nativePlaybackState: String?, status: String?, lastTransition: String, lastError: String?) {
+  init(slotId: Double, assignedIndex: Double?, itemId: String?, sourceKey: String?, generation: Double, desiredPlay: Bool, attached: Bool, prepared: Bool, ready: Bool, playing: Bool, buffering: Bool, currentTime: Double, duration: Double, bufferDuration: Double?, bufferedPosition: Double?, rate: Double?, wantsToPlay: Bool?, retentionState: String?, hasLoadedSource: Bool?, watchdogAttempts: Double?, watchdogPending: Bool?, nativePlaybackState: String?, status: String?, lastTransition: String, lastError: String?) {
     self.init(slotId, { () -> bridge.std__optional_double_ in
       if let __unwrappedValue = assignedIndex {
         return bridge.create_std__optional_double_(__unwrappedValue)
@@ -26,7 +26,7 @@ public extension FeedRingSlotSnapshot {
         return .init()
       }
     }(), { () -> bridge.std__optional_std__string_ in
-      if let __unwrappedValue = momentId {
+      if let __unwrappedValue = itemId {
         return bridge.create_std__optional_std__string_(std.string(__unwrappedValue))
       } else {
         return .init()
@@ -124,10 +124,10 @@ public extension FeedRingSlotSnapshot {
   }
   
   @inline(__always)
-  var momentId: String? {
+  var itemId: String? {
     return { () -> String? in
-      if bridge.has_value_std__optional_std__string_(self.__momentId) {
-        let __unwrapped = bridge.get_std__optional_std__string_(self.__momentId)
+      if bridge.has_value_std__optional_std__string_(self.__itemId) {
+        let __unwrapped = bridge.get_std__optional_std__string_(self.__itemId)
         return String(__unwrapped)
       } else {
         return nil

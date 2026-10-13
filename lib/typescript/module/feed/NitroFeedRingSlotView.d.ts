@@ -1,9 +1,9 @@
 import React from 'react';
-import { type NitroPlayerViewProps } from '../view/NitroPlayerView';
-import type { ResizeMode } from '../view/types/ResizeMode';
-import type { SurfaceType } from '../bridge/nitro/NitroPlayerViewManager.nitro';
-import type { NitroFeedRingPlayer, NitroFeedRingSlotId } from './NitroFeedRingPlayer';
-export interface NitroFeedRingSlotViewProps extends Omit<NitroPlayerViewProps, 'player' | 'source' | 'controls' | 'keepScreenAwake' | 'resizeMode' | 'surfaceType'> {
+import type { SurfaceType } from '../bridge/nitro/NitroPlayerViewManager.nitro.js';
+import { type NitroPlayerViewProps } from '../view/NitroPlayerView.js';
+import type { ResizeMode } from '../view/types/ResizeMode.js';
+import type { NitroFeedRingPlayer, NitroFeedRingSlotId } from './NitroFeedRingPlayer.js';
+export interface NitroFeedRingSlotViewProps extends Omit<NitroPlayerViewProps, 'player' | 'controls' | 'keepScreenAwake' | 'resizeMode' | 'surfaceType'> {
     ring: NitroFeedRingPlayer;
     slotId: NitroFeedRingSlotId;
     revision?: number;

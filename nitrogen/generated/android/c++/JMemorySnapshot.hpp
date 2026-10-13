@@ -50,10 +50,8 @@ namespace margelo::nitro::video {
       jboolean isPlaying = this->getFieldValue(fieldIsPlaying);
       static const auto fieldWantsToPlay = clazz->getField<jboolean>("wantsToPlay");
       jboolean wantsToPlay = this->getFieldValue(fieldWantsToPlay);
-      static const auto fieldIsFeedPoolEligible = clazz->getField<jboolean>("isFeedPoolEligible");
-      jboolean isFeedPoolEligible = this->getFieldValue(fieldIsFeedPoolEligible);
-      static const auto fieldIsPinnedForFeedPool = clazz->getField<jboolean>("isPinnedForFeedPool");
-      jboolean isPinnedForFeedPool = this->getFieldValue(fieldIsPinnedForFeedPool);
+      static const auto fieldIsRingSlot = clazz->getField<jboolean>("isRingSlot");
+      jboolean isRingSlot = this->getFieldValue(fieldIsRingSlot);
       static const auto fieldIsPinnedForResourcePressure = clazz->getField<jboolean>("isPinnedForResourcePressure");
       jboolean isPinnedForResourcePressure = this->getFieldValue(fieldIsPinnedForResourcePressure);
       return MemorySnapshot(
@@ -65,8 +63,7 @@ namespace margelo::nitro::video {
         static_cast<bool>(isAttachedToView),
         static_cast<bool>(isPlaying),
         static_cast<bool>(wantsToPlay),
-        static_cast<bool>(isFeedPoolEligible),
-        static_cast<bool>(isPinnedForFeedPool),
+        static_cast<bool>(isRingSlot),
         static_cast<bool>(isPinnedForResourcePressure)
       );
     }
@@ -77,7 +74,7 @@ namespace margelo::nitro::video {
      */
     [[maybe_unused]]
     static jni::local_ref<JMemorySnapshot::javaobject> fromCpp(const MemorySnapshot& value) {
-      using JSignature = JMemorySnapshot(double, double, double, jni::alias_ref<JPreloadLevel>, jni::alias_ref<JRetentionLevel>, jboolean, jboolean, jboolean, jboolean, jboolean, jboolean);
+      using JSignature = JMemorySnapshot(double, double, double, jni::alias_ref<JPreloadLevel>, jni::alias_ref<JRetentionLevel>, jboolean, jboolean, jboolean, jboolean, jboolean);
       static const auto clazz = javaClassStatic();
       static const auto create = clazz->getStaticMethod<JSignature>("fromCpp");
       return create(
@@ -90,8 +87,7 @@ namespace margelo::nitro::video {
         value.isAttachedToView,
         value.isPlaying,
         value.wantsToPlay,
-        value.isFeedPoolEligible,
-        value.isPinnedForFeedPool,
+        value.isRingSlot,
         value.isPinnedForResourcePressure
       );
     }

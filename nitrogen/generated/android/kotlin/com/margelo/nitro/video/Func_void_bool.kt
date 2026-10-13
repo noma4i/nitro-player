@@ -10,7 +10,6 @@ package com.margelo.nitro.video
 import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
-import dalvik.annotation.optimization.FastNative
 
 
 /**
@@ -59,7 +58,6 @@ class Func_void_bool_cxx: Func_void_bool {
   override fun invoke(fullscreen: Boolean): Unit
     = invoke_cxx(fullscreen)
 
-  @FastNative
   private external fun invoke_cxx(fullscreen: Boolean): Unit
 }
 

@@ -11,9 +11,9 @@ class FeedRingCommandPlannerTest {
     val planner = FeedRingCommandPlanner()
     val commands = planner.plan(
       plannedSlots = listOf(
-        planned(slotId = 2, assignedIndex = -1, momentId = "previous", sourceKey = "source-previous", shouldPlay = false),
-        planned(slotId = 0, assignedIndex = 0, momentId = "current", sourceKey = "source-current", shouldPlay = true),
-        planned(slotId = 1, assignedIndex = 1, momentId = "next", sourceKey = null, shouldPlay = false)
+        planned(slotId = 2, assignedIndex = -1, itemId = "previous", sourceKey = "source-previous", shouldPlay = false),
+        planned(slotId = 0, assignedIndex = 0, itemId = "current", sourceKey = "source-current", shouldPlay = true),
+        planned(slotId = 1, assignedIndex = 1, itemId = "next", sourceKey = null, shouldPlay = false)
       ),
       slots = listOf(
         slot(0, assignedIndex = 0, sourceKey = "source-current"),
@@ -42,11 +42,12 @@ class FeedRingCommandPlannerTest {
         slot(1, assignedIndex = null, sourceKey = null)
       )
     )
-    assertEquals(listOf("missing-center", "missing-center"), missingCenterCommands.map { it.reason })
-    assertEquals(listOf(true, false), missingCenterCommands.map { it.hadSource })
+    assertEquals(listOf(0), missingCenterCommands.map { it.slotId })
+    assertEquals(listOf("missing-center"), missingCenterCommands.map { it.reason })
+    assertEquals(listOf(true), missingCenterCommands.map { it.hadSource })
 
     val outsideCommands = planner.plan(
-      plannedSlots = listOf(planned(slotId = 0, assignedIndex = 10, momentId = "ten", sourceKey = "source-ten", shouldPlay = true)),
+      plannedSlots = listOf(planned(slotId = 0, assignedIndex = 10, itemId = "ten", sourceKey = "source-ten", shouldPlay = true)),
       slots = listOf(
         slot(0, assignedIndex = null, sourceKey = null),
         slot(1, assignedIndex = 4, sourceKey = "source-old")
@@ -62,7 +63,7 @@ class FeedRingCommandPlannerTest {
   fun rejectedReplaceWithClearedSourceKeyPlansReplaceAgain() {
     val planner = FeedRingCommandPlanner()
     val commands = planner.plan(
-      plannedSlots = listOf(planned(slotId = 0, assignedIndex = 0, momentId = "current", sourceKey = "source-current", shouldPlay = true)),
+      plannedSlots = listOf(planned(slotId = 0, assignedIndex = 0, itemId = "current", sourceKey = "source-current", shouldPlay = true)),
       slots = listOf(slot(0, assignedIndex = 0, sourceKey = null))
     )
 
@@ -74,7 +75,7 @@ class FeedRingCommandPlannerTest {
   fun hadSourceProbeUsesOnlyPriorSourceKey() {
     val planner = FeedRingCommandPlanner()
     val commands = planner.plan(
-      plannedSlots = listOf(planned(slotId = 0, assignedIndex = 0, momentId = "current", sourceKey = null, shouldPlay = false)),
+      plannedSlots = listOf(planned(slotId = 0, assignedIndex = 0, itemId = "current", sourceKey = null, shouldPlay = false)),
       slots = listOf(slot(0, assignedIndex = 0, sourceKey = null))
     )
 
@@ -82,10 +83,31 @@ class FeedRingCommandPlannerTest {
     assertFalse(commands.single().hadSource)
   }
 
+  @Test
+  fun unchangedHealthySlotPlansNothing() {
+    val commands = FeedRingCommandPlanner().plan(
+      plannedSlots = listOf(planned(slotId = 0, assignedIndex = 0, itemId = "current", sourceKey = "source-current", shouldPlay = true)),
+      slots = listOf(slot(0, assignedIndex = 0, sourceKey = "source-current", itemId = "current"))
+    )
+
+    assertTrue(commands.isEmpty())
+  }
+
+  @Test
+  fun slotWithErrorPlansReplaceInsteadOfReuse() {
+    val commands = FeedRingCommandPlanner().plan(
+      plannedSlots = listOf(planned(slotId = 0, assignedIndex = 0, itemId = "current", sourceKey = "source-current", shouldPlay = true)),
+      slots = listOf(slot(0, assignedIndex = 0, sourceKey = "source-current", itemId = "current", hasError = true))
+    )
+
+    assertEquals(FeedRingCommandAction.REPLACE, commands.single().action)
+    assertTrue(commands.single().hadSource)
+  }
+
   private fun planned(
     slotId: Int,
     assignedIndex: Int,
-    momentId: String,
+    itemId: String,
     sourceKey: String?,
     shouldPlay: Boolean
   ): FeedRingPlannedSlot {
@@ -94,7 +116,7 @@ class FeedRingCommandPlannerTest {
       assignedIndex = assignedIndex,
       entry = FeedRingCatalogEntry(
         index = assignedIndex,
-        momentId = momentId,
+        itemId = itemId,
         sourceKey = sourceKey,
         hasSource = sourceKey != null
       ),
@@ -102,7 +124,20 @@ class FeedRingCommandPlannerTest {
     )
   }
 
-  private fun slot(slotId: Int, assignedIndex: Int?, sourceKey: String?): FeedRingCommandSlotState {
-    return FeedRingCommandSlotState(slotId = slotId, assignedIndex = assignedIndex, momentId = null, sourceKey = sourceKey)
+  private fun slot(
+    slotId: Int,
+    assignedIndex: Int?,
+    sourceKey: String?,
+    itemId: String? = null,
+    hasError: Boolean = false
+  ): FeedRingCommandSlotState {
+    return FeedRingCommandSlotState(
+      slotId = slotId,
+      assignedIndex = assignedIndex,
+      itemId = itemId,
+      sourceKey = sourceKey,
+      hasSource = sourceKey != null,
+      hasError = hasError
+    )
   }
 }

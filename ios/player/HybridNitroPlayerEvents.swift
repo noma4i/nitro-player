@@ -20,6 +20,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
     cancelStartupRecovery()
     wantsToPlay = false
+    playbackAudioSessionBinding.pause()
     status = .ended
     resetPlaybackError()
     emitPlaybackState()
@@ -28,7 +29,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onRateChanged(rate: Float) {
     updateCachedRate(rate)
-    emitPlaybackState()
+    updateAndEmitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
@@ -44,25 +45,25 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onPlaybackBufferEmpty() {
     enterBuffering()
-    emitPlaybackState()
+    updateAndEmitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-periodic-observer-guard)
   func onProgressUpdate(currentTime: Double, bufferDuration: Double) {
-    updateCachedProgress(currentTime: currentTime, bufferDuration: bufferDuration)
+    observePlaybackProgress(currentTime: currentTime, bufferDuration: bufferDuration)
     emitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onDurationChanged(duration: Double) {
     updateCachedDuration(duration)
-    emitPlaybackState()
+    updateAndEmitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onBufferDurationChanged(bufferDuration: Double) {
     updateCachedProgress(bufferDuration: bufferDuration)
-    emitPlaybackState()
+    updateAndEmitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
@@ -72,14 +73,16 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
     if cachedTimeControlStatus != .waitingToPlayAtSpecifiedRate {
       status = resolvePlayPauseStatus()
     }
-    emitPlaybackState()
+    updateAndEmitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onTimeControlStatusChanged(status: AVPlayer.TimeControlStatus) {
     updateCachedTimeControlStatus(status)
     if player.status == .failed || playerItem?.status == .failed {
-      let message = player.error?.localizedDescription ?? playerItem?.error?.localizedDescription ?? "Unknown playback error"
+      let error = player.error ?? playerItem?.error
+      recoverAudioSessionForRenderFailureIfNeeded(error)
+      let message = error?.localizedDescription ?? "Unknown playback error"
       if attemptStartupRecoveryIfNeeded(message: message) {
         return
       }
@@ -89,21 +92,24 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
     switch status {
     case .waitingToPlayAtSpecifiedRate:
-      enterBuffering()
+      resetObservedPlaybackProgress()
+      isCurrentlyBuffering = true
+      if wantsToPlay {
+        self.status = .buffering
+      }
       break
 
     case .playing:
-      isCurrentlyBuffering = false
-      resetPlaybackError()
-      self.status = .playing
+      if wantsToPlay && !isPlaying && self.status != .buffering {
+        self.status = .loading
+      }
       break
 
     case .paused:
-      isCurrentlyBuffering = false
-      resetPlaybackError()
+      resetObservedPlaybackProgress()
       let resolved = resolvePlayPauseStatus()
-      if self.status != .ended && self.status != .idle && resolved == .paused {
-        self.status = .paused
+      if self.status != .ended && self.status != .idle {
+        self.status = resolved
       }
       break
 
@@ -111,13 +117,20 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       break
     }
 
-    emitPlaybackState()
+    updateAndEmitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onPlayerStatusChanged(status: AVPlayer.Status) {
+    if status == .readyToPlay {
+      // Player and item readiness arrive in either order; both hooks funnel into the
+      // same guarded warm preroll.
+      prerollWarmPipelineIfNeeded()
+    }
     if status == .failed || playerItem?.status == .failed {
-      let message = player.error?.localizedDescription ?? playerItem?.error?.localizedDescription ?? "Unknown playback error"
+      let error = player.error ?? playerItem?.error
+      recoverAudioSessionForRenderFailureIfNeeded(error)
+      let message = error?.localizedDescription ?? "Unknown playback error"
       if attemptStartupRecoveryIfNeeded(message: message) {
         return
       }
@@ -128,7 +141,9 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
   func onPlayerItemStatusChanged(status: AVPlayerItem.Status) {
     if status == .failed {
-      let message = playerItem?.error?.localizedDescription ?? "Unknown playback error"
+      let error = playerItem?.error
+      recoverAudioSessionForRenderFailureIfNeeded(error)
+      let message = error?.localizedDescription ?? "Unknown playback error"
       if attemptStartupRecoveryIfNeeded(message: message) {
         return
       }
@@ -152,7 +167,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
     case .readyToPlay:
       guard let playerItem else { return }
       updateCachedDuration(playerItem.duration.seconds)
-      // Fire onLoad / first-frame only on the first ready of this source
+      // Fire onLoad only on the first ready of this source
       // generation; later READY transitions (rebuffer, seek) must not re-emit.
       let isFirstLoadForGeneration = !hasLoadedCurrentSource
       markCurrentSourceLoaded()
@@ -166,14 +181,6 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
           .init(currentTime, duration, height, width, .unknown)
         )
 
-        if let asset = playerItem.asset as? AVURLAsset {
-          let sourceUrl = currentHybridSource()?.previewSourceUri() ?? asset.url.absoluteString
-          cacheFirstFrameContext(
-            sourceUri: sourceUrl,
-            width: width,
-            height: height
-          )
-        }
       }
 
       if playerItem.isPlaybackLikelyToKeepUp
@@ -185,8 +192,9 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
 
       if wantsToPlay {
         startCurrentItemPlayback()
-        self.status = rate > 0 ? .playing : resolvePlayPauseStatus()
         schedulePlaybackStartWatchdog()
+      } else {
+        prerollWarmPipelineIfNeeded()
       }
 
     case .failed:
@@ -201,7 +209,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       break
     }
 
-    emitPlaybackState()
+    updateAndEmitPlaybackState()
   }
 
   // lifecycle-audit:ignore(guarded-by-notifyDelegate)
@@ -237,7 +245,7 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       readyToDisplay = false
       resetPlaybackMetrics(currentTime: resumePositionSeconds)
       resetPlaybackError()
-      emitPlaybackState()
+      updateAndEmitPlaybackState()
     } else {
       // Clean up state when playerItem is cleared
       isCurrentlyBuffering = false
@@ -245,8 +253,12 @@ extension HybridNitroPlayer: NitroPlayerObserverDelegate {
       status = .idle
       resetPlaybackMetrics(currentTime: resumePositionSeconds)
       resetPlaybackError()
-      emitPlaybackState()
+      updateAndEmitPlaybackState()
     }
+  }
+
+  func updateAndEmitPlaybackState() {
+    emitPlaybackState()
   }
 
   private func enterBuffering() {

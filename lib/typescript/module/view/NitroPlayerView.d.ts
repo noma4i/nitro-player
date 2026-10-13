@@ -1,13 +1,12 @@
 import * as React from 'react';
 import type { ViewProps, ViewStyle } from 'react-native';
-import type { ListenerSubscription } from '../bridge/nitro/NitroPlayerEventEmitter.nitro';
-import type { SurfaceType } from '../bridge/nitro/NitroPlayerViewManager.nitro';
-import { type NitroPlayerViewEvents } from './events';
-import type { ResizeMode } from './types/ResizeMode';
-import type { NitroSourceInput } from '../source/types/NitroPlayerConfig';
-import type { NitroPlayerDefaults } from '../player/types/NitroPlayerDefaults';
-import { NitroPlayer } from '../player/NitroPlayer';
-interface NitroPlayerViewBaseProps extends Partial<NitroPlayerViewEvents>, ViewProps {
+import type { ListenerSubscription } from '../bridge/nitro/NitroPlayerEventEmitter.nitro.js';
+import type { SurfaceType } from '../bridge/nitro/NitroPlayerViewManager.nitro.js';
+import { NitroPlayer } from '../player/NitroPlayer.js';
+import type { NitroPlayerDefaults } from '../player/types/NitroPlayerDefaults.js';
+import { type NitroPlayerViewEvents } from './events.js';
+import type { ResizeMode } from './types/ResizeMode.js';
+export interface NitroPlayerViewBaseProps extends Partial<NitroPlayerViewEvents>, ViewProps {
     playerDefaults?: NitroPlayerDefaults;
     style?: ViewStyle;
     controls?: boolean;
@@ -15,13 +14,9 @@ interface NitroPlayerViewBaseProps extends Partial<NitroPlayerViewEvents>, ViewP
     keepScreenAwake?: boolean;
     surfaceType?: SurfaceType;
 }
-export type NitroPlayerViewProps = NitroPlayerViewBaseProps & ({
-    source: NitroSourceInput;
-    player?: never;
-} | {
+export type NitroPlayerViewProps = NitroPlayerViewBaseProps & {
     player: NitroPlayer;
-    source?: never;
-});
+};
 export interface NitroPlayerViewRef {
     player: NitroPlayer;
     isAttached: boolean;
@@ -29,6 +24,8 @@ export interface NitroPlayerViewRef {
     exitFullscreen: () => void;
     addEventListener: <Event extends keyof NitroPlayerViewEvents>(event: Event, callback: NitroPlayerViewEvents[Event]) => ListenerSubscription;
 }
-declare const MemoizedNitroPlayerView: React.NamedExoticComponent<NitroPlayerViewProps & React.RefAttributes<NitroPlayerViewRef>>;
-export default MemoizedNitroPlayerView;
+declare const _default: React.NamedExoticComponent<NitroPlayerViewBaseProps & {
+    player: NitroPlayer;
+} & React.RefAttributes<NitroPlayerViewRef>>;
+export default _default;
 //# sourceMappingURL=NitroPlayerView.d.ts.map

@@ -10,7 +10,6 @@ package com.margelo.nitro.video
 import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
-import dalvik.annotation.optimization.FastNative
 
 
 /**
@@ -59,7 +58,6 @@ class Func_void_PlaybackError_cxx: Func_void_PlaybackError {
   override fun invoke(error: PlaybackError): Unit
     = invoke_cxx(error)
 
-  @FastNative
   private external fun invoke_cxx(error: PlaybackError): Unit
 }
 

@@ -50,15 +50,16 @@ namespace margelo::nitro::video {
 
   public:
     // Properties
-    
+    double getRingToken() override;
 
   public:
     // Methods
     std::shared_ptr<HybridNitroPlayerSpec> getPlayer(double slotId) override;
-    void replaceCatalog(const FeedRingCatalog& catalog) override;
-    void commitViewport(const FeedRingViewport& viewport) override;
+    void configurePlayback(const std::string& key, const std::string& group, double priority, bool resumeAutomatically) override;
+    void applyProjection(const FeedRingProjection& projection) override;
     FeedRingSnapshot snapshot() override;
     ListenerSubscription addSlotStateListener(const std::function<void(const FeedRingSlotState& /* state */)>& listener) override;
+    ListenerSubscription addCommandEventListener(const std::function<void(const FeedRingCommandEvent& /* event */)>& listener) override;
     void release() override;
 
   private:

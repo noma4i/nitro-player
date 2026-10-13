@@ -10,6 +10,7 @@
 // Include C++ implementation defined types
 #include "HybridNitroFeedRingPlayerFactorySpecSwift.hpp"
 #include "HybridNitroFeedRingPlayerSpecSwift.hpp"
+#include "HybridNitroPlaybackRuntimeSpecSwift.hpp"
 #include "HybridNitroPlayerEventEmitterSpecSwift.hpp"
 #include "HybridNitroPlayerFactorySpecSwift.hpp"
 #include "HybridNitroPlayerSourceFactorySpecSwift.hpp"
@@ -17,8 +18,6 @@
 #include "HybridNitroPlayerSpecSwift.hpp"
 #include "HybridNitroPlayerViewManagerFactorySpecSwift.hpp"
 #include "HybridNitroPlayerViewManagerSpecSwift.hpp"
-#include "HybridNitroStreamCacheSpecSwift.hpp"
-#include "HybridNitroVideoPreviewSpecSwift.hpp"
 #include "NitroPlay-Swift-Cxx-Umbrella.hpp"
 #include <NitroModules/NitroDefines.hpp>
 
@@ -56,6 +55,14 @@ namespace margelo::nitro::video::bridge::swift {
     };
   }
   
+  // pragma MARK: std::function<void(const FeedRingCommandEvent& /* event */)>
+  Func_void_FeedRingCommandEvent create_Func_void_FeedRingCommandEvent(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlay::Func_void_FeedRingCommandEvent::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const FeedRingCommandEvent& event) mutable -> void {
+      swiftClosure.call(event);
+    };
+  }
+  
   // pragma MARK: std::shared_ptr<HybridNitroFeedRingPlayerSpec>
   std::shared_ptr<HybridNitroFeedRingPlayerSpec> create_std__shared_ptr_HybridNitroFeedRingPlayerSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
     NitroPlay::HybridNitroFeedRingPlayerSpec_cxx swiftPart = NitroPlay::HybridNitroFeedRingPlayerSpec_cxx::fromUnsafe(swiftUnsafePointer);
@@ -85,6 +92,46 @@ namespace margelo::nitro::video::bridge::swift {
     }
     #endif
     NitroPlay::HybridNitroFeedRingPlayerFactorySpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
+    return swiftPart.toUnsafe();
+  }
+  
+  // pragma MARK: std::function<void(const NitroCacheStats& /* result */)>
+  Func_void_NitroCacheStats create_Func_void_NitroCacheStats(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlay::Func_void_NitroCacheStats::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const NitroCacheStats& result) mutable -> void {
+      swiftClosure.call(result);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
+  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlay::Func_void_std__exception_ptr::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::exception_ptr& error) mutable -> void {
+      swiftClosure.call(error);
+    };
+  }
+  
+  // pragma MARK: std::function<void(const std::string& /* uri */)>
+  Func_void_std__string create_Func_void_std__string(void* NON_NULL swiftClosureWrapper) noexcept {
+    auto swiftClosure = NitroPlay::Func_void_std__string::fromUnsafe(swiftClosureWrapper);
+    return [swiftClosure = std::move(swiftClosure)](const std::string& uri) mutable -> void {
+      swiftClosure.call(uri);
+    };
+  }
+  
+  // pragma MARK: std::shared_ptr<HybridNitroPlaybackRuntimeSpec>
+  std::shared_ptr<HybridNitroPlaybackRuntimeSpec> create_std__shared_ptr_HybridNitroPlaybackRuntimeSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
+    NitroPlay::HybridNitroPlaybackRuntimeSpec_cxx swiftPart = NitroPlay::HybridNitroPlaybackRuntimeSpec_cxx::fromUnsafe(swiftUnsafePointer);
+    return std::make_shared<margelo::nitro::video::HybridNitroPlaybackRuntimeSpecSwift>(swiftPart);
+  }
+  void* NON_NULL get_std__shared_ptr_HybridNitroPlaybackRuntimeSpec_(std__shared_ptr_HybridNitroPlaybackRuntimeSpec_ cppType) {
+    std::shared_ptr<margelo::nitro::video::HybridNitroPlaybackRuntimeSpecSwift> swiftWrapper = std::dynamic_pointer_cast<margelo::nitro::video::HybridNitroPlaybackRuntimeSpecSwift>(cppType);
+    #ifdef NITRO_DEBUG
+    if (swiftWrapper == nullptr) [[unlikely]] {
+      throw std::runtime_error("Class \"HybridNitroPlaybackRuntimeSpec\" is not implemented in Swift!");
+    }
+    #endif
+    NitroPlay::HybridNitroPlaybackRuntimeSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
     return swiftPart.toUnsafe();
   }
   
@@ -118,14 +165,6 @@ namespace margelo::nitro::video::bridge::swift {
     #endif
     NitroPlay::HybridNitroPlayerEventEmitterSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
     return swiftPart.toUnsafe();
-  }
-  
-  // pragma MARK: std::function<void(const std::exception_ptr& /* error */)>
-  Func_void_std__exception_ptr create_Func_void_std__exception_ptr(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlay::Func_void_std__exception_ptr::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const std::exception_ptr& error) mutable -> void {
-      swiftClosure.call(error);
-    };
   }
   
   // pragma MARK: std::shared_ptr<HybridNitroPlayerFactorySpec>
@@ -164,14 +203,6 @@ namespace margelo::nitro::video::bridge::swift {
   Func_void_onLoadStartData create_Func_void_onLoadStartData(void* NON_NULL swiftClosureWrapper) noexcept {
     auto swiftClosure = NitroPlay::Func_void_onLoadStartData::fromUnsafe(swiftClosureWrapper);
     return [swiftClosure = std::move(swiftClosure)](const onLoadStartData& data) mutable -> void {
-      swiftClosure.call(data);
-    };
-  }
-  
-  // pragma MARK: std::function<void(const onFirstFrameData& /* data */)>
-  Func_void_onFirstFrameData create_Func_void_onFirstFrameData(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlay::Func_void_onFirstFrameData::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const onFirstFrameData& data) mutable -> void {
       swiftClosure.call(data);
     };
   }
@@ -261,70 +292,6 @@ namespace margelo::nitro::video::bridge::swift {
     }
     #endif
     NitroPlay::HybridNitroPlayerViewManagerFactorySpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
-    return swiftPart.toUnsafe();
-  }
-  
-  // pragma MARK: std::function<void(const NitroStreamCacheStats& /* result */)>
-  Func_void_NitroStreamCacheStats create_Func_void_NitroStreamCacheStats(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlay::Func_void_NitroStreamCacheStats::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const NitroStreamCacheStats& result) mutable -> void {
-      swiftClosure.call(result);
-    };
-  }
-  
-  // pragma MARK: std::function<void(const NitroStreamSourceCacheStats& /* result */)>
-  Func_void_NitroStreamSourceCacheStats create_Func_void_NitroStreamSourceCacheStats(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlay::Func_void_NitroStreamSourceCacheStats::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const NitroStreamSourceCacheStats& result) mutable -> void {
-      swiftClosure.call(result);
-    };
-  }
-  
-  // pragma MARK: std::function<void(const std::variant<nitro::NullType, NitroStreamNetworkThroughputEstimate>& /* result */)>
-  Func_void_std__variant_nitro__NullType__NitroStreamNetworkThroughputEstimate_ create_Func_void_std__variant_nitro__NullType__NitroStreamNetworkThroughputEstimate_(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlay::Func_void_std__variant_nitro__NullType__NitroStreamNetworkThroughputEstimate_::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const std::variant<nitro::NullType, NitroStreamNetworkThroughputEstimate>& result) mutable -> void {
-      swiftClosure.call(result);
-    };
-  }
-  
-  // pragma MARK: std::shared_ptr<HybridNitroStreamCacheSpec>
-  std::shared_ptr<HybridNitroStreamCacheSpec> create_std__shared_ptr_HybridNitroStreamCacheSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
-    NitroPlay::HybridNitroStreamCacheSpec_cxx swiftPart = NitroPlay::HybridNitroStreamCacheSpec_cxx::fromUnsafe(swiftUnsafePointer);
-    return std::make_shared<margelo::nitro::video::HybridNitroStreamCacheSpecSwift>(swiftPart);
-  }
-  void* NON_NULL get_std__shared_ptr_HybridNitroStreamCacheSpec_(std__shared_ptr_HybridNitroStreamCacheSpec_ cppType) {
-    std::shared_ptr<margelo::nitro::video::HybridNitroStreamCacheSpecSwift> swiftWrapper = std::dynamic_pointer_cast<margelo::nitro::video::HybridNitroStreamCacheSpecSwift>(cppType);
-    #ifdef NITRO_DEBUG
-    if (swiftWrapper == nullptr) [[unlikely]] {
-      throw std::runtime_error("Class \"HybridNitroStreamCacheSpec\" is not implemented in Swift!");
-    }
-    #endif
-    NitroPlay::HybridNitroStreamCacheSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
-    return swiftPart.toUnsafe();
-  }
-  
-  // pragma MARK: std::function<void(const std::variant<nitro::NullType, std::string>& /* result */)>
-  Func_void_std__variant_nitro__NullType__std__string_ create_Func_void_std__variant_nitro__NullType__std__string_(void* NON_NULL swiftClosureWrapper) noexcept {
-    auto swiftClosure = NitroPlay::Func_void_std__variant_nitro__NullType__std__string_::fromUnsafe(swiftClosureWrapper);
-    return [swiftClosure = std::move(swiftClosure)](const std::variant<nitro::NullType, std::string>& result) mutable -> void {
-      swiftClosure.call(result);
-    };
-  }
-  
-  // pragma MARK: std::shared_ptr<HybridNitroVideoPreviewSpec>
-  std::shared_ptr<HybridNitroVideoPreviewSpec> create_std__shared_ptr_HybridNitroVideoPreviewSpec_(void* NON_NULL swiftUnsafePointer) noexcept {
-    NitroPlay::HybridNitroVideoPreviewSpec_cxx swiftPart = NitroPlay::HybridNitroVideoPreviewSpec_cxx::fromUnsafe(swiftUnsafePointer);
-    return std::make_shared<margelo::nitro::video::HybridNitroVideoPreviewSpecSwift>(swiftPart);
-  }
-  void* NON_NULL get_std__shared_ptr_HybridNitroVideoPreviewSpec_(std__shared_ptr_HybridNitroVideoPreviewSpec_ cppType) {
-    std::shared_ptr<margelo::nitro::video::HybridNitroVideoPreviewSpecSwift> swiftWrapper = std::dynamic_pointer_cast<margelo::nitro::video::HybridNitroVideoPreviewSpecSwift>(cppType);
-    #ifdef NITRO_DEBUG
-    if (swiftWrapper == nullptr) [[unlikely]] {
-      throw std::runtime_error("Class \"HybridNitroVideoPreviewSpec\" is not implemented in Swift!");
-    }
-    #endif
-    NitroPlay::HybridNitroVideoPreviewSpec_cxx& swiftPart = swiftWrapper->getSwiftPart();
     return swiftPart.toUnsafe();
   }
 

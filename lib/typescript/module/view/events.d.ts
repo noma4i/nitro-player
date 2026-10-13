@@ -1,4 +1,4 @@
-import type { NitroPlayer } from '../player/NitroPlayer';
+import type { NitroPlayer } from '../player/NitroPlayer.js';
 export interface NitroPlayerViewEvents {
     /**
      * Called when the native video view becomes attached.

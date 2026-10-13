@@ -9,15 +9,17 @@ enum class FeedRingCommandAction {
 data class FeedRingCommandSlotState(
   val slotId: Int,
   val assignedIndex: Int?,
-  val momentId: String?,
-  val sourceKey: String?
+  val itemId: String?,
+  val sourceKey: String?,
+  val hasSource: Boolean,
+  val hasError: Boolean
 )
 
 data class FeedRingCommand(
   val action: FeedRingCommandAction,
   val slotId: Int,
   val assignedIndex: Int?,
-  val momentId: String?,
+  val itemId: String?,
   val sourceKey: String?,
   val shouldPlay: Boolean,
   val reason: String?,
@@ -30,7 +32,7 @@ class FeedRingCommandPlanner {
     slots: List<FeedRingCommandSlotState>
   ): List<FeedRingCommand> {
     if (plannedSlots.isEmpty()) {
-      return slots.map { slot -> clearCommand(slot, "missing-center", null, null) }
+      return slots.mapNotNull { slot -> clearCommandIfNeeded(slot, "missing-center", null, null) }
     }
 
     val slotsById = slots.associateBy { slot -> slot.slotId }
@@ -43,51 +45,71 @@ class FeedRingCommandPlanner {
       val entry = plannedSlot.entry
       val sourceKey = entry?.sourceKey
       if (entry == null || !entry.hasSource || sourceKey == null) {
-        commands += clearCommand(
+        clearCommandIfNeeded(
           slot = slot,
           reason = "empty-source",
           assignedIndex = plannedSlot.assignedIndex,
-          momentId = entry?.momentId
-        )
+          itemId = entry?.itemId
+        )?.let { command -> commands += command }
+        return@forEach
+      }
+
+      if (
+        slot.assignedIndex == plannedSlot.assignedIndex &&
+        slot.itemId == entry.itemId &&
+        slot.sourceKey == sourceKey &&
+        slot.hasSource &&
+        !slot.hasError
+      ) {
         return@forEach
       }
 
       commands += FeedRingCommand(
-        action = if (slot.sourceKey == sourceKey) FeedRingCommandAction.REUSE else FeedRingCommandAction.REPLACE,
+        action = if (slot.sourceKey == sourceKey && slot.hasSource && !slot.hasError) FeedRingCommandAction.REUSE else FeedRingCommandAction.REPLACE,
         slotId = plannedSlot.slotId,
         assignedIndex = plannedSlot.assignedIndex,
-        momentId = entry.momentId,
+        itemId = entry.itemId,
         sourceKey = sourceKey,
         shouldPlay = plannedSlot.shouldPlay,
         reason = null,
-        hadSource = slot.sourceKey != null
+        hadSource = slot.sourceKey != null || slot.hasSource || slot.hasError
       )
     }
 
     slots.forEach { slot ->
       if (!touchedSlotIds.contains(slot.slotId)) {
-        commands += clearCommand(slot, "outside-window", null, null)
+        clearCommandIfNeeded(slot, "outside-window", null, null)?.let { command -> commands += command }
       }
     }
 
     return commands
   }
 
-  private fun clearCommand(
+  private fun clearCommandIfNeeded(
     slot: FeedRingCommandSlotState,
     reason: String,
     assignedIndex: Int?,
-    momentId: String?
-  ): FeedRingCommand {
+    itemId: String?
+  ): FeedRingCommand? {
+    if (
+      slot.assignedIndex == assignedIndex &&
+      slot.itemId == itemId &&
+      slot.sourceKey == null &&
+      !slot.hasSource &&
+      !slot.hasError
+    ) {
+      return null
+    }
+
     return FeedRingCommand(
       action = FeedRingCommandAction.CLEAR,
       slotId = slot.slotId,
       assignedIndex = assignedIndex,
-      momentId = momentId,
+      itemId = itemId,
       sourceKey = null,
       shouldPlay = false,
       reason = reason,
-      hadSource = slot.sourceKey != null
+      hadSource = slot.sourceKey != null || slot.hasSource || slot.hasError
     )
   }
 }

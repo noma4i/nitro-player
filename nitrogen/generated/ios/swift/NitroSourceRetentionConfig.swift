@@ -18,7 +18,7 @@ public extension NitroSourceRetentionConfig {
   /**
    * Create a new instance of `NitroSourceRetentionConfig`.
    */
-  init(preload: PreloadLevel?, offscreen: RetentionLevel?, trimDelayMs: Double?, feedPoolEligible: Bool?) {
+  init(preload: PreloadLevel?, offscreen: RetentionLevel?, trimDelayMs: Double?) {
     self.init({ () -> bridge.std__optional_PreloadLevel_ in
       if let __unwrappedValue = preload {
         return bridge.create_std__optional_PreloadLevel_(__unwrappedValue)
@@ -34,12 +34,6 @@ public extension NitroSourceRetentionConfig {
     }(), { () -> bridge.std__optional_double_ in
       if let __unwrappedValue = trimDelayMs {
         return bridge.create_std__optional_double_(__unwrappedValue)
-      } else {
-        return .init()
-      }
-    }(), { () -> bridge.std__optional_bool_ in
-      if let __unwrappedValue = feedPoolEligible {
-        return bridge.create_std__optional_bool_(__unwrappedValue)
       } else {
         return .init()
       }
@@ -61,18 +55,6 @@ public extension NitroSourceRetentionConfig {
     return { () -> Double? in
       if bridge.has_value_std__optional_double_(self.__trimDelayMs) {
         let __unwrapped = bridge.get_std__optional_double_(self.__trimDelayMs)
-        return __unwrapped
-      } else {
-        return nil
-      }
-    }()
-  }
-  
-  @inline(__always)
-  var feedPoolEligible: Bool? {
-    return { () -> Bool? in
-      if bridge.has_value_std__optional_bool_(self.__feedPoolEligible) {
-        let __unwrapped = bridge.get_std__optional_bool_(self.__feedPoolEligible)
         return __unwrapped
       } else {
         return nil

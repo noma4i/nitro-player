@@ -86,6 +86,11 @@ namespace margelo::nitro::video {
     std::shared_ptr<Promise<void>> preload() override;
     void play() override;
     void pause() override;
+    void configurePlayback(const std::string& key, const std::string& group, double priority, bool resumeAutomatically, bool requiresView) override;
+    void updatePlayback(bool active, bool visible, bool muted, bool loop) override;
+    void requestPlayback() override;
+    void requestIdle() override;
+    void clearPlayback() override;
     void seekBy(double time) override;
     void seekTo(double time) override;
     std::shared_ptr<Promise<void>> replaceSourceAsync(const std::shared_ptr<HybridNitroPlayerSourceSpec>& source) override;

@@ -1,111 +1,135 @@
 package com.nitroplay.video.streaming
 
 import android.content.Context
-import com.facebook.react.bridge.Arguments
+import android.util.Log
+import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.bridge.ReadableMap
+import com.margelo.nitro.NitroModules
+import com.margelo.nitro.video.ListenerSubscription
+import com.nitroplay.video.BuildConfig
 import java.net.URLEncoder
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import java.util.concurrent.RejectedExecutionException
-import com.nitroplay.video.preview.VideoPreviewRuntime
+import java.util.concurrent.atomic.AtomicLong
 import com.nitroplay.video.streaming.cache.HlsCacheBudget
-import com.nitroplay.video.streaming.cache.HlsCacheStore
+import com.nitroplay.video.support.ListenerRegistry
+import com.nitroplay.video.support.SingleOwnerResourceSlot
 
 object HlsProxyRuntime {
+  private const val TAG = "NitroPlayHlsPrefetch"
   // 0 = OS-assigned ephemeral port. A fixed port collides when several proxies
   // share the loopback, making the bind fail and silently fall back to direct
   // playback; the actual bound port is read back via HlsProxyServer.listeningPort().
   private const val DEFAULT_PORT = 0
+  internal const val DEFAULT_PREFETCH_DURATION_SECONDS = 2.0
   private const val PREFETCH_DEDUP_MS = 60_000L
   private const val PREFETCH_MAX_ENTRIES = 500
+  private const val PREFETCH_SETTLED_EVENT = "prefetchSettled"
 
   private val lock = Any()
-  private var desiredPort = DEFAULT_PORT
-  private var didAutoStart = false
-  private var isExplicitlyStopped = false
-  private var isRegistered = false
-  private var activeServer: HlsProxyServer? = null
-  private var ownerGeneration = 0
+  private val runtimeState = HlsRuntimeState(DEFAULT_PORT)
+  private var lifecycleRegistration: LifecycleRegistration? = null
+  private var cacheMaxBytes = HlsCacheBudget.DEFAULT_MAX_BYTES
+  private var cacheConfigurationLocked = false
+  private val serverSlot = SingleOwnerResourceSlot<HlsProxyServer> { it.stop() }
+  private var serverStopGeneration = 0
   private var appContext: Context? = null
-  private var configuredMaxCacheBytes = HlsCacheBudget.DEFAULT_MAX_BYTES
+  @Volatile
+  private var needsHealthCheck = true
+  private var isRecovering = false
+  private val recoveryExecutor = Executors.newSingleThreadExecutor()
+  private val pendingRecoveryCompletions = mutableListOf<() -> Unit>()
+  private var routeGenerationValue = 0
   private val prefetchDeduper = HlsPrefetchDeduper(PREFETCH_DEDUP_MS, PREFETCH_MAX_ENTRIES)
+  private val prefetchSettledListeners = ListenerRegistry()
   private val prefetchExecutor = Executors.newSingleThreadExecutor()
-  @Volatile private var prefetchSegmentCount = 2
+  private val prefetchTasks = mutableMapOf<String, Future<*>>()
+  private val prefetchOperationIds = mutableMapOf<String, Long>()
+  private val nextPrefetchOperationId = AtomicLong()
+  private val prefetchRequested = AtomicLong()
+  private val prefetchStarted = AtomicLong()
+  private val prefetchCompleted = AtomicLong()
+  private val prefetchDeduped = AtomicLong()
+  private val prefetchFailed = AtomicLong()
+  private val prefetchCancelled = AtomicLong()
 
-  internal data class RuntimeStateSnapshot(
-    val isRegistered: Boolean,
-    val didAutoStart: Boolean,
-    val isExplicitlyStopped: Boolean,
-    val hasServer: Boolean
-  )
+  /** Monotonic generation of proxied routes; changes whenever the bound port changes. */
+  internal val routeGeneration: Int
+    get() = synchronized(lock) { routeGenerationValue }
 
-  fun register(reactContext: ReactApplicationContext) {
-    register(reactContext.applicationContext ?: reactContext)
+  /** True only when the transport passed an application-level probe and is serving. */
+  internal val isTransportReady: Boolean
+    get() = !needsHealthCheck && serverSlot.current?.isAlive == true
+
+  private fun ensureRuntimeContext(): Boolean {
+    val currentContext = NitroModules.applicationContext ?: return false
+    val registrationChange = synchronized(lock) {
+      if (lifecycleRegistration?.context === currentContext) {
+        appContext = currentContext.applicationContext
+        return true
+      }
+
+      val previous = lifecycleRegistration
+      val next = LifecycleRegistration(
+        context = currentContext,
+        listener = object : LifecycleEventListener {
+          override fun onHostResume() {
+            handleHostResume(currentContext)
+          }
+
+          override fun onHostPause() {
+            markNeedsHealthCheck()
+          }
+
+          override fun onHostDestroy() {
+            handleHostDestroy(currentContext)
+          }
+        }
+      )
+      lifecycleRegistration = next
+      appContext = currentContext.applicationContext
+      LifecycleRegistrationChange(previous, next)
+    }
+    registrationChange.previous?.let { previous ->
+      previous.context.removeLifecycleEventListener(previous.listener)
+    }
+    registrationChange.next.context.addLifecycleEventListener(registrationChange.next.listener)
+    return true
   }
 
-  fun register(context: Context) {
+  private fun handleHostResume(ownerContext: ReactApplicationContext) {
     synchronized(lock) {
-      this.appContext = context.applicationContext ?: context
-      isRegistered = true
+      if (lifecycleRegistration?.context !== ownerContext) {
+        return
+      }
     }
-    VideoPreviewRuntime.register(context)
+    markNeedsHealthCheck()
   }
 
-  fun start(port: Int?) {
-    val (nextPort, shouldRestartForPort) = synchronized(lock) {
-      val previousPort = desiredPort
-      val resolvedPort = normalizePort(port)
-      desiredPort = resolvedPort
-      didAutoStart = false
-      isExplicitlyStopped = false
-      isRegistered = true
-      Pair(resolvedPort, activeServer?.isAlive == true && previousPort != resolvedPort)
+  private fun handleHostDestroy(ownerContext: ReactApplicationContext) {
+    val registration = synchronized(lock) {
+      val currentRegistration = lifecycleRegistration
+      if (currentRegistration?.context !== ownerContext) {
+        return
+      }
+      lifecycleRegistration = null
+      appContext = null
+      runtimeState.suspendForHostLifecycle()
+      currentRegistration
     }
-    if (ensureServerRunning(forceRestart = shouldRestartForPort, desiredPort = nextPort)) {
-      markAutoStarted()
-    }
-  }
-
-  fun stop() {
-    synchronized(lock) {
-      didAutoStart = false
-      isExplicitlyStopped = true
-    }
+    registration.context.removeLifecycleEventListener(registration.listener)
     stopServer()
-  }
-
-  fun onHostResume() {
-    val shouldRun = synchronized(lock) { isRegistered && didAutoStart && !isExplicitlyStopped }
-    if (shouldRun) {
-      val forceRestart = synchronized(lock) { activeServer?.isAlive != true }
-      ensureServerRunning(forceRestart = forceRestart)
-    }
-  }
-
-  fun onHostDestroy() {
-    synchronized(lock) {
-      didAutoStart = false
-    }
-    stopServer()
-  }
-
-  fun getProxiedUrl(url: String, headers: ReadableMap?): String {
-    return getProxiedUrl(url, HlsHeaderCodec.decode(headers))
-  }
-
-  fun getProxiedUrl(url: String, headers: Map<String, String>?): String {
-    return resolvePlaybackRoute(url, headers).url
   }
 
   internal fun resolvePlaybackRoute(url: String, headers: Map<String, String>?): PlaybackRouteResolution {
-    if (synchronized(lock) { isExplicitlyStopped }) return PlaybackRouteResolution(url = url, isProxying = false)
     ensureStarted()
     if (!ensureServerRunning()) {
       return PlaybackRouteResolution(url = url, isProxying = false)
     }
-    val activeServer = synchronized(lock) { activeServer }
+    val activeServer = serverSlot.current
       ?: return PlaybackRouteResolution(url = url, isProxying = false)
-    if (!activeServer.isAlive) {
+    if (!activeServer.isAlive || needsHealthCheck) {
       return PlaybackRouteResolution(url = url, isProxying = false)
     }
     val encodedUrl = URLEncoder.encode(url, "UTF-8")
@@ -118,42 +142,49 @@ object HlsProxyRuntime {
     query.append("&streamKey=").append(URLEncoder.encode(streamKey, "UTF-8"))
     return PlaybackRouteResolution(
       url = "http://127.0.0.1:${activeServer.listeningPort()}/hls/manifest.m3u8?$query",
-      isProxying = true
+      isProxying = true,
+      routeGeneration = routeGeneration
     )
   }
 
-  fun prefetchLeadingSegments(url: String, headers: Map<String, String>?, onComplete: () -> Unit, onError: (Throwable) -> Unit) {
-    if (synchronized(lock) { isExplicitlyStopped }) {
-      onComplete()
-      return
-    }
+  private fun prefetchLeadingSegments(
+    url: String,
+    headers: Map<String, String>?,
+    durationSeconds: Double,
+    onComplete: () -> Unit,
+    onError: (Throwable) -> Unit
+  ) {
     if (!HlsManifestUrl.matches(url)) {
       onComplete()
       return
     }
     ensureStarted()
 
-    val segmentCount = prefetchSegmentCount
     val dedupKey = HlsIdentity.requestKey(url, headers)
-    val shouldPrefetch = prefetchDeduper.shouldPrefetch(dedupKey)
+    val shouldPrefetch = prefetchDeduper.shouldPrefetch(dedupKey, durationSeconds)
 
     if (!shouldPrefetch) {
+      prefetchDeduped.incrementAndGet()
       onComplete()
       return
     }
 
-    val activeServer = synchronized(lock) { activeServer }
+    val activeServer = serverSlot.current
     if (activeServer == null) {
       prefetchDeduper.forget(dedupKey)
-      onComplete()
+      onError(IllegalStateException("HLS proxy server is unavailable"))
       return
     }
 
+    prefetchStarted.incrementAndGet()
     activeServer.prefetch(
       url,
       headers,
-      segmentCount,
-      onComplete,
+      durationSeconds,
+      {
+        prefetchCompleted.incrementAndGet()
+        onComplete()
+      },
       { error ->
         prefetchDeduper.forget(dedupKey)
         onError(error)
@@ -161,267 +192,313 @@ object HlsProxyRuntime {
     )
   }
 
-  fun requestLeadingSegmentPrefetchAsync(url: String, headers: Map<String, String>?) {
+  internal fun requestLeadingSegmentPrefetchAsync(
+    url: String,
+    headers: Map<String, String>?,
+    durationSeconds: Double
+  ) {
+    prefetchRequested.incrementAndGet()
+    val requestKey = HlsIdentity.requestKey(url, headers)
+    var rejectedError: RejectedExecutionException? = null
+    synchronized(prefetchTasks) {
+      if (prefetchOperationIds.containsKey(requestKey)) {
+        prefetchDeduped.incrementAndGet()
+        return
+      }
+      val operationId = nextPrefetchOperationId.incrementAndGet()
+      prefetchOperationIds[requestKey] = operationId
+      try {
+        val future = prefetchExecutor.submit {
+          try {
+            prefetchLeadingSegments(
+              url,
+              headers,
+              durationSeconds,
+              onComplete = { settlePrefetch(requestKey, operationId, url) },
+              onError = { error ->
+                recordPrefetchFailure(error)
+                settlePrefetch(requestKey, operationId, url)
+              }
+            )
+          } catch (error: Throwable) {
+            recordPrefetchFailure(error)
+            settlePrefetch(requestKey, operationId, url)
+          }
+        }
+        if (prefetchOperationIds[requestKey] == operationId) {
+          prefetchTasks[requestKey] = future
+        } else {
+          future.cancel(false)
+        }
+      } catch (error: RejectedExecutionException) {
+        prefetchOperationIds.remove(requestKey)
+        rejectedError = error
+      }
+    }
+    rejectedError?.let { error ->
+      recordPrefetchFailure(error)
+      emitPrefetchSettled(url)
+    }
+  }
+
+  internal fun cancelPrefetch(url: String, headers: Map<String, String>?) {
+    val requestKey = HlsIdentity.requestKey(url, headers)
+    val cancellation = synchronized(prefetchTasks) {
+      val hadOperation = prefetchOperationIds.remove(requestKey) != null
+      val outerCancelled = prefetchTasks.remove(requestKey)?.cancel(false) == true
+      Pair(hadOperation, outerCancelled)
+    }
+    val innerCancelled = serverSlot.current?.cancelPrefetch(requestKey) == true
+    prefetchDeduper.forget(requestKey)
+    if (cancellation.first || cancellation.second || innerCancelled) {
+      prefetchCancelled.incrementAndGet()
+      emitPrefetchSettled(url)
+    }
+  }
+
+  internal fun addOnPrefetchSettledListener(listener: (String) -> Unit): ListenerSubscription {
+    return prefetchSettledListeners.add(PREFETCH_SETTLED_EVENT, listener)
+  }
+
+  internal fun emitPrefetchSettled(url: String) {
+    prefetchSettledListeners.emit<(String) -> Unit>(PREFETCH_SETTLED_EVENT) { listener -> listener(url) }
+  }
+
+  private fun settlePrefetch(requestKey: String, operationId: Long, url: String) {
+    val shouldEmit = synchronized(prefetchTasks) {
+      if (prefetchOperationIds[requestKey] != operationId) {
+        false
+      } else {
+        prefetchOperationIds.remove(requestKey)
+        prefetchTasks.remove(requestKey)
+        true
+      }
+    }
+    if (shouldEmit) {
+      emitPrefetchSettled(url)
+    }
+  }
+
+  internal fun recordPrefetchRequest() {
+    prefetchRequested.incrementAndGet()
+  }
+
+  internal fun prefetchDebugSnapshot(): Map<String, Long> = mapOf(
+    "requested" to prefetchRequested.get(),
+    "started" to prefetchStarted.get(),
+    "completed" to prefetchCompleted.get(),
+    "deduped" to prefetchDeduped.get(),
+    "failed" to prefetchFailed.get(),
+    "cancelled" to prefetchCancelled.get()
+  )
+
+  private fun recordPrefetchFailure(error: Throwable) {
+    prefetchFailed.incrementAndGet()
+    if (BuildConfig.DEBUG) {
+      Log.w(TAG, "HLS prefetch failed", error)
+    }
+  }
+
+  internal fun purgeCachedSource(url: String, headers: Map<String, String>?) {
+    if (!HlsManifestUrl.matches(url)) {
+      return
+    }
+    val streamKey = HlsIdentity.requestKey(url, headers)
+    prefetchDeduper.forget(streamKey)
+    serverSlot.current?.cacheStore?.clearStream(streamKey)
+  }
+
+  internal fun cacheStats(): Triple<Long, Int, Long> {
+    ensureStarted()
+    val cacheStore = serverSlot.current?.cacheStore
+    return Triple(
+      cacheStore?.totalBytes() ?: 0L,
+      cacheStore?.fileCount() ?: 0,
+      synchronized(lock) { cacheMaxBytes }
+    )
+  }
+
+  internal fun configureCache(maxBytes: Long) {
+    require(HlsCacheBudget.isValid(maxBytes)) { "Nitro playback cache maxBytes is below the minimum" }
+    synchronized(lock) {
+      check(!cacheConfigurationLocked) {
+        "Configure the Nitro playback cache before the first cache operation, prefetch, or playback"
+      }
+      cacheMaxBytes = maxBytes
+    }
+  }
+
+  internal fun clearCache() {
+    ensureStarted()
+    prefetchDeduper.clear()
+    serverSlot.current?.cacheStore?.clearAll()
+  }
+
+  /**
+   * Marks the transport as requiring an application-level probe before it is trusted again.
+   * Called by the single lifecycle owner when the process may have been suspended.
+   */
+  internal fun markNeedsHealthCheck() {
+    needsHealthCheck = true
+  }
+
+  /**
+   * Probes the transport off the main thread and restarts it when the probe fails.
+   * A completion arriving while a pass is running joins that pass instead of firing early.
+   */
+  internal fun recoverTransport(onComplete: () -> Unit) {
+    val shouldRun = synchronized(lock) {
+      pendingRecoveryCompletions.add(onComplete)
+      if (isRecovering) {
+        false
+      } else {
+        isRecovering = true
+        true
+      }
+    }
+    if (!shouldRun) {
+      return
+    }
     try {
-      prefetchExecutor.execute {
+      recoveryExecutor.execute {
         try {
-          prefetchLeadingSegments(url, headers, onComplete = {}, onError = {})
-        } catch (_: Throwable) {
+          performRecovery()
+        } finally {
+          synchronized(lock) { isRecovering = false }
+          flushRecoveryCompletions()
         }
       }
     } catch (_: RejectedExecutionException) {
+      synchronized(lock) { isRecovering = false }
+      flushRecoveryCompletions()
     }
   }
 
-  fun getThumbnailUrl(url: String, headers: Map<String, String>?): String? {
-    return VideoPreviewRuntime.getFirstFrame(url, headers, null)?.uri
-  }
-
-  fun peekThumbnailUrl(url: String, headers: Map<String, String>?): String? {
-    return VideoPreviewRuntime.peekFirstFrame(url, headers, null)?.uri
-  }
-
-  fun getCacheStats() = Arguments.createMap().apply {
-    val stats = activeCacheStoreStats { it.getCacheStats() }
-    val fallbackMaxBytes = synchronized(lock) { configuredMaxCacheBytes }
-    putDouble("totalSize", (stats?.get("totalSize") as? Long)?.toDouble() ?: 0.0)
-    putInt("fileCount", (stats?.get("fileCount") as? Int) ?: 0)
-    putDouble("maxSize", (stats?.get("maxSize") as? Long)?.toDouble() ?: fallbackMaxBytes.toDouble())
-  }
-
-  fun getStreamCacheStats(url: String, headers: Map<String, String>? = null) = Arguments.createMap().apply {
-    val streamKey = HlsIdentity.requestKey(url, headers)
-    val stats = activeCacheStoreStats {
-      it.getStreamCacheStats(streamKey)
+  private fun flushRecoveryCompletions() {
+    val completions = synchronized(lock) {
+      val pending = pendingRecoveryCompletions.toList()
+      pendingRecoveryCompletions.clear()
+      pending
     }
-    val fallbackMaxBytes = synchronized(lock) { configuredMaxCacheBytes }
-    putDouble("totalSize", (stats?.get("totalSize") as? Long)?.toDouble() ?: 0.0)
-    putInt("fileCount", (stats?.get("fileCount") as? Int) ?: 0)
-    putDouble("maxSize", (stats?.get("maxSize") as? Long)?.toDouble() ?: fallbackMaxBytes.toDouble())
-    putDouble("streamSize", (stats?.get("streamSize") as? Long)?.toDouble() ?: 0.0)
-    putInt("streamFileCount", (stats?.get("streamFileCount") as? Int) ?: 0)
+    completions.forEach { it() }
   }
 
-  fun configureCache(maxBytes: Double?, prefetchSegments: Double? = null) {
-    if (maxBytes != null) {
-      val normalized = HlsCacheBudget.normalize(maxBytes.toLong())
-      val context = synchronized(lock) {
-        configuredMaxCacheBytes = normalized
-        appContext
-      }
-      val cacheStore = synchronized(lock) { activeServer?.cacheStore }
-      cacheStore?.setMaxBytes(normalized)
-      if (cacheStore == null && context != null) {
-        HlsCacheStore(context, normalized).close()
-      }
-    }
-
-    if (prefetchSegments != null) {
-      prefetchSegmentCount = normalizePrefetchSegmentCount(prefetchSegments.toInt())
-    }
-  }
-
-  fun clearCache() {
-    val (store, context, maxBytes) = synchronized(lock) {
-      Triple(activeServer?.cacheStore, appContext, configuredMaxCacheBytes)
-    }
-    if (store != null) {
-      store.clearAll()
+  private fun performRecovery() {
+    if (!ensureRuntimeContext()) {
       return
     }
-    context?.let {
-      HlsCacheStore(it, maxBytes).useAndClose { cacheStore ->
-        cacheStore.clearAll()
-      }
+    if (!runtimeState.didAutoStart()) {
+      return
     }
-  }
-
-  fun clearPreview() {
-    VideoPreviewRuntime.clear()
-  }
-
-  internal fun snapshotStateForTests(): RuntimeStateSnapshot {
-    synchronized(lock) {
-      return RuntimeStateSnapshot(
-        isRegistered = isRegistered,
-        didAutoStart = didAutoStart,
-        isExplicitlyStopped = isExplicitlyStopped,
-        hasServer = activeServer != null
-      )
+    val server = serverSlot.current
+    if (server != null && server.isAlive && server.respondsToProbe()) {
+      needsHealthCheck = false
+      return
     }
-  }
-
-  internal fun prefetchTimestampCountForTests(): Int {
-    return synchronized(lock) { prefetchDeduper.size }
-  }
-
-  internal fun configuredMaxCacheBytesForTests(): Long {
-    return synchronized(lock) { configuredMaxCacheBytes }
-  }
-
-  internal fun configuredPrefetchSegmentCountForTests(): Int {
-    return prefetchSegmentCount
-  }
-
-  internal fun registerForTests() {
-    synchronized(lock) {
-      isRegistered = true
-    }
-  }
-
-  internal fun registerForTests(context: Context) {
-    synchronized(lock) {
-      appContext = context.applicationContext ?: context
-      isRegistered = true
-    }
-  }
-
-  internal fun resetStateForTests() {
-    stopServer()
-    synchronized(lock) {
-      desiredPort = DEFAULT_PORT
-      didAutoStart = false
-      isExplicitlyStopped = false
-      ownerGeneration = 0
-      isRegistered = false
-      appContext = null
-      configuredMaxCacheBytes = HlsCacheBudget.DEFAULT_MAX_BYTES
-      prefetchSegmentCount = 2
-      prefetchDeduper.clear()
-    }
-    VideoPreviewRuntime.resetStateForTests()
-  }
-
-  fun restartForPlaybackRecovery() {
-    val restartPort = synchronized(lock) {
-      if (isExplicitlyStopped) return
-      desiredPort
-    }
-    if (ensureServerRunning(forceRestart = true, desiredPort = restartPort)) {
-      markAutoStarted()
-    }
+    val desiredPort = runtimeState.portForPlaybackRecoveryRestart() ?: DEFAULT_PORT
+    val restarted = ensureServerRunning(forceRestart = true, desiredPort = desiredPort)
+    needsHealthCheck = !restarted
   }
 
   private fun ensureStarted() {
-    synchronized(lock) { isRegistered = true }
-    portForImplicitStart()?.let { startPort ->
-      if (ensureServerRunning(forceRestart = false, desiredPort = startPort)) {
-        markAutoStarted()
+    synchronized(lock) {
+      cacheConfigurationLocked = true
+    }
+    if (!ensureRuntimeContext()) {
+      return
+    }
+    runtimeState.portForImplicitStart()?.let {
+      if (ensureServerRunning(forceRestart = false, desiredPort = it)) {
+        runtimeState.markAutoStarted()
       }
     }
   }
 
-  private fun ensureServerRunning(forceRestart: Boolean = false, desiredPort: Int = synchronized(lock) { this.desiredPort }): Boolean {
+  private fun ensureServerRunning(forceRestart: Boolean = false, desiredPort: Int = DEFAULT_PORT): Boolean {
     val startPlan = synchronized(lock) {
       val context = appContext ?: return false
-      val isAlive = activeServer?.isAlive == true
+      val isAlive = serverSlot.current?.isAlive == true
       if (!forceRestart && isAlive) {
         return true
       }
-      val previous = activeServer
-      activeServer = null
-      ServerStartPlan(previous, context, ownerGeneration)
+      serverSlot.take()?.let { PreviousServer(it, context, serverStopGeneration) }
+        ?: PreviousServer(null, context, serverStopGeneration)
     }
-    startPlan.previousServer?.stop()
+    startPlan.server?.let { serverSlot.releaseResource(it) }
     val context = startPlan.context
     val startGeneration = startPlan.startGeneration
-    val maxCacheBytes = synchronized(lock) { configuredMaxCacheBytes }
-    val nextServer = HlsProxyServer(desiredPort, context, maxCacheBytes)
-    val started = try {
-      nextServer.start(NanoHttpdConfig.TIMEOUT_MS, false)
-      nextServer.isAlive
-    } catch (_: Exception) {
-      false
+    val candidatePorts = if (desiredPort > 0) intArrayOf(desiredPort, 0) else intArrayOf(desiredPort)
+    var nextServer: HlsProxyServer? = null
+    for (candidatePort in candidatePorts) {
+      val cacheMaxBytes = synchronized(lock) { this.cacheMaxBytes }
+      val candidateServer = HlsProxyServer(candidatePort, context, cacheMaxBytes, prefetchDeduper::forget)
+      val started = try {
+        candidateServer.start(NanoHttpdConfig.TIMEOUT_MS, false)
+        candidateServer.isAlive
+      } catch (_: Exception) {
+        false
+      }
+      if (started) {
+        nextServer = candidateServer
+        break
+      }
+      candidateServer.stop()
     }
-
-    if (!started) {
-      nextServer.stop()
-      return false
-    }
+    val startedServer = nextServer ?: return false
 
     val replacedServer = synchronized(lock) {
-      if (isExplicitlyStopped || ownerGeneration != startGeneration) {
+      if (serverStopGeneration != startGeneration) {
         null
       } else {
-        val replaced = activeServer
-        activeServer = nextServer
-        replaced
+        serverSlot.swap(startedServer)
       }
     }
-    val stored = synchronized(lock) { activeServer === nextServer }
-    replacedServer?.stop()
+    val stored = serverSlot.current === startedServer
+    replacedServer?.let { serverSlot.releaseResource(it) }
     if (!stored) {
-      nextServer.stop()
+      startedServer.stop()
+    } else {
+      if (runtimeState.recordBoundPort(startedServer.listeningPort())) {
+        synchronized(lock) { routeGenerationValue += 1 }
+      }
     }
-    return stored && nextServer.isAlive
+    val ready = stored && startedServer.isAlive
+    if (ready) {
+      needsHealthCheck = false
+    }
+    return ready
   }
 
   private fun stopServer(invalidatePendingStart: Boolean = true) {
     val previous = synchronized(lock) {
       if (invalidatePendingStart) {
-        ownerGeneration += 1
+        serverStopGeneration += 1
       }
-      val server = activeServer
-      activeServer = null
-      server
+      serverSlot.take()
     }
-    previous?.stop()
+    previous?.let { serverSlot.releaseResource(it) }
   }
 
-  private fun activeCacheStoreStats(read: (HlsCacheStore) -> Map<String, Any>): Map<String, Any>? {
-    val (store, context, maxBytes) = synchronized(lock) {
-      Triple(activeServer?.cacheStore, appContext, configuredMaxCacheBytes)
-    }
-    if (store != null) {
-      return read(store)
-    }
-    return context?.let {
-      HlsCacheStore(it, maxBytes).useAndClose(read)
-    }
-  }
-
-  private inline fun <T> HlsCacheStore.useAndClose(block: (HlsCacheStore) -> T): T {
-    try {
-      return block(this)
-    } finally {
-      close()
-    }
-  }
-
-  private data class ServerStartPlan(
-    val previousServer: HlsProxyServer?,
+  private data class PreviousServer(
+    val server: HlsProxyServer?,
     val context: Context,
     val startGeneration: Int
   )
 
-  private fun markAutoStarted() {
-    synchronized(lock) {
-      if (!isExplicitlyStopped) {
-        didAutoStart = true
-      }
-    }
-  }
+  private data class LifecycleRegistration(
+    val context: ReactApplicationContext,
+    val listener: LifecycleEventListener
+  )
 
-  private fun portForImplicitStart(): Int? {
-    synchronized(lock) {
-      if (isExplicitlyStopped || didAutoStart) {
-        return null
-      }
-      return desiredPort
-    }
-  }
-
-  private fun normalizePort(port: Int?): Int {
-    val requestedPort = port ?: DEFAULT_PORT
-    return if (requestedPort > 0) requestedPort else DEFAULT_PORT
-  }
-
-  private fun normalizePrefetchSegmentCount(count: Int): Int {
-    return count.coerceIn(1, 6)
-  }
+  private data class LifecycleRegistrationChange(
+    val previous: LifecycleRegistration?,
+    val next: LifecycleRegistration
+  )
 }
 
 internal data class PlaybackRouteResolution(
   val url: String,
-  val isProxying: Boolean
+  val isProxying: Boolean,
+  /** Transport generation this route was resolved against; null when the route bypasses the proxy. */
+  val routeGeneration: Int? = null
 )

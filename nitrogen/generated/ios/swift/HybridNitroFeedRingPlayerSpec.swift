@@ -10,14 +10,15 @@ import NitroModules
 /// See ``HybridNitroFeedRingPlayerSpec``
 public protocol HybridNitroFeedRingPlayerSpec_protocol: HybridObject {
   // Properties
-  
+  var ringToken: Double { get }
 
   // Methods
   func getPlayer(slotId: Double) throws -> (any HybridNitroPlayerSpec)
-  func replaceCatalog(catalog: FeedRingCatalog) throws -> Void
-  func commitViewport(viewport: FeedRingViewport) throws -> Void
+  func configurePlayback(key: String, group: String, priority: Double, resumeAutomatically: Bool) throws -> Void
+  func applyProjection(projection: FeedRingProjection) throws -> Void
   func snapshot() throws -> FeedRingSnapshot
   func addSlotStateListener(listener: @escaping (_ state: FeedRingSlotState) -> Void) throws -> ListenerSubscription
+  func addCommandEventListener(listener: @escaping (_ event: FeedRingCommandEvent) -> Void) throws -> ListenerSubscription
   func release() throws -> Void
 }
 

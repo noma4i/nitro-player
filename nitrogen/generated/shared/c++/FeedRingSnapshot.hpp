@@ -45,7 +45,8 @@ namespace margelo::nitro::video {
     double catalogRevision     SWIFT_PRIVATE;
     double viewportRevision     SWIFT_PRIVATE;
     double catalogSize     SWIFT_PRIVATE;
-    std::optional<double> centerIndex     SWIFT_PRIVATE;
+    std::optional<double> windowCenterIndex     SWIFT_PRIVATE;
+    std::optional<double> playbackIndex     SWIFT_PRIVATE;
     bool playbackAllowed     SWIFT_PRIVATE;
     bool muted     SWIFT_PRIVATE;
     bool released     SWIFT_PRIVATE;
@@ -53,7 +54,7 @@ namespace margelo::nitro::video {
 
   public:
     FeedRingSnapshot() = default;
-    explicit FeedRingSnapshot(double catalogRevision, double viewportRevision, double catalogSize, std::optional<double> centerIndex, bool playbackAllowed, bool muted, bool released, std::vector<FeedRingSlotSnapshot> slots): catalogRevision(catalogRevision), viewportRevision(viewportRevision), catalogSize(catalogSize), centerIndex(centerIndex), playbackAllowed(playbackAllowed), muted(muted), released(released), slots(slots) {}
+    explicit FeedRingSnapshot(double catalogRevision, double viewportRevision, double catalogSize, std::optional<double> windowCenterIndex, std::optional<double> playbackIndex, bool playbackAllowed, bool muted, bool released, std::vector<FeedRingSlotSnapshot> slots): catalogRevision(catalogRevision), viewportRevision(viewportRevision), catalogSize(catalogSize), windowCenterIndex(windowCenterIndex), playbackIndex(playbackIndex), playbackAllowed(playbackAllowed), muted(muted), released(released), slots(slots) {}
 
   public:
     friend bool operator==(const FeedRingSnapshot& lhs, const FeedRingSnapshot& rhs) = default;
@@ -72,7 +73,8 @@ namespace margelo::nitro {
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "catalogRevision"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "viewportRevision"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "catalogSize"))),
-        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "centerIndex"))),
+        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "windowCenterIndex"))),
+        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "playbackIndex"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "playbackAllowed"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "muted"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "released"))),
@@ -84,7 +86,8 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "catalogRevision"), JSIConverter<double>::toJSI(runtime, arg.catalogRevision));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "viewportRevision"), JSIConverter<double>::toJSI(runtime, arg.viewportRevision));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "catalogSize"), JSIConverter<double>::toJSI(runtime, arg.catalogSize));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "centerIndex"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.centerIndex));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "windowCenterIndex"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.windowCenterIndex));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "playbackIndex"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.playbackIndex));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "playbackAllowed"), JSIConverter<bool>::toJSI(runtime, arg.playbackAllowed));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "muted"), JSIConverter<bool>::toJSI(runtime, arg.muted));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "released"), JSIConverter<bool>::toJSI(runtime, arg.released));
@@ -102,7 +105,8 @@ namespace margelo::nitro {
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "catalogRevision")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "viewportRevision")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "catalogSize")))) return false;
-      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "centerIndex")))) return false;
+      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "windowCenterIndex")))) return false;
+      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "playbackIndex")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "playbackAllowed")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "muted")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "released")))) return false;

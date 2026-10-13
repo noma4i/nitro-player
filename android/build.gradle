@@ -134,9 +134,7 @@ android {
   }
 
   packagingOptions {
-    excludes = [
-            "META-INF",
-            "META-INF/**",
+    pickFirsts += [
             "**/libc++_shared.so",
             "**/libfbjni.so",
             "**/libjsi.so",
@@ -151,6 +149,11 @@ android {
             "**/libreact_nativemodule_core.so",
             "**/libjscexecutor.so",
             "**/libreactnative.so"
+    ]
+    excludes = [
+            "META-INF",
+            "META-INF/**",
+            "LICENSE.txt"
     ]
   }
 

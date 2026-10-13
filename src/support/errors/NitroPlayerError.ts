@@ -27,9 +27,18 @@ const VIEW_ERROR_CODES: ReadonlySet<string> = new Set<NitroPlayerViewError>(['vi
 
 export class NitroPlayerError<TCode extends NitroPlayerErrorCode> extends Error {
   private readonly _code: TCode;
+  private readonly _message: string;
+  private readonly _stack?: string;
 
   public get code(): TCode {
     return this._code;
+  }
+  public get message(): string {
+    return this._message;
+  }
+
+  public get stack(): string | undefined {
+    return this._stack;
   }
 
   /**
@@ -40,13 +49,13 @@ export class NitroPlayerError<TCode extends NitroPlayerErrorCode> extends Error 
     super.name = `[NitroPlay] ${code}`;
     super.message = message;
     this._code = code;
-    if (stack !== undefined) {
-      this.stack = stack;
-    }
+    this._message = message;
+    this._stack = stack ?? super.stack;
   }
 
   public toString(): string {
-    return `[${this.code}]: ${this.message}`;
+    const string = `[${this.code}]: ${this.message}`;
+    return string;
   }
 }
 
@@ -96,7 +105,7 @@ const hasStack = (error: unknown): error is { stack: string } => typeof error ==
 
 /**
  * Tries to parse an error coming from native to a typed JS video error.
- * @param {NitroPlayerError} nativeError The native error instance. This is a JSON in the legacy native module architecture.
+ * @param {NitroPlayerError} nativeError The native JSON error payload.
  * @returns A {@linkcode NitroPlayerRuntimeError} or {@linkcode NitroPlayerComponentError}, or the `nativeError` itself if it's not parsable
  * @method
  */

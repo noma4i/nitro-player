@@ -79,15 +79,14 @@
     return URLs;
 }
 
-- (NSURLSessionDataTask *)taskWithURL:(NSURL *)URL completionHandler:(void (^)(NSData *, NSError *))completionHandler
+- (NSURLSessionDataTask *)taskWithRequest:(KTVHCDataRequest *)dataRequest completionHandler:(void (^)(NSData *, NSError *))completionHandler
 {
-    KTVHCDataRequest *dataRequest = [[KTVHCDataRequest alloc] initWithURL:URL headers:nil];
     NSURLRequest *request = [[KTVHCDownload download] requestWithDataRequest:dataRequest];
     return [self.session dataTaskWithRequest:request completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
         if (error || data.length == 0) {
             completionHandler(nil, error);
         } else {
-            KTVHCDataUnit *unit = [[KTVHCDataUnitPool pool] unitWithURL:URL];
+            KTVHCDataUnit *unit = [[KTVHCDataUnitPool pool] unitWithURL:dataRequest.cacheURL];
             NSURL *completeURL = unit.completeURL;
             if (completeURL) {
                 completionHandler([NSData dataWithContentsOfURL:completeURL], error);
@@ -95,7 +94,7 @@
                 NSString *src = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
                 NSString *dst = [[KTVHCHLSTool tool] handleContent:src];
                 data = [dst dataUsingEncoding:NSUTF8StringEncoding];
-                NSString *path = [KTVHCPathTool filePathWithURL:URL offset:0];
+                NSString *path = [KTVHCPathTool filePathWithURL:dataRequest.cacheURL offset:0];
                 if ([data writeToFile:path atomically:YES]) {
                     KTVHCDataUnitItem *unitItem = [[KTVHCDataUnitItem alloc] initWithPath:path offset:0];
                     [unitItem updateLength:data.length];

@@ -1,3 +1,4 @@
+import { Image } from 'react-native';
 import { NitroPlayerRuntimeError } from '../support/errors/NitroPlayerError';
 import { DEFAULT_SOURCE_POLICY, isNitroSourcePolicy, resolveSourcePolicyDefaults } from './sourcePolicy';
 import { validateSourceConfig } from './sourceValidation';
@@ -19,8 +20,6 @@ type DescriptorBrand = {
 
 export type PreparedNitroSource = NitroSourceDescriptor & DescriptorBrand;
 
-const objectSourceCache = new WeakMap<object, PreparedNitroSource>();
-
 const stableSerialize = (value: unknown): string => {
   if (value === undefined) {
     return 'undefined';
@@ -40,7 +39,7 @@ const stableSerialize = (value: unknown): string => {
     .join(',')}}`;
 };
 
-export const resolveUri = (uri: NitroSourceUri): string => {
+const resolveUri = (uri: NitroSourceUri): string => {
   if (typeof uri === 'string') {
     if (!uri) {
       throw new NitroPlayerRuntimeError('source/invalid-uri', 'Invalid source URI');
@@ -48,7 +47,6 @@ export const resolveUri = (uri: NitroSourceUri): string => {
     return uri;
   }
 
-  const { Image } = require('react-native') as typeof import('react-native');
   const resolvedSource = Image.resolveAssetSource(uri);
   if (!resolvedSource?.uri || typeof resolvedSource.uri !== 'string') {
     throw new NitroPlayerRuntimeError('source/invalid-uri', 'Invalid source URI');
@@ -87,75 +85,72 @@ const resolvePolicy = (config: NitroSourceConfig): NitroSourcePolicy => {
   return candidate;
 };
 
-const mergeConfigSection = <T extends object>(defaults: T | undefined, override: T | undefined): T | undefined => {
-  if (override === undefined) {
-    return defaults;
-  }
-  if (typeof override !== 'object' || override === null || Array.isArray(override)) {
-    return override;
-  }
-  return {
-    ...defaults,
-    ...override
-  };
-};
-
 const mergeConfig = (config: NitroSourceConfig): NativeNitroPlayerConfig & { policy: NitroSourcePolicy } => {
   const policy = resolvePolicy(config);
+  validateSourceConfig(config);
   const defaults = resolveSourcePolicyDefaults(policy);
   const merged: NativeNitroPlayerConfig & { policy: NitroSourcePolicy } = {
     uri: resolveUri(config.uri),
     headers: config.headers,
-    metadata: config.metadata,
     startup: config.startup ?? defaults.startup,
-    buffer: mergeConfigSection(defaults.buffer, config.buffer),
-    retention: mergeConfigSection(defaults.retention, config.retention),
-    transport: mergeConfigSection(defaults.transport, config.transport),
-    preview: mergeConfigSection(defaults.preview, config.preview),
+    buffer: config.buffer ?? defaults.buffer,
+    retention: {
+      ...defaults.retention,
+      ...config.retention
+    },
+    transport: {
+      ...defaults.transport,
+      ...config.transport
+    },
     policy
   };
+
+  if (!defaults.retention && !config.retention) {
+    merged.retention = undefined;
+  }
+  if (!defaults.transport && !config.transport) {
+    merged.transport = undefined;
+  }
 
   validateSourceConfig(merged);
   return merged;
 };
 
 const buildIdentity = (config: NativeNitroPlayerConfig & { policy: NitroSourcePolicy }): NitroSourceIdentity => {
-  const playbackKey = stableSerialize(config);
+  const requestKey = stableSerialize({
+    uri: config.uri,
+    headers: config.headers
+  });
+  const playbackKey = stableSerialize({
+    requestKey,
+    startup: config.startup,
+    buffer: config.buffer,
+    retention: config.retention,
+    transport: config.transport
+  });
 
-  return { playbackKey };
+  return { playbackKey, requestKey };
 };
 
 export const prepareSource = (input: NitroSourceInput): PreparedNitroSource => {
   if (isPreparedSource(input)) {
     return input;
   }
-  if (input && typeof input === 'object') {
-    const cached = objectSourceCache.get(input);
-    if (cached) {
-      return cached;
-    }
-  }
 
   const config = mergeConfig(toConfig(input));
   const descriptor = {
     uri: config.uri,
     headers: config.headers,
-    metadata: config.metadata,
     startup: config.startup,
     buffer: config.buffer,
     retention: config.retention,
     transport: config.transport,
-    preview: config.preview,
     policy: config.policy,
     identity: buildIdentity(config),
     [DESCRIPTOR_BRAND]: true as const
   };
 
-  const prepared = Object.freeze(descriptor);
-  if (input && typeof input === 'object') {
-    objectSourceCache.set(input, prepared);
-  }
-  return prepared;
+  return Object.freeze(descriptor);
 };
 
 export const toNativeSourceConfig = (source: NitroSourceInput): NativeNitroPlayerConfig => {
@@ -163,11 +158,9 @@ export const toNativeSourceConfig = (source: NitroSourceInput): NativeNitroPlaye
   return {
     uri: descriptor.uri,
     headers: descriptor.headers,
-    metadata: descriptor.metadata,
     startup: descriptor.startup,
     buffer: descriptor.buffer,
     retention: descriptor.retention,
     transport: descriptor.transport,
-    preview: descriptor.preview
   };
 };

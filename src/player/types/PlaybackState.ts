@@ -1,5 +1,5 @@
-import type { NitroPlayerStatus } from './NitroPlayerStatus';
 import type { PlaybackError } from '../../support/errors/PlaybackError';
+import type { NitroPlayerStatus } from './NitroPlayerStatus';
 
 export interface PlaybackState {
   status: NitroPlayerStatus;

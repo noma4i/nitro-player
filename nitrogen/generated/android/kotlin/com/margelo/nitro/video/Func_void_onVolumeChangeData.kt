@@ -10,7 +10,6 @@ package com.margelo.nitro.video
 import androidx.annotation.Keep
 import com.facebook.jni.HybridData
 import com.facebook.proguard.annotations.DoNotStrip
-import dalvik.annotation.optimization.FastNative
 
 
 /**
@@ -59,7 +58,6 @@ class Func_void_onVolumeChangeData_cxx: Func_void_onVolumeChangeData {
   override fun invoke(data: onVolumeChangeData): Unit
     = invoke_cxx(data)
 
-  @FastNative
   private external fun invoke_cxx(data: onVolumeChangeData): Unit
 }
 

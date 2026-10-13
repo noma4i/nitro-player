@@ -1,4 +1,4 @@
-import type { NitroPlayerErrorCode } from './NitroPlayerError';
+import type { NitroPlayerErrorCode } from './NitroPlayerError.js';
 export interface PlaybackError {
     code: NitroPlayerErrorCode;
     message: string;

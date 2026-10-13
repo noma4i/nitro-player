@@ -307,7 +307,9 @@ const hasUnboundResourceDeref = (bodyText, boundNames) => {
 // `guard let self` / `guard let self = self`) carry an early guard?
 const SWIFT_GUARD = [
   /guard[^\n]*!?\s*(self\.)?(delegate\.)?isReleased/,
+  /guard[^\n]*!\s*(self\.)?released\b/,
   /guard[^\n]*[A-Za-z]*[Gg]eneration\s*==/,
+  /\bshouldCommitConfiguration\(/,
   /\bshouldEmit\(\)/,
   /\bshouldDeliverCallback\(/
 ];
@@ -319,6 +321,7 @@ const KOTLIN_GUARD = [
   // positive wrapping guard: `if (!isReleased && ...) { <access> }`
   /if\s*\(\s*![^)]*\bisReleased\b/,
   /[A-Za-z]*[Gg]eneration\s*(==|!=)/,
+  /if\s*\(\s*!isCurrentBinding\(/,
   /shouldDeliverCallback\(/
 ];
 

@@ -15,14 +15,14 @@ namespace margelo::nitro::video { struct FeedRingSnapshot; }
 namespace margelo::nitro::video { struct FeedRingSlotSnapshot; }
 // Forward declaration of `ListenerSubscription` to properly resolve imports.
 namespace margelo::nitro::video { struct ListenerSubscription; }
+// Forward declaration of `FeedRingProjection` to properly resolve imports.
+namespace margelo::nitro::video { struct FeedRingProjection; }
 // Forward declaration of `FeedRingCatalog` to properly resolve imports.
 namespace margelo::nitro::video { struct FeedRingCatalog; }
 // Forward declaration of `FeedRingCatalogItem` to properly resolve imports.
 namespace margelo::nitro::video { struct FeedRingCatalogItem; }
 // Forward declaration of `NativeNitroPlayerConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct NativeNitroPlayerConfig; }
-// Forward declaration of `NitroSourceMetadata` to properly resolve imports.
-namespace margelo::nitro::video { struct NitroSourceMetadata; }
 // Forward declaration of `NitroSourceStartup` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroSourceStartup; }
 // Forward declaration of `BufferConfig` to properly resolve imports.
@@ -41,14 +41,10 @@ namespace margelo::nitro::video { enum class RetentionLevel; }
 namespace margelo::nitro::video { struct NitroSourceTransportConfig; }
 // Forward declaration of `NitroSourceTransportMode` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroSourceTransportMode; }
-// Forward declaration of `NitroSourcePreviewConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct NitroSourcePreviewConfig; }
-// Forward declaration of `NitroSourcePreviewMode` to properly resolve imports.
-namespace margelo::nitro::video { enum class NitroSourcePreviewMode; }
-// Forward declaration of `FeedRingViewport` to properly resolve imports.
-namespace margelo::nitro::video { struct FeedRingViewport; }
 // Forward declaration of `FeedRingSlotState` to properly resolve imports.
 namespace margelo::nitro::video { struct FeedRingSlotState; }
+// Forward declaration of `FeedRingCommandEvent` to properly resolve imports.
+namespace margelo::nitro::video { struct FeedRingCommandEvent; }
 
 #include <memory>
 #include "HybridNitroPlayerSpec.hpp"
@@ -65,6 +61,8 @@ namespace margelo::nitro::video { struct FeedRingSlotState; }
 #include <functional>
 #include "JFunc_void.hpp"
 #include <NitroModules/JNICallable.hpp>
+#include "FeedRingProjection.hpp"
+#include "JFeedRingProjection.hpp"
 #include "FeedRingCatalog.hpp"
 #include "JFeedRingCatalog.hpp"
 #include "FeedRingCatalogItem.hpp"
@@ -72,8 +70,6 @@ namespace margelo::nitro::video { struct FeedRingSlotState; }
 #include "NativeNitroPlayerConfig.hpp"
 #include "JNativeNitroPlayerConfig.hpp"
 #include <unordered_map>
-#include "NitroSourceMetadata.hpp"
-#include "JNitroSourceMetadata.hpp"
 #include "NitroSourceStartup.hpp"
 #include "JNitroSourceStartup.hpp"
 #include "BufferConfig.hpp"
@@ -92,15 +88,12 @@ namespace margelo::nitro::video { struct FeedRingSlotState; }
 #include "JNitroSourceTransportConfig.hpp"
 #include "NitroSourceTransportMode.hpp"
 #include "JNitroSourceTransportMode.hpp"
-#include "NitroSourcePreviewConfig.hpp"
-#include "JNitroSourcePreviewConfig.hpp"
-#include "NitroSourcePreviewMode.hpp"
-#include "JNitroSourcePreviewMode.hpp"
-#include "FeedRingViewport.hpp"
-#include "JFeedRingViewport.hpp"
 #include "FeedRingSlotState.hpp"
 #include "JFunc_void_FeedRingSlotState.hpp"
 #include "JFeedRingSlotState.hpp"
+#include "FeedRingCommandEvent.hpp"
+#include "JFunc_void_FeedRingCommandEvent.hpp"
+#include "JFeedRingCommandEvent.hpp"
 
 namespace margelo::nitro::video {
 
@@ -132,7 +125,11 @@ namespace margelo::nitro::video {
   }
 
   // Properties
-  
+  double JHybridNitroFeedRingPlayerSpec::getRingToken() {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<double()>("getRingToken");
+    auto __result = method(_javaPart);
+    return __result;
+  }
 
   // Methods
   std::shared_ptr<HybridNitroPlayerSpec> JHybridNitroFeedRingPlayerSpec::getPlayer(double slotId) {
@@ -140,13 +137,13 @@ namespace margelo::nitro::video {
     auto __result = method(_javaPart, slotId);
     return __result->getJHybridNitroPlayerSpec();
   }
-  void JHybridNitroFeedRingPlayerSpec::replaceCatalog(const FeedRingCatalog& catalog) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFeedRingCatalog> /* catalog */)>("replaceCatalog");
-    method(_javaPart, JFeedRingCatalog::fromCpp(catalog));
+  void JHybridNitroFeedRingPlayerSpec::configurePlayback(const std::string& key, const std::string& group, double priority, bool resumeAutomatically) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<jni::JString> /* key */, jni::alias_ref<jni::JString> /* group */, double /* priority */, jboolean /* resumeAutomatically */)>("configurePlayback");
+    method(_javaPart, jni::make_jstring(key), jni::make_jstring(group), priority, resumeAutomatically);
   }
-  void JHybridNitroFeedRingPlayerSpec::commitViewport(const FeedRingViewport& viewport) {
-    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFeedRingViewport> /* viewport */)>("commitViewport");
-    method(_javaPart, JFeedRingViewport::fromCpp(viewport));
+  void JHybridNitroFeedRingPlayerSpec::applyProjection(const FeedRingProjection& projection) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<void(jni::alias_ref<JFeedRingProjection> /* projection */)>("applyProjection");
+    method(_javaPart, JFeedRingProjection::fromCpp(projection));
   }
   FeedRingSnapshot JHybridNitroFeedRingPlayerSpec::snapshot() {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JFeedRingSnapshot>()>("snapshot");
@@ -156,6 +153,11 @@ namespace margelo::nitro::video {
   ListenerSubscription JHybridNitroFeedRingPlayerSpec::addSlotStateListener(const std::function<void(const FeedRingSlotState& /* state */)>& listener) {
     static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_FeedRingSlotState::javaobject> /* listener */)>("addSlotStateListener_cxx");
     auto __result = method(_javaPart, JFunc_void_FeedRingSlotState_cxx::fromCpp(listener));
+    return __result->toCpp();
+  }
+  ListenerSubscription JHybridNitroFeedRingPlayerSpec::addCommandEventListener(const std::function<void(const FeedRingCommandEvent& /* event */)>& listener) {
+    static const auto method = _javaPart->javaClassStatic()->getMethod<jni::local_ref<JListenerSubscription>(jni::alias_ref<JFunc_void_FeedRingCommandEvent::javaobject> /* listener */)>("addCommandEventListener_cxx");
+    auto __result = method(_javaPart, JFunc_void_FeedRingCommandEvent_cxx::fromCpp(listener));
     return __result->toCpp();
   }
   void JHybridNitroFeedRingPlayerSpec::release() {

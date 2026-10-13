@@ -26,7 +26,7 @@ data class FeedRingSlotSnapshot(
   val assignedIndex: Double?,
   @DoNotStrip
   @Keep
-  val momentId: String?,
+  val itemId: String?,
   @DoNotStrip
   @Keep
   val sourceKey: String?,
@@ -101,7 +101,7 @@ data class FeedRingSlotSnapshot(
     if (other !is FeedRingSlotSnapshot) return false
     return Objects.deepEquals(this.slotId, other.slotId)
       && Objects.deepEquals(this.assignedIndex, other.assignedIndex)
-      && Objects.deepEquals(this.momentId, other.momentId)
+      && Objects.deepEquals(this.itemId, other.itemId)
       && Objects.deepEquals(this.sourceKey, other.sourceKey)
       && Objects.deepEquals(this.generation, other.generation)
       && Objects.deepEquals(this.desiredPlay, other.desiredPlay)
@@ -130,7 +130,7 @@ data class FeedRingSlotSnapshot(
     return arrayOf<Any?>(
       slotId,
       assignedIndex,
-      momentId,
+      itemId,
       sourceKey,
       generation,
       desiredPlay,
@@ -164,8 +164,8 @@ data class FeedRingSlotSnapshot(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(slotId: Double, assignedIndex: Double?, momentId: String?, sourceKey: String?, generation: Double, desiredPlay: Boolean, attached: Boolean, prepared: Boolean, ready: Boolean, playing: Boolean, buffering: Boolean, currentTime: Double, duration: Double, bufferDuration: Double?, bufferedPosition: Double?, rate: Double?, wantsToPlay: Boolean?, retentionState: String?, hasLoadedSource: Boolean?, watchdogAttempts: Double?, watchdogPending: Boolean?, nativePlaybackState: String?, status: String?, lastTransition: String, lastError: String?): FeedRingSlotSnapshot {
-      return FeedRingSlotSnapshot(slotId, assignedIndex, momentId, sourceKey, generation, desiredPlay, attached, prepared, ready, playing, buffering, currentTime, duration, bufferDuration, bufferedPosition, rate, wantsToPlay, retentionState, hasLoadedSource, watchdogAttempts, watchdogPending, nativePlaybackState, status, lastTransition, lastError)
+    private fun fromCpp(slotId: Double, assignedIndex: Double?, itemId: String?, sourceKey: String?, generation: Double, desiredPlay: Boolean, attached: Boolean, prepared: Boolean, ready: Boolean, playing: Boolean, buffering: Boolean, currentTime: Double, duration: Double, bufferDuration: Double?, bufferedPosition: Double?, rate: Double?, wantsToPlay: Boolean?, retentionState: String?, hasLoadedSource: Boolean?, watchdogAttempts: Double?, watchdogPending: Boolean?, nativePlaybackState: String?, status: String?, lastTransition: String, lastError: String?): FeedRingSlotSnapshot {
+      return FeedRingSlotSnapshot(slotId, assignedIndex, itemId, sourceKey, generation, desiredPlay, attached, prepared, ready, playing, buffering, currentTime, duration, bufferDuration, bufferedPosition, rate, wantsToPlay, retentionState, hasLoadedSource, watchdogAttempts, watchdogPending, nativePlaybackState, status, lastTransition, lastError)
     }
   }
 }

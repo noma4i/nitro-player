@@ -29,7 +29,10 @@ data class FeedRingSnapshot(
   val catalogSize: Double,
   @DoNotStrip
   @Keep
-  val centerIndex: Double?,
+  val windowCenterIndex: Double?,
+  @DoNotStrip
+  @Keep
+  val playbackIndex: Double?,
   @DoNotStrip
   @Keep
   val playbackAllowed: Boolean,
@@ -51,7 +54,8 @@ data class FeedRingSnapshot(
     return Objects.deepEquals(this.catalogRevision, other.catalogRevision)
       && Objects.deepEquals(this.viewportRevision, other.viewportRevision)
       && Objects.deepEquals(this.catalogSize, other.catalogSize)
-      && Objects.deepEquals(this.centerIndex, other.centerIndex)
+      && Objects.deepEquals(this.windowCenterIndex, other.windowCenterIndex)
+      && Objects.deepEquals(this.playbackIndex, other.playbackIndex)
       && Objects.deepEquals(this.playbackAllowed, other.playbackAllowed)
       && Objects.deepEquals(this.muted, other.muted)
       && Objects.deepEquals(this.released, other.released)
@@ -63,7 +67,8 @@ data class FeedRingSnapshot(
       catalogRevision,
       viewportRevision,
       catalogSize,
-      centerIndex,
+      windowCenterIndex,
+      playbackIndex,
       playbackAllowed,
       muted,
       released,
@@ -79,8 +84,8 @@ data class FeedRingSnapshot(
     @Keep
     @Suppress("unused")
     @JvmStatic
-    private fun fromCpp(catalogRevision: Double, viewportRevision: Double, catalogSize: Double, centerIndex: Double?, playbackAllowed: Boolean, muted: Boolean, released: Boolean, slots: Array<FeedRingSlotSnapshot>): FeedRingSnapshot {
-      return FeedRingSnapshot(catalogRevision, viewportRevision, catalogSize, centerIndex, playbackAllowed, muted, released, slots)
+    private fun fromCpp(catalogRevision: Double, viewportRevision: Double, catalogSize: Double, windowCenterIndex: Double?, playbackIndex: Double?, playbackAllowed: Boolean, muted: Boolean, released: Boolean, slots: Array<FeedRingSlotSnapshot>): FeedRingSnapshot {
+      return FeedRingSnapshot(catalogRevision, viewportRevision, catalogSize, windowCenterIndex, playbackIndex, playbackAllowed, muted, released, slots)
     }
   }
 }

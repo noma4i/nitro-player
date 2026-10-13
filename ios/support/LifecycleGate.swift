@@ -1,25 +1,31 @@
 import Foundation
 
-// Nitro-free owner of the player's pure lifecycle state (released flag + source
-// generation) and the decisions derived from them. Extracted from
-// HybridNitroPlayer so the release/generation guard logic is unit-testable in the
-// headless SwiftPM target (the hybrid itself is a C++-backed Nitro object that
-// cannot be instantiated there). HybridNitroPlayer forwards its isReleased /
-// sourceGeneration to this gate and routes its two write sites through it.
-//
-// Intentionally lock-free, matching the prior plain-var semantics: a detached
-// callback may observe a just-flipped flag, which the "recheck isReleased in
-// detached callbacks" convention already tolerates (the guarded path no-ops).
+// Owns the player's lifecycle state and derived release/generation decisions.
 final class LifecycleGate {
-  private(set) var isReleased = false
-  private(set) var generation = 0
+  private let lock = NSLock()
+  private var storedIsReleased = false
+  private var storedGeneration = 0
+
+  var isReleased: Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    return storedIsReleased
+  }
+
+  var generation: Int {
+    lock.lock()
+    defer { lock.unlock() }
+    return storedGeneration
+  }
 
   // Idempotent: mirrors release()'s `if isReleased { return }`. Returns true only
   // on the transition into the released state.
   @discardableResult
   func markReleased() -> Bool {
-    if isReleased { return false }
-    isReleased = true
+    lock.lock()
+    defer { lock.unlock() }
+    if storedIsReleased { return false }
+    storedIsReleased = true
     return true
   }
 
@@ -27,18 +33,24 @@ final class LifecycleGate {
   // returns the new value to capture for later stale-callback checks.
   @discardableResult
   func beginGeneration() -> Int {
-    generation += 1
-    return generation
+    lock.lock()
+    defer { lock.unlock() }
+    storedGeneration += 1
+    return storedGeneration
   }
 
   // A playback-state emit is allowed only while not released.
   func shouldEmit() -> Bool {
-    !isReleased
+    lock.lock()
+    defer { lock.unlock() }
+    return !storedIsReleased
   }
 
   // A deferred callback captured at `capturedGeneration` should run only if the
   // player is still alive AND the source generation has not moved on.
   func shouldDeliverCallback(capturedGeneration: Int) -> Bool {
-    !isReleased && generation == capturedGeneration
+    lock.lock()
+    defer { lock.unlock() }
+    return !storedIsReleased && storedGeneration == capturedGeneration
   }
 }

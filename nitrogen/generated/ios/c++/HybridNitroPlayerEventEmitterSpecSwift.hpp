@@ -26,8 +26,6 @@ namespace margelo::nitro::video { struct onLoadStartData; }
 namespace margelo::nitro::video { enum class SourceType; }
 // Forward declaration of `HybridNitroPlayerSourceSpec` to properly resolve imports.
 namespace margelo::nitro::video { class HybridNitroPlayerSourceSpec; }
-// Forward declaration of `onFirstFrameData` to properly resolve imports.
-namespace margelo::nitro::video { struct onFirstFrameData; }
 // Forward declaration of `PlaybackError` to properly resolve imports.
 namespace margelo::nitro::video { struct PlaybackError; }
 // Forward declaration of `NitroPlayerErrorCode` to properly resolve imports.
@@ -49,10 +47,9 @@ namespace margelo::nitro::video { struct onVolumeChangeData; }
 #include "SourceType.hpp"
 #include <memory>
 #include "HybridNitroPlayerSourceSpec.hpp"
-#include "onFirstFrameData.hpp"
-#include <string>
 #include "PlaybackError.hpp"
 #include "NitroPlayerErrorCode.hpp"
+#include <string>
 #include "PlaybackState.hpp"
 #include "NitroPlayerStatus.hpp"
 #include <NitroModules/Null.hpp>
@@ -133,14 +130,6 @@ namespace margelo::nitro::video {
       auto __value = std::move(__result.value());
       return __value;
     }
-    inline ListenerSubscription addOnFirstFrameListener(const std::function<void(const onFirstFrameData& /* data */)>& listener) override {
-      auto __result = _swiftPart.addOnFirstFrameListener(listener);
-      if (__result.hasError()) [[unlikely]] {
-        std::rethrow_exception(__result.error());
-      }
-      auto __value = std::move(__result.value());
-      return __value;
-    }
     inline ListenerSubscription addOnErrorListener(const std::function<void(const PlaybackError& /* error */)>& listener) override {
       auto __result = _swiftPart.addOnErrorListener(listener);
       if (__result.hasError()) [[unlikely]] {
@@ -151,6 +140,14 @@ namespace margelo::nitro::video {
     }
     inline ListenerSubscription addOnPlaybackStateListener(const std::function<void(const PlaybackState& /* state */)>& listener) override {
       auto __result = _swiftPart.addOnPlaybackStateListener(listener);
+      if (__result.hasError()) [[unlikely]] {
+        std::rethrow_exception(__result.error());
+      }
+      auto __value = std::move(__result.value());
+      return __value;
+    }
+    inline ListenerSubscription addOnPlaybackIntentIdledListener(const std::function<void()>& listener) override {
+      auto __result = _swiftPart.addOnPlaybackIntentIdledListener(listener);
       if (__result.hasError()) [[unlikely]] {
         std::rethrow_exception(__result.error());
       }

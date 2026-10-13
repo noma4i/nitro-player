@@ -52,24 +52,14 @@
         "implementationClassName": "HybridNitroFeedRingPlayerFactory"
       }
     },
-    "NitroStreamCache": {
+    "NitroPlaybackRuntime": {
       "ios": {
         "language": "swift",
-        "implementationClassName": "HybridNitroStreamCache"
+        "implementationClassName": "HybridNitroPlaybackRuntime"
       },
       "android": {
         "language": "kotlin",
-        "implementationClassName": "HybridNitroStreamCache"
-      }
-    },
-    "NitroVideoPreview": {
-      "ios": {
-        "language": "swift",
-        "implementationClassName": "HybridNitroVideoPreview"
-      },
-      "android": {
-        "language": "kotlin",
-        "implementationClassName": "HybridNitroVideoPreview"
+        "implementationClassName": "HybridNitroPlaybackRuntime"
       }
     }
   }

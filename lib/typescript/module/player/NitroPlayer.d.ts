@@ -1,20 +1,23 @@
-import { type NitroPlayer as NitroPlayerImpl } from '../bridge/nitro/NitroPlayer.nitro';
-import type { NitroPlayerSource } from '../bridge/nitro/NitroPlayerSource.nitro';
-import type { IgnoreSilentSwitchMode } from './types/IgnoreSilentSwitchMode';
-import type { MemorySnapshot } from './types/MemorySnapshot';
-import type { MixAudioMode } from './types/MixAudioMode';
-import type { PlaybackState } from './types/PlaybackState';
-import type { NitroSourceDescriptor, NitroSourceInput } from '../source/types/NitroPlayerConfig';
-import type { NitroPlayerStatus } from './types/NitroPlayerStatus';
-import { NitroPlayerEvents } from './NitroPlayerEvents';
+import { type NitroPlayer as NitroPlayerImpl } from '../bridge/nitro/NitroPlayer.nitro.js';
+import type { NitroPlayerEventEmitter } from '../bridge/nitro/NitroPlayerEventEmitter.nitro.js';
+import type { NitroPlayerSource } from '../bridge/nitro/NitroPlayerSource.nitro.js';
+import type { NitroSourceDescriptor, NitroSourceInput } from '../source/types/NitroPlayerConfig.js';
+import type { NitroPlaybackPolicy } from '../surface/NitroPlaybackPolicy.js';
+import { NitroPlayerEvents } from './NitroPlayerEvents.js';
+import type { PlaybackState } from './types/PlaybackState.js';
 declare class NitroPlayer extends NitroPlayerEvents {
     private _player;
     private _source;
     private _nativeSource;
     private readonly _ownsNativePlayer;
+    private _pendingSourceCommandId;
+    private _sourceCommandId;
+    private _resumePosition;
+    protected get eventEmitter(): NitroPlayerEventEmitter;
     protected get player(): NitroPlayerImpl;
     constructor(source: NitroSourceInput | NitroPlayerSource | NitroPlayerImpl);
     static __fromNativePlayer(player: NitroPlayerImpl): NitroPlayer;
+    __createNativePlayer(source: NitroSourceDescriptor): void;
     /**
      * Releases the player's native resources and releases native state.
      * @internal
@@ -36,49 +39,15 @@ declare class NitroPlayer extends NitroPlayerEvents {
     private refreshMemorySize;
     private runSync;
     private runAsync;
-    get source(): NitroSourceDescriptor | null;
-    get status(): NitroPlayerStatus;
     get playbackState(): PlaybackState;
-    get memorySnapshot(): MemorySnapshot;
-    get duration(): number;
-    get volume(): number;
-    set volume(value: number);
-    get currentTime(): number;
-    set currentTime(value: number);
-    get bufferDuration(): number;
-    get bufferedPosition(): number;
-    get muted(): boolean;
-    set muted(value: boolean);
-    get loop(): boolean;
-    set loop(value: boolean);
-    get rate(): number;
+    tryReadPlaybackState(): PlaybackState | null;
     set rate(value: number);
-    get mixAudioMode(): MixAudioMode;
-    set mixAudioMode(value: MixAudioMode);
-    get ignoreSilentSwitchMode(): IgnoreSilentSwitchMode;
-    set ignoreSilentSwitchMode(value: IgnoreSilentSwitchMode);
-    get playInBackground(): boolean;
-    set playInBackground(value: boolean);
-    get playWhenInactive(): boolean;
-    set playWhenInactive(value: boolean);
-    get isPlaying(): boolean;
-    get isBuffering(): boolean;
-    get isVisualReady(): boolean;
-    initialize(): Promise<void>;
-    preload(): Promise<void>;
-    /**
-     * Releases the player's native resources and releases native state.
-     * After calling this method, the player is no longer usable.
-     * Accessing any properties or methods of the player after calling this method will throw an error.
-     * If you want to clear the current source and keep the player reusable, use `clearSourceAsync()`.
-     */
-    release(): void;
-    play(): void;
-    pause(): void;
-    seekBy(time: number): void;
+    configurePlayback(key: string, policy: NitroPlaybackPolicy, requiresView: boolean): void;
+    updatePlayback(active: boolean, visible: boolean, muted: boolean, loop: boolean): void;
+    requestPlayback(): void;
+    requestIdle(): void;
     seekTo(time: number): void;
     replaceSourceAsync(source: NitroSourceInput): Promise<void>;
-    clearSourceAsync(): Promise<void>;
 }
 export { NitroPlayer };
 //# sourceMappingURL=NitroPlayer.d.ts.map

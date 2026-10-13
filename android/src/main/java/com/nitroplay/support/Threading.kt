@@ -10,11 +10,14 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import kotlin.reflect.KProperty
 
+// Blocks the calling thread up to 5s for the main thread; a JS-thread caller must handle the timeout.
+@RequiresOptIn(level = RequiresOptIn.Level.ERROR)
+annotation class MainThreadBlockingCall
+
 object Threading {
   // Bounds the cross-thread wait so a blocked main thread surfaces as an error
   // instead of an indefinite block (ANR). Generous: only trips on a real hang.
   private const val MAIN_THREAD_SYNC_TIMEOUT_MS = 5_000L
-  private val mainHandler = Handler(Looper.getMainLooper())
 
   @JvmStatic
   fun runOnMainThread(action: () -> Unit) {
@@ -24,22 +27,15 @@ object Threading {
       return
     }
 
-    // If application context is null, throw an error
-    if (NitroModules.applicationContext == null) {
-      throw LibraryError.ApplicationContextNotFound
-    }
+    val context = NitroModules.applicationContext ?: throw LibraryError.ApplicationContextNotFound
 
     // Post the action to the main thread
-    postToMainThread(action)
-  }
-
-  @JvmStatic
-  fun postToMainThread(action: () -> Unit) {
-    mainHandler.post {
+    Handler(context.mainLooper).post {
       action()
     }
   }
 
+  @MainThreadBlockingCall
   @JvmStatic
   fun <T> runOnMainThreadSync(action: Callable<T>): T {
     return if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -49,7 +45,7 @@ object Threading {
       // Post the action to the main thread and wait for the result, bounded so
       // a blocked main thread fails fast instead of hanging this thread forever.
       val futureTask = FutureTask(action)
-      mainHandler.post(futureTask)
+      Handler(Looper.getMainLooper()).post(futureTask)
       try {
         futureTask.get(MAIN_THREAD_SYNC_TIMEOUT_MS, TimeUnit.MILLISECONDS)
       } catch (e: TimeoutException) {
@@ -66,6 +62,7 @@ object Threading {
     private val get: Reference.() -> Type,
     private val set: (Reference.(Type) -> Unit)? = null
   ) {
+    @OptIn(MainThreadBlockingCall::class)
     operator fun getValue(thisRef: Reference, property: KProperty<*>): Type {
       return runOnMainThreadSync { thisRef.get() }
     }

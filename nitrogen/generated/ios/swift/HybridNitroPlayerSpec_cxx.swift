@@ -365,6 +365,61 @@ open class HybridNitroPlayerSpec_cxx {
   }
   
   @inline(__always)
+  public final func configurePlayback(key: std.string, group: std.string, priority: Double, resumeAutomatically: Bool, requiresView: Bool) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.configurePlayback(key: String(key), group: String(group), priority: priority, resumeAutomatically: resumeAutomatically, requiresView: requiresView)
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func updatePlayback(active: Bool, visible: Bool, muted: Bool, loop: Bool) -> bridge.Result_void_ {
+    do {
+      try self.__implementation.updatePlayback(active: active, visible: visible, muted: muted, loop: loop)
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func requestPlayback() -> bridge.Result_void_ {
+    do {
+      try self.__implementation.requestPlayback()
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func requestIdle() -> bridge.Result_void_ {
+    do {
+      try self.__implementation.requestIdle()
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
+  public final func clearPlayback() -> bridge.Result_void_ {
+    do {
+      try self.__implementation.clearPlayback()
+      return bridge.create_Result_void_()
+    } catch (let __error) {
+      let __exceptionPtr = __error.toCpp()
+      return bridge.create_Result_void_(__exceptionPtr)
+    }
+  }
+  
+  @inline(__always)
   public final func seekBy(time: Double) -> bridge.Result_void_ {
     do {
       try self.__implementation.seekBy(time: time)

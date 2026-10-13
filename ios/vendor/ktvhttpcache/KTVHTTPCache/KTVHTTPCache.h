@@ -58,6 +58,10 @@
  */
 + (BOOL)proxyIsRunning;
 
+/// Application-level liveness probe: YES only when the proxy actually answers HTTP.
+/// Blocks up to 3 seconds - never call from the main thread.
++ (BOOL)proxyPing;
+
 /**
  *  Check if the given URL is a local proxy URL.
  *
@@ -182,6 +186,14 @@
  */
 + (void)cacheDeleteCacheWithURL:(NSURL *)URL;
 
++ (NSString * _Nonnull)cacheNamespaceHeader;
+
++ (NSString * _Nonnull)forwardedHeaderNamesHeader;
+
++ (NSURL *)cacheURLWithOriginalURL:(NSURL *)URL namespace:(NSString *)cacheNamespace;
+
++ (BOOL)cacheURL:(NSURL *)URL belongsToNamespace:(NSString *)cacheNamespace;
+
 /**
  *  Delete all caches.
  */
@@ -281,19 +293,6 @@
  *  Get the current additional headers.
  */
 + (NSDictionary<NSString *, NSString *> *)downloadAdditionalHeaders;
-
-/**
- *  Set additional headers for a specific original URL.
- *
- *  These headers override global additional headers only for the matching URL.
- */
-+ (void)downloadSetAdditionalHeaders:(NSDictionary<NSString *, NSString *> *)additionalHeaders
-                              forURL:(NSURL *)URL;
-
-/**
- *  Get per-URL additional headers.
- */
-+ (NSDictionary<NSString *, NSDictionary<NSString *, NSString *> *> *)downloadAdditionalHeadersByURL;
 
 /**
  *  Set the acceptable content types.

@@ -5,8 +5,8 @@
 //  Created by Krzysztof Moch on 15/04/2025.
 //
 
-import Foundation
 import AVFoundation
+import Foundation
 
 protocol NitroPlayerObserverDelegate: AnyObject {
   func onPlayedToEnd(player: AVPlayer)
@@ -50,17 +50,14 @@ class NitroPlayerObserver: NSObject {
   var player: AVPlayer? {
     delegate?.player
   }
-  
-  // Player observers
+
   var playerCurrentItemObserver: NSKeyValueObservation?
   var playerRateObserver: NSKeyValueObservation?
   var playerTimeControlStatusObserver: NSKeyValueObservation?
   var playerVolumeObserver: NSKeyValueObservation?
   var playerStatusObserver: NSKeyValueObservation?
   var playerProgressPeriodicObserver: Any?
-  private var progressObserverLifecycle = PeriodicTimeObserverLifecycle()
-  
-  // Player item observers
+
   var playbackEndedObserver: NSObjectProtocol?
   var playbackBufferEmptyObserver: NSKeyValueObservation?
   var playbackLikelyToKeepUpObserver: NSKeyValueObservation?
@@ -70,25 +67,24 @@ class NitroPlayerObserver: NSObject {
   var playerItemLoadedTimeRangesObserver: NSKeyValueObservation?
   var playerItemAccessLogObserver: NSObjectProtocol?
   var playerItemErrorLogObserver: NSObjectProtocol?
-  
+
   var observedPlayerItem: AVPlayerItem?
-  
+
   init(delegate: HybridNitroPlayer) {
     self.delegate = delegate
   }
-  
+
   deinit {
     invalidatePlayerObservers()
     invalidatePlayerItemObservers()
   }
-  
+
   public func updatePlayerObservers() {
     invalidatePlayerItemObservers()
     invalidatePlayerObservers()
-    
     initializePlayerObservers()
   }
-  
+
   func initializePlayerObservers() {
     guard let player else {
       return
@@ -100,133 +96,133 @@ class NitroPlayerObserver: NSObject {
       guard let player else { return }
       self?.onPlayerCurrentItemChanged(player: player, change: change)
     }
-    
-    playerRateObserver = player.observe(\.rate, options: [.new]) { [weak self] _, change in
-      guard let rate = change.newValue else { return }
-      self?.notifyDelegate { $0.onRateChanged(rate: rate) }
-    }
-    
-    observePlayerTimeControlStatus()
-    
-    playerVolumeObserver = player.observe(\.volume, options: [.new]) { [weak self] _, change in
-      guard let volume = change.newValue else { return }
-      self?.notifyDelegate { $0.onVolumeChanged(volume: volume) }
-    }
-    
-    playerStatusObserver = player.observe(\.status, options: [.new]) { [weak self] _, change in
-      guard let status = change.newValue else { return }
-      self?.notifyDelegate { $0.onPlayerStatusChanged(status: status) }
-    }
-    
-    updateProgressPeriodicObserver(player: player, hasCurrentItem: player.currentItem != nil)
-  }
 
-  private func updateProgressPeriodicObserver(player: AVPlayer?, hasCurrentItem: Bool) {
-    switch progressObserverLifecycle.update(hasCurrentItem: hasCurrentItem) {
-    case .install:
-      guard let player, playerProgressPeriodicObserver == nil else { return }
-      // Playback progress tick. parity: Android PROGRESS_UPDATE_INTERVAL_MS = 250ms.
-      let progressUpdateIntervalSeconds = 0.25
-      let interval = CMTime(seconds: progressUpdateIntervalSeconds, preferredTimescale: 600)
-      playerProgressPeriodicObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-        guard let self, let delegate = self.delegate, !delegate.isReleased else { return }
-        delegate.onProgressUpdate(currentTime: time.seconds, bufferDuration: delegate.bufferDuration)
-      }
-    case .remove:
-      removeProgressPeriodicObserver(player: player)
-    case .none:
-      break
+    // AVFoundation KVO quirk: block-based observations on AVPlayer properties can
+    // deliver `change.newValue == nil` (enum bridging), silently dropping the
+    // update. Always re-read the property from the player inside the callback -
+    // it was just set on this thread, so the read is safe and always current.
+    playerRateObserver = player.observe(\.rate, options: [.new]) { [weak self, weak player] _, _ in
+      guard let player else { return }
+      let rate = player.rate
+      self?.notifyDelegate(expectedPlayer: player) { $0.onRateChanged(rate: rate) }
+    }
+
+    observePlayerTimeControlStatus(player: player)
+
+    playerVolumeObserver = player.observe(\.volume, options: [.new]) { [weak self, weak player] _, _ in
+      guard let player else { return }
+      let volume = player.volume
+      self?.notifyDelegate(expectedPlayer: player) { $0.onVolumeChanged(volume: volume) }
+    }
+
+    playerStatusObserver = player.observe(\.status, options: [.new]) { [weak self, weak player] _, _ in
+      guard let player else { return }
+      let status = player.status
+      self?.notifyDelegate(expectedPlayer: player) { $0.onPlayerStatusChanged(status: status) }
+    }
+
+    let interval = CMTime(seconds: 0.25, preferredTimescale: 600)
+    playerProgressPeriodicObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self, weak player] time in
+      guard let self, let player else { return }
+      guard self.isCurrent(player: player) else { return }
+      let bufferDuration = player.currentItem?.getBufferDuration(at: time.seconds) ?? 0
+      self.notifyDelegate(expectedPlayer: player) { $0.onProgressUpdate(currentTime: time.seconds, bufferDuration: bufferDuration) }
     }
   }
 
-  private func removeProgressPeriodicObserver(player: AVPlayer?) {
-    if let periodicObserver = playerProgressPeriodicObserver {
-      let targetPlayer = player ?? observedPlayer
-      targetPlayer?.removeTimeObserver(periodicObserver)
-      playerProgressPeriodicObserver = nil
-    }
-  }
-
-  private func observePlayerTimeControlStatus() {
+  private func observePlayerTimeControlStatus(player: AVPlayer) {
     playerTimeControlStatusObserver?.invalidate()
-    guard let player else {
-      playerTimeControlStatusObserver = nil
-      return
-    }
-
-    playerTimeControlStatusObserver = player.observe(\.timeControlStatus, options: [.new, .initial]) { [weak self] _, change in
-      guard let status = change.newValue else { return }
-      self?.notifyDelegate { $0.onTimeControlStatusChanged(status: status) }
+    // See the KVO quirk note in initializePlayerObservers: change.newValue is
+    // unreliable for AVPlayer enums, so the status is re-read from the player.
+    playerTimeControlStatusObserver = player.observe(\.timeControlStatus, options: [.new, .initial]) { [weak self, weak player] _, _ in
+      guard let player else { return }
+      let status = player.timeControlStatus
+      self?.notifyDelegate(expectedPlayer: player) { $0.onTimeControlStatusChanged(status: status) }
     }
   }
-  
+
+  /// Re-registers the rate and timeControlStatus observers with an `.initial`
+  /// delivery, re-seeding the delegate's playback-metrics cache from the player's
+  /// actual state. Required after any cache reset: KVO is change-only, so a reset
+  /// that fabricates `.paused`/`rate 0` while the player keeps playing would
+  /// otherwise leave the cache stale until the next real transition.
+  func resyncPlayerStateObservers() {
+    guard let player else { return }
+
+    playerRateObserver?.invalidate()
+    playerRateObserver = player.observe(\.rate, options: [.new, .initial]) { [weak self, weak player] _, _ in
+      guard let player else { return }
+      let rate = player.rate
+      self?.notifyDelegate(expectedPlayer: player) { $0.onRateChanged(rate: rate) }
+    }
+
+    observePlayerTimeControlStatus(player: player)
+  }
+
   private func initializePlayerItemObservers(player: AVPlayer, playerItem: AVPlayerItem) {
+    observedPlayerItem = playerItem
+
     playbackEndedObserver = NotificationCenter.default.addObserver(
       forName: .AVPlayerItemDidPlayToEndTime,
       object: playerItem,
       queue: .main
-    ) { [weak self, weak player] notification in
-      guard let player else { return }
-      self?.notifyDelegate { $0.onPlayedToEnd(player: player) }
+    ) { [weak self, weak player, weak playerItem] _ in
+      guard let player, let playerItem else { return }
+      self?.notifyDelegate(expectedPlayer: player, expectedPlayerItem: playerItem) { $0.onPlayedToEnd(player: player) }
     }
-    
+
     playerItemAccessLogObserver = NotificationCenter.default.addObserver(
       forName: .AVPlayerItemNewAccessLogEntry,
       object: playerItem,
       queue: .main
-    ) { [weak self, weak playerItem] notification in
-      guard let playerItem else { return }
-      self?.onPlayerAccessLog(playerItem: playerItem)
+    ) { [weak self, weak player, weak playerItem] _ in
+      guard let player, let playerItem else { return }
+      self?.onPlayerAccessLog(player: player, playerItem: playerItem)
     }
 
     playerItemErrorLogObserver = NotificationCenter.default.addObserver(
       forName: .AVPlayerItemNewErrorLogEntry,
       object: playerItem,
       queue: .main
-    ) { [weak self, weak playerItem] notification in
-      guard let playerItem else { return }
-      self?.onPlayerErrorLog(playerItem: playerItem)
+    ) { [weak self, weak player, weak playerItem] _ in
+      guard let player, let playerItem else { return }
+      self?.onPlayerErrorLog(player: player, playerItem: playerItem)
     }
 
-    setupBufferObservers(for: playerItem)
-    updateProgressPeriodicObserver(player: player, hasCurrentItem: true)
-    
-    playerItemStatusObserver = playerItem.observe(\.status, options: [.new]) { [weak self, weak playerItem] _, change in
-      guard let playerItem else { return }
-      self?.notifyDelegate { $0.onPlayerItemStatusChanged(status: playerItem.status) }
+    setupBufferObservers(player: player, playerItem: playerItem)
+
+    playerItemStatusObserver = playerItem.observe(\.status, options: [.new]) { [weak self, weak player, weak playerItem] _, change in
+      guard let player, let playerItem else { return }
+      self?.notifyDelegate(expectedPlayer: player, expectedPlayerItem: playerItem) { $0.onPlayerItemStatusChanged(status: playerItem.status) }
     }
 
-    playerItemDurationObserver = playerItem.observe(\.duration, options: [.new, .initial]) { [weak self] item, change in
-      let duration = change.newValue ?? item.duration
-      self?.notifyDelegate { $0.onDurationChanged(duration: duration.seconds) }
+    playerItemDurationObserver = playerItem.observe(\.duration, options: [.new, .initial]) { [weak self, weak player, weak playerItem] _, change in
+      guard let player, let playerItem else { return }
+      let duration = change.newValue ?? playerItem.duration
+      self?.notifyDelegate(expectedPlayer: player, expectedPlayerItem: playerItem) { $0.onDurationChanged(duration: duration.seconds) }
     }
 
-    playerItemLoadedTimeRangesObserver = playerItem.observe(\.loadedTimeRanges, options: [.new, .initial]) { [weak self, weak playerItem] _, _ in
-      guard let playerItem else { return }
-      self?.notifyDelegate { delegate in
+    playerItemLoadedTimeRangesObserver = playerItem.observe(\.loadedTimeRanges, options: [.new, .initial]) { [weak self, weak player, weak playerItem] _, _ in
+      guard let player, let playerItem else { return }
+      self?.notifyDelegate(expectedPlayer: player, expectedPlayerItem: playerItem) { delegate in
         delegate.onBufferDurationChanged(bufferDuration: playerItem.getBufferDuration(at: delegate.currentTime))
       }
     }
-    
-    observedPlayerItem = playerItem
   }
-  
+
   func invalidatePlayerItemObservers() {
-    updateProgressPeriodicObserver(player: player ?? observedPlayer, hasCurrentItem: false)
-    // Remove NotificationCenter observers
-    if let playbackEndedObserver = playbackEndedObserver {
+    if let playbackEndedObserver {
       NotificationCenter.default.removeObserver(playbackEndedObserver)
       self.playbackEndedObserver = nil
     }
-    if let playerItemAccessLogObserver = playerItemAccessLogObserver {
+    if let playerItemAccessLogObserver {
       NotificationCenter.default.removeObserver(playerItemAccessLogObserver)
       self.playerItemAccessLogObserver = nil
     }
-    if let playerItemErrorLogObserver = playerItemErrorLogObserver {
+    if let playerItemErrorLogObserver {
       NotificationCenter.default.removeObserver(playerItemErrorLogObserver)
       self.playerItemErrorLogObserver = nil
     }
-    // Invalidate KVO observers
     clearBufferObservers()
     playerItemStatusObserver?.invalidate()
     playerItemStatusObserver = nil
@@ -236,9 +232,8 @@ class NitroPlayerObserver: NSObject {
     playerItemLoadedTimeRangesObserver = nil
     observedPlayerItem = nil
   }
-  
+
   func invalidatePlayerObservers() {
-    // Invalidate KVO observers
     playerCurrentItemObserver?.invalidate()
     playerCurrentItemObserver = nil
     playerRateObserver?.invalidate()
@@ -249,81 +244,86 @@ class NitroPlayerObserver: NSObject {
     playerVolumeObserver = nil
     playerStatusObserver?.invalidate()
     playerStatusObserver = nil
-    // Remove periodic time observer from player
-    if progressObserverLifecycle.invalidate() == .remove {
-      removeProgressPeriodicObserver(player: player ?? observedPlayer)
+    if let periodicObserver = playerProgressPeriodicObserver {
+      observedPlayer?.removeTimeObserver(periodicObserver)
+      playerProgressPeriodicObserver = nil
     }
     observedPlayer = nil
   }
-  
-  // MARK: - AVPlayer Observers
+
   func onPlayerCurrentItemChanged(player: AVPlayer, change: NSKeyValueObservedChange<AVPlayerItem?>) {
+    guard isCurrent(player: player) else { return }
     let newPlayerItem = change.newValue?.flatMap { $0 }
-    
-    // Remove observers for old player item
+
     invalidatePlayerItemObservers()
-    
-    // Notify delegate about player item state change
-    notifyDelegate { $0.onPlayerItemWillChange(hasNewPlayerItem: newPlayerItem != nil) }
-    
+    notifyDelegate(expectedPlayer: player) { $0.onPlayerItemWillChange(hasNewPlayerItem: newPlayerItem != nil) }
+
     if let playerItem = newPlayerItem {
-      // Initialize observers for new player item
       initializePlayerItemObservers(player: player, playerItem: playerItem)
-      
-      notifyDelegate { $0.onPlayerItemChange(player: player, playerItem: playerItem) }
+      notifyDelegate(expectedPlayer: player, expectedPlayerItem: playerItem) { $0.onPlayerItemChange(player: player, playerItem: playerItem) }
     }
   }
-  
-  // MARK: - AVPlayerItem Observers
-  func onPlayerAccessLog(playerItem: AVPlayerItem) {
-    guard let accessLog = playerItem.accessLog() else { return }
-    guard let lastEvent = accessLog.events.last else { return }
 
-    notifyDelegate { $0.onBandwidthUpdate(bitrate: lastEvent.indicatedBitrate) }
+  func onPlayerAccessLog(player: AVPlayer, playerItem: AVPlayerItem) {
+    guard let accessLog = playerItem.accessLog(), let lastEvent = accessLog.events.last else { return }
+    notifyDelegate(expectedPlayer: player, expectedPlayerItem: playerItem) { $0.onBandwidthUpdate(bitrate: lastEvent.indicatedBitrate) }
   }
 
-  func onPlayerErrorLog(playerItem: AVPlayerItem) {
-    guard let errorLog = playerItem.errorLog() else { return }
-    guard let lastEvent = errorLog.events.last else { return }
-
-    notifyDelegate { $0.onPlayerItemErrorLogEntry(statusCode: lastEvent.errorStatusCode, comment: lastEvent.errorComment) }
+  func onPlayerErrorLog(player: AVPlayer, playerItem: AVPlayerItem) {
+    guard let errorLog = playerItem.errorLog(), let lastEvent = errorLog.events.last else { return }
+    notifyDelegate(expectedPlayer: player, expectedPlayerItem: playerItem) { $0.onPlayerItemErrorLogEntry(statusCode: lastEvent.errorStatusCode, comment: lastEvent.errorComment) }
   }
-  
-  // MARK: - Buffer State Management
 
   private func observeBoolProperty(
-    _ playerItem: AVPlayerItem,
+    player: AVPlayer,
+    playerItem: AVPlayerItem,
     keyPath: KeyPath<AVPlayerItem, Bool>,
-    handler: @escaping () -> Void
+    handler: @escaping (HybridNitroPlayer) -> Void
   ) -> NSKeyValueObservation {
-    playerItem.observe(keyPath, options: [.new, .initial]) { item, change in
-      if change.newValue ?? item[keyPath: keyPath] {
-        handler()
-      }
+    playerItem.observe(keyPath, options: [.new, .initial]) { [weak self, weak player, weak playerItem] item, change in
+      guard change.newValue ?? item[keyPath: keyPath], let player, let playerItem else { return }
+      self?.notifyDelegate(expectedPlayer: player, expectedPlayerItem: playerItem, handler)
     }
   }
 
-  func setupBufferObservers(for playerItem: AVPlayerItem) {
+  func setupBufferObservers(player: AVPlayer, playerItem: AVPlayerItem) {
     clearBufferObservers()
-    playbackBufferEmptyObserver = observeBoolProperty(playerItem, keyPath: \.isPlaybackBufferEmpty) { [weak self] in self?.notifyDelegate { $0.onPlaybackBufferEmpty() } }
-    playbackLikelyToKeepUpObserver = observeBoolProperty(playerItem, keyPath: \.isPlaybackLikelyToKeepUp) { [weak self] in self?.notifyDelegate { $0.onPlaybackLikelyToKeepUp() } }
-    playbackBufferFullObserver = observeBoolProperty(playerItem, keyPath: \.isPlaybackBufferFull) { [weak self] in self?.notifyDelegate { $0.onPlaybackLikelyToKeepUp() } }
+    playbackBufferEmptyObserver = observeBoolProperty(player: player, playerItem: playerItem, keyPath: \.isPlaybackBufferEmpty) { $0.onPlaybackBufferEmpty() }
+    playbackLikelyToKeepUpObserver = observeBoolProperty(player: player, playerItem: playerItem, keyPath: \.isPlaybackLikelyToKeepUp) { $0.onPlaybackLikelyToKeepUp() }
+    playbackBufferFullObserver = observeBoolProperty(player: player, playerItem: playerItem, keyPath: \.isPlaybackBufferFull) { $0.onPlaybackLikelyToKeepUp() }
   }
-  
+
   func clearBufferObservers() {
     playbackBufferEmptyObserver?.invalidate()
     playbackBufferFullObserver?.invalidate()
     playbackLikelyToKeepUpObserver?.invalidate()
-    
     playbackBufferEmptyObserver = nil
     playbackBufferFullObserver = nil
     playbackLikelyToKeepUpObserver = nil
   }
 
-  private func notifyDelegate(_ handler: @escaping (HybridNitroPlayer) -> Void) {
-    DispatchQueue.main.async { [weak self] in
-      guard let delegate = self?.delegate, !delegate.isReleased else { return }
+  private func isCurrent(player: AVPlayer) -> Bool {
+    observedPlayer === player && delegate?.player === player
+  }
+
+  private func notifyDelegate(
+    expectedPlayer: AVPlayer,
+    expectedPlayerItem: AVPlayerItem? = nil,
+    _ handler: @escaping (HybridNitroPlayer) -> Void
+  ) {
+    let deliver = { [weak self] in
+      guard let self, let delegate = self.delegate, !delegate.isReleased, self.isCurrent(player: expectedPlayer) else { return }
+      if let expectedPlayerItem {
+        guard self.observedPlayerItem === expectedPlayerItem, delegate.playerItem === expectedPlayerItem else { return }
+      }
       handler(delegate)
     }
+
+    if Thread.isMainThread {
+      deliver()
+      return
+    }
+
+    DispatchQueue.main.async(execute: deliver)
   }
 }

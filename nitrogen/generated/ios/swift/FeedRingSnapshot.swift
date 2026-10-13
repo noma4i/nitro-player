@@ -18,9 +18,15 @@ public extension FeedRingSnapshot {
   /**
    * Create a new instance of `FeedRingSnapshot`.
    */
-  init(catalogRevision: Double, viewportRevision: Double, catalogSize: Double, centerIndex: Double?, playbackAllowed: Bool, muted: Bool, released: Bool, slots: [FeedRingSlotSnapshot]) {
+  init(catalogRevision: Double, viewportRevision: Double, catalogSize: Double, windowCenterIndex: Double?, playbackIndex: Double?, playbackAllowed: Bool, muted: Bool, released: Bool, slots: [FeedRingSlotSnapshot]) {
     self.init(catalogRevision, viewportRevision, catalogSize, { () -> bridge.std__optional_double_ in
-      if let __unwrappedValue = centerIndex {
+      if let __unwrappedValue = windowCenterIndex {
+        return bridge.create_std__optional_double_(__unwrappedValue)
+      } else {
+        return .init()
+      }
+    }(), { () -> bridge.std__optional_double_ in
+      if let __unwrappedValue = playbackIndex {
         return bridge.create_std__optional_double_(__unwrappedValue)
       } else {
         return .init()
@@ -50,10 +56,22 @@ public extension FeedRingSnapshot {
   }
   
   @inline(__always)
-  var centerIndex: Double? {
+  var windowCenterIndex: Double? {
     return { () -> Double? in
-      if bridge.has_value_std__optional_double_(self.__centerIndex) {
-        let __unwrapped = bridge.get_std__optional_double_(self.__centerIndex)
+      if bridge.has_value_std__optional_double_(self.__windowCenterIndex) {
+        let __unwrapped = bridge.get_std__optional_double_(self.__windowCenterIndex)
+        return __unwrapped
+      } else {
+        return nil
+      }
+    }()
+  }
+  
+  @inline(__always)
+  var playbackIndex: Double? {
+    return { () -> Double? in
+      if bridge.has_value_std__optional_double_(self.__playbackIndex) {
+        let __unwrapped = bridge.get_std__optional_double_(self.__playbackIndex)
         return __unwrapped
       } else {
         return nil

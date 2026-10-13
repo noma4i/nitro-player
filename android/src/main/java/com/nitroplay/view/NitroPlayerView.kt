@@ -5,11 +5,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Color
-import android.graphics.Matrix
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.LayoutInflater
-import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -26,8 +24,7 @@ import com.nitroplay.video.support.errors.LibraryError
 import com.nitroplay.video.player.NitroPlayerManager
 import com.nitroplay.video.support.Threading.runOnMainThread
 import com.nitroplay.video.view.toAspectRatioFrameLayout
-import com.nitroplay.video.view.SmallVideoPlayerOptimizer
-import android.view.ViewTreeObserver
+import java.util.concurrent.atomic.AtomicLong
 import com.nitroplay.video.R.layout.player_view_surface
 import com.nitroplay.video.R.layout.player_view_texture
 
@@ -38,20 +35,35 @@ class NitroPlayerView @JvmOverloads constructor(
   defStyleAttr: Int = 0
 ) : FrameLayout(context, attrs, defStyleAttr) {
   companion object {
-    private const val MATTE_SAMPLE_SIZE = 96
-    private const val MATTE_CROP_DELAY_MS = 80L
+    private val nextAttachmentId = AtomicLong()
   }
 
+  private val attachmentId = nextAttachmentId.incrementAndGet()
+
+  @Volatile
+  var isWindowAttached = false
+    private set
+
+  @Volatile
   var hybridPlayer: HybridNitroPlayer? = null
     set(value) {
-      // Clear the SurfaceView when player is about to be set to null
-      if (value == null && field != null) {
-        NitroPlayerManager.removeViewFromPlayer(this, field!!)
+      val current = field
+      if (current === value) {
+        return
+      }
+      if (isAttachedToWindow) {
+        current?.notifyViewDetached(attachmentId)
+      }
+      if (current != null) {
+        NitroPlayerManager.removeViewFromPlayer(this, current)
       }
 
       field = value
 
       field?.movePlayerToNitroPlayerView(this)
+      if (isAttachedToWindow) {
+        field?.notifyViewAttached(attachmentId)
+      }
     }
 
   var nitroId: Int = -1
@@ -83,10 +95,6 @@ class NitroPlayerView @JvmOverloads constructor(
       runOnMainThread {
         val shouldKeepScreenAwake = playerView.keepScreenOn
         val previousPlayerView = playerView
-        globalLayoutListener?.let {
-          previousPlayerView.viewTreeObserver.removeOnGlobalLayoutListener(it)
-        }
-        globalLayoutListener = null
         removeView(playerView)
         previousPlayerView.player = null
         playerView = createPlayerView()
@@ -115,11 +123,7 @@ class NitroPlayerView @JvmOverloads constructor(
       }
     }
 
-  private var globalLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
-  private var pendingMatteCropRunnable: Runnable? = null
   private val fullscreenManager = FullscreenDialogManager(this)
-  internal var matteCropDiagnostics: TextureMatteCropResult? = null
-    private set
 
   var eventsEmitter: NitroPlayerViewEventsEmitter? = null
 
@@ -141,23 +145,14 @@ class NitroPlayerView @JvmOverloads constructor(
 
   private fun applyResizeMode() {
     playerView.resizeMode = resizeMode.toAspectRatioFrameLayout()
-    if (!canApplyTextureMatteCrop()) {
-      resetTextureTransform()
-    }
     playerView.requestLayout()
     playerView.invalidate()
   }
 
   internal fun syncPlayerViewLayout() {
     applyResizeMode()
-    scheduleTextureMatteCrop(resetBeforeSample = false)
     requestLayout()
     invalidate()
-  }
-
-  internal fun refreshVisualFitAfterFirstFrame() {
-    applyResizeMode()
-    scheduleTextureMatteCrop(resetBeforeSample = true)
   }
 
   @SuppressLint("InflateParams")
@@ -170,9 +165,6 @@ class NitroPlayerView @JvmOverloads constructor(
       setShutterBackgroundColor(Color.TRANSPARENT)
       setShowSubtitleButton(true)
       useController = false
-
-      // Apply optimizations based on video player size if needed
-      configureForSmallPlayer()
     }
   }
 
@@ -182,18 +174,10 @@ class NitroPlayerView @JvmOverloads constructor(
       MeasureSpec.makeMeasureSpec(height, MeasureSpec.EXACTLY)
     )
     layout(left, top, right, bottom)
-
-    // Additional layout fixes for small video players
-    applySmallPlayerLayoutFixes()
   }
 
   private fun detachPlayerViewSurface() {
     fullscreenManager.dismiss()
-    globalLayoutListener?.let { playerView.viewTreeObserver.removeOnGlobalLayoutListener(it) }
-    globalLayoutListener = null
-    pendingMatteCropRunnable?.let { removeCallbacks(it) }
-    pendingMatteCropRunnable = null
-    resetTextureTransform()
     removeCallbacks(layoutRunnable)
     playerView.player = null
     playerView.keepScreenOn = false
@@ -202,7 +186,6 @@ class NitroPlayerView @JvmOverloads constructor(
   fun resetForDrop() {
     runOnMainThread {
       detachPlayerViewSurface()
-      hybridPlayer?.notifyViewDetached()
       hybridPlayer = null
       useController = false
       eventsEmitter = null
@@ -253,7 +236,6 @@ class NitroPlayerView @JvmOverloads constructor(
       eventsEmitter?.willExitFullscreen()
       fullscreenManager.dismiss()
       updateFullscreenButtonIcon()
-      applySmallPlayerLayoutFixes()
     }
   }
 
@@ -261,38 +243,24 @@ class NitroPlayerView @JvmOverloads constructor(
   override fun onDetachedFromWindow() {
     try {
       detachPlayerViewSurface()
-      hybridPlayer?.notifyViewDetached()
+      hybridPlayer?.notifyViewDetached(attachmentId)
       eventsEmitter?.onDetached()
     } finally {
+      isWindowAttached = false
       NitroPlayerManager.unregisterView(this)
       super.onDetachedFromWindow()
     }
   }
 
   override fun onAttachedToWindow() {
+    isWindowAttached = true
     if (nitroId != -1) {
       NitroPlayerManager.registerView(this)
     }
-    hybridPlayer?.notifyViewAttached()
-    eventsEmitter?.onAttached()
     hybridPlayer?.movePlayerToNitroPlayerView(this)
+    hybridPlayer?.notifyViewAttached(attachmentId)
+    eventsEmitter?.onAttached()
     super.onAttachedToWindow()
-  }
-
-  private fun PlayerView.configureForSmallPlayer() {
-    SmallVideoPlayerOptimizer.applyOptimizations(this, context, isFullscreen = false)
-
-    // Also apply after any layout changes
-    val listener = ViewTreeObserver.OnGlobalLayoutListener {
-      SmallVideoPlayerOptimizer.applyOptimizations(this, context, isFullscreen = false)
-    }
-    globalLayoutListener?.let { this.viewTreeObserver.removeOnGlobalLayoutListener(it) }
-    globalLayoutListener = listener
-    viewTreeObserver.addOnGlobalLayoutListener(listener)
-  }
-
-  private fun applySmallPlayerLayoutFixes() {
-    SmallVideoPlayerOptimizer.applyOptimizations(playerView, context, isFullscreen = false)
   }
 
   internal fun resolveActivity(): Activity? {
@@ -318,72 +286,4 @@ class NitroPlayerView @JvmOverloads constructor(
       ?.setImageResource(iconRes)
   }
 
-  private fun canApplyTextureMatteCrop(): Boolean {
-    return resizeMode == ResizeMode.COVER && surfaceType == SurfaceType.TEXTURE
-  }
-
-  private fun scheduleTextureMatteCrop(resetBeforeSample: Boolean) {
-    pendingMatteCropRunnable?.let { removeCallbacks(it) }
-    pendingMatteCropRunnable = null
-    if (!canApplyTextureMatteCrop()) {
-      return
-    }
-
-    if (resetBeforeSample) {
-      resetTextureTransform()
-    }
-
-    val nextRunnable = Runnable {
-      pendingMatteCropRunnable = null
-      applyTextureMatteCrop()
-    }
-    pendingMatteCropRunnable = nextRunnable
-    postDelayed(nextRunnable, MATTE_CROP_DELAY_MS)
-  }
-
-  private fun applyTextureMatteCrop() {
-    val textureView = findTextureView(playerView) ?: return
-    if (!textureView.isAvailable || textureView.width <= 0 || textureView.height <= 0) {
-      return
-    }
-
-    val sample = textureView.getBitmap(MATTE_SAMPLE_SIZE, MATTE_SAMPLE_SIZE) ?: return
-    val crop = TextureMatteCropDetector.detect(sample)
-    sample.recycle()
-
-    if (crop == null) {
-      resetTextureTransform()
-      return
-    }
-
-    val centerY = textureView.height.toFloat() * crop.activeCenterYFraction
-    val centerX = textureView.width.toFloat() / 2f
-    val matrix = Matrix().apply {
-      postScale(crop.scale, crop.scale, centerX, centerY)
-      postTranslate(0f, textureView.height.toFloat() / 2f - centerY)
-    }
-    textureView.setTransform(matrix)
-    matteCropDiagnostics = crop
-  }
-
-  private fun resetTextureTransform() {
-    findTextureView(playerView)?.setTransform(Matrix())
-    matteCropDiagnostics = null
-  }
-
-  private fun findTextureView(view: View): TextureView? {
-    if (view is TextureView) {
-      return view
-    }
-    if (view !is ViewGroup) {
-      return null
-    }
-    for (index in 0 until view.childCount) {
-      val textureView = findTextureView(view.getChildAt(index))
-      if (textureView != null) {
-        return textureView
-      }
-    }
-    return null
-  }
 }

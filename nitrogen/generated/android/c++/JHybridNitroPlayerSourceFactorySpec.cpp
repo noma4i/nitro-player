@@ -11,8 +11,6 @@
 namespace margelo::nitro::video { class HybridNitroPlayerSourceSpec; }
 // Forward declaration of `NativeNitroPlayerConfig` to properly resolve imports.
 namespace margelo::nitro::video { struct NativeNitroPlayerConfig; }
-// Forward declaration of `NitroSourceMetadata` to properly resolve imports.
-namespace margelo::nitro::video { struct NitroSourceMetadata; }
 // Forward declaration of `NitroSourceStartup` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroSourceStartup; }
 // Forward declaration of `BufferConfig` to properly resolve imports.
@@ -31,10 +29,6 @@ namespace margelo::nitro::video { enum class RetentionLevel; }
 namespace margelo::nitro::video { struct NitroSourceTransportConfig; }
 // Forward declaration of `NitroSourceTransportMode` to properly resolve imports.
 namespace margelo::nitro::video { enum class NitroSourceTransportMode; }
-// Forward declaration of `NitroSourcePreviewConfig` to properly resolve imports.
-namespace margelo::nitro::video { struct NitroSourcePreviewConfig; }
-// Forward declaration of `NitroSourcePreviewMode` to properly resolve imports.
-namespace margelo::nitro::video { enum class NitroSourcePreviewMode; }
 
 #include <memory>
 #include "HybridNitroPlayerSourceSpec.hpp"
@@ -44,8 +38,6 @@ namespace margelo::nitro::video { enum class NitroSourcePreviewMode; }
 #include "JNativeNitroPlayerConfig.hpp"
 #include <unordered_map>
 #include <optional>
-#include "NitroSourceMetadata.hpp"
-#include "JNitroSourceMetadata.hpp"
 #include "NitroSourceStartup.hpp"
 #include "JNitroSourceStartup.hpp"
 #include "BufferConfig.hpp"
@@ -64,10 +56,6 @@ namespace margelo::nitro::video { enum class NitroSourcePreviewMode; }
 #include "JNitroSourceTransportConfig.hpp"
 #include "NitroSourceTransportMode.hpp"
 #include "JNitroSourceTransportMode.hpp"
-#include "NitroSourcePreviewConfig.hpp"
-#include "JNitroSourcePreviewConfig.hpp"
-#include "NitroSourcePreviewMode.hpp"
-#include "JNitroSourcePreviewMode.hpp"
 
 namespace margelo::nitro::video {
 

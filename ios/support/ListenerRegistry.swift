@@ -1,26 +1,53 @@
 import Foundation
 import NitroModules
 
-// Thin Nitro adapter over ListenerRegistryCore: turns add() into a
-// ListenerSubscription. All lifetime-critical logic (emit re-resolve, remove,
-// clearAll) lives in the Nitro-free core so it is unit-testable in SwiftPM.
+struct ListenerEntry {
+  let id: UUID
+  let eventName: String
+  let callback: Any
+}
+
 final class ListenerRegistry {
-  private let core = ListenerRegistryCore()
+  private var listeners: [ListenerEntry] = []
+  private let lock = NSLock()
 
   func add<T>(event: String, listener: T) -> ListenerSubscription {
-    let id = core.add(event: event, listener: listener)
-    return ListenerSubscription(remove: { [weak core] in core?.remove(id: id) })
+    let id = UUID()
+    lock.lock()
+    listeners.append(ListenerEntry(id: id, eventName: event, callback: listener))
+    lock.unlock()
+    return ListenerSubscription(remove: { [weak self] in self?.remove(id: id) })
   }
 
   func emit<T>(event: String, invoke: (T) throws -> Void) {
-    core.emit(event: event, invoke: invoke)
+    lock.lock()
+    let ids = listeners.compactMap { $0.eventName == event ? $0.id : nil }
+    lock.unlock()
+    for id in ids {
+      // Re-resolve before invoking so removed listeners are not called.
+      lock.lock()
+      let callback = listeners.first(where: { $0.id == id })?.callback
+      lock.unlock()
+      guard let typed = callback as? T else { continue }
+      try? invoke(typed)
+    }
   }
 
   func clearAll() {
-    core.clearAll()
+    lock.lock()
+    listeners.removeAll()
+    lock.unlock()
   }
 
   func hasListeners(event: String) -> Bool {
-    core.hasListeners(event: event)
+    lock.lock()
+    defer { lock.unlock() }
+    return listeners.contains { $0.eventName == event }
+  }
+
+  private func remove(id: UUID) {
+    lock.lock()
+    listeners.removeAll { $0.id == id }
+    lock.unlock()
   }
 }

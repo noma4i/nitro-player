@@ -2,14 +2,15 @@ package com.margelo.nitro.video
 
 import android.os.Handler
 import android.os.Looper
+import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.upstream.DefaultAllocator
 import com.margelo.nitro.NitroModules
 import com.margelo.nitro.core.Promise
 import com.nitroplay.video.support.errors.LibraryError
 import com.nitroplay.video.player.PlayerAppStateSnapshot
 import com.nitroplay.video.player.PlayerRetentionCoordinator
-import com.nitroplay.video.player.PlayerRetentionLevel
 import com.nitroplay.video.player.PlayerRetentionSnapshot
 import com.nitroplay.video.support.errors.PlayerError
 import com.nitroplay.video.support.Threading.runOnMainThread
@@ -33,7 +34,7 @@ internal class NitroPlayerLifecycle(
       throw LibraryError.ApplicationContextNotFound
     }
 
-    val hybridSource = host.source as? HybridNitroPlayerSource ?: throw PlayerError.InvalidSource
+    val hybridSource = host.currentHybridSource() ?: throw PlayerError.InvalidSource
 
     val mediaSource = hybridSource.createOrGetMediaSource()
     configurePlayerInstanceForCurrentSource(attachPlaybackListeners = true, forceRebuild = forceRebuild)
@@ -51,21 +52,15 @@ internal class NitroPlayerLifecycle(
     host.readyToDisplay = false
     host.lastError = null
     host.emitPlaybackState()
-    host.listenerBridge.startProgressUpdates()
   }
 
-  fun configurePlayerInstanceForCurrentSource(
-    attachPlaybackListeners: Boolean,
-    forceRebuild: Boolean = false
-  ) {
+  fun configurePlayerInstanceForCurrentSource(attachPlaybackListeners: Boolean, forceRebuild: Boolean = false) {
     val playbackConfig = NitroPlayerPlaybackConfig.from(host.bufferConfig)
-    if (PlayerInstanceReusePolicy.shouldRebuildForSourceChange(
-        forceRebuild = forceRebuild,
-        reuseForSourceChanges = host.reusePlayerInstanceForSourceChanges,
-        nextPlaybackConfig = playbackConfig,
-        activePlaybackConfig = host.activePlaybackConfig,
-        hasAllocator = host.allocator != null
-      )
+    if (
+      forceRebuild ||
+      !host.reusePlayerInstanceForSourceChanges ||
+      playbackConfig.requiresPlayerRebuild(host.activePlaybackConfig) ||
+      host.allocator == null
     ) {
       replacePlayerInstance(playbackConfig, attachPlaybackListeners)
       return
@@ -74,7 +69,9 @@ internal class NitroPlayerLifecycle(
     host.listenerBridge.stopProgressUpdates()
     host.applyPlaybackConfig(playbackConfig)
     if (attachPlaybackListeners) {
-      attachPlaybackListenersIfNeeded()
+      host.listenerBridge.bind(host.player, host.sourceGeneration)
+    } else {
+      host.listenerBridge.unbind()
     }
     host.player.playWhenReady = host.wantsToPlay
   }
@@ -83,17 +80,13 @@ internal class NitroPlayerLifecycle(
     playbackConfig: NitroPlayerPlaybackConfig,
     attachPlaybackListeners: Boolean
   ) {
-    host.listenerBridge.stopProgressUpdates()
-    host.currentPlayerOrNull()?.removeListener(host.listenerBridge.playerListener)
-    host.currentPlayerOrNull()?.removeAnalyticsListener(host.listenerBridge.analyticsListener)
-    host.playbackListenersAttached = false
+    host.listenerBridge.unbind()
     host.currentPlayerOrNull()?.release()
+    host.allocator = DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE)
     host.player = host.createExoPlayer(playbackConfig)
     host.rebindCurrentPlayerView()
     if (attachPlaybackListeners) {
-      host.player.addListener(host.listenerBridge.playerListener)
-      host.player.addAnalyticsListener(host.listenerBridge.analyticsListener)
-      host.playbackListenersAttached = true
+      host.listenerBridge.bind(host.player, host.sourceGeneration)
     }
     // A fresh ExoPlayer defaults to playWhenReady=false. Reconcile it to the current play
     // intent so a recreation (init/trim/re-init) that happens after the last play() never
@@ -103,24 +96,11 @@ internal class NitroPlayerLifecycle(
   }
 
   private fun releasePlayerInstance() {
-    host.listenerBridge.stopProgressUpdates()
-    host.currentPlayerOrNull()?.removeListener(host.listenerBridge.playerListener)
-    host.currentPlayerOrNull()?.removeAnalyticsListener(host.listenerBridge.analyticsListener)
-    host.playbackListenersAttached = false
+    host.listenerBridge.unbind()
     host.currentPlayerOrNull()?.release()
     host.allocator = null
     host.clearPlayerInstance()
     host.rebindCurrentPlayerView()
-  }
-
-  private fun attachPlaybackListenersIfNeeded() {
-    if (host.playbackListenersAttached) {
-      return
-    }
-
-    host.player.addListener(host.listenerBridge.playerListener)
-    host.player.addAnalyticsListener(host.listenerBridge.analyticsListener)
-    host.playbackListenersAttached = true
   }
 
   fun clearCurrentSourceState(sourceToTrim: HybridNitroPlayerSource?, beginGeneration: Boolean = true) {
@@ -133,7 +113,11 @@ internal class NitroPlayerLifecycle(
     host.listenerBridge.stopProgressUpdates()
     sourceToTrim?.sourceLoader?.cancel()
     sourceToTrim?.trimToCold()
-    if (PlayerInstanceReusePolicy.shouldReleaseForRetentionTrim()) {
+    host.clearStoredHybridSource()
+    if (host.reusePlayerInstanceForSourceChanges) {
+      host.currentPlayerOrNull()?.stop()
+      host.currentPlayerOrNull()?.clearMediaItems()
+    } else {
       releasePlayerInstance()
     }
     host.loadedWithSource = false
@@ -173,45 +157,8 @@ internal class NitroPlayerLifecycle(
     if (!host.hasActiveSource) {
       return RetentionLevel.COLD
     }
-    return (host.source as? HybridNitroPlayerSource)?.retentionState
+    return host.currentHybridSource()?.retentionState
       ?: RetentionLevel.COLD
-  }
-
-  fun currentRetentionLevel(): PlayerRetentionLevel {
-    return when (currentRetentionState()) {
-      RetentionLevel.COLD -> PlayerRetentionLevel.COLD
-      RetentionLevel.METADATA -> PlayerRetentionLevel.METADATA
-      RetentionLevel.HOT -> PlayerRetentionLevel.HOT
-    }
-  }
-
-  fun isFeedProfile(): Boolean {
-    if (!host.hasActiveSource) {
-      return false
-    }
-    return host.currentSourceConfig()?.retention?.feedPoolEligible == true
-  }
-
-  fun shouldStayHotInFeedPool(): Boolean {
-    return PlayerRetentionCoordinator.isPinnedForFeedPool(retentionSnapshot())
-  }
-
-  fun shouldStayHotUnderResourcePressure(): Boolean {
-    return PlayerRetentionCoordinator.isPinnedForResourcePressure(retentionSnapshot())
-  }
-
-  fun trimForFeedHotPool() {
-    runOnMainThread {
-      if (
-        host.isReleased ||
-        !isFeedProfile() ||
-        !PlayerRetentionCoordinator.shouldTrimForFeedHotPool(retentionSnapshot())
-      ) {
-        return@runOnMainThread
-      }
-
-      trimToMetadataRetention()
-    }
   }
 
   fun trimForResourcePressure() {
@@ -265,9 +212,7 @@ internal class NitroPlayerLifecycle(
       isPlaying = host.isPlaying,
       isAttachedToView = host.isAttachedToView(),
       wantsToPlay = host.wantsToPlay,
-      isExternalPlaybackActive = false,
-      isFeedPoolEligible = isFeedProfile(),
-      retentionLevel = currentRetentionLevel()
+      isExternalPlaybackActive = false
     )
   }
 
@@ -277,21 +222,27 @@ internal class NitroPlayerLifecycle(
       playWhenInactive = host.playWhenInactive,
       isPlaying = host.isPlaying,
       wasAutoPaused = host.wasAutoPaused,
-      isExternalPlaybackActive = false
+      isExternalPlaybackActive = false,
+      wantsToPlay = host.wantsToPlay
     )
   }
 
   fun trimToMetadataRetention() {
     if (host.isReleased || !host.hasActiveSource) return
-    val hybridSource = host.source as? HybridNitroPlayerSource ?: return
+    val hybridSource = host.currentHybridSource() ?: return
 
     if (host.loadedWithSource) {
       host.currentPlayerOrNull()?.let { currentPlayer ->
         host.desiredCurrentTimeMs = currentPlayer.currentPosition
       }
-      if (PlayerInstanceReusePolicy.shouldReleaseForRetentionTrim()) {
+      if (host.reusePlayerInstanceForSourceChanges) {
+        host.listenerBridge.stopProgressUpdates()
+        host.currentPlayerOrNull()?.stop()
+        host.currentPlayerOrNull()?.clearMediaItems()
+      } else {
         releasePlayerInstance()
       }
+      host.allocator = null
       host.loadedWithSource = false
     }
 
@@ -304,6 +255,6 @@ internal class NitroPlayerLifecycle(
 
   fun trimToColdRetention() {
     trimToMetadataRetention()
-    (host.source as? HybridNitroPlayerSource)?.trimToCold()
+    host.currentHybridSource()?.trimToCold()
   }
 }

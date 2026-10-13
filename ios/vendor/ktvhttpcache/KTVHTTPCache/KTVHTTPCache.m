@@ -13,6 +13,7 @@
 #import "KTVHCURLTool.h"
 #import "KTVHCHLSTool.h"
 #import "KTVHCLog.h"
+#import "KTVHCData+Internal.h"
 
 @implementation KTVHTTPCache
 
@@ -36,6 +37,11 @@
 + (BOOL)proxyIsRunning
 {
     return [KTVHCHTTPServer server].isRunning;
+}
+
++ (BOOL)proxyPing
+{
+    return [[KTVHCHTTPServer server] ping];
 }
 
 + (BOOL)proxyIsProxyURL:(NSURL *)URL
@@ -110,6 +116,26 @@
     [[KTVHCDataStorage storage] deleteCacheWithURL:URL];
 }
 
++ (NSString *)cacheNamespaceHeader
+{
+    return KTVHCCacheNamespaceHeader;
+}
+
++ (NSString *)forwardedHeaderNamesHeader
+{
+    return KTVHCForwardedHeaderNamesHeader;
+}
+
++ (NSURL *)cacheURLWithOriginalURL:(NSURL *)URL namespace:(NSString *)cacheNamespace
+{
+    return [KTVHCDataRequest cacheURLWithOriginalURL:URL namespace:cacheNamespace];
+}
+
++ (BOOL)cacheURL:(NSURL *)URL belongsToNamespace:(NSString *)cacheNamespace
+{
+    return [KTVHCDataRequest cacheURL:URL belongsToNamespace:cacheNamespace];
+}
+
 + (void)cacheDeleteAllCaches
 {
     [[KTVHCDataStorage storage] deleteAllCaches];
@@ -159,28 +185,6 @@
 + (NSDictionary<NSString *, NSString *> *)downloadAdditionalHeaders
 {
     return [KTVHCDownload download].additionalHeaders;
-}
-
-+ (void)downloadSetAdditionalHeaders:(NSDictionary<NSString *, NSString *> *)additionalHeaders
-                              forURL:(NSURL *)URL
-{
-    if (!URL.absoluteString.length) {
-        return;
-    }
-
-    NSMutableDictionary<NSString *, NSDictionary<NSString *, NSString *> *> *headersByURL =
-        [[KTVHCDownload download].additionalHeadersByURL mutableCopy] ?: [NSMutableDictionary dictionary];
-    if (additionalHeaders.count > 0) {
-        [headersByURL setObject:additionalHeaders forKey:URL.absoluteString];
-    } else {
-        [headersByURL removeObjectForKey:URL.absoluteString];
-    }
-    [KTVHCDownload download].additionalHeadersByURL = headersByURL;
-}
-
-+ (NSDictionary<NSString *, NSDictionary<NSString *, NSString *> *> *)downloadAdditionalHeadersByURL
-{
-    return [KTVHCDownload download].additionalHeadersByURL;
 }
 
 + (void)downloadSetAcceptableContentTypes:(NSArray<NSString *> *)acceptableContentTypes

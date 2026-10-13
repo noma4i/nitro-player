@@ -31,7 +31,7 @@
 {
     if (self = [super init]) {
         KTVHCLogAlloc(self);
-        self.unit = [[KTVHCDataUnitPool pool] unitWithURL:request.URL];
+        self.unit = [[KTVHCDataUnitPool pool] unitWithURL:request.cacheURL];
         self->_request = [request newRequestWithTotalLength:self.unit.totalLength];
         self.coreLock = [[NSRecursiveLock alloc] init];
         self.delegateQueue = dispatch_queue_create("KTVHCDataReader_delegateQueue", DISPATCH_QUEUE_SERIAL);

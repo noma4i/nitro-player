@@ -414,6 +414,8 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_INFO; // | HTTP_LOG_FLAG_TRACE;
 		success = [asyncSocket acceptOnInterface:interface port:port error:&err];
 		if (success)
 		{
+			// Persist the bound port so a restart re-binds the same port instead of a new ephemeral one.
+			port = [asyncSocket localPort];
 			HTTPLogInfo(@"%@: Started HTTP server on port %hu", THIS_FILE, [asyncSocket localPort]);
 			
 			isRunning = YES;

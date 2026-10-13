@@ -42,7 +42,7 @@ namespace margelo::nitro::video {
   public:
     double slotId     SWIFT_PRIVATE;
     std::optional<double> assignedIndex     SWIFT_PRIVATE;
-    std::optional<std::string> momentId     SWIFT_PRIVATE;
+    std::optional<std::string> itemId     SWIFT_PRIVATE;
     std::optional<std::string> sourceKey     SWIFT_PRIVATE;
     double generation     SWIFT_PRIVATE;
     bool desiredPlay     SWIFT_PRIVATE;
@@ -68,7 +68,7 @@ namespace margelo::nitro::video {
 
   public:
     FeedRingSlotSnapshot() = default;
-    explicit FeedRingSlotSnapshot(double slotId, std::optional<double> assignedIndex, std::optional<std::string> momentId, std::optional<std::string> sourceKey, double generation, bool desiredPlay, bool attached, bool prepared, bool ready, bool playing, bool buffering, double currentTime, double duration, std::optional<double> bufferDuration, std::optional<double> bufferedPosition, std::optional<double> rate, std::optional<bool> wantsToPlay, std::optional<std::string> retentionState, std::optional<bool> hasLoadedSource, std::optional<double> watchdogAttempts, std::optional<bool> watchdogPending, std::optional<std::string> nativePlaybackState, std::optional<std::string> status, std::string lastTransition, std::optional<std::string> lastError): slotId(slotId), assignedIndex(assignedIndex), momentId(momentId), sourceKey(sourceKey), generation(generation), desiredPlay(desiredPlay), attached(attached), prepared(prepared), ready(ready), playing(playing), buffering(buffering), currentTime(currentTime), duration(duration), bufferDuration(bufferDuration), bufferedPosition(bufferedPosition), rate(rate), wantsToPlay(wantsToPlay), retentionState(retentionState), hasLoadedSource(hasLoadedSource), watchdogAttempts(watchdogAttempts), watchdogPending(watchdogPending), nativePlaybackState(nativePlaybackState), status(status), lastTransition(lastTransition), lastError(lastError) {}
+    explicit FeedRingSlotSnapshot(double slotId, std::optional<double> assignedIndex, std::optional<std::string> itemId, std::optional<std::string> sourceKey, double generation, bool desiredPlay, bool attached, bool prepared, bool ready, bool playing, bool buffering, double currentTime, double duration, std::optional<double> bufferDuration, std::optional<double> bufferedPosition, std::optional<double> rate, std::optional<bool> wantsToPlay, std::optional<std::string> retentionState, std::optional<bool> hasLoadedSource, std::optional<double> watchdogAttempts, std::optional<bool> watchdogPending, std::optional<std::string> nativePlaybackState, std::optional<std::string> status, std::string lastTransition, std::optional<std::string> lastError): slotId(slotId), assignedIndex(assignedIndex), itemId(itemId), sourceKey(sourceKey), generation(generation), desiredPlay(desiredPlay), attached(attached), prepared(prepared), ready(ready), playing(playing), buffering(buffering), currentTime(currentTime), duration(duration), bufferDuration(bufferDuration), bufferedPosition(bufferedPosition), rate(rate), wantsToPlay(wantsToPlay), retentionState(retentionState), hasLoadedSource(hasLoadedSource), watchdogAttempts(watchdogAttempts), watchdogPending(watchdogPending), nativePlaybackState(nativePlaybackState), status(status), lastTransition(lastTransition), lastError(lastError) {}
 
   public:
     friend bool operator==(const FeedRingSlotSnapshot& lhs, const FeedRingSlotSnapshot& rhs) = default;
@@ -86,7 +86,7 @@ namespace margelo::nitro {
       return margelo::nitro::video::FeedRingSlotSnapshot(
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "slotId"))),
         JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "assignedIndex"))),
-        JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "momentId"))),
+        JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "itemId"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "sourceKey"))),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "generation"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "desiredPlay"))),
@@ -115,7 +115,7 @@ namespace margelo::nitro {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "slotId"), JSIConverter<double>::toJSI(runtime, arg.slotId));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "assignedIndex"), JSIConverter<std::optional<double>>::toJSI(runtime, arg.assignedIndex));
-      obj.setProperty(runtime, PropNameIDCache::get(runtime, "momentId"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.momentId));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "itemId"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.itemId));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "sourceKey"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.sourceKey));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "generation"), JSIConverter<double>::toJSI(runtime, arg.generation));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "desiredPlay"), JSIConverter<bool>::toJSI(runtime, arg.desiredPlay));
@@ -150,7 +150,7 @@ namespace margelo::nitro {
       }
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "slotId")))) return false;
       if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "assignedIndex")))) return false;
-      if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "momentId")))) return false;
+      if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "itemId")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "sourceKey")))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "generation")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "desiredPlay")))) return false;

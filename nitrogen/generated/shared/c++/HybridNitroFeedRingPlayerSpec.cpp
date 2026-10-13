@@ -14,11 +14,13 @@ namespace margelo::nitro::video {
     HybridObject::loadHybridMethods();
     // load custom methods/properties
     registerHybrids(this, [](Prototype& prototype) {
+      prototype.registerHybridGetter("ringToken", &HybridNitroFeedRingPlayerSpec::getRingToken);
       prototype.registerHybridMethod("getPlayer", &HybridNitroFeedRingPlayerSpec::getPlayer);
-      prototype.registerHybridMethod("replaceCatalog", &HybridNitroFeedRingPlayerSpec::replaceCatalog);
-      prototype.registerHybridMethod("commitViewport", &HybridNitroFeedRingPlayerSpec::commitViewport);
+      prototype.registerHybridMethod("configurePlayback", &HybridNitroFeedRingPlayerSpec::configurePlayback);
+      prototype.registerHybridMethod("applyProjection", &HybridNitroFeedRingPlayerSpec::applyProjection);
       prototype.registerHybridMethod("snapshot", &HybridNitroFeedRingPlayerSpec::snapshot);
       prototype.registerHybridMethod("addSlotStateListener", &HybridNitroFeedRingPlayerSpec::addSlotStateListener);
+      prototype.registerHybridMethod("addCommandEventListener", &HybridNitroFeedRingPlayerSpec::addCommandEventListener);
       prototype.registerHybridMethod("release", &HybridNitroFeedRingPlayerSpec::release);
     });
   }

@@ -9,67 +9,69 @@ import AVFoundation
 import Foundation
 import NitroModules
 
-class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSourceSpec {
-  private var _asset: AVURLAsset?
-  private var _retentionState: RetentionLevel = .cold
-  private var _config: NativeNitroPlayerConfig
-  private var _url: URL
-  private var _isProxyRouteActive: Bool
+class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec {
+  private struct SourceState {
+    var asset: AVURLAsset?
+    var retentionState: RetentionLevel
+    var config: NativeNitroPlayerConfig
+    var url: URL
+    var generation: Int
+  }
+
+  private struct LoadTarget {
+    let generation: Int
+    let config: NativeNitroPlayerConfig
+    let url: URL
+  }
+
+  private var state: SourceState
   private let stateLock = NSLock()
+  private var resolvedRouteGeneration: Int?
+  private let sourceLoader = SourceLoader()
   let originalConfig: NativeNitroPlayerConfig
 
-  var asset: AVURLAsset? {
-    get { stateLock.lock(); defer { stateLock.unlock() }; return _asset }
-    set { stateLock.lock(); _asset = newValue; stateLock.unlock() }
-  }
-
-  var retentionState: RetentionLevel {
-    get { stateLock.lock(); defer { stateLock.unlock() }; return _retentionState }
-    set { stateLock.lock(); _retentionState = newValue; stateLock.unlock() }
-  }
-
   var uri: String {
-    get { stateLock.lock(); defer { stateLock.unlock() }; return _config.uri }
-    set {
-      guard let nextUrl = URL(string: newValue) else { return }
-      stateLock.lock()
-      _config = NativeNitroPlayerConfig(
-        uri: newValue,
-        headers: _config.headers,
-        metadata: _config.metadata,
-        startup: _config.startup,
-        buffer: _config.buffer,
-        retention: _config.retention,
-        transport: _config.transport,
-        preview: _config.preview
-      )
-      _url = nextUrl
-      stateLock.unlock()
-    }
+    stateLock.lock()
+    defer { stateLock.unlock() }
+    return state.config.uri
   }
+
   var config: NativeNitroPlayerConfig {
-    get { stateLock.lock(); defer { stateLock.unlock() }; return _config }
+    stateLock.lock()
+    defer { stateLock.unlock() }
+    return state.config
   }
 
   var url: URL {
-    get { stateLock.lock(); defer { stateLock.unlock() }; return _url }
+    stateLock.lock()
+    defer { stateLock.unlock() }
+    return state.url
   }
-  private let sourceLoader = SourceLoader()
+
+  var retentionState: RetentionLevel {
+    stateLock.lock()
+    defer { stateLock.unlock() }
+    return state.retentionState
+  }
 
   init(
     config: NativeNitroPlayerConfig,
     originalConfig: NativeNitroPlayerConfig? = nil,
-    isProxyRouteActive: Bool = false
+    routeGeneration: Int? = nil
   ) throws {
-    self.originalConfig = originalConfig ?? config
-    self._config = config
-    self._isProxyRouteActive = isProxyRouteActive
-
     guard let url = URL(string: config.uri) else {
       throw SourceError.invalidUri(uri: config.uri).error()
     }
 
-    self._url = url
+    self.originalConfig = originalConfig ?? config
+    self.state = SourceState(
+      asset: nil,
+      retentionState: .cold,
+      config: config,
+      url: url,
+      generation: 0
+    )
+    self.resolvedRouteGeneration = routeGeneration
 
     super.init()
   }
@@ -89,21 +91,17 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
       }
 
       do {
-        let videoInformation = try await self.sourceLoader.load(priority: .utility) {
-          if self.url.isFileURL {
-            try NitroPlayerFileHelper.validateReadPermission(for: self.url)
-          }
+        let asset = try await self.getAsset()
+        let information = try await asset.getAssetInformation()
 
-          try await self.initializeAsset()
-
-          guard let asset = self.asset else {
-            throw PlayerError.assetNotInitialized.error()
-          }
-
-          return try await asset.getAssetInformation()
+        self.stateLock.lock()
+        let isCurrentAsset = self.state.asset.map { $0 === asset } ?? false
+        self.stateLock.unlock()
+        guard isCurrentAsset else {
+          throw CancellationError()
         }
 
-        promise.resolve(withResult: videoInformation)
+        promise.resolve(withResult: information)
       } catch {
         if error is CancellationError {
           promise.reject(withError: SourceError.cancelled.error())
@@ -116,37 +114,55 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
     return promise
   }
 
-  func initializeAsset() async throws {
-    guard asset == nil else {
-      if retentionState == .cold {
-        retentionState = .metadata
+  func getAsset() async throws -> AVURLAsset {
+    stateLock.lock()
+    if let asset = state.asset {
+      if state.retentionState == .cold {
+        state.retentionState = .metadata
       }
-      return
+      stateLock.unlock()
+      return asset
     }
-
-    if let headers = config.headers {
-      let options = [
-        "AVURLAssetHTTPHeaderFieldsKey": headers
-      ]
-      asset = AVURLAsset(url: url, options: options)
-    } else {
-      asset = AVURLAsset(url: url)
-    }
-
-    guard let asset else {
-      throw SourceError.failedToInitializeAsset.error()
-    }
+    let target = LoadTarget(
+      generation: state.generation,
+      config: state.config,
+      url: state.url
+    )
+    stateLock.unlock()
 
     do {
-      // Code browned from expo-video https://github.com/expo/expo/blob/ea17c9b1ce5111e1454b089ba381f3feb93f33cc/packages/expo-video/ios/VideoPlayerItem.swift#L40C30-L40C73
-      // If we don't load those properties, they will be loaded on main thread causing lags
-      _ = try? await asset.load(.duration, .preferredTransform, .isPlayable) as Any
+      let asset = try await sourceLoader.load {
+        if target.url.isFileURL {
+          try NitroPlayerFileHelper.validateReadPermission(for: target.url)
+        }
 
-      try Task.checkCancellation()
-      retentionState = .metadata
+        let asset: AVURLAsset
+        if let headers = target.config.headers {
+          asset = AVURLAsset(
+            url: target.url,
+            options: ["AVURLAssetHTTPHeaderFieldsKey": headers]
+          )
+        } else {
+          asset = AVURLAsset(url: target.url)
+        }
+
+        // Code browned from expo-video https://github.com/expo/expo/blob/ea17c9b1ce5111e1454b089ba381f3feb93f33cc/packages/expo-video/ios/VideoPlayerItem.swift#L40C30-L40C73
+        // If we don't load those properties, they will be loaded on main thread causing lags
+        _ = try? await asset.load(.duration, .preferredTransform, .isPlayable) as Any
+        try Task.checkCancellation()
+        return asset
+      }
+
+      stateLock.lock()
+      guard state.generation == target.generation else {
+        stateLock.unlock()
+        throw CancellationError()
+      }
+      state.asset = asset
+      state.retentionState = .metadata
+      stateLock.unlock()
+      return asset
     } catch {
-      self.asset = nil
-      self.retentionState = .cold
       if error is CancellationError {
         throw SourceError.cancelled.error()
       }
@@ -154,78 +170,58 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
     }
   }
 
-  func getAsset() async throws -> AVURLAsset {
-    if let asset {
-      if retentionState == .cold {
-        retentionState = .metadata
-      }
-      return asset
+  func markHot(asset: AVURLAsset) throws {
+    stateLock.lock()
+    defer { stateLock.unlock() }
+
+    guard let currentAsset = state.asset, currentAsset === asset else {
+      throw CancellationError()
     }
-
-    do {
-      try await sourceLoader.load {
-        try await self.initializeAsset()
-      }
-
-      guard let asset else {
-        throw SourceError.failedToInitializeAsset.error()
-      }
-
-      retentionState = .metadata
-      return asset
-    } catch {
-      if error is CancellationError {
-        self.asset = nil
-        self.retentionState = .cold
-        throw SourceError.cancelled.error()
-      }
-      throw error
-    }
+    state.retentionState = .hot
   }
 
   func warmMetadata() async throws {
     _ = try await getAsset()
-    retentionState = .metadata
   }
 
   func trimToMetadata() {
-    retentionState = asset == nil ? .cold : .metadata
+    stateLock.lock()
+    state.retentionState = state.asset == nil ? .cold : .metadata
+    stateLock.unlock()
   }
 
   func trimToCold() {
-    releaseAsset()
+    _ = invalidateAsset()
   }
 
   func releaseAsset() {
-    sourceLoader.cancelDetached()
-    asset = nil
-    retentionState = .cold
+    _ = invalidateAsset()
   }
 
   func supportsStartupRecovery() -> Bool {
-    HlsTransportRoutePolicy.supportsStartupRecovery(
-      isHls: HlsManifestUrl.matches(originalConfig.uri),
-      isProxyRouteActive: isProxyRouteActive()
-    )
-  }
-
-  func isProxyRouteActive() -> Bool {
-    stateLock.lock()
-    defer { stateLock.unlock() }
-    return _isProxyRouteActive
-  }
-
-  func previewSourceUri() -> String {
-    originalConfig.uri
+    guard originalConfig.transport?.mode != .direct else {
+      return false
+    }
+    return HlsManifestUrl.matches(originalConfig.uri)
   }
 
   @discardableResult
-  func refreshPlaybackRouteForStartupRecovery() -> Bool {
+  func purgePlaybackCache() -> Bool {
     guard supportsStartupRecovery() else {
       return false
     }
+    HlsProxyRuntime.shared.purgeCachedSource(
+      url: originalConfig.uri,
+      headers: originalConfig.headers
+    )
+    return true
+  }
 
-    releaseAsset()
+  @discardableResult
+  func refreshPlaybackRoute() -> Bool {
+    guard supportsStartupRecovery() else {
+      return false
+    }
 
     let resolution = HlsProxyRuntime.shared.resolvePlaybackRoute(
       url: originalConfig.uri,
@@ -237,28 +233,60 @@ class HybridNitroPlayerSource: HybridNitroPlayerSourceSpec, NativeNitroPlayerSou
     }
 
     stateLock.lock()
-    _config = NativeNitroPlayerConfig(
+    state.generation += 1
+    state.asset = nil
+    state.retentionState = .cold
+    state.config = NativeNitroPlayerConfig(
       uri: resolution.url,
-      headers: originalConfig.headers,
-      metadata: originalConfig.metadata,
+      headers: resolution.headers,
       startup: originalConfig.startup,
       buffer: originalConfig.buffer,
       retention: originalConfig.retention,
-      transport: originalConfig.transport,
-      preview: originalConfig.preview
+      transport: originalConfig.transport
     )
-    _url = nextUrl
-    _isProxyRouteActive = resolution.isProxying
+    state.url = nextUrl
+    resolvedRouteGeneration = resolution.routeGeneration
     stateLock.unlock()
+    sourceLoader.cancelDetached()
 
     return resolution.isProxying
   }
 
+  /// True when the resolved route no longer matches the transport it was resolved against:
+  /// either the bound port changed, or the route was resolved while the transport was unhealthy
+  /// and therefore bypassed the proxy that is now available again.
+  var isRouteStale: Bool {
+    guard supportsStartupRecovery() else {
+      return false
+    }
+    stateLock.lock()
+    let resolved = resolvedRouteGeneration
+    stateLock.unlock()
+
+    guard let resolved else {
+      if case .ready = HlsProxyRuntime.shared.transportReadiness {
+        return true
+      }
+      return false
+    }
+    return resolved != HlsProxyRuntime.shared.routeGeneration
+  }
+
   var memorySize: Int {
-    var size = 0
+    stateLock.lock()
+    let asset = state.asset
+    stateLock.unlock()
+    return asset?.estimatedMemoryUsage ?? 0
+  }
 
-    size += asset?.estimatedMemoryUsage ?? 0
-
-    return size
+  private func invalidateAsset() -> Int {
+    stateLock.lock()
+    state.generation += 1
+    state.asset = nil
+    state.retentionState = .cold
+    let generation = state.generation
+    stateLock.unlock()
+    sourceLoader.cancelDetached()
+    return generation
   }
 }

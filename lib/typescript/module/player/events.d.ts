@@ -1,8 +1,8 @@
-import type { PlaybackState } from './types/PlaybackState';
-import type { NitroPlayerSource } from '../bridge/nitro/NitroPlayerSource.nitro';
-import type { NitroPlayerOrientation } from '../view/types/NitroPlayerOrientation';
-import type { PlaybackError } from '../support/errors/PlaybackError';
-export interface NitroPlayerEvents {
+import type { NitroPlayerSource } from '../bridge/nitro/NitroPlayerSource.nitro.js';
+import type { PlaybackError } from '../support/errors/PlaybackError.js';
+import type { NitroPlayerOrientation } from '../view/types/NitroPlayerOrientation.js';
+import type { PlaybackState } from './types/PlaybackState.js';
+interface NitroPlayerEvents {
     /**
      * Called when the bandwidth of the video changes.
      */
@@ -22,9 +22,9 @@ export interface NitroPlayerEvents {
      */
     onPlaybackState: (state: PlaybackState) => void;
     /**
-     * Called when the active source reaches its first visual frame.
+     * Called when native playback arbitration manually preempts this surface.
      */
-    onFirstFrame: (data: onFirstFrameData) => void;
+    onPlaybackIntentIdled: () => void;
     /**
      * Called when playback fails for the active source generation.
      */
@@ -67,11 +67,5 @@ export interface onVolumeChangeData {
     volume: number;
     muted: boolean;
 }
-export interface onFirstFrameData {
-    uri: string;
-    width: number;
-    height: number;
-    sourceUri: string;
-    fromCache: boolean;
-}
+export {};
 //# sourceMappingURL=events.d.ts.map

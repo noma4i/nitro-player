@@ -36,6 +36,11 @@ public protocol HybridNitroPlayerSpec_protocol: HybridObject {
   func preload() throws -> Promise<Void>
   func play() throws -> Void
   func pause() throws -> Void
+  func configurePlayback(key: String, group: String, priority: Double, resumeAutomatically: Bool, requiresView: Bool) throws -> Void
+  func updatePlayback(active: Bool, visible: Bool, muted: Bool, loop: Bool) throws -> Void
+  func requestPlayback() throws -> Void
+  func requestIdle() throws -> Void
+  func clearPlayback() throws -> Void
   func seekBy(time: Double) throws -> Void
   func seekTo(time: Double) throws -> Void
   func replaceSourceAsync(source: (any HybridNitroPlayerSourceSpec)) throws -> Promise<Void>

@@ -1,7 +1,6 @@
 import type { BufferConfig } from '../player/types/BufferConfig';
 import type {
   NitroSourcePolicy,
-  NitroSourcePreviewConfig,
   NitroSourceRetentionConfig,
   NitroSourceStartup,
   NitroSourceTransportConfig
@@ -13,51 +12,31 @@ export interface NitroSourcePolicyDefaults {
   buffer?: BufferConfig;
   retention?: NitroSourceRetentionConfig;
   transport?: NitroSourceTransportConfig;
-  preview?: NitroSourcePreviewConfig;
 }
 
 export const DEFAULT_SOURCE_POLICY: NitroSourcePolicy = 'auto';
 
-// Native route resolution treats `transport.mode: 'auto'` as direct by default.
-// Feed HLS sources keep proxy/cache routing through `retention.feedPoolEligible`.
-export const SOURCE_POLICY_DEFAULTS: Record<NitroSourcePolicy, NitroSourcePolicyDefaults> = {
+const SOURCE_POLICY_DEFAULTS: Record<NitroSourcePolicy, NitroSourcePolicyDefaults> = {
   auto: {
     startup: 'eager',
     transport: { mode: 'auto' },
     retention: {
       preload: 'buffered',
       offscreen: 'metadata',
-      trimDelayMs: 10000,
-      feedPoolEligible: false
+      trimDelayMs: 10000
     },
-    preview: {
-      mode: 'listener',
-      autoThumbnail: true,
-      maxWidth: 480,
-      maxHeight: 480,
-      quality: 70
-    }
   },
   feed: {
     startup: 'lazy',
     buffer: {
-      preferredPeakBitRate: 6_000_000,
-      preferredForwardBufferDurationMs: 12_000
+      preferredPeakBitRate: 6_000_000
     },
     transport: { mode: 'auto' },
     retention: {
       preload: 'metadata',
       offscreen: 'metadata',
-      trimDelayMs: 4000,
-      feedPoolEligible: true
+      trimDelayMs: 4000
     },
-    preview: {
-      mode: 'listener',
-      autoThumbnail: true,
-      maxWidth: 512,
-      maxHeight: 512,
-      quality: 72
-    }
   },
   hero: {
     startup: 'eager',
@@ -65,33 +44,8 @@ export const SOURCE_POLICY_DEFAULTS: Record<NitroSourcePolicy, NitroSourcePolicy
     retention: {
       preload: 'buffered',
       offscreen: 'hot',
-      trimDelayMs: 15000,
-      feedPoolEligible: false
+      trimDelayMs: 15000
     },
-    preview: {
-      mode: 'always',
-      autoThumbnail: true,
-      maxWidth: 640,
-      maxHeight: 360,
-      quality: 80
-    }
-  },
-  thumbnail: {
-    startup: 'lazy',
-    transport: { mode: 'auto' },
-    retention: {
-      preload: 'none',
-      offscreen: 'cold',
-      trimDelayMs: 0,
-      feedPoolEligible: false
-    },
-    preview: {
-      mode: 'manual',
-      autoThumbnail: false,
-      maxWidth: 480,
-      maxHeight: 480,
-      quality: 70
-    }
   },
   manual: {}
 };

@@ -7,6 +7,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import com.nitroplay.video.player.NitroPlayerManager
 import com.nitroplay.video.view.NitroPlayerOrientationUtils
@@ -15,22 +16,71 @@ import com.nitroplay.video.view.NitroPlayerOrientationUtils
 internal class NitroPlayerListenerBridge(
   private val host: HybridNitroPlayer
 ) {
+  private data class ListenerBinding(
+    val token: Long,
+    val player: ExoPlayer,
+    val sourceGeneration: Int,
+    val playerListener: Player.Listener,
+    val analyticsListener: AnalyticsListener
+  )
+
   private val progressHandler = Handler(Looper.getMainLooper())
   private var progressRunnable: Runnable? = null
+  private var bindingToken = 0L
+  private var binding: ListenerBinding? = null
 
   companion object {
     private const val PROGRESS_UPDATE_INTERVAL_MS = 250L
   }
 
-  val analyticsListener = object : AnalyticsListener {
+  fun bind(player: ExoPlayer, sourceGeneration: Int) {
+    unbind()
+    bindingToken += 1L
+    val token = bindingToken
+    val playerListener = createPlayerListener(token, player, sourceGeneration)
+    val analyticsListener = createAnalyticsListener(token, player, sourceGeneration)
+    binding = ListenerBinding(token, player, sourceGeneration, playerListener, analyticsListener)
+    player.addListener(playerListener)
+    player.addAnalyticsListener(analyticsListener)
+  }
+
+  fun unbind() {
+    bindingToken += 1L
+    val previousBinding = binding
+    binding = null
+    stopProgressUpdates()
+    previousBinding?.player?.removeListener(previousBinding.playerListener)
+    previousBinding?.player?.removeAnalyticsListener(previousBinding.analyticsListener)
+  }
+
+  fun stopProgressUpdates() {
+    progressRunnable?.let { progressHandler.removeCallbacks(it) }
+    progressRunnable = null
+  }
+
+  private fun isCurrentBinding(token: Long, expectedPlayer: ExoPlayer, expectedSourceGeneration: Int): Boolean {
+    val currentBinding = binding ?: return false
+    return currentBinding.token == token &&
+      currentBinding.player === expectedPlayer &&
+      currentBinding.sourceGeneration == expectedSourceGeneration &&
+      host.currentPlayerOrNull() === expectedPlayer &&
+      host.sourceGeneration == expectedSourceGeneration &&
+      !host.isReleased
+  }
+
+  private fun createAnalyticsListener(
+    token: Long,
+    expectedPlayer: ExoPlayer,
+    expectedSourceGeneration: Int
+  ) = object : AnalyticsListener {
     override fun onBandwidthEstimate(
       eventTime: AnalyticsListener.EventTime,
       totalLoadTimeMs: Int,
       totalBytesLoaded: Long,
       bitrateEstimate: Long
     ) {
-      if (host.isReleased) return
-      val videoFormat = host.player.videoFormat
+      if (!isCurrentBinding(token, expectedPlayer, expectedSourceGeneration)) return
+      val videoFormat = expectedPlayer.videoFormat
       host.eventEmitter.onBandwidthUpdate(
         BandwidthData(
           bitrate = bitrateEstimate.toDouble(),
@@ -40,26 +90,23 @@ internal class NitroPlayerListenerBridge(
       )
     }
 
-    // The real first paint to the output surface. STATE_READY only means buffered; on Android the
-    // SurfaceView paints a frame later. Drive the visual-ready reveal from here so the JS cover
-    // dissolves exactly when a real frame is on screen (no black flash), and run poster extraction
-    // now that a frame actually exists.
     override fun onRenderedFirstFrame(
       eventTime: AnalyticsListener.EventTime,
       output: Any,
       renderTimeMs: Long
     ) {
-      if (host.isReleased) return
-      host.readyToDisplay = true
-      host.currentNitroPlayerView?.get()?.refreshVisualFitAfterFirstFrame()
-      host.requestFirstFrameIfNeeded()
-      host.emitPlaybackState()
+      if (!isCurrentBinding(token, expectedPlayer, expectedSourceGeneration)) return
+      host.markReadyToDisplay(expectedPlayer, expectedSourceGeneration)
     }
   }
 
-  val playerListener = object : Player.Listener {
+  private fun createPlayerListener(
+    token: Long,
+    expectedPlayer: ExoPlayer,
+    expectedSourceGeneration: Int
+  ) = object : Player.Listener {
     override fun onPlaybackStateChanged(playbackState: Int) {
-      if (host.isReleased) return
+      if (!isCurrentBinding(token, expectedPlayer, expectedSourceGeneration)) return
       when (playbackState) {
         Player.STATE_IDLE -> {
           host.isCurrentlyBuffering = false
@@ -71,44 +118,28 @@ internal class NitroPlayerListenerBridge(
           host.enterBuffering()
         }
         Player.STATE_READY -> {
-          // Fire onLoad / first-frame only on the first ready of this source
-          // generation; later READY transitions (rebuffer, seek) must not re-emit.
           val isFirstLoadForGeneration = !host.hasLoadedCurrentSource
           host.markCurrentSourceLoaded()
           host.isCurrentlyBuffering = false
           host.lastError = null
-          host.status = host.resolvePlayPauseStatus()
-          // readyToDisplay (-> isVisualReady, the JS cover-dissolve trigger) is intentionally NOT set
-          // here: STATE_READY means buffered, not painted. On Android SurfaceView there is a gap
-          // between STATE_READY and the actual first paint, so dissolving the cover here flashes
-          // black. It is set in analyticsListener.onRenderedFirstFrame (the real first paint).
+          host.status = resolvePlayPauseStatus(expectedPlayer)
 
           if (isFirstLoadForGeneration) {
-            val generalVideoFormat = host.player.videoFormat
-            val selectedVideoTrackFormat = host.selectedVideoTrackFormat()
+            val generalVideoFormat = expectedPlayer.videoFormat
+            val selectedVideoTrackFormat = selectedVideoTrackFormat(expectedPlayer)
             val width = selectedVideoTrackFormat?.width ?: generalVideoFormat?.width ?: 0
             val height = selectedVideoTrackFormat?.height ?: generalVideoFormat?.height ?: 0
             val rotationDegrees = selectedVideoTrackFormat?.rotationDegrees ?: generalVideoFormat?.rotationDegrees
 
             host.eventEmitter.onLoad(
               onLoadData(
-                currentTime = host.player.currentPosition / 1000.0,
-                duration = if (host.player.duration == C.TIME_UNSET) Double.NaN else host.player.duration / 1000.0,
+                currentTime = expectedPlayer.currentPosition / 1000.0,
+                duration = if (expectedPlayer.duration == C.TIME_UNSET) Double.NaN else expectedPlayer.duration / 1000.0,
                 width = width.toDouble(),
                 height = height.toDouble(),
                 orientation = NitroPlayerOrientationUtils.fromWHR(width, height, rotationDegrees)
               )
             )
-
-            val sourceUrl = (host.source as? HybridNitroPlayerSource)?.previewSourceUri()
-            if (sourceUrl != null) {
-              host.cacheFirstFrameContext(
-                sourceUri = sourceUrl,
-                width = width.toDouble(),
-                height = height.toDouble()
-              )
-              host.requestFirstFrameIfNeeded()
-            }
           }
         }
         Player.STATE_ENDED -> {
@@ -125,25 +156,24 @@ internal class NitroPlayerListenerBridge(
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
-      if (host.isReleased) return
+      if (!isCurrentBinding(token, expectedPlayer, expectedSourceGeneration)) return
       super.onIsPlayingChanged(isPlaying)
       if (isPlaying) host.isCurrentlyBuffering = false
-      if (host.player.playbackState == Player.STATE_READY) {
-        host.status = host.resolvePlayPauseStatus()
+      if (expectedPlayer.playbackState == Player.STATE_READY) {
+        host.status = resolvePlayPauseStatus(expectedPlayer)
       }
       if (isPlaying) {
         NitroPlayerManager.setLastPlayedPlayer(host)
-        startProgressUpdates()
+        startProgressUpdates(token, expectedPlayer, expectedSourceGeneration)
       } else {
-        if (host.player.playbackState == Player.STATE_ENDED || host.player.playbackState == Player.STATE_IDLE) {
-          stopProgressUpdates()
-        }
+        stopProgressUpdates()
       }
+      NitroPlayerManager.audioFocusManager.requestAudioFocusUpdate()
       host.emitPlaybackState()
     }
 
     override fun onPlayerError(error: PlaybackException) {
-      if (host.isReleased) return
+      if (!isCurrentBinding(token, expectedPlayer, expectedSourceGeneration)) return
       val message = error.message ?: "Unknown playback error"
       if (host.attemptStartupRecoveryIfNeeded(message)) {
         return
@@ -156,7 +186,13 @@ internal class NitroPlayerListenerBridge(
       newPosition: Player.PositionInfo,
       reason: Int
     ) {
-      if (host.isReleased) return
+      if (!isCurrentBinding(token, expectedPlayer, expectedSourceGeneration)) return
+      if (
+        reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION &&
+        expectedPlayer.repeatMode == Player.REPEAT_MODE_ONE
+      ) {
+        host.loopWrapCount += 1L
+      }
       if (
         (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) &&
         host.status == NitroPlayerStatus.ENDED
@@ -167,18 +203,16 @@ internal class NitroPlayerListenerBridge(
     }
 
     override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
-      if (host.isReleased) return
-      host.updateCachedRate(playbackParameters.speed.toDouble())
+      if (!isCurrentBinding(token, expectedPlayer, expectedSourceGeneration)) return
       host.emitPlaybackState()
     }
 
     override fun onVolumeChanged(volume: Float) {
-      if (host.isReleased) return
+      if (!isCurrentBinding(token, expectedPlayer, expectedSourceGeneration)) return
       if (!host.muted && !NitroPlayerManager.audioFocusManager.isDucking()) {
         host.volume = volume.toDouble()
       }
 
-      NitroPlayerManager.audioFocusManager.requestAudioFocusUpdate()
       host.eventEmitter.onVolumeChange(onVolumeChangeData(
         volume = volume.toDouble(),
         muted = host.muted
@@ -186,29 +220,42 @@ internal class NitroPlayerListenerBridge(
     }
   }
 
-  fun startProgressUpdates() {
-    stopProgressUpdates()
-    if (!host.loadedWithSource || !host.hasActiveSource) {
-      return
+  private fun selectedVideoTrackFormat(player: ExoPlayer) = player.currentTracks.groups
+    .find { group -> group.type == C.TRACK_TYPE_VIDEO && group.isSelected }
+    ?.let { selectedVideoTrackGroup ->
+      val selectedIndex = (0 until selectedVideoTrackGroup.length).firstOrNull { index ->
+        selectedVideoTrackGroup.isTrackSelected(index)
+      } ?: return@let null
+      selectedVideoTrackGroup.getTrackFormat(selectedIndex)
     }
+
+  private fun resolvePlayPauseStatus(player: ExoPlayer): NitroPlayerStatus {
+    if (player.isPlaying) return NitroPlayerStatus.PLAYING
+    if (host.wantsToPlay) {
+      return when (host.status) {
+        NitroPlayerStatus.BUFFERING,
+        NitroPlayerStatus.LOADING,
+        NitroPlayerStatus.PLAYING -> host.status
+        else -> NitroPlayerStatus.LOADING
+      }
+    }
+    return NitroPlayerStatus.PAUSED
+  }
+
+  private fun startProgressUpdates(token: Long, expectedPlayer: ExoPlayer, expectedSourceGeneration: Int) {
+    stopProgressUpdates()
     progressRunnable = object : Runnable {
       override fun run() {
-        if (host.isReleased) return
-        if (!host.loadedWithSource || !host.hasActiveSource) {
-          stopProgressUpdates()
-          return
-        }
-        if (host.player.playbackState != Player.STATE_IDLE && host.player.playbackState != Player.STATE_ENDED) {
+        if (!isCurrentBinding(token, expectedPlayer, expectedSourceGeneration)) return
+        if (expectedPlayer.playbackState != Player.STATE_IDLE && expectedPlayer.playbackState != Player.STATE_ENDED) {
+          host.desiredCurrentTimeMs = expectedPlayer.currentPosition.coerceAtLeast(0L)
           host.emitPlaybackState()
-          progressHandler.postDelayed(this, PROGRESS_UPDATE_INTERVAL_MS)
+          if (isCurrentBinding(token, expectedPlayer, expectedSourceGeneration)) {
+            progressHandler.postDelayed(this, PROGRESS_UPDATE_INTERVAL_MS)
+          }
         }
       }
     }
     progressHandler.post(progressRunnable ?: return)
-  }
-
-  fun stopProgressUpdates() {
-    progressRunnable?.let { progressHandler.removeCallbacks(it) }
-    progressRunnable = null
   }
 }

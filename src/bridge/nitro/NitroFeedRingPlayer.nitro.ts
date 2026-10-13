@@ -1,11 +1,11 @@
 import type { HybridObject } from 'react-native-nitro-modules';
 import type { NativeNitroPlayerConfig } from '../../source/types/NitroPlayerConfig';
-import type { ListenerSubscription } from './NitroPlayerEventEmitter.nitro';
 import type { NitroPlayer } from './NitroPlayer.nitro';
+import type { ListenerSubscription } from './NitroPlayerEventEmitter.nitro';
 
 export interface FeedRingCatalogItem {
   index: number;
-  momentId?: string;
+  itemId?: string;
   sourceKey?: string;
   source?: NativeNitroPlayerConfig;
 }
@@ -15,17 +15,29 @@ export interface FeedRingCatalog {
   items: FeedRingCatalogItem[];
 }
 
-export interface FeedRingViewport {
+export interface FeedRingProjection {
   revision: number;
-  centerIndex: number;
+  activationId: number;
+  catalog?: FeedRingCatalog;
+  windowCenterIndex: number;
+  playbackIndex: number;
   playbackAllowed: boolean;
   muted: boolean;
+}
+
+export interface FeedRingCommandEvent {
+  ringToken: number;
+  projectionRevision: number;
+  kind: string; // 'accepted' | 'rejected' | 'apply-error' | 'source-error'
+  slotId?: number;
+  assignedIndex?: number;
+  error?: string;
 }
 
 export interface FeedRingSlotSnapshot {
   slotId: number;
   assignedIndex?: number;
-  momentId?: string;
+  itemId?: string;
   sourceKey?: string;
   generation: number;
   desiredPlay: boolean;
@@ -54,7 +66,8 @@ export interface FeedRingSnapshot {
   catalogRevision: number;
   viewportRevision: number;
   catalogSize: number;
-  centerIndex?: number;
+  windowCenterIndex?: number;
+  playbackIndex?: number;
   playbackAllowed: boolean;
   muted: boolean;
   released: boolean;
@@ -73,11 +86,13 @@ export interface FeedRingSlotState {
 }
 
 export interface NitroFeedRingPlayer extends HybridObject<{ ios: 'swift'; android: 'kotlin' }> {
+  readonly ringToken: number;
   getPlayer(slotId: number): NitroPlayer;
-  replaceCatalog(catalog: FeedRingCatalog): void;
-  commitViewport(viewport: FeedRingViewport): void;
+  configurePlayback(key: string, group: string, priority: number, resumeAutomatically: boolean): void;
+  applyProjection(projection: FeedRingProjection): void;
   snapshot(): FeedRingSnapshot;
   addSlotStateListener(listener: (state: FeedRingSlotState) => void): ListenerSubscription;
+  addCommandEventListener(listener: (event: FeedRingCommandEvent) => void): ListenerSubscription;
   release(): void;
 }
 

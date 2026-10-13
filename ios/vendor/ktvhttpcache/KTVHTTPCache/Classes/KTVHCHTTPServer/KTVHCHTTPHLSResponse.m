@@ -40,14 +40,14 @@
         KTVHCLogHTTPHLSResponse(@"%p, Create response\nrequest : %@", self, dataRequest);
         self.connection = connection;
         self.ledgerRequestId = ledgerRequestId;
-        self.unit = [[KTVHCDataUnitPool pool] unitWithURL:dataRequest.URL];
+        self.unit = [[KTVHCDataUnitPool pool] unitWithURL:dataRequest.cacheURL];
         NSURL *completeURL = self.unit.completeURL;
         if (completeURL) {
             self.data = [NSData dataWithContentsOfURL:completeURL];
         } else {
             [[KTVHCRequestLedger sharedLedger] markUsedNetworkForRequestId:self.ledgerRequestId];
             __weak typeof(self) weakSelf = self;
-            self.task = [[KTVHCHLSTool tool] taskWithURL:dataRequest.URL completionHandler:^(NSData *data, NSError *error) {
+            self.task = [[KTVHCHLSTool tool] taskWithRequest:dataRequest completionHandler:^(NSData *data, NSError *error) {
                 __strong typeof(weakSelf) strongSelf = weakSelf;
                 [strongSelf handleResponeWithData:data error:error];
             }];
