@@ -73,7 +73,9 @@
     "audit:lifecycle": "node ./scripts/audit-lifecycle-guards.mjs --self-test && node ./scripts/audit-lifecycle-guards.mjs",
     "test:ts": "jest --runInBand",
     "test:android": "cd example/android && ./gradlew :noma4i_nitro-play:test",
-    "test:ios": "cd tests/ios && swift test",
+    "test:ios": "cd tests/ios && swift test && cd ../.. && yarn test:view-binding:ios && yarn test:audio-session:ios",
+    "test:view-binding:ios": "sh -c 'set -e; tmp_dir=$(mktemp -d); trap \"rm -rf \\\"$tmp_dir\\\"\" EXIT; swiftc ios/view/PlayerViewBindingPolicy.swift native-tests/PlayerViewBindingPolicySwiftTests.swift -o \"$tmp_dir/PlayerViewBindingPolicySwiftTests\"; \"$tmp_dir/PlayerViewBindingPolicySwiftTests\"'",
+    "test:audio-session:ios": "sh -c 'set -e; tmp_dir=$(mktemp -d); trap \"rm -rf \\\"$tmp_dir\\\"\" EXIT; swiftc ios/runtime/NativeAudioSessionCoordinator.swift ios/runtime/NativeAudioSessionPolicy.swift ios/runtime/PlaybackAudioSessionBinding.swift native-tests/AudioSessionOwnershipSwiftTests.swift -o \"$tmp_dir/AudioSessionOwnershipSwiftTests\"; \"$tmp_dir/AudioSessionOwnershipSwiftTests\"'",
     "test:ios:tsan": "cd tests/ios && swift test --sanitize=thread",
     "test:ios:asan": "cd tests/ios && swift test --sanitize=address"
   },

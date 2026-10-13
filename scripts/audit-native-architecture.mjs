@@ -135,11 +135,12 @@ const requiredMirrors = [
   ['ios/player/SourceActivationPolicy.swift', 'android/src/main/java/com/nitroplay/player/SourceActivationPolicy.kt'],
   ['ios/support/SingleOwnerResourceSlot.swift', 'android/src/main/java/com/nitroplay/support/SingleOwnerResourceSlot.kt'],
   ['ios/streaming/cache/HlsCacheBudget.swift', 'android/src/main/java/com/nitroplay/streaming/cache/HlsCacheBudget.kt'],
+  ['tests/ios/Tests/Behavior/SingleOwnerResourceSlotTests.swift', 'android/src/test/java/com/nitroplay/behavior/core/SingleOwnerResourceSlotTest.kt'],
   ['tests/ios/Tests/Behavior/PlayerAppStatePolicyTests.swift', 'android/src/test/java/com/nitroplay/behavior/core/PlayerAppStatePolicyTest.kt'],
   ['tests/ios/Tests/Behavior/PlayerRetentionCoordinatorTests.swift', 'android/src/test/java/com/nitroplay/behavior/core/PlayerRetentionCoordinatorTest.kt'],
   ['tests/ios/Tests/NitroPlayFeedCoreTests/FeedRingCommandPlannerTests.swift', 'android/src/test/java/com/nitroplay/feed/FeedRingCommandPlannerTest.kt'],
   ['tests/ios/Tests/NitroPlayFeedCoreTests/FeedRingWindowPlannerTests.swift', 'android/src/test/java/com/nitroplay/feed/FeedRingWindowPlannerTest.kt'],
-  ['tests/ios/Tests/NitroPlayFeedCoreTests/PlaybackWatchdogRecoveryTests.swift', 'android/src/test/java/com/nitroplay/behavior/playback/PlaybackWatchdogRecoveryTest.kt']
+  ['tests/ios/Tests/Behavior/PlaybackWatchdogPolicyTests.swift', 'android/src/test/java/com/nitroplay/behavior/playback/PlaybackWatchdogPolicyTest.kt']
 ];
 
 for (const pair of requiredMirrors) {
