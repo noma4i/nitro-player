@@ -35,7 +35,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - NitroPlay (3.0.0-beta.1):
+  - NitroPlay (3.0.0):
     - hermes-engine
     - NitroModules
     - RCTRequired

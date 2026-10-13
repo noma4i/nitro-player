@@ -1,6 +1,6 @@
 {
   "name": "@noma4i/nitro-play",
-  "version": "3.0.0-beta.1",
+  "version": "3.0.0",
   "description": "Native video playback runtime for React Native",
   "author": "Alexander Tsirel",
   "license": "MIT",
