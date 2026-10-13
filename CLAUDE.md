@@ -86,85 +86,57 @@ Beta/release готовится как отдельный release boundary по�
 | Поле | Тип | Назначение |
 | --- | --- | --- |
 | `uri` | `string \| number` | URL или RN asset |
-| `policy` | `'auto' \| 'feed' \| 'hero' \| 'thumbnail' \| 'manual'` | Consumer scenario defaults |
-| `headers` | `Record<string,string>` | HTTP headers |
-| `metadata` | `NitroSourceMetadata` | title, subtitle, artist, imageUri |
+| `policy` | `'auto' \| 'feed' \| 'hero' \| 'manual'` | Consumer scenario defaults |
+| `headers` | `Record<string,string>` | HTTP headers, часть cache identity |
 | `startup` | `'eager' \| 'lazy'` | Startup strategy |
-| `buffer` | `BufferConfig` | Fine-grained buffer policy |
-| `retention.preload` | `'none' \| 'metadata' \| 'buffered'` | Initial preload depth |
-| `retention.offscreen` | `'cold' \| 'metadata' \| 'hot'` | Offscreen retention level |
-| `retention.trimDelayMs` | `number` | Delayed trim |
-| `retention.feedPoolEligible` | `boolean` | Feed hot pool opt-in |
+| `buffer` | `BufferConfig` | Fine-grained buffer policy (`buffer: {}` очищает policy defaults) |
+| `retention.preload/offscreen/trimDelayMs` | `none/metadata/buffered`, `cold/metadata/hot`, `number` | Retention |
 | `transport.mode` | `'auto' \| 'direct' \| 'proxy'` | Stream routing policy |
-| `preview.mode` | `'listener' \| 'always' \| 'manual'` | First-frame policy |
-| `preview.autoThumbnail` | `boolean` | Native auto-thumbnail для attached views |
-| `preview.maxWidth/maxHeight/quality` | `number` | Preview output hints |
+
+## Публичный API (3.0)
+
+| Экспорт | Назначение |
+| --- | --- |
+| `NitroPlaybackSurface` (+ `Ref`, `Snapshot`) | Один native player на один view, по `playbackKey` |
+| `NitroPlaybackBoundary` | Suspend воспроизведения при `suspended` |
+| `useNitroFeedRingHost`, `feedRingHostArbiter`, `NitroFeedRingSlotView` | Feed ring: один native ring на focused host |
+| `NITRO_PLAYBACK_CONTEXTS`, `resolvePlaybackContext` | Именованные контексты group/priority/resume |
+| `createNitroPrefetchQueue`, `prefetchNitroPlaybackSource`, `cancelNitroPlaybackPrefetch` | Prefetch |
+| `configureNitroPlaybackCache`, `getNitroPlaybackCacheStats`, `clearNitroPlaybackCache` | HLS cache (по умолчанию 4 GiB, минимум 64 MiB) |
+| `suspendNitroPlayback`, `resetNitroPlayback`, `acquireExternalAudioSession` | Управление runtime |
+| `prepareSource` | Descriptor с `identity.playbackKey` и `identity.requestKey` |
+
+Внутренний Nitro surface: `NitroPlaybackRuntime` (cache, prefetch, suspension, audio session, foreground), `NitroPlayer`, `NitroPlayerViewManager`, `NitroFeedRingPlayer`.
 
 ## Runtime Contract
 
 | Область | Инвариант |
 | --- | --- |
-| Early play | `play()` до `onLoad` каноничен |
-| onLoad once | `onLoad` и first-frame эмитятся один раз на source generation (gate по `hasLoadedCurrentSource`); повторные READY (rebuffer/seek) не дублируют |
-| Playback status | Строится из реального readiness/buffering/isPlaying |
-| Playback emission | Native `onPlaybackState` dedupe использует typed thread-safe fingerprint; обе платформы строят fingerprint из сырых значений (iOS `PlaybackSnapshot` / Android `currentPlaybackSnapshot`) ДО аллокации Nitro `PlaybackState` — на 250ms tick объект состояния создаётся только при реальном emit |
-| Visual readiness | Публичное поле: `isVisualReady` |
-| Error surface | `PlaybackState.error` и отдельный `onError`; iOS сюрфейсит фатальные HLS-startup HTTP-ошибки (4xx) через AVPlayerItem error-log (`HlsStartupErrorPolicy`), не только status `.failed` |
-| First frame | `onFirstFrame` sticky для текущего source generation |
-| First-frame extraction | iOS HLS manifest сначала пробует `AVAssetImageGenerator` (iOS 16+), затем fallback через AVPlayer + `AVPlayerItemVideoOutput`; только SDK-required AVPlayer mutators hop to `MainActor`, pixel polling/CI/cache остаются off-main. Bare-`.ts` может давать AVError -11828 и остаётся на AVPlayer fallback. Progressive MP4 — через `AVAssetImageGenerator`. Android: `MediaMetadataRetriever` |
-| Shared transport | Lazy-start runtime с bounded startup recovery |
-| Preview | Preview side-jobs не меняют playback state; attached view по умолчанию auto-thumbnail, `manual` отключает background warmup, `autoThumbnail=false` выключает mounted-view placeholder |
-| Cached preview lookup | `peekFirstFrame` читает только preview cache по тому же identity и не запускает generation path |
-| Generation safety | `replaceSourceAsync`, `clearSourceAsync`, `release` гасят stale callbacks |
-| Source identity | `prepareSource()` даёт stable JS `playbackKey` для replace gate; native HLS identity строит request/preview keys отдельно |
-| Resource pressure | `PlayerRetentionCoordinator` решает trim/feed hot; feed hot pool держит 3-slot ring и коалесцирует normal rebalance до одного main turn; feed-pool pin не держит idle attached views, resource-pressure pin держит attached views; iOS memory warning / Android trim-memory trim unpinned active-source players to cold |
-| Inactive host | `playWhenInactive` блокирует library auto-pause на iOS/Android; `playInBackground` отвечает за background playback |
-
-## Stream Cache / Preview
-
-| Surface | API |
-| --- | --- |
-| `streamCache` | `prefetch(source)`, `getStats(source?)` c header-aware identity, `configure({ maxBytes })`, `clear()` |
-| `videoPreview` | `getFirstFrame(source)`, `peekFirstFrame(source)` для cache-only read, `clear()` очищает preview artifacts |
-
-Внутренний Nitro surface разделён по public JS surface: `NitroStreamCache` для `streamCache`, `NitroVideoPreview` для `videoPreview`.
+| Play intent | `shouldPlay` = intent; native coordinator решает, кто играет по group/priority |
+| Snapshot | `onSnapshotChange` не вызывается на `currentTime`-only прогресс; видимость только при attach |
+| Generation safety | Новый `playbackKey` сбрасывает snapshot; stale callbacks гасятся |
+| Feed ring | 3 native slot; `playbackIndex` в пределах 1 от `windowCenterIndex`; пустой host map паркует ring, освобождает только `resetNitroPlayback()` |
+| Watchdog | Окно 12 s cold, 3 s после прогресса, 15 s cooldown; escalation один раз, затем termination |
+| Resource pressure | `PlayerRetentionCoordinator` trim для unpinned; pinned = playing, attached, wantsToPlay, external playback |
+| HLS proxy | OS-assigned порт; implicit start committed только после успешного start; failed start retryable |
+| Inactive host | `playWhenInactive` блокирует auto-pause; `playInBackground` для background |
 
 ## Нативная архитектура
 
-| Файл | Назначение |
-| --- | --- |
-| `ios/player/PlayerAppStatePolicy.swift` | Auto-pause/resume app-state decisions |
-| `ios/preview/PreviewRequestCoordinator.swift` | Coalesced/cancellable preview side-jobs |
-| `ios/preview/HybridNitroVideoPreview.swift` | Nitro `videoPreview` surface adapter |
-| `ios/streaming/HlsPrefetchDeduper.swift` | HLS prefetch dedup window + hard cap |
-| `ios/streaming/HybridNitroStreamCache.swift` | Nitro `streamCache` surface adapter |
-| `ios/streaming/HlsProxyRuntimeLifecycleState.swift` | Queue-free HLS runtime start/stop/restart state, owned by `HlsProxyRuntime.runtimeQueue` |
-| `ios/streaming/HlsProxyRuntime.swift` | Singleton HLS proxy runtime + single sync-domain for implicit/explicit lifecycle |
-| `ios/streaming/HlsProxyServerController.swift` | Vendored KTVHTTPCache lifecycle, headers, KTV cache stats |
-| `ios/vendor/ktvhttpcache/` | Private vendored KTVHTTPCache backend + CocoaAsyncSocket source |
-| `ios/streaming/HlsManifestUrl.swift` | Shared `.m3u8` URL detection (DRY) |
-| `ios/streaming/HlsIdentity.swift` | Shared URL+headers stable key (DRY): `requestKey` (stream/resource), `previewKey` |
-| `ios/player/PlaybackStateEmissionGate.swift` | Typed/thread-safe playback-state emission dedupe for progress hot path |
-| `ios/player/HybridNitroPlayer*.swift` | Core, lifecycle, events, preview (`HybridNitroPlayerPreview.swift` extension: first-frame/preview generation) |
-| `ios/source/HybridNitroPlayerSource.swift`, `ios/bridge/HybridNitroPlayerSourceFactory.swift` | Source normalization, transport route refresh |
-| `android/.../player/PlayerAppStatePolicy.kt` | Auto-pause/resume app-state decisions |
-| `android/.../preview/PreviewRequestCoordinator.kt` | Coalesced/cancellable preview side-jobs |
-| `android/.../preview/HybridNitroVideoPreview.kt` | Nitro `videoPreview` surface adapter |
-| `android/.../streaming/HlsPrefetchDeduper.kt` | HLS prefetch dedup window + hard cap |
-| `android/.../streaming/HybridNitroStreamCache.kt` | Nitro `streamCache` surface adapter |
-| `android/.../streaming/HlsProxyRuntime.kt` | Singleton HLS proxy runtime + synchronized server owner/lifecycle state |
-| `android/.../streaming/HlsProxyServer.kt` | NanoHTTPD server |
-| `android/.../streaming/HlsManifestUrl.kt` | Shared `.m3u8` URL detection (DRY) |
-| `android/.../streaming/HlsIdentity.kt` | Shared URL+headers stable key (DRY): `requestKey` (stream/resource), `previewKey` |
-| `android/.../player/PlaybackStateEmissionGate.kt` | Typed/thread-safe playback-state emission dedupe for progress hot path |
-| `android/.../player/HybridNitroPlayer*.kt` | Core, lifecycle, listener bridge, preview (`HybridNitroPlayerPreview.kt` extension functions: first-frame/preview generation) |
-| `android/.../source/HybridNitroPlayerSource.kt`, `android/.../bridge/HybridNitroPlayerSourceFactory.kt` | Source normalization, transport route refresh |
+| Область | iOS | Android |
+| --- | --- | --- |
+| Session coordinator | `ios/runtime/PlaybackSessionCoordinator.swift`, `PlaybackSessionRuntime.swift`, `PlaybackSessionBinding.swift` | `video/runtime/PlaybackSessionCoordinator.kt`, `PlaybackSessionRuntime.kt`, `PlaybackSessionBinding.kt` |
+| Audio | `NativeAudioSession*`, `PlaybackAudioSessionBinding.swift` | `AudioFocusEventEngine.kt`, `NativeSystemAudioEventEngine.kt` |
+| Suspension | `PlaybackSuspensionRegistry.swift` | `PlaybackSuspensionRegistry.kt` |
+| Recovery | `PlaybackWatchdogPolicy.swift`, `PlaybackForegroundRecovery.swift` | `PlaybackWatchdogPolicy.kt` |
+| Source activation | `SourceActivationPolicy.swift` | `SourceActivationPolicy.kt` |
+| Resource slot | `SingleOwnerResourceSlot.swift`, `MainThreadResourceExecutor.swift` | `SingleOwnerResourceSlot.kt` |
+| HLS | `HlsProxyRuntime`, `HlsPrefetcher`, `HlsRequestIdentity`, `HlsTransportReadiness`, `HlsLeadingSegments` | `HlsProxyRuntime`, `HlsProxyServer`, `HlsRuntimeState`, `HlsCacheContentValidator` |
+| Feed ring | `ios/feed/FeedRing*Planner.swift`, `HybridNitroFeedRingPlayer.swift` | `feed/FeedRing*Planner.kt`, `HybridNitroFeedRingPlayer.kt` |
+| Runtime bridge | `ios/bridge/HybridNitroPlaybackRuntime.swift` | `bridge/HybridNitroPlaybackRuntime.kt` |
 
-HLS-прокси (обе платформы) биндит OS-assigned ephemeral порт (не фиксированный), фактический порт читается после старта (`webServer.port` / `getListeningPort()`) — избегает loopback-коллизий между параллельными инстансами.
-Implicit HLS start считается committed только после успешного server/controller start; failed/no-context start должен оставаться retryable. iOS хранит implicit/explicit lifecycle state в `HlsProxyRuntime.runtimeQueue`, а controller держит только KTV lifecycle mechanics. Android хранит lifecycle/server owner внутри `HlsProxyRuntime` под одним lock. Host destroy останавливает runtime без explicit-stop semantics. Pending server start не может воскресить runtime после stop/host destroy; concurrent start заменяет предыдущий server.
-iOS HLS proxy uses private vendored KTVHTTPCache; upstream fixes are documented in `ios/vendor/ktvhttpcache/README.md`. Do not add KTVHTTPCache as an external dependency or expose its ObjC API as NitroPlay public API.
-Stream cache default max is 4 GiB on both platforms; JS may override it with `streamCache.configure({ maxBytes })`. Native stores clamp tiny values to 64 MiB, evict after writes, and report the active budget through `maxSize`. iOS stream prefetch warms only KTVHTTPCache; `HlsCacheStore` is for preview thumbnails.
-Playback-state emission на обеих платформах дедуплицируется через typed fingerprint (`PlaybackStateEmissionGate`), а не через строковую signature/full-state copy: progress callbacks могут идти часто и из разных native contexts.
+iOS HLS proxy использует private vendored KTVHTTPCache (`ios/vendor/ktvhttpcache/README.md`); не добавлять как внешнюю зависимость и не выставлять его ObjC API.
+Android HLS proxy забирает сегмент целиком и отдаёт из кэша (без tee).
 
 ## Паритет платформ
 

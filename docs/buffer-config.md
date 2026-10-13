@@ -9,7 +9,6 @@ Buffer tuning lives under `source.buffer`.
 | `buffer` | Platform-specific buffering policy |
 | `retention` | Preload and offscreen retention policy |
 | `transport.mode` | Stream routing policy |
-| `preview` | First-frame generation policy |
 
 ## Shared live fields
 

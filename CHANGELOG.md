@@ -1,5 +1,35 @@
 # Changelog
 
+## 3.0.0-beta.1
+
+### Breaking Changes
+
+- Replaced the player-object API with a declarative playback runtime. Removed `NitroPlayerView`, `NitroPlayer`, `useNitroPlayer`, `usePlaybackState`, `useEvent`, `streamCache`, `videoPreview`, adaptive quality, and the stream diagnostics APIs. See `docs/migration-3.0.md`.
+- Replaced the `NitroStreamCache` and `NitroVideoPreview` Nitro objects with one `NitroPlaybackRuntime`.
+- Removed `source.preview`, `source.metadata`, the `thumbnail` policy, and `retention.feedPoolEligible`.
+- Feed policy buffer defaults to a 6 Mbps peak bitrate only. An explicit `buffer: {}` clears policy buffer defaults.
+- `react-native-nitro-modules >= 0.37.0` is required. Tooling moved to Nitrogen 0.37.1 and React Native 0.87.1.
+
+### Added
+
+- `NitroPlaybackSurface`, `NitroPlaybackBoundary`, and surface snapshots with notify rules that ignore `currentTime`-only progress.
+- Named playback contexts (`ring`, `ambient`, `hero`, `overlay`, `system`, `exclusive`) with group, priority, and resume mode.
+- Native session coordinator, audio session runtime (iOS) and audio focus engine (Android), suspension registry, foreground recovery, and external audio session handoff.
+- `useNitroFeedRingHost` and `feedRingHostArbiter`: one native ring bound to the focused host with separate window center and playback index.
+- `createNitroPrefetchQueue` with priority ordering, de-duplication, TTL, and native settle events.
+- Runtime functions: `prefetchNitroPlaybackSource`, `cancelNitroPlaybackPrefetch`, `configureNitroPlaybackCache`, `getNitroPlaybackCacheStats`, `clearNitroPlaybackCache`, `suspendNitroPlayback`, `resetNitroPlayback`, `acquireExternalAudioSession`.
+- Single-owner resource slots, main-thread resource executor, HLS transport readiness probe, cache content validation, and duration-based leading-segment prefetch.
+- Native tests for the watchdog policy, retention coordinator, app-state policy, suspension registry, resource slot, audio session policy and ownership, and view binding. JS tests for the arbiter, prefetch queue, and surface snapshot.
+
+### Changed
+
+- The example app now demonstrates `NitroPlaybackSurface` and the feed ring on React Native 0.87.1.
+- The Android HLS proxy fetches whole segments before serving them. Pass-through tee caching was removed.
+
+### Fixed
+
+- Playback watchdog hardening, feed ring focus and remount races, replace-source races, background playback lifecycle, and Android foreground handling.
+
 ## 2.0.0-beta.5
 
 ### Fixed

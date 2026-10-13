@@ -1,66 +1,36 @@
 # Memory Management
 
-NitroPlay memory policy is driven by source policy defaults, advanced
-`retention` overrides, and native resource coordinators.
+Memory use follows the source policy (`retention`) and the native retention coordinator.
 
-## Public Contract
+## Retention
 
-| Surface                 | Purpose                                                                    |
-| ----------------------- | -------------------------------------------------------------------------- |
-| `source.policy`         | Consumer scenario defaults (`auto`, `feed`, `hero`, `thumbnail`, `manual`) |
-| `source.retention`      | Advanced override for preload/offscreen/trim/feed pool                     |
-| `player.memorySnapshot` | Current native player/source footprint                                     |
-| `prepareSource()`       | Stable playback/request/preview identity                                   |
+| State | Meaning |
+| --- | --- |
+| `cold` | No active native player resources |
+| `metadata` | Metadata kept, playback resources trimmed |
+| `hot` | Player and buffers kept |
 
-## Retention States
+## Resource pressure
 
-| State      | Meaning                                       |
-| ---------- | --------------------------------------------- |
-| `cold`     | No active native player resources             |
-| `metadata` | Metadata retained, playback resources trimmed |
-| `hot`      | Player and buffers retained                   |
+On an iOS memory warning or Android trim-memory event the runtime trims players that
+are not pinned. A player is pinned when it has an active source and is playing,
+attached to a view, wants to play, or is the target of external playback. Released
+players and players without an active source are never trimmed.
 
-## `MemorySnapshot`
+`PlayerRetentionCoordinator` makes this decision on both platforms. Managers pass the
+current player state to it and apply the result on the main thread.
 
-| Field              | Purpose                            |
-| ------------------ | ---------------------------------- |
-| `playerBytes`      | Native player and buffer footprint |
-| `sourceBytes`      | Source-side memory footprint       |
-| `totalBytes`       | Combined native footprint          |
-| `preloadLevel`     | Effective preload level            |
-| `retentionState`   | Current retention state            |
-| `isAttachedToView` | Bound to a native view             |
-| `isPlaying`        | Currently playing                  |
+## Cache
 
-## Native Coordinator
+The HLS disk cache budget defaults to 4 GiB. `configureNitroPlaybackCache({ maxBytes })`
+changes it before first use, with a minimum of 64 MiB. The native store evicts after
+writes down to 90 percent of the budget.
 
-| Rule            | Behavior                                                                       |
-| --------------- | ------------------------------------------------------------------------------ |
-| Weak registries | Dead views/players are pruned during rebalancing                               |
-| Feed pool       | `feed`/eligible sources join a bounded hot set                                 |
-| Protection      | Visible, playing, play-intent, and platform external-playback targets stay hot |
-| Offscreen trim  | Detached idle players trim after policy delay                                  |
-| Memory pressure | iOS memory warning / Android trim-memory trims unpinned players cold           |
-| Shared runtimes | Stream cache, proxy runtime, and preview runtime are not owned by player trim  |
+## Operational rules
 
-## Operational Rules
-
-| Case                   | Expected behavior                                  |
-| ---------------------- | -------------------------------------------------- |
-| Same semantic source   | No native source replacement                       |
-| `replaceSourceAsync()` | Old generation cannot rehydrate the new one        |
-| `clearSourceAsync()`   | Player returns to reusable idle state              |
-| `release()`            | Late callbacks and pending work are discarded      |
-| Preview generation     | Does not affect retention state or playback status |
-
-The native `PlayerRetentionCoordinator` owns trim decisions on both platforms.
-Managers pass current player state into it, then apply trim effects on the main
-thread. Released players and players without an active source are never trimmed
-by resource-pressure handlers.
-
-Preview extraction is coordinated outside player retention. Shared preview jobs
-are coalesced per source key, cancelled only when the last waiter leaves, and
-cleared globally on release/clear so stale frames cannot rehydrate a player.
-HLS prefetch side work is bounded separately by a native dedup window with a hard
-entry cap, so feed/header churn cannot grow the prefetch bookkeeping without
-limit.
+| Case | Expected behavior |
+| --- | --- |
+| Same resolved source | No native source replacement |
+| New `playbackKey` | Snapshot resets, old callbacks cannot update the new session |
+| Release | Late callbacks and pending work are discarded |
+| Feed ring | Three native players shared by all items. Slots are reused, never grown |

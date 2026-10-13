@@ -1,59 +1,33 @@
-# Retention Guide
+# Lifecycle Guide
 
-NitroPlay exposes consumer policies first and keeps low-level lifecycle knobs as
-advanced overrides.
+## Source policies
 
-## Policies
+See [source-config.md](source-config.md) for startup, preload, and offscreen defaults.
 
-| Policy      | Startup  | Retention                            | Use case                 |
-| ----------- | -------- | ------------------------------------ | ------------------------ |
-| `auto`      | eager    | buffered preload, metadata offscreen | Default player           |
-| `feed`      | lazy     | metadata preload, bounded hot pool   | Scrolling feeds          |
-| `hero`      | eager    | buffered preload, hot offscreen      | Primary player           |
-| `thumbnail` | lazy     | no preload, cold offscreen           | Preview/cache only       |
-| `manual`    | explicit | explicit                             | Consumer-owned lifecycle |
+## App state
 
-Explicit `startup`, `retention`, `transport`, `buffer`, and `preview` fields
-override the selected policy.
+| Event | Behavior |
+| --- | --- |
+| Inactive or background | Auto-pause a playing player unless `playInBackground`, `playWhenInactive`, or external playback applies |
+| Foreground | Resume only players that were auto-paused and still want to play. JS-managed players are resumed by their component |
+| Become active, resume failed | The auto-paused flag stays set so the next active transition retries |
 
-## Startup
+## Suspension
 
-| Field     | Values              | Purpose                            |
-| --------- | ------------------- | ---------------------------------- |
-| `startup` | `'eager'`, `'lazy'` | When first-load preparation starts |
+`NitroPlaybackBoundary` and `suspendNitroPlayback()` suspend playback for all groups except
+`allowGroups`. Releasing the handle (or unmounting the boundary) lifts the suspension.
+Registrations are keyed; changing `allowGroups` for a key acquires the replacement
+before releasing the old one.
 
-`play()` before `onLoad` is canonical. `lazy` waits for playback-facing work such
-as `play()`, `initialize()`, `preload()`, or source replacement.
+## Watchdog
 
-## Retention
+The native watchdog recovers stalled playback. A clock that advances by more than
+10 ms (or a loop wrap) is healthy. Near the end of a non-looping source is healthy.
+Otherwise it retries, escalates the source once, enters a 15 s cooldown, and terminates
+after the cooldown cycles are used.
 
-| Field                        | Values                               | Purpose                       |
-| ---------------------------- | ------------------------------------ | ----------------------------- |
-| `retention.preload`          | `'none'`, `'metadata'`, `'buffered'` | How much to preload           |
-| `retention.offscreen`        | `'cold'`, `'metadata'`, `'hot'`      | What survives offscreen       |
-| `retention.trimDelayMs`      | `number`                             | Delayed trim window           |
-| `retention.feedPoolEligible` | `boolean`                            | Opt into native feed hot pool |
+## HLS runtime
 
-## Behavioral Model
-
-| Operation       | Effect                                               |
-| --------------- | ---------------------------------------------------- |
-| `initialize()`  | Force preparation for the active source              |
-| `preload()`     | Preload up to the configured depth                   |
-| `play()`        | Preserves play intent and starts missing preparation |
-| Offscreen trim  | Respects retention and trim delay                    |
-| Feed pool       | Keeps a bounded hot set of eligible players          |
-| Memory pressure | Trims unpinned players to cold                       |
-
-Pinned players are visible, playing, intending to play, fullscreen, or external
-playback targets.
-
-`playWhenInactive` prevents automatic pause while the host is inactive on both
-iOS and Android. `playInBackground` remains the background-playback opt-in.
-If foreground resume fails after a library auto-pause, the auto-paused flag stays
-set so the next active transition can retry instead of losing playback intent.
-
-HLS runtime start is retryable: implicit start is committed only after the native
-server/controller starts successfully. Host destroy stops the server without
-marking the runtime explicitly stopped, so the next source usage can start it
-again.
+HLS runtime start is retryable: implicit start counts as committed only after the native
+server starts. Host destroy stops the server without marking the runtime explicitly
+stopped, so the next source usage starts it again. The server binds an OS-assigned port.
