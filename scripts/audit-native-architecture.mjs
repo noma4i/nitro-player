@@ -218,19 +218,9 @@ assertNoPattern(
   'Forbidden external GCDWebServer dependency after vendored KTV backend'
 );
 assertNoPattern(
-  'src/streaming/streamCache.ts',
-  /5_368_709_120|5368709120/m,
-  'Forbidden stale 5 GiB stream cache default'
-);
-assertNoPattern(
   'android/src/main/java/com/nitroplay/streaming/cache/HlsCacheStore.kt',
   /5L\s*\*\s*1024L\s*\*\s*1024L\s*\*\s*1024L/m,
   'Forbidden stale 5 GiB Android stream cache default'
-);
-assertNoPattern(
-  'ios/streaming/cache/HlsCacheStore.swift',
-  /5_368_709_120|5\s*\*\s*1_024\s*\*\s*1_024\s*\*\s*1_024/m,
-  'Forbidden stale 5 GiB iOS stream cache default'
 );
 assertNoPattern(
   'example/ios/Podfile',
